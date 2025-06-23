@@ -1,2 +1,11 @@
 # vc
-vc is a simple ANSI C compiler with c99 support.
+
+`vc` is a lightweight ANSI C compiler with experimental C99 support. It
+aims to be portable across POSIX systems with a focus on NetBSD.
+
+- [Compiler architecture](docs/architecture.md)
+- [Building vc](docs/building.md)
+- [Contributing](CONTRIBUTING.md)
+
+Development is in an early stage. See the documents above for more
+information on how the pieces fit together and how to get involved.
