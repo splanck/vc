@@ -1,16 +1,6 @@
 #include <stdlib.h>
-#include <string.h>
 #include "ast.h"
-
-static char *dup_string(const char *s)
-{
-    size_t len = strlen(s);
-    char *out = malloc(len + 1);
-    if (!out)
-        return NULL;
-    memcpy(out, s, len + 1);
-    return out;
-}
+#include "util.h"
 /* Constructors for expressions */
 expr_t *ast_make_number(const char *value, size_t line, size_t column)
 {
@@ -20,7 +10,7 @@ expr_t *ast_make_number(const char *value, size_t line, size_t column)
     expr->kind = EXPR_NUMBER;
     expr->line = line;
     expr->column = column;
-    expr->number.value = dup_string(value ? value : "");
+    expr->number.value = vc_strdup(value ? value : "");
     if (!expr->number.value) {
         free(expr);
         return NULL;
@@ -36,7 +26,7 @@ expr_t *ast_make_ident(const char *name, size_t line, size_t column)
     expr->kind = EXPR_IDENT;
     expr->line = line;
     expr->column = column;
-    expr->ident.name = dup_string(name ? name : "");
+    expr->ident.name = vc_strdup(name ? name : "");
     if (!expr->ident.name) {
         free(expr);
         return NULL;
@@ -52,7 +42,7 @@ expr_t *ast_make_string(const char *value, size_t line, size_t column)
     expr->kind = EXPR_STRING;
     expr->line = line;
     expr->column = column;
-    expr->string.value = dup_string(value ? value : "");
+    expr->string.value = vc_strdup(value ? value : "");
     if (!expr->string.value) {
         free(expr);
         return NULL;
@@ -110,7 +100,7 @@ expr_t *ast_make_assign(const char *name, expr_t *value,
     expr->kind = EXPR_ASSIGN;
     expr->line = line;
     expr->column = column;
-    expr->assign.name = dup_string(name ? name : "");
+    expr->assign.name = vc_strdup(name ? name : "");
     if (!expr->assign.name) {
         free(expr);
         return NULL;
@@ -157,7 +147,7 @@ expr_t *ast_make_call(const char *name, expr_t **args, size_t arg_count,
     expr->kind = EXPR_CALL;
     expr->line = line;
     expr->column = column;
-    expr->call.name = dup_string(name ? name : "");
+    expr->call.name = vc_strdup(name ? name : "");
     if (!expr->call.name) {
         free(expr);
         return NULL;
@@ -202,7 +192,7 @@ stmt_t *ast_make_var_decl(const char *name, type_kind_t type, size_t array_size,
     stmt->kind = STMT_VAR_DECL;
     stmt->line = line;
     stmt->column = column;
-    stmt->var_decl.name = dup_string(name ? name : "");
+    stmt->var_decl.name = vc_strdup(name ? name : "");
     if (!stmt->var_decl.name) {
         free(stmt);
         return NULL;
@@ -318,7 +308,7 @@ func_t *ast_make_func(const char *name, type_kind_t ret_type,
     func_t *fn = malloc(sizeof(*fn));
     if (!fn)
         return NULL;
-    fn->name = dup_string(name ? name : "");
+    fn->name = vc_strdup(name ? name : "");
     if (!fn->name) {
         free(fn);
         return NULL;
@@ -335,7 +325,7 @@ func_t *ast_make_func(const char *name, type_kind_t ret_type,
         return NULL;
     }
     for (size_t i = 0; i < param_count; i++) {
-        fn->param_names[i] = dup_string(param_names[i] ? param_names[i] : "");
+        fn->param_names[i] = vc_strdup(param_names[i] ? param_names[i] : "");
         fn->param_types[i] = param_types[i];
         if (!fn->param_names[i]) {
             for (size_t j = 0; j < i; j++)

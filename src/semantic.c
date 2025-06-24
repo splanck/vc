@@ -2,16 +2,7 @@
 #include <string.h>
 #include <stdio.h>
 #include "semantic.h"
-
-static char *dup_string(const char *s)
-{
-    size_t len = strlen(s);
-    char *out = malloc(len + 1);
-    if (!out)
-        return NULL;
-    memcpy(out, s, len + 1);
-    return out;
-}
+#include "util.h"
 
 static int is_intlike(type_kind_t t)
 {
@@ -95,7 +86,7 @@ int symtable_add(symtable_t *table, const char *name, type_kind_t type,
     symbol_t *sym = malloc(sizeof(*sym));
     if (!sym)
         return 0;
-    sym->name = dup_string(name ? name : "");
+    sym->name = vc_strdup(name ? name : "");
     if (!sym->name) {
         free(sym);
         return 0;
@@ -118,7 +109,7 @@ int symtable_add_param(symtable_t *table, const char *name, type_kind_t type,
     symbol_t *sym = malloc(sizeof(*sym));
     if (!sym)
         return 0;
-    sym->name = dup_string(name ? name : "");
+    sym->name = vc_strdup(name ? name : "");
     if (!sym->name) {
         free(sym);
         return 0;
@@ -143,7 +134,7 @@ int symtable_add_global(symtable_t *table, const char *name, type_kind_t type,
     symbol_t *sym = malloc(sizeof(*sym));
     if (!sym)
         return 0;
-    sym->name = dup_string(name ? name : "");
+    sym->name = vc_strdup(name ? name : "");
     if (!sym->name) {
         free(sym);
         return 0;
@@ -166,7 +157,7 @@ int symtable_add_func(symtable_t *table, const char *name, type_kind_t ret_type,
     symbol_t *sym = malloc(sizeof(*sym));
     if (!sym)
         return 0;
-    sym->name = dup_string(name ? name : "");
+    sym->name = vc_strdup(name ? name : "");
     if (!sym->name) {
         free(sym);
         return 0;

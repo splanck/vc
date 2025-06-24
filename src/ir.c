@@ -1,19 +1,10 @@
 #include <stdlib.h>
-#include <string.h>
 #include <stdio.h>
 #include <stdarg.h>
 #include "ir.h"
 #include "strbuf.h"
+#include "util.h"
 
-static char *dup_string(const char *s)
-{
-    size_t len = strlen(s);
-    char *out = malloc(len + 1);
-    if (!out)
-        return NULL;
-    memcpy(out, s, len + 1);
-    return out;
-}
 
 void ir_builder_init(ir_builder_t *b)
 {
@@ -71,8 +62,8 @@ ir_value_t ir_build_string(ir_builder_t *b, const char *str)
     ins->dest = b->next_value_id++;
     char label[32];
     snprintf(label, sizeof(label), "Lstr%d", ins->dest);
-    ins->name = dup_string(label);
-    ins->data = dup_string(str ? str : "");
+    ins->name = vc_strdup(label);
+    ins->data = vc_strdup(str ? str : "");
     return (ir_value_t){ins->dest};
 }
 
@@ -83,7 +74,7 @@ ir_value_t ir_build_load(ir_builder_t *b, const char *name)
         return (ir_value_t){0};
     ins->op = IR_LOAD;
     ins->dest = b->next_value_id++;
-    ins->name = dup_string(name ? name : "");
+    ins->name = vc_strdup(name ? name : "");
     return (ir_value_t){ins->dest};
 }
 
@@ -94,7 +85,7 @@ void ir_build_store(ir_builder_t *b, const char *name, ir_value_t val)
         return;
     ins->op = IR_STORE;
     ins->src1 = val.id;
-    ins->name = dup_string(name ? name : "");
+    ins->name = vc_strdup(name ? name : "");
 }
 
 ir_value_t ir_build_load_param(ir_builder_t *b, int index)
@@ -125,7 +116,7 @@ ir_value_t ir_build_addr(ir_builder_t *b, const char *name)
         return (ir_value_t){0};
     ins->op = IR_ADDR;
     ins->dest = b->next_value_id++;
-    ins->name = dup_string(name ? name : "");
+    ins->name = vc_strdup(name ? name : "");
     return (ir_value_t){ins->dest};
 }
 
@@ -158,7 +149,7 @@ ir_value_t ir_build_load_idx(ir_builder_t *b, const char *name, ir_value_t idx)
     ins->op = IR_LOAD_IDX;
     ins->dest = b->next_value_id++;
     ins->src1 = idx.id;
-    ins->name = dup_string(name ? name : "");
+    ins->name = vc_strdup(name ? name : "");
     return (ir_value_t){ins->dest};
 }
 
@@ -171,7 +162,7 @@ void ir_build_store_idx(ir_builder_t *b, const char *name, ir_value_t idx,
     ins->op = IR_STORE_IDX;
     ins->src1 = idx.id;
     ins->src2 = val.id;
-    ins->name = dup_string(name ? name : "");
+    ins->name = vc_strdup(name ? name : "");
 }
 
 ir_value_t ir_build_binop(ir_builder_t *b, ir_op_t op, ir_value_t left, ir_value_t right)
@@ -211,7 +202,7 @@ ir_value_t ir_build_call(ir_builder_t *b, const char *name, size_t arg_count)
         return (ir_value_t){0};
     ins->op = IR_CALL;
     ins->dest = b->next_value_id++;
-    ins->name = dup_string(name ? name : "");
+    ins->name = vc_strdup(name ? name : "");
     ins->imm = (int)arg_count;
     return (ir_value_t){ins->dest};
 }
@@ -222,7 +213,7 @@ void ir_build_func_begin(ir_builder_t *b, const char *name)
     if (!ins)
         return;
     ins->op = IR_FUNC_BEGIN;
-    ins->name = dup_string(name ? name : "");
+    ins->name = vc_strdup(name ? name : "");
 }
 
 void ir_build_func_end(ir_builder_t *b)
@@ -239,7 +230,7 @@ void ir_build_br(ir_builder_t *b, const char *label)
     if (!ins)
         return;
     ins->op = IR_BR;
-    ins->name = dup_string(label ? label : "");
+    ins->name = vc_strdup(label ? label : "");
 }
 
 void ir_build_bcond(ir_builder_t *b, ir_value_t cond, const char *label)
@@ -249,7 +240,7 @@ void ir_build_bcond(ir_builder_t *b, ir_value_t cond, const char *label)
         return;
     ins->op = IR_BCOND;
     ins->src1 = cond.id;
-    ins->name = dup_string(label ? label : "");
+    ins->name = vc_strdup(label ? label : "");
 }
 
 void ir_build_label(ir_builder_t *b, const char *label)
@@ -258,7 +249,7 @@ void ir_build_label(ir_builder_t *b, const char *label)
     if (!ins)
         return;
     ins->op = IR_LABEL;
-    ins->name = dup_string(label ? label : "");
+    ins->name = vc_strdup(label ? label : "");
 }
 
 void ir_build_glob_var(ir_builder_t *b, const char *name, int value)
@@ -267,7 +258,7 @@ void ir_build_glob_var(ir_builder_t *b, const char *name, int value)
     if (!ins)
         return;
     ins->op = IR_GLOB_VAR;
-    ins->name = dup_string(name ? name : "");
+    ins->name = vc_strdup(name ? name : "");
     ins->imm = value;
 }
 
@@ -278,7 +269,7 @@ void ir_build_glob_array(ir_builder_t *b, const char *name,
     if (!ins)
         return;
     ins->op = IR_GLOB_ARRAY;
-    ins->name = dup_string(name ? name : "");
+    ins->name = vc_strdup(name ? name : "");
     ins->imm = (int)count;
     if (count) {
         int *vals = malloc(count * sizeof(int));
