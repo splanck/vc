@@ -3,7 +3,12 @@
 
 #include "ir.h"
 
-/* Run all optimization passes on the given IR builder */
-void opt_run(ir_builder_t *ir);
+typedef struct {
+    int fold_constants; /* enable constant folding */
+    int dead_code;      /* enable dead code elimination */
+} opt_config_t;
+
+/* Run optimization passes on the given IR builder */
+void opt_run(ir_builder_t *ir, const opt_config_t *cfg);
 
 #endif /* VC_OPT_H */
