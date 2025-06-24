@@ -30,11 +30,56 @@ Performs type checking and converts the AST into IR.
 ### ir
 Defines the IR structures used throughout the rest of the compiler.
 
+#### Instruction set
+The IR uses a straightforward three-address format. The operations defined in
+[`include/ir.h`](../include/ir.h) include:
+
+- `IR_CONST` for integer constants
+- arithmetic ops `IR_ADD`, `IR_SUB`, `IR_MUL`, `IR_DIV`
+- comparison ops `IR_CMPEQ`, `IR_CMPNE`, `IR_CMPLT`, `IR_CMPGT`, `IR_CMPLE`, `IR_CMPGE`
+- global data directives `IR_GLOB_STRING`, `IR_GLOB_VAR`
+- variable access `IR_LOAD`, `IR_STORE`, `IR_LOAD_PARAM`, `IR_STORE_PARAM`
+- pointer ops `IR_ADDR`, `IR_LOAD_PTR`, `IR_STORE_PTR`
+- function and call ops `IR_RETURN`, `IR_CALL`, `IR_FUNC_BEGIN`, `IR_FUNC_END`
+- control flow `IR_BR`, `IR_BCOND`, `IR_LABEL`
+
+IR instructions are appended sequentially using the builder API. A tiny
+function returning `2 * 3` would be built as:
+
+```c
+ir_builder_t b;
+ir_builder_init(&b);
+ir_value_t a = ir_build_const(&b, 2);
+ir_value_t bval = ir_build_const(&b, 3);
+ir_value_t res = ir_build_binop(&b, IR_MUL, a, bval);
+ir_build_return(&b, res);
+```
+
 ### opt
 Holds optimization passes such as constant folding and dead code elimination.
 
 ### regalloc
 Handles register allocation for the backend.
+
+#### Linear-scan allocator
+The allocator in [`src/regalloc.c`](../src/regalloc.c) performs a single pass
+over the instruction list. It first records the final index at which each value
+is used. During the scan each destination value gets a register if one is
+available; otherwise a new stack slot is assigned. Registers are released once
+their value's last use is reached.
+
+```c
+void regalloc_run(ir_builder_t *ir, regalloc_t *ra) {
+    int *last = compute_last_use(ir, ir->next_value_id);
+    for each instruction {
+        if (needs_location(dest))
+            allocate_register_or_spill();
+        release_registers_at_last_use();
+    }
+}
+```
+`regalloc_reg_name` converts register indices to the appropriate physical name
+for 32‑ or 64‑bit mode.
 
 ### codegen
 Emits assembly from the IR. Currently only x86 is supported.
