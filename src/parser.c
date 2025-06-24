@@ -67,6 +67,12 @@ static expr_t *parse_primary(parser_t *p)
         if (!op)
             return NULL;
         return ast_make_unary(UNOP_ADDR, op, op_tok->line, op_tok->column);
+    } else if (match(p, TOK_MINUS)) {
+        token_t *op_tok = &p->tokens[p->pos - 1];
+        expr_t *op = parse_primary(p);
+        if (!op)
+            return NULL;
+        return ast_make_unary(UNOP_NEG, op, op_tok->line, op_tok->column);
     }
 
     if (match(p, TOK_NUMBER)) {

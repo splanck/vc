@@ -115,6 +115,22 @@ static void test_parser_var_decl_init(void)
     lexer_free_tokens(toks, count);
 }
 
+static void test_parser_unary_neg(void)
+{
+    const char *src = "-5";
+    size_t count = 0;
+    token_t *toks = lexer_tokenize(src, &count);
+    parser_t p; parser_init(&p, toks, count);
+    expr_t *expr = parser_parse_expr(&p);
+    ASSERT(expr);
+    ASSERT(expr->kind == EXPR_UNARY);
+    ASSERT(expr->unary.op == UNOP_NEG);
+    ASSERT(expr->unary.operand->kind == EXPR_NUMBER &&
+           strcmp(expr->unary.operand->number.value, "5") == 0);
+    ast_free_expr(expr);
+    lexer_free_tokens(toks, count);
+}
+
 static void test_parser_func(void)
 {
     const char *src = "int main() { return 0; }";
@@ -157,6 +173,7 @@ int main(void)
     test_parser_stmt_return();
     test_parser_stmt_return_void();
     test_parser_var_decl_init();
+    test_parser_unary_neg();
     test_parser_func();
     test_parser_block();
     if (failures == 0) {
