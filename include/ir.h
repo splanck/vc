@@ -93,7 +93,4 @@ void ir_build_glob_var(ir_builder_t *b, const char *name, int value);
 void ir_build_glob_array(ir_builder_t *b, const char *name,
                          const int *values, size_t count);
 
-/* Generate a string representation of the IR. Caller must free. */
-char *ir_to_string(ir_builder_t *b);
-
 #endif /* VC_IR_H */

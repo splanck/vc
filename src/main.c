@@ -8,6 +8,7 @@
 #include "symtable.h"
 #include "semantic.h"
 #include "ir.h"
+#include "ir_dump.h"
 #include "opt.h"
 #include "codegen.h"
 
