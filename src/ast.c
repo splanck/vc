@@ -227,6 +227,28 @@ stmt_t *ast_make_for(expr_t *init, expr_t *cond, expr_t *incr, stmt_t *body,
     return stmt;
 }
 
+stmt_t *ast_make_break(size_t line, size_t column)
+{
+    stmt_t *stmt = malloc(sizeof(*stmt));
+    if (!stmt)
+        return NULL;
+    stmt->kind = STMT_BREAK;
+    stmt->line = line;
+    stmt->column = column;
+    return stmt;
+}
+
+stmt_t *ast_make_continue(size_t line, size_t column)
+{
+    stmt_t *stmt = malloc(sizeof(*stmt));
+    if (!stmt)
+        return NULL;
+    stmt->kind = STMT_CONTINUE;
+    stmt->line = line;
+    stmt->column = column;
+    return stmt;
+}
+
 stmt_t *ast_make_block(stmt_t **stmts, size_t count,
                        size_t line, size_t column)
 {
@@ -350,6 +372,9 @@ void ast_free_stmt(stmt_t *stmt)
         ast_free_expr(stmt->for_stmt.cond);
         ast_free_expr(stmt->for_stmt.incr);
         ast_free_stmt(stmt->for_stmt.body);
+        break;
+    case STMT_BREAK:
+    case STMT_CONTINUE:
         break;
     case STMT_BLOCK:
         for (size_t i = 0; i < stmt->block.count; i++)

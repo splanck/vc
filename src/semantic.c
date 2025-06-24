@@ -399,7 +399,8 @@ type_kind_t check_expr(expr_t *expr, symtable_t *vars, symtable_t *funcs,
 }
 
 int check_stmt(stmt_t *stmt, symtable_t *vars, symtable_t *funcs,
-               ir_builder_t *ir, type_kind_t func_ret_type)
+               ir_builder_t *ir, type_kind_t func_ret_type,
+               const char *break_label, const char *continue_label)
 {
     if (!stmt)
         return 0;
@@ -437,12 +438,14 @@ int check_stmt(stmt_t *stmt, symtable_t *vars, symtable_t *funcs,
         snprintf(end_label, sizeof(end_label), "L%d_end", id);
         const char *target = stmt->if_stmt.else_branch ? else_label : end_label;
         ir_build_bcond(ir, cond_val, target);
-        if (!check_stmt(stmt->if_stmt.then_branch, vars, funcs, ir, func_ret_type))
+        if (!check_stmt(stmt->if_stmt.then_branch, vars, funcs, ir, func_ret_type,
+                        break_label, continue_label))
             return 0;
         if (stmt->if_stmt.else_branch) {
             ir_build_br(ir, end_label);
             ir_build_label(ir, else_label);
-            if (!check_stmt(stmt->if_stmt.else_branch, vars, funcs, ir, func_ret_type))
+            if (!check_stmt(stmt->if_stmt.else_branch, vars, funcs, ir, func_ret_type,
+                            break_label, continue_label))
                 return 0;
         }
         ir_build_label(ir, end_label);
@@ -459,7 +462,8 @@ int check_stmt(stmt_t *stmt, symtable_t *vars, symtable_t *funcs,
         if (check_expr(stmt->while_stmt.cond, vars, funcs, ir, &cond_val) == TYPE_UNKNOWN)
             return 0;
         ir_build_bcond(ir, cond_val, end_label);
-        if (!check_stmt(stmt->while_stmt.body, vars, funcs, ir, func_ret_type))
+        if (!check_stmt(stmt->while_stmt.body, vars, funcs, ir, func_ret_type,
+                        end_label, start_label))
             return 0;
         ir_build_br(ir, start_label);
         ir_build_label(ir, end_label);
@@ -478,18 +482,37 @@ int check_stmt(stmt_t *stmt, symtable_t *vars, symtable_t *funcs,
         if (check_expr(stmt->for_stmt.cond, vars, funcs, ir, &cond_val) == TYPE_UNKNOWN)
             return 0;
         ir_build_bcond(ir, cond_val, end_label);
-        if (!check_stmt(stmt->for_stmt.body, vars, funcs, ir, func_ret_type))
+        char cont_label[32];
+        snprintf(cont_label, sizeof(cont_label), "L%d_cont", id);
+        if (!check_stmt(stmt->for_stmt.body, vars, funcs, ir, func_ret_type,
+                        end_label, cont_label))
             return 0;
+        ir_build_label(ir, cont_label);
         if (check_expr(stmt->for_stmt.incr, vars, funcs, ir, &cond_val) == TYPE_UNKNOWN)
             return 0;
         ir_build_br(ir, start_label);
         ir_build_label(ir, end_label);
         return 1;
     }
+    case STMT_BREAK:
+        if (!break_label) {
+            set_error(stmt->line, stmt->column);
+            return 0;
+        }
+        ir_build_br(ir, break_label);
+        return 1;
+    case STMT_CONTINUE:
+        if (!continue_label) {
+            set_error(stmt->line, stmt->column);
+            return 0;
+        }
+        ir_build_br(ir, continue_label);
+        return 1;
     case STMT_BLOCK: {
         symbol_t *old_head = vars->head;
         for (size_t i = 0; i < stmt->block.count; i++) {
-            if (!check_stmt(stmt->block.stmts[i], vars, funcs, ir, func_ret_type)) {
+            if (!check_stmt(stmt->block.stmts[i], vars, funcs, ir, func_ret_type,
+                            break_label, continue_label)) {
                 symtable_pop_scope(vars, old_head);
                 return 0;
             }
@@ -535,7 +558,8 @@ int check_func(func_t *func, symtable_t *funcs, symtable_t *globals,
 
     int ok = 1;
     for (size_t i = 0; i < func->body_count && ok; i++)
-        ok = check_stmt(func->body[i], &locals, funcs, ir, func->return_type);
+        ok = check_stmt(func->body[i], &locals, funcs, ir, func->return_type,
+                        NULL, NULL);
 
     ir_build_func_end(ir);
 
