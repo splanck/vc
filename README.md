@@ -9,3 +9,18 @@ aims to be portable across POSIX systems with a focus on NetBSD.
 
 Development is in an early stage. See the documents above for more
 information on how the pieces fit together and how to get involved.
+
+## Usage
+
+Compile a source file to assembly:
+
+```sh
+vc -o out.s source.c
+```
+
+To print the generated assembly to stdout instead of creating a file,
+pass `--dump-ir`:
+
+```sh
+vc --dump-ir source.c
+```

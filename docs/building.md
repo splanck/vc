@@ -25,6 +25,9 @@ This disables any NetBSD specific extensions.
 `--x86-64` flag when invoking the compiler to enable 64-bit output. The
 default without this flag is 32-bit code.
 
+To dump the generated assembly to stdout instead of creating a file, use
+`--dump-ir`. When this flag is given the `-o` option is not required.
+
 ## Additional build steps
 
 Extra source files can be passed to the build using the `EXTRA_SRC`
