@@ -147,6 +147,18 @@ static void emit_instr(strbuf_t *sb, ir_instr_t *ins, regalloc_t *ra, int x64)
         sb_appendf(sb, "    push%s %s\n", sfx,
                    loc_str(buf1, ra, ins->src1, x64));
         break;
+    case IR_PTR_ADD: {
+        int scale = x64 ? 8 : 4;
+        sb_appendf(sb, "    mov%s %s, %s\n", sfx,
+                   loc_str(buf1, ra, ins->src2, x64),
+                   loc_str(buf2, ra, ins->dest, x64));
+        sb_appendf(sb, "    imul%s $%d, %s\n", sfx, scale,
+                   loc_str(buf2, ra, ins->dest, x64));
+        sb_appendf(sb, "    add%s %s, %s\n", sfx,
+                   loc_str(buf1, ra, ins->src1, x64),
+                   loc_str(buf2, ra, ins->dest, x64));
+        break;
+    }
     case IR_ADD:
         sb_appendf(sb, "    mov%s %s, %s\n", sfx,
                    loc_str(buf1, ra, ins->src1, x64),
