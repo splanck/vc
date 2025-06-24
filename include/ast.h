@@ -52,6 +52,8 @@ typedef struct func func_t;
 
 struct expr {
     expr_kind_t kind;
+    size_t line;
+    size_t column;
     union {
         struct {
             char *value;
@@ -96,6 +98,8 @@ typedef enum {
 
 struct stmt {
     stmt_kind_t kind;
+    size_t line;
+    size_t column;
     union {
         struct {
             expr_t *expr;
@@ -129,21 +133,28 @@ struct stmt {
 };
 
 /* Constructors */
-expr_t *ast_make_number(const char *value);
-expr_t *ast_make_ident(const char *name);
-expr_t *ast_make_string(const char *value);
-expr_t *ast_make_char(char value);
-expr_t *ast_make_binary(binop_t op, expr_t *left, expr_t *right);
-expr_t *ast_make_unary(unop_t op, expr_t *operand);
-expr_t *ast_make_assign(const char *name, expr_t *value);
-expr_t *ast_make_call(const char *name);
+expr_t *ast_make_number(const char *value, size_t line, size_t column);
+expr_t *ast_make_ident(const char *name, size_t line, size_t column);
+expr_t *ast_make_string(const char *value, size_t line, size_t column);
+expr_t *ast_make_char(char value, size_t line, size_t column);
+expr_t *ast_make_binary(binop_t op, expr_t *left, expr_t *right,
+                        size_t line, size_t column);
+expr_t *ast_make_unary(unop_t op, expr_t *operand,
+                       size_t line, size_t column);
+expr_t *ast_make_assign(const char *name, expr_t *value,
+                        size_t line, size_t column);
+expr_t *ast_make_call(const char *name, size_t line, size_t column);
 
-stmt_t *ast_make_expr_stmt(expr_t *expr);
-stmt_t *ast_make_return(expr_t *expr);
-stmt_t *ast_make_var_decl(const char *name, type_kind_t type, expr_t *init);
-stmt_t *ast_make_if(expr_t *cond, stmt_t *then_branch, stmt_t *else_branch);
-stmt_t *ast_make_while(expr_t *cond, stmt_t *body);
-stmt_t *ast_make_for(expr_t *init, expr_t *cond, expr_t *incr, stmt_t *body);
+stmt_t *ast_make_expr_stmt(expr_t *expr, size_t line, size_t column);
+stmt_t *ast_make_return(expr_t *expr, size_t line, size_t column);
+stmt_t *ast_make_var_decl(const char *name, type_kind_t type, expr_t *init,
+                          size_t line, size_t column);
+stmt_t *ast_make_if(expr_t *cond, stmt_t *then_branch, stmt_t *else_branch,
+                    size_t line, size_t column);
+stmt_t *ast_make_while(expr_t *cond, stmt_t *body,
+                       size_t line, size_t column);
+stmt_t *ast_make_for(expr_t *init, expr_t *cond, expr_t *incr, stmt_t *body,
+                     size_t line, size_t column);
 
 /* Destructors */
 void ast_free_expr(expr_t *expr);

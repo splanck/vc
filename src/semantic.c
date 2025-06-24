@@ -15,6 +15,21 @@ static char *dup_string(const char *s)
 
 static int next_label_id = 0;
 
+static size_t error_line = 0;
+static size_t error_column = 0;
+
+static void set_error(size_t line, size_t column)
+{
+    error_line = line;
+    error_column = column;
+}
+
+void semantic_print_error(const char *msg)
+{
+    fprintf(stderr, "%s at line %zu, column %zu\n",
+            msg, error_line, error_column);
+}
+
 void symtable_init(symtable_t *table)
 {
     table->head = NULL;
@@ -149,6 +164,7 @@ static type_kind_t check_binary(expr_t *left, expr_t *right, symtable_t *vars,
         }
         return TYPE_INT;
     }
+    set_error(left->line, left->column);
     return TYPE_UNKNOWN;
 }
 
@@ -178,13 +194,18 @@ type_kind_t check_expr(expr_t *expr, symtable_t *vars, symtable_t *funcs,
                     *out = ir_build_load_ptr(ir, addr);
                 return TYPE_INT;
             }
+            set_error(expr->unary.operand->line, expr->unary.operand->column);
             return TYPE_UNKNOWN;
         } else if (expr->unary.op == UNOP_ADDR) {
-            if (expr->unary.operand->kind != EXPR_IDENT)
+            if (expr->unary.operand->kind != EXPR_IDENT) {
+                set_error(expr->unary.operand->line, expr->unary.operand->column);
                 return TYPE_UNKNOWN;
+            }
             symbol_t *sym = symtable_lookup(vars, expr->unary.operand->ident.name);
-            if (!sym)
+            if (!sym) {
+                set_error(expr->unary.operand->line, expr->unary.operand->column);
                 return TYPE_UNKNOWN;
+            }
             if (out)
                 *out = ir_build_addr(ir, sym->name);
             return TYPE_PTR;
@@ -192,8 +213,10 @@ type_kind_t check_expr(expr_t *expr, symtable_t *vars, symtable_t *funcs,
         return TYPE_UNKNOWN;
     case EXPR_IDENT: {
         symbol_t *sym = symtable_lookup(vars, expr->ident.name);
-        if (!sym)
+        if (!sym) {
+            set_error(expr->line, expr->column);
             return TYPE_UNKNOWN;
+        }
         if (out) {
             if (sym->param_index >= 0)
                 *out = ir_build_load_param(ir, sym->param_index);
@@ -208,8 +231,10 @@ type_kind_t check_expr(expr_t *expr, symtable_t *vars, symtable_t *funcs,
     case EXPR_ASSIGN: {
         ir_value_t val;
         symbol_t *sym = symtable_lookup(vars, expr->assign.name);
-        if (!sym)
+        if (!sym) {
+            set_error(expr->line, expr->column);
             return TYPE_UNKNOWN;
+        }
         if (check_expr(expr->assign.value, vars, funcs, ir, &val) == sym->type) {
             if (sym->param_index >= 0)
                 ir_build_store_param(ir, sym->param_index, val);
@@ -219,17 +244,21 @@ type_kind_t check_expr(expr_t *expr, symtable_t *vars, symtable_t *funcs,
                 *out = val;
             return sym->type;
         }
+        set_error(expr->line, expr->column);
         return TYPE_UNKNOWN;
     }
     case EXPR_CALL: {
         symbol_t *fsym = symtable_lookup(funcs, expr->call.name);
-        if (!fsym)
+        if (!fsym) {
+            set_error(expr->line, expr->column);
             return TYPE_UNKNOWN;
+        }
         if (out)
             *out = ir_build_call(ir, expr->call.name);
         return fsym->type;
     }
     }
+    set_error(expr->line, expr->column);
     return TYPE_UNKNOWN;
 }
 
@@ -245,15 +274,19 @@ int check_stmt(stmt_t *stmt, symtable_t *vars, symtable_t *funcs,
     }
     case STMT_RETURN: {
         if (!stmt->ret.expr) {
-            if (func_ret_type != TYPE_VOID)
+            if (func_ret_type != TYPE_VOID) {
+                set_error(stmt->line, stmt->column);
                 return 0;
+            }
             ir_value_t zero = ir_build_const(ir, 0);
             ir_build_return(ir, zero);
             return 1;
         }
         ir_value_t val;
-        if (check_expr(stmt->ret.expr, vars, funcs, ir, &val) == TYPE_UNKNOWN)
+        if (check_expr(stmt->ret.expr, vars, funcs, ir, &val) == TYPE_UNKNOWN) {
+            set_error(stmt->ret.expr->line, stmt->ret.expr->column);
             return 0;
+        }
         ir_build_return(ir, val);
         return 1;
     }
@@ -318,13 +351,17 @@ int check_stmt(stmt_t *stmt, symtable_t *vars, symtable_t *funcs,
         return 1;
     }
     case STMT_VAR_DECL: {
-        if (!symtable_add(vars, stmt->var_decl.name, stmt->var_decl.type))
+        if (!symtable_add(vars, stmt->var_decl.name, stmt->var_decl.type)) {
+            set_error(stmt->line, stmt->column);
             return 0;
+        }
         if (stmt->var_decl.init) {
             ir_value_t val;
             if (check_expr(stmt->var_decl.init, vars, funcs, ir, &val) !=
-                stmt->var_decl.type)
+                stmt->var_decl.type) {
+                set_error(stmt->var_decl.init->line, stmt->var_decl.init->column);
                 return 0;
+            }
             ir_build_store(ir, stmt->var_decl.name, val);
         }
         return 1;
@@ -365,8 +402,10 @@ int check_global(stmt_t *decl, symtable_t *globals, ir_builder_t *ir)
     if (!decl || decl->kind != STMT_VAR_DECL)
         return 0;
     if (!symtable_add_global(globals, decl->var_decl.name,
-                             decl->var_decl.type))
+                             decl->var_decl.type)) {
+        set_error(decl->line, decl->column);
         return 0;
+    }
     ir_build_glob_var(ir, decl->var_decl.name);
     return 1;
 }

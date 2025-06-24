@@ -147,7 +147,7 @@ int main(int argc, char **argv)
         func_t *fn = NULL;
         stmt_t *g = NULL;
         if (!parser_parse_toplevel(&parser, &fn, &g)) {
-            fprintf(stderr, "Parse error\n");
+            parser_print_error(&parser, "Parse error");
             ok = 0;
             break;
         }
@@ -180,12 +180,16 @@ int main(int argc, char **argv)
 
     for (size_t i = 0; i < fcount; i++)
         symtable_add(&funcs, func_list[i]->name, func_list[i]->return_type);
-    for (size_t i = 0; i < gcount; i++)
-        ok = ok && check_global(glob_list[i], &globals, &ir);
+    for (size_t i = 0; i < gcount; i++) {
+        if (!check_global(glob_list[i], &globals, &ir)) {
+            semantic_print_error("Semantic error");
+            ok = 0;
+        }
+    }
 
     for (size_t i = 0; i < fcount && ok; i++) {
         if (!check_func(func_list[i], &funcs, &globals, &ir)) {
-            fprintf(stderr, "Semantic error\n");
+            semantic_print_error("Semantic error");
             ok = 0;
         }
     }
