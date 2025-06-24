@@ -71,6 +71,17 @@ symbol_t *symtable_lookup(symtable_t *table, const char *name)
     return NULL;
 }
 
+static void symtable_pop_scope(symtable_t *table, symbol_t *old_head)
+{
+    while (table->head != old_head) {
+        symbol_t *sym = table->head;
+        table->head = sym->next;
+        free(sym->name);
+        free(sym->param_types);
+        free(sym);
+    }
+}
+
 int symtable_add(symtable_t *table, const char *name, type_kind_t type)
 {
     if (symtable_lookup(table, name))
@@ -412,6 +423,17 @@ int check_stmt(stmt_t *stmt, symtable_t *vars, symtable_t *funcs,
             return 0;
         ir_build_br(ir, start_label);
         ir_build_label(ir, end_label);
+        return 1;
+    }
+    case STMT_BLOCK: {
+        symbol_t *old_head = vars->head;
+        for (size_t i = 0; i < stmt->block.count; i++) {
+            if (!check_stmt(stmt->block.stmts[i], vars, funcs, ir, func_ret_type)) {
+                symtable_pop_scope(vars, old_head);
+                return 0;
+            }
+        }
+        symtable_pop_scope(vars, old_head);
         return 1;
     }
     case STMT_VAR_DECL: {
