@@ -100,6 +100,7 @@ void parser_print_error(parser_t *p, const token_type_t *expected,
 
 /* Forward declarations */
 static expr_t *parse_expression(parser_t *p);
+static expr_t **parse_init_list(parser_t *p, size_t *out_count);
 static expr_t *parse_assignment(parser_t *p);
 static expr_t *parse_equality(parser_t *p);
 static expr_t *parse_relational(parser_t *p);
@@ -391,6 +392,48 @@ static expr_t *parse_expression(parser_t *p)
     return parse_assignment(p);
 }
 
+static expr_t **parse_init_list(parser_t *p, size_t *out_count)
+{
+    if (!match(p, TOK_LBRACE))
+        return NULL;
+    size_t cap = 4, count = 0;
+    expr_t **vals = malloc(cap * sizeof(*vals));
+    if (!vals)
+        return NULL;
+    if (!match(p, TOK_RBRACE)) {
+        do {
+            expr_t *e = parse_expression(p);
+            if (!e) {
+                for (size_t i = 0; i < count; i++)
+                    ast_free_expr(vals[i]);
+                free(vals);
+                return NULL;
+            }
+            if (count >= cap) {
+                cap *= 2;
+                expr_t **tmp = realloc(vals, cap * sizeof(*tmp));
+                if (!tmp) {
+                    for (size_t i = 0; i < count; i++)
+                        ast_free_expr(vals[i]);
+                    free(vals);
+                    return NULL;
+                }
+                vals = tmp;
+            }
+            vals[count++] = e;
+        } while (match(p, TOK_COMMA));
+        if (!match(p, TOK_RBRACE)) {
+            for (size_t i = 0; i < count; i++)
+                ast_free_expr(vals[i]);
+            free(vals);
+            return NULL;
+        }
+    }
+    if (out_count)
+        *out_count = count;
+    return vals;
+}
+
 static stmt_t *parse_block(parser_t *p)
 {
     if (!match(p, TOK_LBRACE))
@@ -457,17 +500,32 @@ stmt_t *parser_parse_stmt(parser_t *p)
             t = TYPE_ARRAY;
         }
         expr_t *init = NULL;
+        expr_t **init_list = NULL;
+        size_t init_count = 0;
         if (match(p, TOK_ASSIGN)) {
-            init = parse_expression(p);
-            if (!init || !match(p, TOK_SEMI)) {
-                ast_free_expr(init);
-                return NULL;
+            if (t == TYPE_ARRAY && peek(p) && peek(p)->type == TOK_LBRACE) {
+                init_list = parse_init_list(p, &init_count);
+                if (!init_list || !match(p, TOK_SEMI)) {
+                    if (init_list) {
+                        for (size_t i = 0; i < init_count; i++)
+                            ast_free_expr(init_list[i]);
+                        free(init_list);
+                    }
+                    return NULL;
+                }
+            } else {
+                init = parse_expression(p);
+                if (!init || !match(p, TOK_SEMI)) {
+                    ast_free_expr(init);
+                    return NULL;
+                }
             }
         } else {
             if (!match(p, TOK_SEMI))
                 return NULL;
         }
         return ast_make_var_decl(name, t, arr_size, init,
+                                 init_list, init_count,
                                  kw_tok->line, kw_tok->column);
     }
 
@@ -771,7 +829,7 @@ int parser_parse_toplevel(parser_t *p, func_t **out_func, stmt_t **out_global)
         p->pos++; /* consume ';' */
         if (out_global)
             *out_global = ast_make_var_decl(id->lexeme, t, arr_size, NULL,
-                                           tok->line, tok->column);
+                                           NULL, 0, tok->line, tok->column);
         return *out_global != NULL;
     } else if (next && next->type == TOK_ASSIGN) {
         if (t == TYPE_VOID) {
@@ -779,14 +837,31 @@ int parser_parse_toplevel(parser_t *p, func_t **out_func, stmt_t **out_global)
             return 0;
         }
         p->pos++; /* consume '=' */
-        expr_t *init = parser_parse_expr(p);
-        if (!init || !match(p, TOK_SEMI)) {
-            ast_free_expr(init);
-            p->pos = save;
-            return 0;
+        expr_t *init = NULL;
+        expr_t **init_list = NULL;
+        size_t init_count = 0;
+        if (t == TYPE_ARRAY && peek(p) && peek(p)->type == TOK_LBRACE) {
+            init_list = parse_init_list(p, &init_count);
+            if (!init_list || !match(p, TOK_SEMI)) {
+                if (init_list) {
+                    for (size_t i = 0; i < init_count; i++)
+                        ast_free_expr(init_list[i]);
+                    free(init_list);
+                }
+                p->pos = save;
+                return 0;
+            }
+        } else {
+            init = parser_parse_expr(p);
+            if (!init || !match(p, TOK_SEMI)) {
+                ast_free_expr(init);
+                p->pos = save;
+                return 0;
+            }
         }
         if (out_global)
             *out_global = ast_make_var_decl(id->lexeme, t, arr_size, init,
+                                           init_list, init_count,
                                            tok->line, tok->column);
         return *out_global != NULL;
     }

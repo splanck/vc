@@ -293,6 +293,20 @@ Compile with:
 vc -o array.s array.c
 ```
 
+Arrays can also be initialized using an initializer list when declared:
+
+```c
+/* array_init.c */
+int main() {
+    int nums[3] = {1, 2, 3};
+    return nums[0];
+}
+```
+Compile with:
+```sh
+vc -o array_init.s array_init.c
+```
+
 ### Global variables
 ```c
 /* global.c */

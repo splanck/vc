@@ -626,6 +626,23 @@ int check_stmt(stmt_t *stmt, symtable_t *vars, symtable_t *funcs,
                 return 0;
             }
             ir_build_store(ir, stmt->var_decl.name, val);
+        } else if (stmt->var_decl.init_list) {
+            if (stmt->var_decl.type != TYPE_ARRAY ||
+                stmt->var_decl.array_size < stmt->var_decl.init_count) {
+                set_error(stmt->line, stmt->column);
+                return 0;
+            }
+            for (size_t i = 0; i < stmt->var_decl.init_count; i++) {
+                int v;
+                if (!eval_const_expr(stmt->var_decl.init_list[i], &v)) {
+                    set_error(stmt->var_decl.init_list[i]->line,
+                              stmt->var_decl.init_list[i]->column);
+                    return 0;
+                }
+                ir_value_t idx = ir_build_const(ir, (int)i);
+                ir_value_t val = ir_build_const(ir, v);
+                ir_build_store_idx(ir, stmt->var_decl.name, idx, val);
+            }
         }
         return 1;
     }
@@ -671,14 +688,37 @@ int check_global(stmt_t *decl, symtable_t *globals, ir_builder_t *ir)
         set_error(decl->line, decl->column);
         return 0;
     }
-    int value = 0;
-    if (decl->var_decl.init) {
-        if (!eval_const_expr(decl->var_decl.init, &value)) {
-            set_error(decl->var_decl.init->line, decl->var_decl.init->column);
+    if (decl->var_decl.type == TYPE_ARRAY) {
+        size_t count = decl->var_decl.array_size;
+        int *vals = calloc(count, sizeof(int));
+        if (!vals)
+            return 0;
+        size_t init_count = decl->var_decl.init_count;
+        if (init_count > count) {
+            free(vals);
+            set_error(decl->line, decl->column);
             return 0;
         }
+        for (size_t i = 0; i < init_count; i++) {
+            if (!eval_const_expr(decl->var_decl.init_list[i], &vals[i])) {
+                free(vals);
+                set_error(decl->var_decl.init_list[i]->line,
+                          decl->var_decl.init_list[i]->column);
+                return 0;
+            }
+        }
+        ir_build_glob_array(ir, decl->var_decl.name, vals, count);
+        free(vals);
+    } else {
+        int value = 0;
+        if (decl->var_decl.init) {
+            if (!eval_const_expr(decl->var_decl.init, &value)) {
+                set_error(decl->var_decl.init->line, decl->var_decl.init->column);
+                return 0;
+            }
+        }
+        ir_build_glob_var(ir, decl->var_decl.name, value);
     }
-    ir_build_glob_var(ir, decl->var_decl.name, value);
     return 1;
 }
 

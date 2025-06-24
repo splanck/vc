@@ -18,6 +18,7 @@ typedef enum {
     IR_CMPGE,
     IR_GLOB_STRING,
     IR_GLOB_VAR,
+    IR_GLOB_ARRAY,
     IR_LOAD,
     IR_STORE,
     IR_LOAD_PARAM,
@@ -89,6 +90,8 @@ void ir_build_bcond(ir_builder_t *b, ir_value_t cond, const char *label);
 void ir_build_label(ir_builder_t *b, const char *label);
 ir_value_t ir_build_string(ir_builder_t *b, const char *data);
 void ir_build_glob_var(ir_builder_t *b, const char *name, int value);
+void ir_build_glob_array(ir_builder_t *b, const char *name,
+                         const int *values, size_t count);
 
 /* Generate a string representation of the IR. Caller must free. */
 char *ir_to_string(ir_builder_t *b);

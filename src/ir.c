@@ -333,6 +333,25 @@ void ir_build_glob_var(ir_builder_t *b, const char *name, int value)
     ins->imm = value;
 }
 
+void ir_build_glob_array(ir_builder_t *b, const char *name,
+                         const int *values, size_t count)
+{
+    ir_instr_t *ins = append_instr(b);
+    if (!ins)
+        return;
+    ins->op = IR_GLOB_ARRAY;
+    ins->name = dup_string(name ? name : "");
+    ins->imm = (int)count;
+    if (count) {
+        int *vals = malloc(count * sizeof(int));
+        if (!vals)
+            return;
+        for (size_t i = 0; i < count; i++)
+            vals[i] = values[i];
+        ins->data = (char *)vals;
+    }
+}
+
 static const char *op_name(ir_op_t op)
 {
     switch (op) {
@@ -351,6 +370,7 @@ static const char *op_name(ir_op_t op)
     case IR_CMPGE: return "IR_CMPGE";
     case IR_GLOB_STRING: return "IR_GLOB_STRING";
     case IR_GLOB_VAR: return "IR_GLOB_VAR";
+    case IR_GLOB_ARRAY: return "IR_GLOB_ARRAY";
     case IR_LOAD: return "IR_LOAD";
     case IR_STORE: return "IR_STORE";
     case IR_LOAD_PARAM: return "IR_LOAD_PARAM";
@@ -380,10 +400,15 @@ char *ir_to_string(ir_builder_t *ir)
     strbuf_t sb;
     sb_init(&sb);
     for (ir_instr_t *ins = ir->head; ins; ins = ins->next) {
-        sb_appendf(&sb, "%s dest=%d src1=%d src2=%d imm=%d name=%s data=%s\n",
-                   op_name(ins->op), ins->dest, ins->src1, ins->src2,
-                   ins->imm, ins->name ? ins->name : "",
-                   ins->data ? ins->data : "");
+        if (ins->op == IR_GLOB_ARRAY) {
+            sb_appendf(&sb, "%s name=%s count=%d\n", op_name(ins->op),
+                       ins->name ? ins->name : "", ins->imm);
+        } else {
+            sb_appendf(&sb, "%s dest=%d src1=%d src2=%d imm=%d name=%s data=%s\n",
+                       op_name(ins->op), ins->dest, ins->src1, ins->src2,
+                       ins->imm, ins->name ? ins->name : "",
+                       ins->data ? ins->data : "");
+        }
     }
     return sb.data; /* caller frees */
 }

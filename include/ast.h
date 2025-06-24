@@ -133,6 +133,9 @@ struct stmt {
             size_t array_size;
             /* optional initializer expression */
             expr_t *init;
+            /* optional initializer list for arrays */
+            expr_t **init_list;
+            size_t init_count;
         } var_decl;
         struct {
             expr_t *cond;
@@ -177,7 +180,8 @@ expr_t *ast_make_call(const char *name, expr_t **args, size_t arg_count,
 stmt_t *ast_make_expr_stmt(expr_t *expr, size_t line, size_t column);
 stmt_t *ast_make_return(expr_t *expr, size_t line, size_t column);
 stmt_t *ast_make_var_decl(const char *name, type_kind_t type, size_t array_size,
-                          expr_t *init, size_t line, size_t column);
+                          expr_t *init, expr_t **init_list, size_t init_count,
+                          size_t line, size_t column);
 stmt_t *ast_make_if(expr_t *cond, stmt_t *then_branch, stmt_t *else_branch,
                     size_t line, size_t column);
 stmt_t *ast_make_while(expr_t *cond, stmt_t *body,
