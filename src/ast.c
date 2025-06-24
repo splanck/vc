@@ -67,6 +67,20 @@ expr_t *ast_make_assign(const char *name, expr_t *value)
     return expr;
 }
 
+expr_t *ast_make_call(const char *name)
+{
+    expr_t *expr = malloc(sizeof(*expr));
+    if (!expr)
+        return NULL;
+    expr->kind = EXPR_CALL;
+    expr->call.name = dup_string(name ? name : "");
+    if (!expr->call.name) {
+        free(expr);
+        return NULL;
+    }
+    return expr;
+}
+
 /* Constructors for statements */
 stmt_t *ast_make_expr_stmt(expr_t *expr)
 {
@@ -102,6 +116,23 @@ stmt_t *ast_make_var_decl(const char *name)
     return stmt;
 }
 
+func_t *ast_make_func(const char *name, type_kind_t ret_type,
+                      stmt_t **body, size_t body_count)
+{
+    func_t *fn = malloc(sizeof(*fn));
+    if (!fn)
+        return NULL;
+    fn->name = dup_string(name ? name : "");
+    if (!fn->name) {
+        free(fn);
+        return NULL;
+    }
+    fn->return_type = ret_type;
+    fn->body = body;
+    fn->body_count = body_count;
+    return fn;
+}
+
 /* Destructors */
 void ast_free_expr(expr_t *expr)
 {
@@ -121,6 +152,9 @@ void ast_free_expr(expr_t *expr)
     case EXPR_ASSIGN:
         free(expr->assign.name);
         ast_free_expr(expr->assign.value);
+        break;
+    case EXPR_CALL:
+        free(expr->call.name);
         break;
     }
     free(expr);
@@ -142,5 +176,16 @@ void ast_free_stmt(stmt_t *stmt)
         break;
     }
     free(stmt);
+}
+
+void ast_free_func(func_t *func)
+{
+    if (!func)
+        return;
+    for (size_t i = 0; i < func->body_count; i++)
+        ast_free_stmt(func->body[i]);
+    free(func->body);
+    free(func->name);
+    free(func);
 }
 

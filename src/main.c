@@ -112,26 +112,44 @@ int main(int argc, char **argv)
 
     parser_t parser;
     parser_init(&parser, tokens, tok_count);
-    symtable_t syms;
-    symtable_init(&syms);
+    symtable_t funcs;
+    symtable_init(&funcs);
     ir_builder_t ir;
     ir_builder_init(&ir);
 
     int ok = 1;
-    while (!parser_is_eof(&parser)) {
-        stmt_t *stmt = parser_parse_stmt(&parser);
-        if (!stmt) {
+    size_t fcap = 4, fcount = 0;
+    func_t **func_list = malloc(fcap * sizeof(*func_list));
+    if (!func_list)
+        ok = 0;
+    while (ok && !parser_is_eof(&parser)) {
+        func_t *fn = parser_parse_func(&parser);
+        if (!fn) {
             fprintf(stderr, "Parse error\n");
             ok = 0;
             break;
         }
-        if (!check_stmt(stmt, &syms, &ir)) {
+        if (fcount >= fcap) {
+            fcap *= 2;
+            func_t **tmp = realloc(func_list, fcap * sizeof(*tmp));
+            if (!tmp) {
+                ok = 0;
+                ast_free_func(fn);
+                break;
+            }
+            func_list = tmp;
+        }
+        func_list[fcount++] = fn;
+    }
+
+    for (size_t i = 0; i < fcount; i++)
+        symtable_add(&funcs, func_list[i]->name, func_list[i]->return_type);
+
+    for (size_t i = 0; i < fcount && ok; i++) {
+        if (!check_func(func_list[i], &funcs, &ir)) {
             fprintf(stderr, "Semantic error\n");
             ok = 0;
-            ast_free_stmt(stmt);
-            break;
         }
-        ast_free_stmt(stmt);
     }
 
     /* Run optimizations on the generated IR */
@@ -152,7 +170,11 @@ int main(int argc, char **argv)
 
     ir_builder_free(&ir);
 
-    symtable_free(&syms);
+    for (size_t i = 0; i < fcount; i++)
+        ast_free_func(func_list[i]);
+    free(func_list);
+
+    symtable_free(&funcs);
     lexer_free_tokens(tokens, tok_count);
     free(src_text);
 

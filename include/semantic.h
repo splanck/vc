@@ -4,12 +4,6 @@
 #include "ast.h"
 #include "ir.h"
 
-/* Basic type categories */
-typedef enum {
-    TYPE_INT,
-    TYPE_UNKNOWN
-} type_kind_t;
-
 /* Symbol table entry */
 typedef struct symbol {
     char *name;
@@ -33,8 +27,10 @@ int symtable_add(symtable_t *table, const char *name, type_kind_t type);
 symbol_t *symtable_lookup(symtable_t *table, const char *name);
 
 /* Type check helpers */
-type_kind_t check_expr(expr_t *expr, symtable_t *table, ir_builder_t *ir,
-                       ir_value_t *out);
-int check_stmt(stmt_t *stmt, symtable_t *table, ir_builder_t *ir);
+type_kind_t check_expr(expr_t *expr, symtable_t *vars, symtable_t *funcs,
+                       ir_builder_t *ir, ir_value_t *out);
+int check_stmt(stmt_t *stmt, symtable_t *vars, symtable_t *funcs,
+               ir_builder_t *ir);
+int check_func(func_t *func, symtable_t *funcs, ir_builder_t *ir);
 
 #endif /* VC_SEMANTIC_H */
