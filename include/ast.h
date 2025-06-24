@@ -7,7 +7,8 @@
 typedef enum {
     EXPR_NUMBER,
     EXPR_IDENT,
-    EXPR_BINARY
+    EXPR_BINARY,
+    EXPR_ASSIGN
 } expr_kind_t;
 
 /* Binary operator types */
@@ -38,13 +39,18 @@ struct expr {
             expr_t *left;
             expr_t *right;
         } binary;
+        struct {
+            char *name;
+            expr_t *value;
+        } assign;
     };
 };
 
 /* Statement AST node types */
 typedef enum {
     STMT_EXPR,
-    STMT_RETURN
+    STMT_RETURN,
+    STMT_VAR_DECL
 } stmt_kind_t;
 
 struct stmt {
@@ -56,6 +62,9 @@ struct stmt {
         struct {
             expr_t *expr;
         } ret;
+        struct {
+            char *name;
+        } var_decl;
     };
 };
 
@@ -63,9 +72,11 @@ struct stmt {
 expr_t *ast_make_number(const char *value);
 expr_t *ast_make_ident(const char *name);
 expr_t *ast_make_binary(binop_t op, expr_t *left, expr_t *right);
+expr_t *ast_make_assign(const char *name, expr_t *value);
 
 stmt_t *ast_make_expr_stmt(expr_t *expr);
 stmt_t *ast_make_return(expr_t *expr);
+stmt_t *ast_make_var_decl(const char *name);
 
 /* Destructors */
 void ast_free_expr(expr_t *expr);

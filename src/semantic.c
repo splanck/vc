@@ -99,6 +99,19 @@ type_kind_t check_expr(expr_t *expr, symtable_t *table, ir_builder_t *ir,
     case EXPR_BINARY:
         return check_binary(expr->binary.left, expr->binary.right, table, ir,
                            out, expr->binary.op);
+    case EXPR_ASSIGN: {
+        ir_value_t val;
+        symbol_t *sym = symtable_lookup(table, expr->assign.name);
+        if (!sym)
+            return TYPE_UNKNOWN;
+        if (check_expr(expr->assign.value, table, ir, &val) == TYPE_INT) {
+            ir_build_store(ir, expr->assign.name, val);
+            if (out)
+                *out = val;
+            return TYPE_INT;
+        }
+        return TYPE_UNKNOWN;
+    }
     }
     return TYPE_UNKNOWN;
 }
@@ -119,6 +132,8 @@ int check_stmt(stmt_t *stmt, symtable_t *table, ir_builder_t *ir)
         ir_build_return(ir, val);
         return 1;
     }
+    case STMT_VAR_DECL:
+        return symtable_add(table, stmt->var_decl.name, TYPE_INT);
     }
     return 0;
 }

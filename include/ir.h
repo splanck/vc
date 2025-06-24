@@ -9,6 +9,7 @@ typedef enum {
     IR_MUL,
     IR_DIV,
     IR_LOAD,
+    IR_STORE,
     IR_RETURN
 } ir_op_t;
 
@@ -44,6 +45,7 @@ void ir_builder_free(ir_builder_t *b);
 ir_value_t ir_build_const(ir_builder_t *b, int value);
 ir_value_t ir_build_load(ir_builder_t *b, const char *name);
 ir_value_t ir_build_binop(ir_builder_t *b, ir_op_t op, ir_value_t left, ir_value_t right);
+void ir_build_store(ir_builder_t *b, const char *name, ir_value_t val);
 void ir_build_return(ir_builder_t *b, ir_value_t val);
 
 #endif /* VC_IR_H */

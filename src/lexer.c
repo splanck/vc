@@ -78,6 +78,7 @@ static void read_punct(char c, token_t **tokens, size_t *count, size_t *cap,
     case '-': type = TOK_MINUS; break;
     case '*': type = TOK_STAR; break;
     case '/': type = TOK_SLASH; break;
+    case '=': type = TOK_ASSIGN; break;
     case ';': type = TOK_SEMI; break;
     case ',': type = TOK_COMMA; break;
     case '(': type = TOK_LPAREN; break;

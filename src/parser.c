@@ -33,6 +33,8 @@ int parser_is_eof(parser_t *p)
 
 /* Forward declarations */
 static expr_t *parse_expression(parser_t *p);
+static expr_t *parse_assignment(parser_t *p);
+static expr_t *parse_additive(parser_t *p);
 static expr_t *parse_primary(parser_t *p)
 {
     token_t *tok = peek(p);
@@ -82,7 +84,7 @@ static expr_t *parse_term(parser_t *p)
     return left;
 }
 
-static expr_t *parse_expression(parser_t *p)
+static expr_t *parse_additive(parser_t *p)
 {
     expr_t *left = parse_term(p);
     if (!left)
@@ -110,6 +112,36 @@ static expr_t *parse_expression(parser_t *p)
     return left;
 }
 
+static expr_t *parse_assignment(parser_t *p)
+{
+    expr_t *left = parse_additive(p);
+    if (!left)
+        return NULL;
+
+    if (match(p, TOK_ASSIGN)) {
+        if (left->kind != EXPR_IDENT) {
+            ast_free_expr(left);
+            return NULL;
+        }
+        expr_t *right = parse_assignment(p);
+        if (!right) {
+            free(left->ident.name);
+            free(left);
+            return NULL;
+        }
+        char *name = left->ident.name;
+        free(left);
+        left = ast_make_assign(name, right);
+        free(name);
+    }
+    return left;
+}
+
+static expr_t *parse_expression(parser_t *p)
+{
+    return parse_assignment(p);
+}
+
 expr_t *parser_parse_expr(parser_t *p)
 {
     return parse_expression(p);
@@ -117,6 +149,17 @@ expr_t *parser_parse_expr(parser_t *p)
 
 stmt_t *parser_parse_stmt(parser_t *p)
 {
+    if (match(p, TOK_KW_INT)) {
+        token_t *tok = peek(p);
+        if (!tok || tok->type != TOK_IDENT)
+            return NULL;
+        p->pos++;
+        char *name = tok->lexeme;
+        if (!match(p, TOK_SEMI))
+            return NULL;
+        return ast_make_var_decl(name);
+    }
+
     if (match(p, TOK_KW_RETURN)) {
         expr_t *expr = parse_expression(p);
         if (!expr || !match(p, TOK_SEMI)) {
