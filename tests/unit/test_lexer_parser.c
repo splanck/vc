@@ -25,6 +25,30 @@ static void test_lexer_basic(void)
     lexer_free_tokens(toks, count);
 }
 
+static void test_lexer_comments(void)
+{
+    const char *src =
+        "int main() {\n"
+        "    // line comment\n"
+        "    /* block\n"
+        "       comment */\n"
+        "    return 0;\n"
+        "}";
+    size_t count = 0;
+    token_t *toks = lexer_tokenize(src, &count);
+    ASSERT(toks[0].type == TOK_KW_INT);
+    ASSERT(toks[1].type == TOK_IDENT && strcmp(toks[1].lexeme, "main") == 0);
+    ASSERT(toks[2].type == TOK_LPAREN);
+    ASSERT(toks[3].type == TOK_RPAREN);
+    ASSERT(toks[4].type == TOK_LBRACE);
+    ASSERT(toks[5].type == TOK_KW_RETURN);
+    ASSERT(toks[6].type == TOK_NUMBER && strcmp(toks[6].lexeme, "0") == 0);
+    ASSERT(toks[7].type == TOK_SEMI);
+    ASSERT(toks[8].type == TOK_RBRACE);
+    ASSERT(toks[9].type == TOK_EOF);
+    lexer_free_tokens(toks, count);
+}
+
 static void test_parser_expr(void)
 {
     const char *src = "1 + 2 * 3";
@@ -79,6 +103,7 @@ static void test_parser_func(void)
 int main(void)
 {
     test_lexer_basic();
+    test_lexer_comments();
     test_parser_expr();
     test_parser_stmt_return();
     test_parser_func();
