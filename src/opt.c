@@ -52,6 +52,11 @@ static void fold_constants(ir_builder_t *ir)
                 is_const[ins->dest] = 0;
             break;
         case IR_STORE:
+        case IR_LOAD_PARAM:
+            if (ins->dest >= 0 && ins->dest < max_id)
+                is_const[ins->dest] = 0;
+            break;
+        case IR_STORE_PARAM:
             break;
         case IR_RETURN:
             /* nothing to do */
@@ -80,6 +85,7 @@ static int has_side_effect(ir_instr_t *ins)
     switch (ins->op) {
     case IR_STORE:
     case IR_STORE_PTR:
+    case IR_STORE_PARAM:
     case IR_CALL:
     case IR_RETURN:
     case IR_BR:

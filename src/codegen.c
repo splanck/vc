@@ -105,6 +105,18 @@ static void emit_instr(strbuf_t *sb, ir_instr_t *ins, regalloc_t *ra, int x64)
                    loc_str(buf1, ra, ins->src1, x64),
                    ins->name);
         break;
+    case IR_LOAD_PARAM: {
+        int off = 8 + ins->imm * (x64 ? 8 : 4);
+        sb_appendf(sb, "    mov%s %d(%s), %s\n", sfx, off, bp,
+                   loc_str(buf1, ra, ins->dest, x64));
+        break;
+    }
+    case IR_STORE_PARAM: {
+        int off = 8 + ins->imm * (x64 ? 8 : 4);
+        sb_appendf(sb, "    mov%s %s, %d(%s)\n", sfx,
+                   loc_str(buf1, ra, ins->src1, x64), off, bp);
+        break;
+    }
     case IR_ADDR:
         sb_appendf(sb, "    mov%s $%s, %s\n", sfx, ins->name,
                    loc_str(buf1, ra, ins->dest, x64));

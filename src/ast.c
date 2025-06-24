@@ -176,6 +176,8 @@ stmt_t *ast_make_while(expr_t *cond, stmt_t *body)
 }
 
 func_t *ast_make_func(const char *name, type_kind_t ret_type,
+                      char **param_names, type_kind_t *param_types,
+                      size_t param_count,
                       stmt_t **body, size_t body_count)
 {
     func_t *fn = malloc(sizeof(*fn));
@@ -187,6 +189,29 @@ func_t *ast_make_func(const char *name, type_kind_t ret_type,
         return NULL;
     }
     fn->return_type = ret_type;
+    fn->param_count = param_count;
+    fn->param_names = malloc(param_count * sizeof(*fn->param_names));
+    fn->param_types = malloc(param_count * sizeof(*fn->param_types));
+    if ((param_count && (!fn->param_names || !fn->param_types))) {
+        free(fn->name);
+        free(fn->param_names);
+        free(fn->param_types);
+        free(fn);
+        return NULL;
+    }
+    for (size_t i = 0; i < param_count; i++) {
+        fn->param_names[i] = dup_string(param_names[i] ? param_names[i] : "");
+        fn->param_types[i] = param_types[i];
+        if (!fn->param_names[i]) {
+            for (size_t j = 0; j < i; j++)
+                free(fn->param_names[j]);
+            free(fn->param_names);
+            free(fn->param_types);
+            free(fn->name);
+            free(fn);
+            return NULL;
+        }
+    }
     fn->body = body;
     fn->body_count = body_count;
     return fn;
@@ -261,6 +286,10 @@ void ast_free_func(func_t *func)
     for (size_t i = 0; i < func->body_count; i++)
         ast_free_stmt(func->body[i]);
     free(func->body);
+    for (size_t i = 0; i < func->param_count; i++)
+        free(func->param_names[i]);
+    free(func->param_names);
+    free(func->param_types);
     free(func->name);
     free(func);
 }

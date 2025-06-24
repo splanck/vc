@@ -8,6 +8,7 @@
 typedef struct symbol {
     char *name;
     type_kind_t type;
+    int param_index; /* -1 for locals */
     struct symbol *next;
 } symbol_t;
 
@@ -22,6 +23,8 @@ void symtable_free(symtable_t *table);
 
 /* Add a symbol to the table. Returns non-zero on success. */
 int symtable_add(symtable_t *table, const char *name, type_kind_t type);
+int symtable_add_param(symtable_t *table, const char *name, type_kind_t type,
+                       int index);
 
 /* Look up a symbol by name. Returns NULL if not found. */
 symbol_t *symtable_lookup(symtable_t *table, const char *name);
