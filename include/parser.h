@@ -31,7 +31,10 @@ expr_t *parser_parse_expr(parser_t *p);
 /* Returns non-zero if the parser has reached EOF */
 int parser_is_eof(parser_t *p);
 
-/* Print a parser error message with source location */
-void parser_print_error(parser_t *p, const char *msg);
+/* Print a parser error message showing the unexpected token and a list of
+ * expected tokens. The expected token array may be NULL if there are none. */
+void parser_print_error(parser_t *p,
+                        const token_type_t *expected,
+                        size_t expected_count);
 
 #endif /* VC_PARSER_H */

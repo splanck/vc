@@ -23,7 +23,7 @@ set +e
 "$BINARY" -o "$out" "$DIR/invalid/parse_error.c" 2> "$err"
 ret=$?
 set -e
-if [ $ret -eq 0 ] || ! grep -q "line" "$err"; then
+if [ $ret -eq 0 ] || ! grep -q "Unexpected token" "$err" || ! grep -q "expected" "$err"; then
     echo "Test parse_error failed"
     fail=1
 fi
