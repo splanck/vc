@@ -163,6 +163,53 @@ static void test_parser_unary_neg(void)
     lexer_free_tokens(toks, count);
 }
 
+static void test_parser_pointer_arith(void)
+{
+    const char *src = "p + 1";
+    size_t count = 0;
+    token_t *toks = lexer_tokenize(src, &count);
+    parser_t p; parser_init(&p, toks, count);
+    expr_t *expr = parser_parse_expr(&p);
+    ASSERT(expr && expr->kind == EXPR_BINARY);
+    ASSERT(expr->binary.op == BINOP_ADD);
+    ASSERT(expr->binary.left->kind == EXPR_IDENT &&
+           strcmp(expr->binary.left->ident.name, "p") == 0);
+    ASSERT(expr->binary.right->kind == EXPR_NUMBER &&
+           strcmp(expr->binary.right->number.value, "1") == 0);
+    ast_free_expr(expr);
+    lexer_free_tokens(toks, count);
+}
+
+static void test_parser_global_init(void)
+{
+    const char *src = "int y = 1 + 2;";
+    size_t count = 0;
+    token_t *toks = lexer_tokenize(src, &count);
+    parser_t p; parser_init(&p, toks, count);
+    func_t *fn = NULL; stmt_t *global = NULL;
+    ASSERT(parser_parse_toplevel(&p, &fn, &global));
+    ASSERT(fn == NULL);
+    ASSERT(global && global->kind == STMT_VAR_DECL);
+    ASSERT(strcmp(global->var_decl.name, "y") == 0);
+    ASSERT(global->var_decl.init && global->var_decl.init->kind == EXPR_BINARY);
+    ast_free_stmt(global);
+    lexer_free_tokens(toks, count);
+}
+
+static void test_parser_unary_expr(void)
+{
+    const char *src = "-(1 + 2)";
+    size_t count = 0;
+    token_t *toks = lexer_tokenize(src, &count);
+    parser_t p; parser_init(&p, toks, count);
+    expr_t *expr = parser_parse_expr(&p);
+    ASSERT(expr && expr->kind == EXPR_UNARY);
+    ASSERT(expr->unary.op == UNOP_NEG);
+    ASSERT(expr->unary.operand->kind == EXPR_BINARY);
+    ast_free_expr(expr);
+    lexer_free_tokens(toks, count);
+}
+
 static void test_parser_func(void)
 {
     const char *src = "int main() { return 0; }";
@@ -208,6 +255,9 @@ int main(void)
     test_parser_array_decl();
     test_parser_index_expr();
     test_parser_unary_neg();
+    test_parser_pointer_arith();
+    test_parser_global_init();
+    test_parser_unary_expr();
     test_parser_func();
     test_parser_block();
     if (failures == 0) {
