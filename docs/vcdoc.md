@@ -39,6 +39,60 @@ Handles register allocation for the backend.
 ### codegen
 Emits assembly from the IR. Currently only x86 is supported.
 
+## Optimization Passes
+
+The `opt` module implements several transformations on the IR. These
+passes run sequentially and may be disabled via command line options.
+See [optimization.md](optimization.md) for additional context.
+
+### Constant folding
+When both operands of an arithmetic instruction are known constants, the
+compiler performs the calculation at compile time.
+
+Before:
+```text
+v1 = CONST 2
+v2 = CONST 3
+v3 = MUL v1, v2
+```
+After:
+```text
+v3 = CONST 6
+```
+
+### Constant propagation
+Loads of variables whose values are known constants are replaced with
+those constants.
+
+Before:
+```text
+v1 = CONST 5
+STORE x, v1
+v2 = LOAD x
+```
+After:
+```text
+v1 = CONST 5
+STORE x, v1
+v2 = CONST 5
+```
+
+### Dead code elimination
+Instructions that produce values never used and have no side effects are
+removed.
+
+Before:
+```text
+v1 = MUL 2, 3
+v2 = ADD 1, 4
+RETURN v2
+```
+After:
+```text
+v2 = ADD 1, 4
+RETURN v2
+```
+
 ## Supported Language Features
 
 - Basic arithmetic expressions
