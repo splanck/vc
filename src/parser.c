@@ -485,3 +485,50 @@ func_t *parser_parse_func(parser_t *p)
     }
     return fn;
 }
+
+int parser_parse_toplevel(parser_t *p, func_t **out_func, stmt_t **out_global)
+{
+    if (out_func) *out_func = NULL;
+    if (out_global) *out_global = NULL;
+
+    size_t save = p->pos;
+    token_t *tok = peek(p);
+    if (!tok)
+        return 0;
+
+    type_kind_t t;
+    if (tok->type == TOK_KW_INT) {
+        t = TYPE_INT;
+    } else if (tok->type == TOK_KW_VOID) {
+        t = TYPE_VOID;
+    } else {
+        return 0;
+    }
+    p->pos++;
+    if (t == TYPE_INT && match(p, TOK_STAR))
+        t = TYPE_PTR;
+
+    token_t *id = peek(p);
+    if (!id || id->type != TOK_IDENT) {
+        p->pos = save;
+        return 0;
+    }
+    p->pos++;
+
+    token_t *next = peek(p);
+    if (next && next->type == TOK_SEMI) {
+        if (t == TYPE_VOID) {
+            p->pos = save;
+            return 0;
+        }
+        p->pos++; /* consume ';' */
+        if (out_global)
+            *out_global = ast_make_var_decl(id->lexeme, t, NULL);
+        return *out_global != NULL;
+    }
+
+    p->pos = save;
+    if (out_func)
+        *out_func = parser_parse_func(p);
+    return *out_func != NULL;
+}

@@ -21,6 +21,10 @@ stmt_t *parser_parse_stmt(parser_t *p);
 /* Parse a function definition. Returns NULL on error. */
 func_t *parser_parse_func(parser_t *p);
 
+/* Parse a top-level declaration (function or global variable).
+ * Returns 1 on success with one of out_func/out_global set. */
+int parser_parse_toplevel(parser_t *p, func_t **out_func, stmt_t **out_global);
+
 /* Parse an expression starting at the current token. Returns NULL on error. */
 expr_t *parser_parse_expr(parser_t *p);
 
