@@ -5,7 +5,7 @@ BIN = vc
 # Core compiler sources
 
 CORE_SRC = src/main.c src/cli.c src/lexer.c src/ast.c src/parser.c src/symtable.c src/parser_expr.c \
-           src/parser_stmt.c src/semantic.c src/ir.c src/codegen.c src/regalloc.c src/regalloc_x86.c src/strbuf.c src/util.c \
+           src/parser_stmt.c src/semantic.c src/sem_expr.c src/sem_stmt.c src/ir.c src/codegen.c src/regalloc.c src/regalloc_x86.c src/strbuf.c src/util.c \
            src/vector.c src/ir_dump.c src/label.c
 
 # Optional optimization sources
