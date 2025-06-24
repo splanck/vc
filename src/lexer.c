@@ -49,7 +49,11 @@ static void read_identifier(const char *src, size_t *i, size_t *col,
         (*i)++;
     size_t len = *i - start;
     token_type_t type = TOK_IDENT;
-    if (len == 3 && strncmp(src + start, "int", 3) == 0)
+    if (len == 2 && strncmp(src + start, "if", 2) == 0)
+        type = TOK_KW_IF;
+    else if (len == 4 && strncmp(src + start, "else", 4) == 0)
+        type = TOK_KW_ELSE;
+    else if (len == 3 && strncmp(src + start, "int", 3) == 0)
         type = TOK_KW_INT;
     else if (len == 4 && strncmp(src + start, "void", 4) == 0)
         type = TOK_KW_VOID;

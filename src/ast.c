@@ -116,6 +116,18 @@ stmt_t *ast_make_var_decl(const char *name)
     return stmt;
 }
 
+stmt_t *ast_make_if(expr_t *cond, stmt_t *then_branch, stmt_t *else_branch)
+{
+    stmt_t *stmt = malloc(sizeof(*stmt));
+    if (!stmt)
+        return NULL;
+    stmt->kind = STMT_IF;
+    stmt->if_stmt.cond = cond;
+    stmt->if_stmt.then_branch = then_branch;
+    stmt->if_stmt.else_branch = else_branch;
+    return stmt;
+}
+
 func_t *ast_make_func(const char *name, type_kind_t ret_type,
                       stmt_t **body, size_t body_count)
 {
@@ -173,6 +185,11 @@ void ast_free_stmt(stmt_t *stmt)
         break;
     case STMT_VAR_DECL:
         free(stmt->var_decl.name);
+        break;
+    case STMT_IF:
+        ast_free_expr(stmt->if_stmt.cond);
+        ast_free_stmt(stmt->if_stmt.then_branch);
+        ast_free_stmt(stmt->if_stmt.else_branch);
         break;
     }
     free(stmt);

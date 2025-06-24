@@ -63,7 +63,8 @@ struct expr {
 typedef enum {
     STMT_EXPR,
     STMT_RETURN,
-    STMT_VAR_DECL
+    STMT_VAR_DECL,
+    STMT_IF
 } stmt_kind_t;
 
 struct stmt {
@@ -78,6 +79,11 @@ struct stmt {
         struct {
             char *name;
         } var_decl;
+        struct {
+            expr_t *cond;
+            stmt_t *then_branch;
+            stmt_t *else_branch; /* may be NULL */
+        } if_stmt;
     };
 };
 
@@ -91,6 +97,7 @@ expr_t *ast_make_call(const char *name);
 stmt_t *ast_make_expr_stmt(expr_t *expr);
 stmt_t *ast_make_return(expr_t *expr);
 stmt_t *ast_make_var_decl(const char *name);
+stmt_t *ast_make_if(expr_t *cond, stmt_t *then_branch, stmt_t *else_branch);
 
 /* Destructors */
 void ast_free_expr(expr_t *expr);

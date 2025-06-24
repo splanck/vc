@@ -1,5 +1,6 @@
 #include <stdlib.h>
 #include <string.h>
+#include <stdio.h>
 #include "semantic.h"
 
 static char *dup_string(const char *s)
@@ -11,6 +12,8 @@ static char *dup_string(const char *s)
     memcpy(out, s, len + 1);
     return out;
 }
+
+static int next_label_id = 0;
 
 void symtable_init(symtable_t *table)
 {
@@ -140,6 +143,29 @@ int check_stmt(stmt_t *stmt, symtable_t *vars, symtable_t *funcs,
         if (check_expr(stmt->ret.expr, vars, funcs, ir, &val) == TYPE_UNKNOWN)
             return 0;
         ir_build_return(ir, val);
+        return 1;
+    }
+    case STMT_IF: {
+        ir_value_t cond_val;
+        if (check_expr(stmt->if_stmt.cond, vars, funcs, ir, &cond_val) == TYPE_UNKNOWN)
+            return 0;
+        char else_label[32];
+        char end_label[32];
+        int id = next_label_id++;
+        snprintf(else_label, sizeof(else_label), "L%d_else", id);
+        snprintf(end_label, sizeof(end_label), "L%d_end", id);
+        const char *target = stmt->if_stmt.else_branch ? else_label : end_label;
+        ir_build_bcond(ir, cond_val, target);
+        if (!check_stmt(stmt->if_stmt.then_branch, vars, funcs, ir))
+            return 0;
+        if (stmt->if_stmt.else_branch) {
+            ir_value_t zero = ir_build_const(ir, 0);
+            ir_build_bcond(ir, zero, end_label);
+            ir_build_label(ir, else_label);
+            if (!check_stmt(stmt->if_stmt.else_branch, vars, funcs, ir))
+                return 0;
+        }
+        ir_build_label(ir, end_label);
         return 1;
     }
     case STMT_VAR_DECL:
