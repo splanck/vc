@@ -157,7 +157,7 @@ type_kind_t check_expr(expr_t *expr, symtable_t *vars, symtable_t *funcs,
 }
 
 int check_stmt(stmt_t *stmt, symtable_t *vars, symtable_t *funcs,
-               ir_builder_t *ir)
+               ir_builder_t *ir, type_kind_t func_ret_type)
 {
     if (!stmt)
         return 0;
@@ -167,6 +167,13 @@ int check_stmt(stmt_t *stmt, symtable_t *vars, symtable_t *funcs,
         return check_expr(stmt->expr.expr, vars, funcs, ir, &tmp) != TYPE_UNKNOWN;
     }
     case STMT_RETURN: {
+        if (!stmt->ret.expr) {
+            if (func_ret_type != TYPE_VOID)
+                return 0;
+            ir_value_t zero = ir_build_const(ir, 0);
+            ir_build_return(ir, zero);
+            return 1;
+        }
         ir_value_t val;
         if (check_expr(stmt->ret.expr, vars, funcs, ir, &val) == TYPE_UNKNOWN)
             return 0;
@@ -184,12 +191,12 @@ int check_stmt(stmt_t *stmt, symtable_t *vars, symtable_t *funcs,
         snprintf(end_label, sizeof(end_label), "L%d_end", id);
         const char *target = stmt->if_stmt.else_branch ? else_label : end_label;
         ir_build_bcond(ir, cond_val, target);
-        if (!check_stmt(stmt->if_stmt.then_branch, vars, funcs, ir))
+        if (!check_stmt(stmt->if_stmt.then_branch, vars, funcs, ir, func_ret_type))
             return 0;
         if (stmt->if_stmt.else_branch) {
             ir_build_br(ir, end_label);
             ir_build_label(ir, else_label);
-            if (!check_stmt(stmt->if_stmt.else_branch, vars, funcs, ir))
+            if (!check_stmt(stmt->if_stmt.else_branch, vars, funcs, ir, func_ret_type))
                 return 0;
         }
         ir_build_label(ir, end_label);
@@ -206,7 +213,7 @@ int check_stmt(stmt_t *stmt, symtable_t *vars, symtable_t *funcs,
         if (check_expr(stmt->while_stmt.cond, vars, funcs, ir, &cond_val) == TYPE_UNKNOWN)
             return 0;
         ir_build_bcond(ir, cond_val, end_label);
-        if (!check_stmt(stmt->while_stmt.body, vars, funcs, ir))
+        if (!check_stmt(stmt->while_stmt.body, vars, funcs, ir, func_ret_type))
             return 0;
         ir_build_br(ir, start_label);
         ir_build_label(ir, end_label);
@@ -230,7 +237,7 @@ int check_func(func_t *func, symtable_t *funcs, ir_builder_t *ir)
 
     int ok = 1;
     for (size_t i = 0; i < func->body_count && ok; i++)
-        ok = check_stmt(func->body[i], &locals, funcs, ir);
+        ok = check_stmt(func->body[i], &locals, funcs, ir, func->return_type);
 
     ir_build_func_end(ir);
 

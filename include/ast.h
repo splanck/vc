@@ -94,6 +94,7 @@ struct stmt {
             expr_t *expr;
         } expr;
         struct {
+            /* expression may be NULL for 'return;' in void functions */
             expr_t *expr;
         } ret;
         struct {
