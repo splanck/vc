@@ -54,6 +54,7 @@ the current table and any initializer is evaluated and stored:
 
 ```c
 int x;          /* adds 'x' with TYPE_INT */
+char c = 'a';   /* adds 'c' with TYPE_CHAR */
 int y = 5;      /* evaluates 5 and stores to 'y' */
 ```
 

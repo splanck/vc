@@ -41,6 +41,7 @@ static const char *token_name(token_type_t type)
     case TOK_STRING: return "string";
     case TOK_CHAR: return "character";
     case TOK_KW_INT: return "\"int\"";
+    case TOK_KW_CHAR: return "\"char\"";
     case TOK_KW_VOID: return "\"void\"";
     case TOK_KW_RETURN: return "\"return\"";
     case TOK_KW_IF: return "\"if\"";
@@ -434,9 +435,9 @@ stmt_t *parser_parse_stmt(parser_t *p)
     if (tok && tok->type == TOK_LBRACE)
         return parse_block(p);
 
-    if (match(p, TOK_KW_INT)) {
+    if (match(p, TOK_KW_INT) || match(p, TOK_KW_CHAR)) {
         token_t *kw_tok = &p->tokens[p->pos - 1];
-        type_kind_t t = TYPE_INT;
+        type_kind_t t = (kw_tok->type == TOK_KW_INT) ? TYPE_INT : TYPE_CHAR;
         if (match(p, TOK_STAR))
             t = TYPE_PTR;
         token_t *tok = peek(p);
@@ -587,6 +588,8 @@ func_t *parser_parse_func(parser_t *p)
     type_kind_t ret_type;
     if (match(p, TOK_KW_INT)) {
         ret_type = TYPE_INT;
+    } else if (match(p, TOK_KW_CHAR)) {
+        ret_type = TYPE_CHAR;
     } else if (match(p, TOK_KW_VOID)) {
         ret_type = TYPE_VOID;
     } else {
@@ -616,6 +619,10 @@ func_t *parser_parse_func(parser_t *p)
             type_kind_t pt;
             if (match(p, TOK_KW_INT)) {
                 pt = TYPE_INT;
+                if (match(p, TOK_STAR))
+                    pt = TYPE_PTR;
+            } else if (match(p, TOK_KW_CHAR)) {
+                pt = TYPE_CHAR;
                 if (match(p, TOK_STAR))
                     pt = TYPE_PTR;
             } else {
@@ -719,13 +726,15 @@ int parser_parse_toplevel(parser_t *p, func_t **out_func, stmt_t **out_global)
     type_kind_t t;
     if (tok->type == TOK_KW_INT) {
         t = TYPE_INT;
+    } else if (tok->type == TOK_KW_CHAR) {
+        t = TYPE_CHAR;
     } else if (tok->type == TOK_KW_VOID) {
         t = TYPE_VOID;
     } else {
         return 0;
     }
     p->pos++;
-    if (t == TYPE_INT && match(p, TOK_STAR))
+    if ((t == TYPE_INT || t == TYPE_CHAR) && match(p, TOK_STAR))
         t = TYPE_PTR;
 
     token_t *id = peek(p);

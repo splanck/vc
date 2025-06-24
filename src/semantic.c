@@ -13,6 +13,11 @@ static char *dup_string(const char *s)
     return out;
 }
 
+static int is_intlike(type_kind_t t)
+{
+    return t == TYPE_INT || t == TYPE_CHAR;
+}
+
 static int next_label_id = 0;
 
 static size_t error_line = 0;
@@ -251,7 +256,7 @@ static type_kind_t check_binary(expr_t *left, expr_t *right, symtable_t *vars,
     ir_value_t lval, rval;
     type_kind_t lt = check_expr(left, vars, funcs, ir, &lval);
     type_kind_t rt = check_expr(right, vars, funcs, ir, &rval);
-    if (lt == TYPE_INT && rt == TYPE_INT) {
+    if (is_intlike(lt) && is_intlike(rt)) {
         if (out) {
             ir_op_t ir_op;
             switch (op) {
@@ -269,9 +274,9 @@ static type_kind_t check_binary(expr_t *left, expr_t *right, symtable_t *vars,
             *out = ir_build_binop(ir, ir_op, lval, rval);
         }
         return TYPE_INT;
-    } else if ((lt == TYPE_PTR && rt == TYPE_INT &&
+    } else if ((lt == TYPE_PTR && is_intlike(rt) &&
                 (op == BINOP_ADD || op == BINOP_SUB)) ||
-               (lt == TYPE_INT && rt == TYPE_PTR && op == BINOP_ADD)) {
+               (is_intlike(lt) && rt == TYPE_PTR && op == BINOP_ADD)) {
         ir_value_t ptr = (lt == TYPE_PTR) ? lval : rval;
         ir_value_t idx = (lt == TYPE_PTR) ? rval : lval;
         if (op == BINOP_SUB && lt == TYPE_PTR) {
@@ -303,7 +308,7 @@ type_kind_t check_expr(expr_t *expr, symtable_t *vars, symtable_t *funcs,
     case EXPR_CHAR:
         if (out)
             *out = ir_build_const(ir, (int)expr->ch.value);
-        return TYPE_INT;
+        return TYPE_CHAR;
     case EXPR_UNARY:
         if (expr->unary.op == UNOP_DEREF) {
             ir_value_t addr;
@@ -329,7 +334,7 @@ type_kind_t check_expr(expr_t *expr, symtable_t *vars, symtable_t *funcs,
             return TYPE_PTR;
         } else if (expr->unary.op == UNOP_NEG) {
             ir_value_t val;
-            if (check_expr(expr->unary.operand, vars, funcs, ir, &val) == TYPE_INT) {
+            if (is_intlike(check_expr(expr->unary.operand, vars, funcs, ir, &val))) {
                 if (out) {
                     ir_value_t zero = ir_build_const(ir, 0);
                     *out = ir_build_binop(ir, IR_SUB, zero, val);
@@ -370,7 +375,8 @@ type_kind_t check_expr(expr_t *expr, symtable_t *vars, symtable_t *funcs,
             set_error(expr->line, expr->column);
             return TYPE_UNKNOWN;
         }
-        if (check_expr(expr->assign.value, vars, funcs, ir, &val) == sym->type) {
+        type_kind_t vt = check_expr(expr->assign.value, vars, funcs, ir, &val);
+        if ((sym->type == TYPE_CHAR && is_intlike(vt)) || vt == sym->type) {
             if (sym->param_index >= 0)
                 ir_build_store_param(ir, sym->param_index, val);
             else
@@ -458,7 +464,8 @@ type_kind_t check_expr(expr_t *expr, symtable_t *vars, symtable_t *funcs,
         for (size_t i = 0; i < expr->call.arg_count; i++) {
             type_kind_t at = check_expr(expr->call.args[i], vars, funcs, ir,
                                         &vals[i]);
-            if (at != fsym->param_types[i]) {
+            type_kind_t pt = fsym->param_types[i];
+            if (!((pt == TYPE_CHAR && is_intlike(at)) || at == pt)) {
                 set_error(expr->call.args[i]->line, expr->call.args[i]->column);
                 free(vals);
                 return TYPE_UNKNOWN;
@@ -608,8 +615,9 @@ int check_stmt(stmt_t *stmt, symtable_t *vars, symtable_t *funcs,
         }
         if (stmt->var_decl.init) {
             ir_value_t val;
-            if (check_expr(stmt->var_decl.init, vars, funcs, ir, &val) !=
-                stmt->var_decl.type) {
+            type_kind_t vt = check_expr(stmt->var_decl.init, vars, funcs, ir, &val);
+            if (!((stmt->var_decl.type == TYPE_CHAR && is_intlike(vt)) ||
+                  vt == stmt->var_decl.type)) {
                 set_error(stmt->var_decl.init->line, stmt->var_decl.init->column);
                 return 0;
             }
