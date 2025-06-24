@@ -395,6 +395,20 @@ stmt_t *parser_parse_stmt(parser_t *p)
         return ast_make_return(expr, kw_tok->line, kw_tok->column);
     }
 
+    if (match(p, TOK_KW_BREAK)) {
+        token_t *kw_tok = &p->tokens[p->pos - 1];
+        if (!match(p, TOK_SEMI))
+            return NULL;
+        return ast_make_break(kw_tok->line, kw_tok->column);
+    }
+
+    if (match(p, TOK_KW_CONTINUE)) {
+        token_t *kw_tok = &p->tokens[p->pos - 1];
+        if (!match(p, TOK_SEMI))
+            return NULL;
+        return ast_make_continue(kw_tok->line, kw_tok->column);
+    }
+
     if (match(p, TOK_KW_IF)) {
         token_t *kw_tok = &p->tokens[p->pos - 1];
         if (!match(p, TOK_LPAREN))
