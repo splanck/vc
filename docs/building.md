@@ -21,4 +21,14 @@ make PLATFORM=generic
 
 This disables any NetBSD specific extensions.
 
+## Additional build steps
+
+Extra source files can be passed to the build using the `EXTRA_SRC`
+variable. Compiler optimization levels may be controlled with
+`OPTFLAGS`:
+
+```sh
+make EXTRA_SRC="src/utils.c src/driver.c" OPTFLAGS="-O2"
+```
+
 See the [README](../README.md) for an overview of the project.
