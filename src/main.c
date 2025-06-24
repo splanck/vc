@@ -4,6 +4,7 @@
 #include "util.h"
 #include "token.h"
 #include "parser.h"
+#include "symtable.h"
 #include "semantic.h"
 #include "ir.h"
 #include "opt.h"
