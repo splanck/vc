@@ -123,6 +123,9 @@ static void emit_instr(strbuf_t *sb, ir_instr_t *ins)
     case IR_FUNC_END:
         /* nothing for now */
         break;
+    case IR_BR:
+        sb_appendf(sb, "    jmp %s\n", ins->name);
+        break;
     case IR_BCOND:
         sb_appendf(sb, "    cmpl $0, %s\n", reg_for(ins->src1));
         sb_appendf(sb, "    je %s\n", ins->name);

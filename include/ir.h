@@ -14,6 +14,7 @@ typedef enum {
     IR_CALL,
     IR_FUNC_BEGIN,
     IR_FUNC_END,
+    IR_BR,
     IR_BCOND,
     IR_LABEL
 } ir_op_t;
@@ -55,6 +56,7 @@ void ir_build_return(ir_builder_t *b, ir_value_t val);
 ir_value_t ir_build_call(ir_builder_t *b, const char *name);
 void ir_build_func_begin(ir_builder_t *b, const char *name);
 void ir_build_func_end(ir_builder_t *b);
+void ir_build_br(ir_builder_t *b, const char *label);
 void ir_build_bcond(ir_builder_t *b, ir_value_t cond, const char *label);
 void ir_build_label(ir_builder_t *b, const char *label);
 
