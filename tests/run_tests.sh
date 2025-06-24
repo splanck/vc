@@ -8,6 +8,7 @@ for cfile in "$DIR"/fixtures/*.c; do
     base=$(basename "$cfile" .c)
     expect="$DIR/fixtures/$base.s"
     out=$(mktemp)
+    echo "Running fixture $base"
     "$BINARY" -o "$out" "$cfile"
     if ! diff -u "$expect" "$out"; then
         echo "Test $base failed"
