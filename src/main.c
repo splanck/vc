@@ -1,3 +1,10 @@
+/*
+ * Entry point of the vc compiler.
+ *
+ * Part of vc under the BSD 2-Clause license.
+ * See LICENSE for details.
+ */
+
 #include <stdio.h>
 #include <stdlib.h>
 #include "util.h"

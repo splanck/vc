@@ -1,3 +1,10 @@
+/*
+ * Miscellaneous utility functions.
+ *
+ * Part of vc under the BSD 2-Clause license.
+ * See LICENSE for details.
+ */
+
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>

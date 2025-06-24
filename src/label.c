@@ -1,3 +1,10 @@
+/*
+ * Manage numeric labels for code generation.
+ *
+ * Part of vc under the BSD 2-Clause license.
+ * See LICENSE for details.
+ */
+
 #include "label.h"
 
 static int next_label_id = 0;

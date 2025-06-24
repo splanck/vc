@@ -1,3 +1,10 @@
+/*
+ * Lexical analyzer converting source to tokens.
+ *
+ * Part of vc under the BSD 2-Clause license.
+ * See LICENSE for details.
+ */
+
 #include <ctype.h>
 #include <stdlib.h>
 #include <string.h>

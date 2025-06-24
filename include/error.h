@@ -1,3 +1,10 @@
+/*
+ * Error reporting helpers.
+ *
+ * Part of vc under the BSD 2-Clause license.
+ * See LICENSE for details.
+ */
+
 #ifndef VC_ERROR_H
 #define VC_ERROR_H
 

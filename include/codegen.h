@@ -1,3 +1,10 @@
+/*
+ * Interfaces for generating assembly from IR.
+ *
+ * Part of vc under the BSD 2-Clause license.
+ * See LICENSE for details.
+ */
+
 #ifndef VC_CODEGEN_H
 #define VC_CODEGEN_H
 
