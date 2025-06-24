@@ -3,15 +3,27 @@
 
 #define NUM_REGS 6
 
-static const char *phys_regs[NUM_REGS] = {
+static int use_x86_64 = 0;
+
+static const char *phys_regs_32[NUM_REGS] = {
     "%eax", "%ebx", "%ecx", "%edx", "%esi", "%edi"
+};
+
+static const char *phys_regs_64[NUM_REGS] = {
+    "%rax", "%rbx", "%rcx", "%rdx", "%rsi", "%rdi"
 };
 
 const char *regalloc_reg_name(int idx)
 {
+    const char **regs = use_x86_64 ? phys_regs_64 : phys_regs_32;
     if (idx >= 0 && idx < NUM_REGS)
-        return phys_regs[idx];
-    return "%eax";
+        return regs[idx];
+    return use_x86_64 ? "%rax" : "%eax";
+}
+
+void regalloc_set_x86_64(int enable)
+{
+    use_x86_64 = enable ? 1 : 0;
 }
 
 static int *compute_last_use(ir_builder_t *ir, int max_id)

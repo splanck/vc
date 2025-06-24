@@ -69,102 +69,111 @@ static void sb_appendf(strbuf_t *sb, const char *fmt, ...)
 }
 
 
-static const char *loc_str(char buf[32], regalloc_t *ra, int id)
+static const char *loc_str(char buf[32], regalloc_t *ra, int id, int x64)
 {
     if (!ra || id <= 0)
         return "";
     int loc = ra->loc[id];
     if (loc >= 0)
         return regalloc_reg_name(loc);
-    snprintf(buf, 32, "-%d(%%ebp)", -loc * 4);
+    if (x64)
+        snprintf(buf, 32, "-%d(%%rbp)", -loc * 8);
+    else
+        snprintf(buf, 32, "-%d(%%ebp)", -loc * 4);
     return buf;
 }
 
-static void emit_instr(strbuf_t *sb, ir_instr_t *ins, regalloc_t *ra)
+static void emit_instr(strbuf_t *sb, ir_instr_t *ins, regalloc_t *ra, int x64)
 {
     char buf1[32];
     char buf2[32];
+    const char *sfx = x64 ? "q" : "l";
+    const char *ax = x64 ? "%rax" : "%eax";
+    const char *bp = x64 ? "%rbp" : "%ebp";
+    const char *sp = x64 ? "%rsp" : "%esp";
     switch (ins->op) {
     case IR_CONST:
-        sb_appendf(sb, "    movl $%d, %s\n", ins->imm,
-                   loc_str(buf1, ra, ins->dest));
+        sb_appendf(sb, "    mov%s $%d, %s\n", sfx, ins->imm,
+                   loc_str(buf1, ra, ins->dest, x64));
         break;
     case IR_LOAD:
-        sb_appendf(sb, "    movl %s, %s\n", ins->name,
-                   loc_str(buf1, ra, ins->dest));
+        sb_appendf(sb, "    mov%s %s, %s\n", sfx, ins->name,
+                   loc_str(buf1, ra, ins->dest, x64));
         break;
     case IR_STORE:
-        sb_appendf(sb, "    movl %s, %s\n", loc_str(buf1, ra, ins->src1),
+        sb_appendf(sb, "    mov%s %s, %s\n", sfx,
+                   loc_str(buf1, ra, ins->src1, x64),
                    ins->name);
         break;
     case IR_ADDR:
-        sb_appendf(sb, "    movl $%s, %s\n", ins->name,
-                   loc_str(buf1, ra, ins->dest));
+        sb_appendf(sb, "    mov%s $%s, %s\n", sfx, ins->name,
+                   loc_str(buf1, ra, ins->dest, x64));
         break;
     case IR_LOAD_PTR:
-        sb_appendf(sb, "    movl (%s), %s\n",
-                   loc_str(buf1, ra, ins->src1),
-                   loc_str(buf2, ra, ins->dest));
+        sb_appendf(sb, "    mov%s (%s), %s\n", sfx,
+                   loc_str(buf1, ra, ins->src1, x64),
+                   loc_str(buf2, ra, ins->dest, x64));
         break;
     case IR_STORE_PTR:
-        sb_appendf(sb, "    movl %s, (%s)\n",
-                   loc_str(buf1, ra, ins->src2),
-                   loc_str(buf2, ra, ins->src1));
+        sb_appendf(sb, "    mov%s %s, (%s)\n", sfx,
+                   loc_str(buf1, ra, ins->src2, x64),
+                   loc_str(buf2, ra, ins->src1, x64));
         break;
     case IR_ADD:
-        sb_appendf(sb, "    movl %s, %s\n",
-                   loc_str(buf1, ra, ins->src1),
-                   loc_str(buf2, ra, ins->dest));
-        sb_appendf(sb, "    addl %s, %s\n",
-                   loc_str(buf1, ra, ins->src2),
-                   loc_str(buf2, ra, ins->dest));
+        sb_appendf(sb, "    mov%s %s, %s\n", sfx,
+                   loc_str(buf1, ra, ins->src1, x64),
+                   loc_str(buf2, ra, ins->dest, x64));
+        sb_appendf(sb, "    add%s %s, %s\n", sfx,
+                   loc_str(buf1, ra, ins->src2, x64),
+                   loc_str(buf2, ra, ins->dest, x64));
         break;
     case IR_SUB:
-        sb_appendf(sb, "    movl %s, %s\n",
-                   loc_str(buf1, ra, ins->src1),
-                   loc_str(buf2, ra, ins->dest));
-        sb_appendf(sb, "    subl %s, %s\n",
-                   loc_str(buf1, ra, ins->src2),
-                   loc_str(buf2, ra, ins->dest));
+        sb_appendf(sb, "    mov%s %s, %s\n", sfx,
+                   loc_str(buf1, ra, ins->src1, x64),
+                   loc_str(buf2, ra, ins->dest, x64));
+        sb_appendf(sb, "    sub%s %s, %s\n", sfx,
+                   loc_str(buf1, ra, ins->src2, x64),
+                   loc_str(buf2, ra, ins->dest, x64));
         break;
     case IR_MUL:
-        sb_appendf(sb, "    movl %s, %s\n",
-                   loc_str(buf1, ra, ins->src1),
-                   loc_str(buf2, ra, ins->dest));
-        sb_appendf(sb, "    imull %s, %s\n",
-                   loc_str(buf1, ra, ins->src2),
-                   loc_str(buf2, ra, ins->dest));
+        sb_appendf(sb, "    mov%s %s, %s\n", sfx,
+                   loc_str(buf1, ra, ins->src1, x64),
+                   loc_str(buf2, ra, ins->dest, x64));
+        sb_appendf(sb, "    imul%s %s, %s\n", sfx,
+                   loc_str(buf1, ra, ins->src2, x64),
+                   loc_str(buf2, ra, ins->dest, x64));
         break;
     case IR_DIV:
-        sb_appendf(sb, "    movl %s, %s\n",
-                   loc_str(buf1, ra, ins->src1), "%eax");
-        sb_append(sb, "    cltd\n");
-        sb_appendf(sb, "    idivl %s\n", loc_str(buf1, ra, ins->src2));
+        sb_appendf(sb, "    mov%s %s, %s\n", sfx,
+                   loc_str(buf1, ra, ins->src1, x64), ax);
+        sb_appendf(sb, "    %s\n", x64 ? "cqto" : "cltd");
+        sb_appendf(sb, "    idiv%s %s\n", sfx,
+                   loc_str(buf1, ra, ins->src2, x64));
         if (ra && ra->loc[ins->dest] >= 0 &&
-            strcmp(regalloc_reg_name(ra->loc[ins->dest]), "%eax") != 0)
-            sb_appendf(sb, "    movl %s, %s\n", "%eax",
-                       loc_str(buf2, ra, ins->dest));
+            strcmp(regalloc_reg_name(ra->loc[ins->dest]), ax) != 0)
+            sb_appendf(sb, "    mov%s %s, %s\n", sfx, ax,
+                       loc_str(buf2, ra, ins->dest, x64));
         break;
     case IR_GLOB_STRING:
         sb_appendf(sb, "%s:\n", ins->name);
         sb_appendf(sb, "    .asciz \"%s\"\n", ins->data);
-        sb_appendf(sb, "    movl $%s, %s\n", ins->name,
-                   loc_str(buf1, ra, ins->dest));
+        sb_appendf(sb, "    mov%s $%s, %s\n", sfx, ins->name,
+                   loc_str(buf1, ra, ins->dest, x64));
         break;
     case IR_RETURN:
-        sb_appendf(sb, "    movl %s, %s\n",
-                   loc_str(buf1, ra, ins->src1), "%eax");
+        sb_appendf(sb, "    mov%s %s, %s\n", sfx,
+                   loc_str(buf1, ra, ins->src1, x64), ax);
         sb_append(sb, "    ret\n");
         break;
     case IR_CALL:
         sb_appendf(sb, "    call %s\n", ins->name);
-        sb_appendf(sb, "    movl %s, %s\n", "%eax",
-                   loc_str(buf1, ra, ins->dest));
+        sb_appendf(sb, "    mov%s %s, %s\n", sfx, ax,
+                   loc_str(buf1, ra, ins->dest, x64));
         break;
     case IR_FUNC_BEGIN:
         sb_appendf(sb, "%s:\n", ins->name);
-        sb_append(sb, "    pushl %ebp\n");
-        sb_append(sb, "    movl %esp, %ebp\n");
+        sb_appendf(sb, "    push%s %s\n", sfx, bp);
+        sb_appendf(sb, "    mov%s %s, %s\n", sfx, sp, bp);
         break;
     case IR_FUNC_END:
         /* nothing for now */
@@ -173,7 +182,8 @@ static void emit_instr(strbuf_t *sb, ir_instr_t *ins, regalloc_t *ra)
         sb_appendf(sb, "    jmp %s\n", ins->name);
         break;
     case IR_BCOND:
-        sb_appendf(sb, "    cmpl $0, %s\n", loc_str(buf1, ra, ins->src1));
+        sb_appendf(sb, "    cmp%s $0, %s\n", sfx,
+                   loc_str(buf1, ra, ins->src1, x64));
         sb_appendf(sb, "    je %s\n", ins->name);
         break;
     case IR_LABEL:
@@ -182,27 +192,28 @@ static void emit_instr(strbuf_t *sb, ir_instr_t *ins, regalloc_t *ra)
     }
 }
 
-char *codegen_ir_to_string(ir_builder_t *ir)
+char *codegen_ir_to_string(ir_builder_t *ir, int x64)
 {
     if (!ir)
         return NULL;
     regalloc_t ra;
+    regalloc_set_x86_64(x64);
     regalloc_run(ir, &ra);
 
     strbuf_t sb;
     sb_init(&sb);
     for (ir_instr_t *ins = ir->head; ins; ins = ins->next)
-        emit_instr(&sb, ins, &ra);
+        emit_instr(&sb, ins, &ra, x64);
 
     regalloc_free(&ra);
     return sb.data; /* caller takes ownership */
 }
 
-void codegen_emit_x86(FILE *out, ir_builder_t *ir)
+void codegen_emit_x86(FILE *out, ir_builder_t *ir, int x64)
 {
     if (!out)
         return;
-    char *text = codegen_ir_to_string(ir);
+    char *text = codegen_ir_to_string(ir, x64);
     if (text) {
         fputs(text, out);
         free(text);
