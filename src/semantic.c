@@ -56,43 +56,69 @@ int symtable_add(symtable_t *table, const char *name, type_kind_t type)
     return 1;
 }
 
-static type_kind_t check_binary(expr_t *left, expr_t *right, symtable_t *table)
+static type_kind_t check_binary(expr_t *left, expr_t *right, symtable_t *table,
+                                ir_builder_t *ir, ir_value_t *out, binop_t op)
 {
-    type_kind_t lt = check_expr(left, table);
-    type_kind_t rt = check_expr(right, table);
-    if (lt == TYPE_INT && rt == TYPE_INT)
+    ir_value_t lval, rval;
+    type_kind_t lt = check_expr(left, table, ir, &lval);
+    type_kind_t rt = check_expr(right, table, ir, &rval);
+    if (lt == TYPE_INT && rt == TYPE_INT) {
+        if (out) {
+            ir_op_t ir_op;
+            switch (op) {
+            case BINOP_ADD: ir_op = IR_ADD; break;
+            case BINOP_SUB: ir_op = IR_SUB; break;
+            case BINOP_MUL: ir_op = IR_MUL; break;
+            case BINOP_DIV: ir_op = IR_DIV; break;
+            }
+            *out = ir_build_binop(ir, ir_op, lval, rval);
+        }
         return TYPE_INT;
+    }
     return TYPE_UNKNOWN;
 }
 
-type_kind_t check_expr(expr_t *expr, symtable_t *table)
+type_kind_t check_expr(expr_t *expr, symtable_t *table, ir_builder_t *ir,
+                       ir_value_t *out)
 {
     if (!expr)
         return TYPE_UNKNOWN;
     switch (expr->kind) {
     case EXPR_NUMBER:
+        if (out)
+            *out = ir_build_const(ir, (int)strtol(expr->number.value, NULL, 10));
         return TYPE_INT;
     case EXPR_IDENT: {
         symbol_t *sym = symtable_lookup(table, expr->ident.name);
         if (!sym)
             return TYPE_UNKNOWN;
+        if (out)
+            *out = ir_build_load(ir, expr->ident.name);
         return sym->type;
     }
     case EXPR_BINARY:
-        return check_binary(expr->binary.left, expr->binary.right, table);
+        return check_binary(expr->binary.left, expr->binary.right, table, ir,
+                           out, expr->binary.op);
     }
     return TYPE_UNKNOWN;
 }
 
-int check_stmt(stmt_t *stmt, symtable_t *table)
+int check_stmt(stmt_t *stmt, symtable_t *table, ir_builder_t *ir)
 {
     if (!stmt)
         return 0;
     switch (stmt->kind) {
-    case STMT_EXPR:
-        return check_expr(stmt->expr.expr, table) != TYPE_UNKNOWN;
-    case STMT_RETURN:
-        return check_expr(stmt->ret.expr, table) != TYPE_UNKNOWN;
+    case STMT_EXPR: {
+        ir_value_t tmp;
+        return check_expr(stmt->expr.expr, table, ir, &tmp) != TYPE_UNKNOWN;
+    }
+    case STMT_RETURN: {
+        ir_value_t val;
+        if (check_expr(stmt->ret.expr, table, ir, &val) == TYPE_UNKNOWN)
+            return 0;
+        ir_build_return(ir, val);
+        return 1;
+    }
     }
     return 0;
 }
