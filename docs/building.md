@@ -32,3 +32,16 @@ make EXTRA_SRC="src/utils.c src/driver.c" OPTFLAGS="-O2"
 ```
 
 See the [README](../README.md) for an overview of the project.
+
+## Running the test suite
+
+The project includes a small set of unit and integration tests. They can be
+executed from the repository root with:
+
+```sh
+tests/run.sh
+```
+
+This script builds the compiler, compiles the unit test harness for the lexer
+and parser, and then runs both the unit tests and the integration tests found
+under `tests/`.
