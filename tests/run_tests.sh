@@ -38,6 +38,15 @@ if ! grep -q "movl \$7, %eax" "$dump_out"; then
 fi
 rm -f "$dump_out"
 
+# test --no-cprop option
+cprop_out=$(mktemp)
+"$BINARY" --no-cprop -o "$cprop_out" "$DIR/fixtures/const_load.c"
+if ! grep -q "movl x, %eax" "$cprop_out"; then
+    echo "Test no_cprop failed"
+    fail=1
+fi
+rm -f "$cprop_out"
+
 if [ $fail -eq 0 ]; then
     echo "All tests passed"
 else
