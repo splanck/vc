@@ -196,6 +196,9 @@ RETURN v2
 - Function definitions and calls
 - `for` and `while` loops
 - Pointers
+- Arrays
+- Global variables
+- `break` and `continue` statements
 
 Examples below show how to compile each feature.
 
@@ -253,6 +256,53 @@ int main() {
 Compile with:
 ```sh
 vc -o ptr.s ptr.c
+```
+
+### Arrays
+```c
+/* array.c */
+int main() {
+    int a[2];
+    a[0] = 1;
+    a[1] = 2;
+    return a[0] + a[1];
+}
+```
+Compile with:
+```sh
+vc -o array.s array.c
+```
+
+### Global variables
+```c
+/* global.c */
+int x = 5;
+int main() {
+    return x;
+}
+```
+Compile with:
+```sh
+vc -o global.s global.c
+```
+
+### Break and continue
+```c
+/* loop_control.c */
+int main() {
+    int i;
+    for (i = 0; i < 3; i = i + 1) {
+        if (i == 1)
+            continue;
+        if (i == 2)
+            break;
+    }
+    return i;
+}
+```
+Compile with:
+```sh
+vc -o loop_control.s loop_control.c
 ```
 
 ## Command-line Options
