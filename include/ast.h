@@ -82,6 +82,8 @@ struct expr {
         } assign;
         struct {
             char *name;
+            expr_t **args;
+            size_t arg_count;
         } call;
     };
 };
@@ -143,7 +145,8 @@ expr_t *ast_make_unary(unop_t op, expr_t *operand,
                        size_t line, size_t column);
 expr_t *ast_make_assign(const char *name, expr_t *value,
                         size_t line, size_t column);
-expr_t *ast_make_call(const char *name, size_t line, size_t column);
+expr_t *ast_make_call(const char *name, expr_t **args, size_t arg_count,
+                      size_t line, size_t column);
 
 stmt_t *ast_make_expr_stmt(expr_t *expr, size_t line, size_t column);
 stmt_t *ast_make_return(expr_t *expr, size_t line, size_t column);

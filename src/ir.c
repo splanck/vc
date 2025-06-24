@@ -160,6 +160,15 @@ ir_value_t ir_build_binop(ir_builder_t *b, ir_op_t op, ir_value_t left, ir_value
     return (ir_value_t){ins->dest};
 }
 
+void ir_build_arg(ir_builder_t *b, ir_value_t val)
+{
+    ir_instr_t *ins = append_instr(b);
+    if (!ins)
+        return;
+    ins->op = IR_ARG;
+    ins->src1 = val.id;
+}
+
 void ir_build_return(ir_builder_t *b, ir_value_t val)
 {
     ir_instr_t *ins = append_instr(b);
@@ -169,7 +178,7 @@ void ir_build_return(ir_builder_t *b, ir_value_t val)
     ins->src1 = val.id;
 }
 
-ir_value_t ir_build_call(ir_builder_t *b, const char *name)
+ir_value_t ir_build_call(ir_builder_t *b, const char *name, size_t arg_count)
 {
     ir_instr_t *ins = append_instr(b);
     if (!ins)
@@ -177,6 +186,7 @@ ir_value_t ir_build_call(ir_builder_t *b, const char *name)
     ins->op = IR_CALL;
     ins->dest = b->next_value_id++;
     ins->name = dup_string(name ? name : "");
+    ins->imm = (int)arg_count;
     return (ir_value_t){ins->dest};
 }
 

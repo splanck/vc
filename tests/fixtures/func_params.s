@@ -7,7 +7,10 @@ id:
 main:
     pushl %ebp
     movl %esp, %ebp
+    movl $5, %eax
+    pushl %eax
     call id
+    addl $4, %esp
     movl %eax, %eax
     movl %eax, %eax
     ret
