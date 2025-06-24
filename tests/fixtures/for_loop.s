@@ -4,18 +4,10 @@ main:
     movl $0, %eax
     movl %eax, i
 L0_start:
-    movl i, %eax
-    movl $3, %ebx
-    movl %eax, %ecx
-    cmpl %ebx, %ecx
-    setl %al
-    movzbl %al, %ecx
-    cmpl $0, %ecx
+    movl $1, %eax
+    cmpl $0, %eax
     je L0_end
-    movl i, %ecx
-    movl $1, %ebx
-    movl %ecx, %eax
-    addl %ebx, %eax
+    movl $1, %eax
     movl %eax, i
     movl i, %eax
     movl $1, %ebx

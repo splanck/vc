@@ -1,5 +1,119 @@
 #include <stdlib.h>
 #include "opt.h"
+#include <string.h>
+
+typedef struct var_const {
+    const char *name;
+    int value;
+    int known;
+    struct var_const *next;
+} var_const_t;
+
+static void clear_var_list(var_const_t *head)
+{
+    for (var_const_t *v = head; v; v = v->next)
+        v->known = 0;
+}
+
+/* Propagate constants through store/load pairs */
+static void propagate_load_consts(ir_builder_t *ir)
+{
+    if (!ir)
+        return;
+    int max_id = ir->next_value_id;
+    int *is_const = calloc((size_t)max_id, sizeof(int));
+    int *values = calloc((size_t)max_id, sizeof(int));
+    if (!is_const || !values) {
+        free(is_const);
+        free(values);
+        return;
+    }
+
+    var_const_t *vars = NULL;
+
+    for (ir_instr_t *ins = ir->head; ins; ins = ins->next) {
+        switch (ins->op) {
+        case IR_CONST:
+            if (ins->dest >= 0 && ins->dest < max_id) {
+                is_const[ins->dest] = 1;
+                values[ins->dest] = ins->imm;
+            }
+            break;
+        case IR_STORE: {
+            var_const_t *v = vars;
+            while (v && strcmp(v->name, ins->name) != 0)
+                v = v->next;
+            if (!v) {
+                v = calloc(1, sizeof(*v));
+                if (!v)
+                    break;
+                v->name = ins->name;
+                v->next = vars;
+                vars = v;
+            }
+            if (ins->src1 < max_id && is_const[ins->src1]) {
+                v->known = 1;
+                v->value = values[ins->src1];
+            } else {
+                v->known = 0;
+            }
+            break;
+        }
+        case IR_LOAD: {
+            var_const_t *v = vars;
+            while (v && strcmp(v->name, ins->name) != 0)
+                v = v->next;
+            if (v && v->known) {
+                free(ins->name);
+                ins->name = NULL;
+                ins->op = IR_CONST;
+                ins->imm = v->value;
+                if (ins->dest >= 0 && ins->dest < max_id) {
+                    is_const[ins->dest] = 1;
+                    values[ins->dest] = v->value;
+                }
+            } else if (ins->dest >= 0 && ins->dest < max_id) {
+                is_const[ins->dest] = 0;
+            }
+            break;
+        }
+        case IR_STORE_PTR:
+        case IR_CALL:
+            clear_var_list(vars);
+            if (ins->dest >= 0 && ins->dest < max_id)
+                is_const[ins->dest] = 0;
+            break;
+        case IR_LOAD_PARAM:
+        case IR_ADDR:
+        case IR_LOAD_PTR:
+        case IR_STORE_PARAM:
+        case IR_RETURN:
+        case IR_FUNC_BEGIN:
+        case IR_FUNC_END:
+        case IR_GLOB_STRING:
+        case IR_GLOB_VAR:
+        case IR_BR:
+        case IR_BCOND:
+        case IR_LABEL:
+        case IR_ADD: case IR_SUB: case IR_MUL: case IR_DIV:
+        case IR_CMPEQ: case IR_CMPNE: case IR_CMPLT:
+        case IR_CMPGT: case IR_CMPLE: case IR_CMPGE:
+            if (ins->dest >= 0 && ins->dest < max_id)
+                is_const[ins->dest] = 0;
+            if (ins->op == IR_FUNC_BEGIN)
+                clear_var_list(vars);
+            break;
+        }
+    }
+
+    free(is_const);
+    free(values);
+    while (vars) {
+        var_const_t *next = vars->next;
+        free(vars);
+        vars = next;
+    }
+}
 
 /* Simple constant folding optimization pass */
 static void fold_constants(ir_builder_t *ir)
@@ -166,8 +280,10 @@ static void dead_code_elim(ir_builder_t *ir)
 
 void opt_run(ir_builder_t *ir, const opt_config_t *cfg)
 {
-    opt_config_t def = {1, 1};
+    opt_config_t def = {1, 1, 1};
     const opt_config_t *c = cfg ? cfg : &def;
+    if (c->const_prop)
+        propagate_load_consts(ir);
     if (c->fold_constants)
         fold_constants(ir);
     if (c->dead_code)

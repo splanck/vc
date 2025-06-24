@@ -70,7 +70,7 @@ int main(int argc, char **argv)
 
     char *output = NULL;
     int opt;
-    opt_config_t opt_cfg = {1, 1};
+    opt_config_t opt_cfg = {1, 1, 1};
     int use_x86_64 = 0;
 
     while ((opt = getopt_long(argc, argv, "hvo:", long_opts, NULL)) != -1) {
