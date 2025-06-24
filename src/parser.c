@@ -179,6 +179,31 @@ stmt_t *parser_parse_stmt(parser_t *p)
         return ast_make_return(expr);
     }
 
+    if (match(p, TOK_KW_IF)) {
+        if (!match(p, TOK_LPAREN))
+            return NULL;
+        expr_t *cond = parse_expression(p);
+        if (!cond || !match(p, TOK_RPAREN)) {
+            ast_free_expr(cond);
+            return NULL;
+        }
+        stmt_t *then_branch = parser_parse_stmt(p);
+        if (!then_branch) {
+            ast_free_expr(cond);
+            return NULL;
+        }
+        stmt_t *else_branch = NULL;
+        if (match(p, TOK_KW_ELSE)) {
+            else_branch = parser_parse_stmt(p);
+            if (!else_branch) {
+                ast_free_expr(cond);
+                ast_free_stmt(then_branch);
+                return NULL;
+            }
+        }
+        return ast_make_if(cond, then_branch, else_branch);
+    }
+
     expr_t *expr = parse_expression(p);
     if (!expr || !match(p, TOK_SEMI)) {
         ast_free_expr(expr);

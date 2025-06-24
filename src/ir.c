@@ -126,3 +126,22 @@ void ir_build_func_end(ir_builder_t *b)
     ins->op = IR_FUNC_END;
 }
 
+void ir_build_bcond(ir_builder_t *b, ir_value_t cond, const char *label)
+{
+    ir_instr_t *ins = append_instr(b);
+    if (!ins)
+        return;
+    ins->op = IR_BCOND;
+    ins->src1 = cond.id;
+    ins->name = dup_string(label ? label : "");
+}
+
+void ir_build_label(ir_builder_t *b, const char *label)
+{
+    ir_instr_t *ins = append_instr(b);
+    if (!ins)
+        return;
+    ins->op = IR_LABEL;
+    ins->name = dup_string(label ? label : "");
+}
+
