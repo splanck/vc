@@ -1,8 +1,8 @@
 CC ?= gcc
 CFLAGS ?= -Wall -Wextra -std=c99
 BIN = vc
-SRC = src/main.c src/lexer.c src/ast.c src/parser.c src/semantic.c src/ir.c
-HDR = include/token.h include/ast.h include/parser.h include/semantic.h include/ir.h
+SRC = src/main.c src/lexer.c src/ast.c src/parser.c src/semantic.c src/ir.c src/opt.c
+HDR = include/token.h include/ast.h include/parser.h include/semantic.h include/ir.h include/opt.h
 PREFIX ?= /usr/local
 INCLUDEDIR ?= $(PREFIX)/include/vc
 

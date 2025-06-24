@@ -6,6 +6,7 @@
 #include "parser.h"
 #include "semantic.h"
 #include "ir.h"
+#include "opt.h"
 
 #define VERSION "0.1.0"
 
@@ -131,6 +132,10 @@ int main(int argc, char **argv)
         }
         ast_free_stmt(stmt);
     }
+
+    /* Run optimizations on the generated IR */
+    if (ok)
+        opt_run(&ir);
 
     ir_builder_free(&ir);
 
