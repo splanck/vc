@@ -18,6 +18,7 @@ static int next_label_id = 0;
 void symtable_init(symtable_t *table)
 {
     table->head = NULL;
+    table->globals = NULL;
 }
 
 void symtable_free(symtable_t *table)
@@ -29,12 +30,24 @@ void symtable_free(symtable_t *table)
         free(sym);
         sym = next;
     }
+    sym = table->globals;
+    while (sym) {
+        symbol_t *next = sym->next;
+        free(sym->name);
+        free(sym);
+        sym = next;
+    }
     table->head = NULL;
+    table->globals = NULL;
 }
 
 symbol_t *symtable_lookup(symtable_t *table, const char *name)
 {
     for (symbol_t *sym = table->head; sym; sym = sym->next) {
+        if (strcmp(sym->name, name) == 0)
+            return sym;
+    }
+    for (symbol_t *sym = table->globals; sym; sym = sym->next) {
         if (strcmp(sym->name, name) == 0)
             return sym;
     }
@@ -78,6 +91,36 @@ int symtable_add_param(symtable_t *table, const char *name, type_kind_t type,
     sym->next = table->head;
     table->head = sym;
     return 1;
+}
+
+int symtable_add_global(symtable_t *table, const char *name, type_kind_t type)
+{
+    for (symbol_t *sym = table->globals; sym; sym = sym->next) {
+        if (strcmp(sym->name, name) == 0)
+            return 0;
+    }
+    symbol_t *sym = malloc(sizeof(*sym));
+    if (!sym)
+        return 0;
+    sym->name = dup_string(name ? name : "");
+    if (!sym->name) {
+        free(sym);
+        return 0;
+    }
+    sym->type = type;
+    sym->param_index = -1;
+    sym->next = table->globals;
+    table->globals = sym;
+    return 1;
+}
+
+symbol_t *symtable_lookup_global(symtable_t *table, const char *name)
+{
+    for (symbol_t *sym = table->globals; sym; sym = sym->next) {
+        if (strcmp(sym->name, name) == 0)
+            return sym;
+    }
+    return NULL;
 }
 
 static type_kind_t check_binary(expr_t *left, expr_t *right, symtable_t *vars,
@@ -290,13 +333,15 @@ int check_stmt(stmt_t *stmt, symtable_t *vars, symtable_t *funcs,
     return 0;
 }
 
-int check_func(func_t *func, symtable_t *funcs, ir_builder_t *ir)
+int check_func(func_t *func, symtable_t *funcs, symtable_t *globals,
+               ir_builder_t *ir)
 {
     if (!func)
         return 0;
 
     symtable_t locals;
     symtable_init(&locals);
+    locals.globals = globals ? globals->globals : NULL;
 
     for (size_t i = 0; i < func->param_count; i++)
         symtable_add_param(&locals, func->param_names[i],
@@ -310,7 +355,19 @@ int check_func(func_t *func, symtable_t *funcs, ir_builder_t *ir)
 
     ir_build_func_end(ir);
 
+    locals.globals = NULL;
     symtable_free(&locals);
     return ok;
+}
+
+int check_global(stmt_t *decl, symtable_t *globals, ir_builder_t *ir)
+{
+    if (!decl || decl->kind != STMT_VAR_DECL)
+        return 0;
+    if (!symtable_add_global(globals, decl->var_decl.name,
+                             decl->var_decl.type))
+        return 0;
+    ir_build_glob_var(ir, decl->var_decl.name);
+    return 1;
 }
 

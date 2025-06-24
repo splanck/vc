@@ -190,10 +190,11 @@ static void emit_instr(strbuf_t *sb, ir_instr_t *ins, regalloc_t *ra, int x64)
         break;
     }
     case IR_GLOB_STRING:
-        sb_appendf(sb, "%s:\n", ins->name);
-        sb_appendf(sb, "    .asciz \"%s\"\n", ins->data);
         sb_appendf(sb, "    mov%s $%s, %s\n", sfx, ins->name,
                    loc_str(buf1, ra, ins->dest, x64));
+        break;
+    case IR_GLOB_VAR:
+        /* globals handled separately in data section */
         break;
     case IR_RETURN:
         sb_appendf(sb, "    mov%s %s, %s\n", sfx,
@@ -248,6 +249,24 @@ void codegen_emit_x86(FILE *out, ir_builder_t *ir, int x64)
 {
     if (!out)
         return;
+    const char *size_directive = x64 ? ".quad" : ".long";
+    int has_data = 0;
+    for (ir_instr_t *ins = ir->head; ins; ins = ins->next) {
+        if (ins->op == IR_GLOB_VAR || ins->op == IR_GLOB_STRING) {
+            if (!has_data) {
+                fputs(".data\n", out);
+                has_data = 1;
+            }
+            fprintf(out, "%s:\n", ins->name);
+            if (ins->op == IR_GLOB_VAR)
+                fprintf(out, "    %s 0\n", size_directive);
+            else
+                fprintf(out, "    .asciz \"%s\"\n", ins->data);
+        }
+    }
+    if (has_data)
+        fputs(".text\n", out);
+
     char *text = codegen_ir_to_string(ir, x64);
     if (text) {
         fputs(text, out);

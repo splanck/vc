@@ -70,6 +70,7 @@ static void fold_constants(ir_builder_t *ir)
             /* nothing to do */
             break;
         case IR_GLOB_STRING:
+        case IR_GLOB_VAR:
             if (ins->dest >= 0 && ins->dest < max_id)
                 is_const[ins->dest] = 0;
             break;
@@ -101,6 +102,7 @@ static int has_side_effect(ir_instr_t *ins)
     case IR_FUNC_BEGIN:
     case IR_FUNC_END:
     case IR_LABEL:
+    case IR_GLOB_VAR:
         return 1;
     default:
         return 0;
