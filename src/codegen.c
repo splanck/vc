@@ -236,6 +236,9 @@ static void emit_instr(strbuf_t *sb, ir_instr_t *ins, regalloc_t *ra, int x64)
     case IR_GLOB_VAR:
         /* globals handled separately in data section */
         break;
+    case IR_GLOB_ARRAY:
+        /* globals handled separately */
+        break;
     case IR_RETURN:
         sb_appendf(sb, "    mov%s %s, %s\n", sfx,
                    loc_str(buf1, ra, ins->src1, x64), ax);
@@ -295,16 +298,22 @@ void codegen_emit_x86(FILE *out, ir_builder_t *ir, int x64)
     const char *size_directive = x64 ? ".quad" : ".long";
     int has_data = 0;
     for (ir_instr_t *ins = ir->head; ins; ins = ins->next) {
-        if (ins->op == IR_GLOB_VAR || ins->op == IR_GLOB_STRING) {
+        if (ins->op == IR_GLOB_VAR || ins->op == IR_GLOB_STRING ||
+            ins->op == IR_GLOB_ARRAY) {
             if (!has_data) {
                 fputs(".data\n", out);
                 has_data = 1;
             }
             fprintf(out, "%s:\n", ins->name);
-            if (ins->op == IR_GLOB_VAR)
+            if (ins->op == IR_GLOB_VAR) {
                 fprintf(out, "    %s %d\n", size_directive, ins->imm);
-            else
+            } else if (ins->op == IR_GLOB_STRING) {
                 fprintf(out, "    .asciz \"%s\"\n", ins->data);
+            } else if (ins->op == IR_GLOB_ARRAY) {
+                int *vals = (int *)ins->data;
+                for (int i = 0; i < ins->imm; i++)
+                    fprintf(out, "    %s %d\n", size_directive, vals[i]);
+            }
         }
     }
     if (has_data)

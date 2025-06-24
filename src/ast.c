@@ -193,7 +193,8 @@ stmt_t *ast_make_return(expr_t *expr, size_t line, size_t column)
 }
 
 stmt_t *ast_make_var_decl(const char *name, type_kind_t type, size_t array_size,
-                          expr_t *init, size_t line, size_t column)
+                          expr_t *init, expr_t **init_list, size_t init_count,
+                          size_t line, size_t column)
 {
     stmt_t *stmt = malloc(sizeof(*stmt));
     if (!stmt)
@@ -209,6 +210,8 @@ stmt_t *ast_make_var_decl(const char *name, type_kind_t type, size_t array_size,
     stmt->var_decl.type = type;
     stmt->var_decl.array_size = array_size;
     stmt->var_decl.init = init;
+    stmt->var_decl.init_list = init_list;
+    stmt->var_decl.init_count = init_count;
     return stmt;
 }
 
@@ -410,6 +413,9 @@ void ast_free_stmt(stmt_t *stmt)
     case STMT_VAR_DECL:
         free(stmt->var_decl.name);
         ast_free_expr(stmt->var_decl.init);
+        for (size_t i = 0; i < stmt->var_decl.init_count; i++)
+            ast_free_expr(stmt->var_decl.init_list[i]);
+        free(stmt->var_decl.init_list);
         break;
     case STMT_IF:
         ast_free_expr(stmt->if_stmt.cond);
