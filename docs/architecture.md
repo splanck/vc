@@ -12,7 +12,8 @@ The compiler is composed of several distinct phases:
    token stream.
 3. **Semantic analysis** – the AST is checked for correctness and is
    transformed into an intermediate representation (IR).
-4. **Optimization** – optional passes that operate on the IR.
+4. **Optimization** – optional passes that operate on the IR. See
+   [optimization passes](optimization.md) for details.
 5. **Code generation** – the IR is lowered to target specific assembly
    language.
 

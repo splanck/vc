@@ -18,6 +18,8 @@ static void print_usage(const char *prog)
     printf("  -o, --output <file>  Output path\n");
     printf("  -h, --help           Display this help and exit\n");
     printf("  -v, --version        Print version information and exit\n");
+    printf("      --no-fold        Disable constant folding\n");
+    printf("      --no-dce         Disable dead code elimination\n");
 }
 
 static char *read_file(const char *path)
@@ -59,11 +61,14 @@ int main(int argc, char **argv)
         {"help",    no_argument,       0, 'h'},
         {"version", no_argument,       0, 'v'},
         {"output",  required_argument, 0, 'o'},
+        {"no-fold", no_argument,       0, 1},
+        {"no-dce",  no_argument,       0, 2},
         {0, 0, 0, 0}
     };
 
     char *output = NULL;
     int opt;
+    opt_config_t opt_cfg = {1, 1};
 
     while ((opt = getopt_long(argc, argv, "hvo:", long_opts, NULL)) != -1) {
         switch (opt) {
@@ -75,6 +80,12 @@ int main(int argc, char **argv)
             return 0;
         case 'o':
             output = optarg;
+            break;
+        case 1:
+            opt_cfg.fold_constants = 0;
+            break;
+        case 2:
+            opt_cfg.dead_code = 0;
             break;
         default:
             print_usage(argv[0]);
@@ -154,7 +165,7 @@ int main(int argc, char **argv)
 
     /* Run optimizations on the generated IR */
     if (ok)
-        opt_run(&ir);
+        opt_run(&ir, &opt_cfg);
 
     /* Generate assembly output */
     if (ok) {
