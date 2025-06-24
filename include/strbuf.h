@@ -1,3 +1,10 @@
+/*
+ * Dynamic string buffer API.
+ *
+ * Part of vc under the BSD 2-Clause license.
+ * See LICENSE for details.
+ */
+
 #ifndef VC_STRBUF_H
 #define VC_STRBUF_H
 

@@ -1,3 +1,10 @@
+/*
+ * Recursive descent expression parser.
+ *
+ * Part of vc under the BSD 2-Clause license.
+ * See LICENSE for details.
+ */
+
 #include <stdlib.h>
 #include "parser.h"
 

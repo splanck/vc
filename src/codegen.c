@@ -1,3 +1,10 @@
+/*
+ * Generate x86 assembly from IR.
+ *
+ * Part of vc under the BSD 2-Clause license.
+ * See LICENSE for details.
+ */
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>

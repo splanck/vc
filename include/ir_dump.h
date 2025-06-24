@@ -1,3 +1,10 @@
+/*
+ * Helpers to convert IR to a string.
+ *
+ * Part of vc under the BSD 2-Clause license.
+ * See LICENSE for details.
+ */
+
 #ifndef VC_IR_DUMP_H
 #define VC_IR_DUMP_H
 

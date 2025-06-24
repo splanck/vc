@@ -1,3 +1,10 @@
+/*
+ * AST constructors and helpers for the compiler.
+ *
+ * Part of vc under the BSD 2-Clause license.
+ * See LICENSE for details.
+ */
+
 #include <stdlib.h>
 #include "ast.h"
 #include "util.h"

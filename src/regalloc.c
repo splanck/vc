@@ -1,3 +1,10 @@
+/*
+ * Linear scan register allocator.
+ *
+ * Part of vc under the BSD 2-Clause license.
+ * See LICENSE for details.
+ */
+
 #include <stdlib.h>
 #include "regalloc.h"
 #include "regalloc_x86.h"

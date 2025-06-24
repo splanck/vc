@@ -1,3 +1,10 @@
+/*
+ * Intermediate representation data types.
+ *
+ * Part of vc under the BSD 2-Clause license.
+ * See LICENSE for details.
+ */
+
 #ifndef VC_IR_H
 #define VC_IR_H
 

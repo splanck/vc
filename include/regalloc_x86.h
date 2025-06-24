@@ -1,3 +1,10 @@
+/*
+ * x86 register name helpers.
+ *
+ * Part of vc under the BSD 2-Clause license.
+ * See LICENSE for details.
+ */
+
 #ifndef VC_REGALLOC_X86_H
 #define VC_REGALLOC_X86_H
 

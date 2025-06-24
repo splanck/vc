@@ -1,3 +1,10 @@
+/*
+ * Token definitions for the lexer.
+ *
+ * Part of vc under the BSD 2-Clause license.
+ * See LICENSE for details.
+ */
+
 #ifndef VC_TOKEN_H
 #define VC_TOKEN_H
 

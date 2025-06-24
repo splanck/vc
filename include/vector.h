@@ -1,3 +1,10 @@
+/*
+ * Generic growable vector API.
+ *
+ * Part of vc under the BSD 2-Clause license.
+ * See LICENSE for details.
+ */
+
 #ifndef VC_VECTOR_H
 #define VC_VECTOR_H
 
