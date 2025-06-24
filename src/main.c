@@ -5,6 +5,7 @@
 #include "token.h"
 #include "parser.h"
 #include "semantic.h"
+#include "ir.h"
 
 #define VERSION "0.1.0"
 
@@ -111,6 +112,8 @@ int main(int argc, char **argv)
     parser_init(&parser, tokens, tok_count);
     symtable_t syms;
     symtable_init(&syms);
+    ir_builder_t ir;
+    ir_builder_init(&ir);
 
     int ok = 1;
     while (!parser_is_eof(&parser)) {
@@ -120,7 +123,7 @@ int main(int argc, char **argv)
             ok = 0;
             break;
         }
-        if (!check_stmt(stmt, &syms)) {
+        if (!check_stmt(stmt, &syms, &ir)) {
             fprintf(stderr, "Semantic error\n");
             ok = 0;
             ast_free_stmt(stmt);
@@ -128,6 +131,8 @@ int main(int argc, char **argv)
         }
         ast_free_stmt(stmt);
     }
+
+    ir_builder_free(&ir);
 
     symtable_free(&syms);
     lexer_free_tokens(tokens, tok_count);

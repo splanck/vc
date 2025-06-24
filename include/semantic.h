@@ -2,6 +2,7 @@
 #define VC_SEMANTIC_H
 
 #include "ast.h"
+#include "ir.h"
 
 /* Basic type categories */
 typedef enum {
@@ -32,7 +33,8 @@ int symtable_add(symtable_t *table, const char *name, type_kind_t type);
 symbol_t *symtable_lookup(symtable_t *table, const char *name);
 
 /* Type check helpers */
-type_kind_t check_expr(expr_t *expr, symtable_t *table);
-int check_stmt(stmt_t *stmt, symtable_t *table);
+type_kind_t check_expr(expr_t *expr, symtable_t *table, ir_builder_t *ir,
+                       ir_value_t *out);
+int check_stmt(stmt_t *stmt, symtable_t *table, ir_builder_t *ir);
 
 #endif /* VC_SEMANTIC_H */
