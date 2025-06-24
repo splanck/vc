@@ -176,6 +176,19 @@ stmt_t *ast_make_while(expr_t *cond, stmt_t *body)
     return stmt;
 }
 
+stmt_t *ast_make_for(expr_t *init, expr_t *cond, expr_t *incr, stmt_t *body)
+{
+    stmt_t *stmt = malloc(sizeof(*stmt));
+    if (!stmt)
+        return NULL;
+    stmt->kind = STMT_FOR;
+    stmt->for_stmt.init = init;
+    stmt->for_stmt.cond = cond;
+    stmt->for_stmt.incr = incr;
+    stmt->for_stmt.body = body;
+    return stmt;
+}
+
 func_t *ast_make_func(const char *name, type_kind_t ret_type,
                       char **param_names, type_kind_t *param_types,
                       size_t param_count,
@@ -276,6 +289,12 @@ void ast_free_stmt(stmt_t *stmt)
     case STMT_WHILE:
         ast_free_expr(stmt->while_stmt.cond);
         ast_free_stmt(stmt->while_stmt.body);
+        break;
+    case STMT_FOR:
+        ast_free_expr(stmt->for_stmt.init);
+        ast_free_expr(stmt->for_stmt.cond);
+        ast_free_expr(stmt->for_stmt.incr);
+        ast_free_stmt(stmt->for_stmt.body);
         break;
     }
     free(stmt);
