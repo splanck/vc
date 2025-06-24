@@ -23,6 +23,8 @@ typedef enum {
     IR_ADDR,
     IR_LOAD_PTR,
     IR_STORE_PTR,
+    IR_LOAD_IDX,
+    IR_STORE_IDX,
     IR_ARG,
     IR_RETURN,
     IR_CALL,
@@ -72,6 +74,9 @@ void ir_build_store_param(ir_builder_t *b, int index, ir_value_t val);
 ir_value_t ir_build_addr(ir_builder_t *b, const char *name);
 ir_value_t ir_build_load_ptr(ir_builder_t *b, ir_value_t addr);
 void ir_build_store_ptr(ir_builder_t *b, ir_value_t addr, ir_value_t val);
+ir_value_t ir_build_load_idx(ir_builder_t *b, const char *name, ir_value_t idx);
+void ir_build_store_idx(ir_builder_t *b, const char *name, ir_value_t idx,
+                        ir_value_t val);
 void ir_build_return(ir_builder_t *b, ir_value_t val);
 void ir_build_arg(ir_builder_t *b, ir_value_t val);
 ir_value_t ir_build_call(ir_builder_t *b, const char *name, size_t arg_count);

@@ -75,12 +75,13 @@ static expr_t *parse_primary(parser_t *p)
         return ast_make_unary(UNOP_NEG, op, op_tok->line, op_tok->column);
     }
 
+    expr_t *base = NULL;
     if (match(p, TOK_NUMBER)) {
-        return ast_make_number(tok->lexeme, tok->line, tok->column);
+        base = ast_make_number(tok->lexeme, tok->line, tok->column);
     } else if (match(p, TOK_STRING)) {
-        return ast_make_string(tok->lexeme, tok->line, tok->column);
+        base = ast_make_string(tok->lexeme, tok->line, tok->column);
     } else if (match(p, TOK_CHAR)) {
-        return ast_make_char(tok->lexeme[0], tok->line, tok->column);
+        base = ast_make_char(tok->lexeme[0], tok->line, tok->column);
     } else if (tok->type == TOK_IDENT) {
         token_t *next = p->pos + 1 < p->count ? &p->tokens[p->pos + 1] : NULL;
         if (next && next->type == TOK_LPAREN) {
@@ -122,9 +123,9 @@ static expr_t *parse_primary(parser_t *p)
             }
             expr_t *call = ast_make_call(name, args, count,
                                          tok->line, tok->column);
-            return call;
+            base = call;
         } else if (match(p, TOK_IDENT)) {
-            return ast_make_ident(tok->lexeme, tok->line, tok->column);
+            base = ast_make_ident(tok->lexeme, tok->line, tok->column);
         }
     } else if (match(p, TOK_LPAREN)) {
         expr_t *expr = parse_expression(p);
@@ -132,9 +133,21 @@ static expr_t *parse_primary(parser_t *p)
             ast_free_expr(expr);
             return NULL;
         }
-        return expr;
+        base = expr;
     }
-    return NULL;
+    if (!base)
+        return NULL;
+    while (match(p, TOK_LBRACKET)) {
+        token_t *lb = &p->tokens[p->pos - 1];
+        expr_t *idx = parse_expression(p);
+        if (!idx || !match(p, TOK_RBRACKET)) {
+            ast_free_expr(base);
+            ast_free_expr(idx);
+            return NULL;
+        }
+        base = ast_make_index(base, idx, lb->line, lb->column);
+    }
+    return base;
 }
 
 static expr_t *parse_term(parser_t *p)
@@ -291,20 +304,29 @@ static expr_t *parse_assignment(parser_t *p)
 
     if (match(p, TOK_ASSIGN)) {
         token_t *op_tok = &p->tokens[p->pos - 1];
-        if (left->kind != EXPR_IDENT) {
+        if (left->kind != EXPR_IDENT && left->kind != EXPR_INDEX) {
             ast_free_expr(left);
             return NULL;
         }
         expr_t *right = parse_assignment(p);
         if (!right) {
-            free(left->ident.name);
-            free(left);
+            if (left->kind == EXPR_IDENT)
+                free(left->ident.name);
+            ast_free_expr(left);
             return NULL;
         }
-        char *name = left->ident.name;
-        free(left);
-        left = ast_make_assign(name, right, op_tok->line, op_tok->column);
-        free(name);
+        if (left->kind == EXPR_IDENT) {
+            char *name = left->ident.name;
+            free(left);
+            left = ast_make_assign(name, right, op_tok->line, op_tok->column);
+            free(name);
+        } else {
+            expr_t *arr = left->index.array;
+            expr_t *idx = left->index.index;
+            free(left);
+            left = ast_make_assign_index(arr, idx, right,
+                                        op_tok->line, op_tok->column);
+        }
     }
     return left;
 }
@@ -368,6 +390,17 @@ stmt_t *parser_parse_stmt(parser_t *p)
             return NULL;
         p->pos++;
         char *name = tok->lexeme;
+        size_t arr_size = 0;
+        if (match(p, TOK_LBRACKET)) {
+            token_t *num = peek(p);
+            if (!num || num->type != TOK_NUMBER)
+                return NULL;
+            p->pos++;
+            arr_size = strtoul(num->lexeme, NULL, 10);
+            if (!match(p, TOK_RBRACKET))
+                return NULL;
+            t = TYPE_ARRAY;
+        }
         expr_t *init = NULL;
         if (match(p, TOK_ASSIGN)) {
             init = parse_expression(p);
@@ -379,7 +412,8 @@ stmt_t *parser_parse_stmt(parser_t *p)
             if (!match(p, TOK_SEMI))
                 return NULL;
         }
-        return ast_make_var_decl(name, t, init, kw_tok->line, kw_tok->column);
+        return ast_make_var_decl(name, t, arr_size, init,
+                                 kw_tok->line, kw_tok->column);
     }
 
     if (match(p, TOK_KW_RETURN)) {
@@ -647,6 +681,24 @@ int parser_parse_toplevel(parser_t *p, func_t **out_func, stmt_t **out_global)
     }
     p->pos++;
 
+    size_t arr_size = 0;
+    token_t *next_tok;
+    if ((next_tok = peek(p)) && next_tok->type == TOK_LBRACKET) {
+        p->pos++; /* '[' */
+        token_t *num = peek(p);
+        if (!num || num->type != TOK_NUMBER) {
+            p->pos = save;
+            return 0;
+        }
+        p->pos++;
+        arr_size = strtoul(num->lexeme, NULL, 10);
+        if (!match(p, TOK_RBRACKET)) {
+            p->pos = save;
+            return 0;
+        }
+        t = TYPE_ARRAY;
+    }
+
     token_t *next = peek(p);
     if (next && next->type == TOK_SEMI) {
         if (t == TYPE_VOID) {
@@ -655,7 +707,7 @@ int parser_parse_toplevel(parser_t *p, func_t **out_func, stmt_t **out_global)
         }
         p->pos++; /* consume ';' */
         if (out_global)
-            *out_global = ast_make_var_decl(id->lexeme, t, NULL,
+            *out_global = ast_make_var_decl(id->lexeme, t, arr_size, NULL,
                                            tok->line, tok->column);
         return *out_global != NULL;
     } else if (next && next->type == TOK_ASSIGN) {
@@ -671,7 +723,7 @@ int parser_parse_toplevel(parser_t *p, func_t **out_func, stmt_t **out_global)
             return 0;
         }
         if (out_global)
-            *out_global = ast_make_var_decl(id->lexeme, t, init,
+            *out_global = ast_make_var_decl(id->lexeme, t, arr_size, init,
                                            tok->line, tok->column);
         return *out_global != NULL;
     }

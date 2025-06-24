@@ -119,6 +119,35 @@ expr_t *ast_make_assign(const char *name, expr_t *value,
     return expr;
 }
 
+expr_t *ast_make_index(expr_t *array, expr_t *index,
+                       size_t line, size_t column)
+{
+    expr_t *expr = malloc(sizeof(*expr));
+    if (!expr)
+        return NULL;
+    expr->kind = EXPR_INDEX;
+    expr->line = line;
+    expr->column = column;
+    expr->index.array = array;
+    expr->index.index = index;
+    return expr;
+}
+
+expr_t *ast_make_assign_index(expr_t *array, expr_t *index, expr_t *value,
+                              size_t line, size_t column)
+{
+    expr_t *expr = malloc(sizeof(*expr));
+    if (!expr)
+        return NULL;
+    expr->kind = EXPR_ASSIGN_INDEX;
+    expr->line = line;
+    expr->column = column;
+    expr->assign_index.array = array;
+    expr->assign_index.index = index;
+    expr->assign_index.value = value;
+    return expr;
+}
+
 expr_t *ast_make_call(const char *name, expr_t **args, size_t arg_count,
                       size_t line, size_t column)
 {
@@ -163,8 +192,8 @@ stmt_t *ast_make_return(expr_t *expr, size_t line, size_t column)
     return stmt;
 }
 
-stmt_t *ast_make_var_decl(const char *name, type_kind_t type, expr_t *init,
-                          size_t line, size_t column)
+stmt_t *ast_make_var_decl(const char *name, type_kind_t type, size_t array_size,
+                          expr_t *init, size_t line, size_t column)
 {
     stmt_t *stmt = malloc(sizeof(*stmt));
     if (!stmt)
@@ -178,6 +207,7 @@ stmt_t *ast_make_var_decl(const char *name, type_kind_t type, expr_t *init,
         return NULL;
     }
     stmt->var_decl.type = type;
+    stmt->var_decl.array_size = array_size;
     stmt->var_decl.init = init;
     return stmt;
 }
@@ -332,6 +362,15 @@ void ast_free_expr(expr_t *expr)
     case EXPR_ASSIGN:
         free(expr->assign.name);
         ast_free_expr(expr->assign.value);
+        break;
+    case EXPR_INDEX:
+        ast_free_expr(expr->index.array);
+        ast_free_expr(expr->index.index);
+        break;
+    case EXPR_ASSIGN_INDEX:
+        ast_free_expr(expr->assign_index.array);
+        ast_free_expr(expr->assign_index.index);
+        ast_free_expr(expr->assign_index.value);
         break;
     case EXPR_CALL:
         for (size_t i = 0; i < expr->call.arg_count; i++)

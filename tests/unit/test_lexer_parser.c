@@ -115,6 +115,38 @@ static void test_parser_var_decl_init(void)
     lexer_free_tokens(toks, count);
 }
 
+static void test_parser_array_decl(void)
+{
+    const char *src = "int a[4];";
+    size_t count = 0;
+    token_t *toks = lexer_tokenize(src, &count);
+    parser_t p; parser_init(&p, toks, count);
+    stmt_t *stmt = parser_parse_stmt(&p);
+    ASSERT(stmt);
+    ASSERT(stmt->kind == STMT_VAR_DECL);
+    ASSERT(strcmp(stmt->var_decl.name, "a") == 0);
+    ASSERT(stmt->var_decl.type == TYPE_ARRAY);
+    ASSERT(stmt->var_decl.array_size == 4);
+    ast_free_stmt(stmt);
+    lexer_free_tokens(toks, count);
+}
+
+static void test_parser_index_expr(void)
+{
+    const char *src = "a[1]";
+    size_t count = 0;
+    token_t *toks = lexer_tokenize(src, &count);
+    parser_t p; parser_init(&p, toks, count);
+    expr_t *expr = parser_parse_expr(&p);
+    ASSERT(expr && expr->kind == EXPR_INDEX);
+    ASSERT(expr->index.array->kind == EXPR_IDENT);
+    ASSERT(strcmp(expr->index.array->ident.name, "a") == 0);
+    ASSERT(expr->index.index->kind == EXPR_NUMBER &&
+           strcmp(expr->index.index->number.value, "1") == 0);
+    ast_free_expr(expr);
+    lexer_free_tokens(toks, count);
+}
+
 static void test_parser_unary_neg(void)
 {
     const char *src = "-5";
@@ -173,6 +205,8 @@ int main(void)
     test_parser_stmt_return();
     test_parser_stmt_return_void();
     test_parser_var_decl_init();
+    test_parser_array_decl();
+    test_parser_index_expr();
     test_parser_unary_neg();
     test_parser_func();
     test_parser_block();

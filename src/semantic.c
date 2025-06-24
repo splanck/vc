@@ -82,7 +82,8 @@ static void symtable_pop_scope(symtable_t *table, symbol_t *old_head)
     }
 }
 
-int symtable_add(symtable_t *table, const char *name, type_kind_t type)
+int symtable_add(symtable_t *table, const char *name, type_kind_t type,
+                 size_t array_size)
 {
     if (symtable_lookup(table, name))
         return 0;
@@ -95,6 +96,7 @@ int symtable_add(symtable_t *table, const char *name, type_kind_t type)
         return 0;
     }
     sym->type = type;
+    sym->array_size = array_size;
     sym->param_index = -1;
     sym->param_types = NULL;
     sym->param_count = 0;
@@ -117,6 +119,7 @@ int symtable_add_param(symtable_t *table, const char *name, type_kind_t type,
         return 0;
     }
     sym->type = type;
+    sym->array_size = 0;
     sym->param_index = index;
     sym->param_types = NULL;
     sym->param_count = 0;
@@ -125,7 +128,8 @@ int symtable_add_param(symtable_t *table, const char *name, type_kind_t type,
     return 1;
 }
 
-int symtable_add_global(symtable_t *table, const char *name, type_kind_t type)
+int symtable_add_global(symtable_t *table, const char *name, type_kind_t type,
+                        size_t array_size)
 {
     for (symbol_t *sym = table->globals; sym; sym = sym->next) {
         if (strcmp(sym->name, name) == 0)
@@ -140,6 +144,7 @@ int symtable_add_global(symtable_t *table, const char *name, type_kind_t type)
         return 0;
     }
     sym->type = type;
+    sym->array_size = array_size;
     sym->param_index = -1;
     sym->param_types = NULL;
     sym->param_count = 0;
@@ -329,13 +334,19 @@ type_kind_t check_expr(expr_t *expr, symtable_t *vars, symtable_t *funcs,
             set_error(expr->line, expr->column);
             return TYPE_UNKNOWN;
         }
-        if (out) {
-            if (sym->param_index >= 0)
-                *out = ir_build_load_param(ir, sym->param_index);
-            else
-                *out = ir_build_load(ir, expr->ident.name);
+        if (sym->type == TYPE_ARRAY) {
+            if (out)
+                *out = ir_build_addr(ir, sym->name);
+            return TYPE_PTR;
+        } else {
+            if (out) {
+                if (sym->param_index >= 0)
+                    *out = ir_build_load_param(ir, sym->param_index);
+                else
+                    *out = ir_build_load(ir, expr->ident.name);
+            }
+            return sym->type;
         }
-        return sym->type;
     }
     case EXPR_BINARY:
         return check_binary(expr->binary.left, expr->binary.right, vars, funcs,
@@ -358,6 +369,63 @@ type_kind_t check_expr(expr_t *expr, symtable_t *vars, symtable_t *funcs,
         }
         set_error(expr->line, expr->column);
         return TYPE_UNKNOWN;
+    }
+    case EXPR_INDEX: {
+        if (expr->index.array->kind != EXPR_IDENT) {
+            set_error(expr->line, expr->column);
+            return TYPE_UNKNOWN;
+        }
+        symbol_t *sym = symtable_lookup(vars, expr->index.array->ident.name);
+        if (!sym || sym->type != TYPE_ARRAY) {
+            set_error(expr->line, expr->column);
+            return TYPE_UNKNOWN;
+        }
+        ir_value_t idx_val;
+        if (check_expr(expr->index.index, vars, funcs, ir, &idx_val) != TYPE_INT) {
+            set_error(expr->index.index->line, expr->index.index->column);
+            return TYPE_UNKNOWN;
+        }
+        int cval;
+        if (sym->array_size && eval_const_expr(expr->index.index, &cval)) {
+            if (cval < 0 || (size_t)cval >= sym->array_size) {
+                set_error(expr->index.index->line, expr->index.index->column);
+                return TYPE_UNKNOWN;
+            }
+        }
+        if (out)
+            *out = ir_build_load_idx(ir, sym->name, idx_val);
+        return TYPE_INT;
+    }
+    case EXPR_ASSIGN_INDEX: {
+        if (expr->assign_index.array->kind != EXPR_IDENT) {
+            set_error(expr->line, expr->column);
+            return TYPE_UNKNOWN;
+        }
+        symbol_t *sym = symtable_lookup(vars, expr->assign_index.array->ident.name);
+        if (!sym || sym->type != TYPE_ARRAY) {
+            set_error(expr->line, expr->column);
+            return TYPE_UNKNOWN;
+        }
+        ir_value_t idx_val, val;
+        if (check_expr(expr->assign_index.index, vars, funcs, ir, &idx_val) != TYPE_INT) {
+            set_error(expr->assign_index.index->line, expr->assign_index.index->column);
+            return TYPE_UNKNOWN;
+        }
+        if (check_expr(expr->assign_index.value, vars, funcs, ir, &val) != TYPE_INT) {
+            set_error(expr->assign_index.value->line, expr->assign_index.value->column);
+            return TYPE_UNKNOWN;
+        }
+        int cval;
+        if (sym->array_size && eval_const_expr(expr->assign_index.index, &cval)) {
+            if (cval < 0 || (size_t)cval >= sym->array_size) {
+                set_error(expr->assign_index.index->line, expr->assign_index.index->column);
+                return TYPE_UNKNOWN;
+            }
+        }
+        ir_build_store_idx(ir, sym->name, idx_val, val);
+        if (out)
+            *out = val;
+        return TYPE_INT;
     }
     case EXPR_CALL: {
         symbol_t *fsym = symtable_lookup(funcs, expr->call.name);
@@ -521,7 +589,8 @@ int check_stmt(stmt_t *stmt, symtable_t *vars, symtable_t *funcs,
         return 1;
     }
     case STMT_VAR_DECL: {
-        if (!symtable_add(vars, stmt->var_decl.name, stmt->var_decl.type)) {
+        if (!symtable_add(vars, stmt->var_decl.name, stmt->var_decl.type,
+                          stmt->var_decl.array_size)) {
             set_error(stmt->line, stmt->column);
             return 0;
         }
@@ -573,7 +642,8 @@ int check_global(stmt_t *decl, symtable_t *globals, ir_builder_t *ir)
     if (!decl || decl->kind != STMT_VAR_DECL)
         return 0;
     if (!symtable_add_global(globals, decl->var_decl.name,
-                             decl->var_decl.type)) {
+                             decl->var_decl.type,
+                             decl->var_decl.array_size)) {
         set_error(decl->line, decl->column);
         return 0;
     }

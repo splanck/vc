@@ -131,6 +131,18 @@ static void emit_instr(strbuf_t *sb, ir_instr_t *ins, regalloc_t *ra, int x64)
                    loc_str(buf1, ra, ins->src2, x64),
                    loc_str(buf2, ra, ins->src1, x64));
         break;
+    case IR_LOAD_IDX:
+        sb_appendf(sb, "    mov%s %s(,%s,4), %s\n", sfx,
+                   ins->name,
+                   loc_str(buf1, ra, ins->src1, x64),
+                   loc_str(buf2, ra, ins->dest, x64));
+        break;
+    case IR_STORE_IDX:
+        sb_appendf(sb, "    mov%s %s, %s(,%s,4)\n", sfx,
+                   loc_str(buf1, ra, ins->src2, x64),
+                   ins->name,
+                   loc_str(buf2, ra, ins->src1, x64));
+        break;
     case IR_ARG:
         sb_appendf(sb, "    push%s %s\n", sfx,
                    loc_str(buf1, ra, ins->src1, x64));

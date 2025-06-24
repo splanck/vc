@@ -37,6 +37,8 @@ typedef enum {
     TOK_GT,
     TOK_LE,
     TOK_GE,
+    TOK_LBRACKET,
+    TOK_RBRACKET,
     TOK_UNKNOWN
 } token_type_t;
 

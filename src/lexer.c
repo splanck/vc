@@ -195,6 +195,8 @@ static void read_punct(char c, token_t **tokens, size_t *count, size_t *cap,
     case ')': type = TOK_RPAREN; break;
     case '{': type = TOK_LBRACE; break;
     case '}': type = TOK_RBRACE; break;
+    case '[': type = TOK_LBRACKET; break;
+    case ']': type = TOK_RBRACKET; break;
     default: type = TOK_UNKNOWN; break;
     }
     append_token(tokens, count, cap, type, &c, 1, line, column);

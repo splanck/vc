@@ -7,6 +7,7 @@
 typedef enum {
     TYPE_INT,
     TYPE_PTR,
+    TYPE_ARRAY,
     TYPE_VOID,
     TYPE_UNKNOWN
 } type_kind_t;
@@ -20,7 +21,9 @@ typedef enum {
     EXPR_UNARY,
     EXPR_BINARY,
     EXPR_ASSIGN,
-    EXPR_CALL
+    EXPR_CALL,
+    EXPR_INDEX,
+    EXPR_ASSIGN_INDEX
 } expr_kind_t;
 
 /* Binary operator types */
@@ -82,6 +85,15 @@ struct expr {
             expr_t *value;
         } assign;
         struct {
+            expr_t *array;
+            expr_t *index;
+        } index;
+        struct {
+            expr_t *array;
+            expr_t *index;
+            expr_t *value;
+        } assign_index;
+        struct {
             char *name;
             expr_t **args;
             size_t arg_count;
@@ -117,6 +129,7 @@ struct stmt {
         struct {
             char *name;
             type_kind_t type;
+            size_t array_size;
             /* optional initializer expression */
             expr_t *init;
         } var_decl;
@@ -153,13 +166,17 @@ expr_t *ast_make_unary(unop_t op, expr_t *operand,
                        size_t line, size_t column);
 expr_t *ast_make_assign(const char *name, expr_t *value,
                         size_t line, size_t column);
+expr_t *ast_make_index(expr_t *array, expr_t *index,
+                       size_t line, size_t column);
+expr_t *ast_make_assign_index(expr_t *array, expr_t *index, expr_t *value,
+                              size_t line, size_t column);
 expr_t *ast_make_call(const char *name, expr_t **args, size_t arg_count,
                       size_t line, size_t column);
 
 stmt_t *ast_make_expr_stmt(expr_t *expr, size_t line, size_t column);
 stmt_t *ast_make_return(expr_t *expr, size_t line, size_t column);
-stmt_t *ast_make_var_decl(const char *name, type_kind_t type, expr_t *init,
-                          size_t line, size_t column);
+stmt_t *ast_make_var_decl(const char *name, type_kind_t type, size_t array_size,
+                          expr_t *init, size_t line, size_t column);
 stmt_t *ast_make_if(expr_t *cond, stmt_t *then_branch, stmt_t *else_branch,
                     size_t line, size_t column);
 stmt_t *ast_make_while(expr_t *cond, stmt_t *body,
