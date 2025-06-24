@@ -4,6 +4,7 @@
 #include "cli.h"
 #include "token.h"
 #include "parser.h"
+#include "vector.h"
 #include "symtable.h"
 #include "semantic.h"
 #include "ir.h"
@@ -47,12 +48,9 @@ int main(int argc, char **argv)
     ir_builder_init(&ir);
 
     int ok = 1;
-    size_t fcap = 4, fcount = 0;
-    size_t gcap = 4, gcount = 0;
-    func_t **func_list = malloc(fcap * sizeof(*func_list));
-    stmt_t **glob_list = malloc(gcap * sizeof(*glob_list));
-    if (!func_list || !glob_list)
-        ok = 0;
+    vector_t func_list_v, glob_list_v;
+    vector_init(&func_list_v, sizeof(func_t *));
+    vector_init(&glob_list_v, sizeof(stmt_t *));
     while (ok && !parser_is_eof(&parser)) {
         func_t *fn = NULL;
         stmt_t *g = NULL;
@@ -63,31 +61,24 @@ int main(int argc, char **argv)
             break;
         }
         if (fn) {
-            if (fcount >= fcap) {
-                fcap *= 2;
-                func_t **tmp = realloc(func_list, fcap * sizeof(*tmp));
-                if (!tmp) {
-                    ok = 0;
-                    ast_free_func(fn);
-                    break;
-                }
-                func_list = tmp;
+            if (!vector_push(&func_list_v, &fn)) {
+                ok = 0;
+                ast_free_func(fn);
+                break;
             }
-            func_list[fcount++] = fn;
         } else if (g) {
-            if (gcount >= gcap) {
-                gcap *= 2;
-                stmt_t **tmp = realloc(glob_list, gcap * sizeof(*tmp));
-                if (!tmp) {
-                    ok = 0;
-                    ast_free_stmt(g);
-                    break;
-                }
-                glob_list = tmp;
+            if (!vector_push(&glob_list_v, &g)) {
+                ok = 0;
+                ast_free_stmt(g);
+                break;
             }
-            glob_list[gcount++] = g;
         }
     }
+
+    func_t **func_list = (func_t **)func_list_v.data;
+    size_t fcount = func_list_v.count;
+    stmt_t **glob_list = (stmt_t **)glob_list_v.data;
+    size_t gcount = glob_list_v.count;
 
     for (size_t i = 0; i < fcount; i++)
         symtable_add_func(&funcs, func_list[i]->name,

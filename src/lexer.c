@@ -3,23 +3,19 @@
 #include <string.h>
 
 #include "token.h"
+#include "vector.h"
 
-static void append_token(token_t **tokens, size_t *count, size_t *cap,
-                         token_type_t type, const char *lexeme,
+static void append_token(vector_t *vec, token_type_t type, const char *lexeme,
                          size_t len, size_t line, size_t column)
 {
-    if (*count >= *cap) {
-        *cap *= 2;
-        *tokens = realloc(*tokens, (*cap) * sizeof(**tokens));
-        if (!*tokens)
-            exit(1);
-    }
     char *text = malloc(len + 1);
     if (!text)
         exit(1);
     memcpy(text, lexeme, len);
     text[len] = '\0';
-    (*tokens)[(*count)++] = (token_t){ type, text, line, column };
+    token_t tok = { type, text, line, column };
+    if (!vector_push(vec, &tok))
+        exit(1);
 }
 
 static void skip_whitespace(const char *src, size_t *i, size_t *line,
@@ -65,8 +61,7 @@ static void skip_whitespace(const char *src, size_t *i, size_t *line,
 }
 
 static void read_identifier(const char *src, size_t *i, size_t *col,
-                            token_t **tokens, size_t *count, size_t *cap,
-                            size_t line)
+                            vector_t *tokens, size_t line)
 {
     size_t start = *i;
     while (isalnum((unsigned char)src[*i]) || src[*i] == '_')
@@ -95,19 +90,18 @@ static void read_identifier(const char *src, size_t *i, size_t *col,
         type = TOK_KW_VOID;
     else if (len == 6 && strncmp(src + start, "return", 6) == 0)
         type = TOK_KW_RETURN;
-    append_token(tokens, count, cap, type, src + start, len, line, *col);
+    append_token(tokens, type, src + start, len, line, *col);
     *col += len;
 }
 
 static void read_number(const char *src, size_t *i, size_t *col,
-                        token_t **tokens, size_t *count, size_t *cap,
-                        size_t line)
+                        vector_t *tokens, size_t line)
 {
     size_t start = *i;
     while (isdigit((unsigned char)src[*i]))
         (*i)++;
     size_t len = *i - start;
-    append_token(tokens, count, cap, TOK_NUMBER, src + start, len, line, *col);
+    append_token(tokens, TOK_NUMBER, src + start, len, line, *col);
     *col += len;
 }
 
@@ -124,8 +118,7 @@ static int unescape_char(char c)
 }
 
 static void read_char_const(const char *src, size_t *i, size_t *col,
-                            token_t **tokens, size_t *count, size_t *cap,
-                            size_t line)
+                            vector_t *tokens, size_t line)
 {
     size_t column = *col;
     (*i)++; /* skip opening quote */
@@ -142,12 +135,11 @@ static void read_char_const(const char *src, size_t *i, size_t *col,
         (*col)++;
     }
     char buf[2] = {value, '\0'};
-    append_token(tokens, count, cap, TOK_CHAR, buf, 1, line, column);
+    append_token(tokens, TOK_CHAR, buf, 1, line, column);
 }
 
 static void read_string_lit(const char *src, size_t *i, size_t *col,
-                            token_t **tokens, size_t *count, size_t *cap,
-                            size_t line)
+                            vector_t *tokens, size_t line)
 {
     size_t column = *col;
     (*i)++; /* skip opening quote */
@@ -176,12 +168,11 @@ static void read_string_lit(const char *src, size_t *i, size_t *col,
         (*i)++;
         (*col)++;
     }
-    append_token(tokens, count, cap, TOK_STRING, buf, len, line, column);
+    append_token(tokens, TOK_STRING, buf, len, line, column);
     free(buf);
 }
 
-static void read_punct(char c, token_t **tokens, size_t *count, size_t *cap,
-                       size_t line, size_t column)
+static void read_punct(char c, vector_t *tokens, size_t line, size_t column)
 {
     token_type_t type = TOK_UNKNOWN;
     switch (c) {
@@ -203,18 +194,15 @@ static void read_punct(char c, token_t **tokens, size_t *count, size_t *cap,
     case ']': type = TOK_RBRACKET; break;
     default: type = TOK_UNKNOWN; break;
     }
-    append_token(tokens, count, cap, type, &c, 1, line, column);
+    append_token(tokens, type, &c, 1, line, column);
 }
 
 /* Public API */
 
 token_t *lexer_tokenize(const char *src, size_t *out_count)
 {
-    size_t cap = 16;
-    size_t count = 0;
-    token_t *tokens = malloc(cap * sizeof(*tokens));
-    if (!tokens)
-        return NULL;
+    vector_t vec;
+    vector_init(&vec, sizeof(token_t));
 
     size_t i = 0, line = 1, col = 1;
     while (src[i]) {
@@ -223,35 +211,35 @@ token_t *lexer_tokenize(const char *src, size_t *out_count)
             break;
         char c = src[i];
         if (isalpha((unsigned char)c) || c == '_') {
-            read_identifier(src, &i, &col, &tokens, &count, &cap, line);
+            read_identifier(src, &i, &col, &vec, line);
         } else if (isdigit((unsigned char)c)) {
-            read_number(src, &i, &col, &tokens, &count, &cap, line);
+            read_number(src, &i, &col, &vec, line);
         } else if (c == '"') {
-            read_string_lit(src, &i, &col, &tokens, &count, &cap, line);
+            read_string_lit(src, &i, &col, &vec, line);
         } else if (c == '\'') {
-            read_char_const(src, &i, &col, &tokens, &count, &cap, line);
+            read_char_const(src, &i, &col, &vec, line);
         } else if (c == '=' && src[i + 1] == '=') {
-            append_token(&tokens, &count, &cap, TOK_EQ, "==", 2, line, col);
+            append_token(&vec, TOK_EQ, "==", 2, line, col);
             i += 2; col += 2;
         } else if (c == '!' && src[i + 1] == '=') {
-            append_token(&tokens, &count, &cap, TOK_NEQ, "!=", 2, line, col);
+            append_token(&vec, TOK_NEQ, "!=", 2, line, col);
             i += 2; col += 2;
         } else if (c == '<' && src[i + 1] == '=') {
-            append_token(&tokens, &count, &cap, TOK_LE, "<=", 2, line, col);
+            append_token(&vec, TOK_LE, "<=", 2, line, col);
             i += 2; col += 2;
         } else if (c == '>' && src[i + 1] == '=') {
-            append_token(&tokens, &count, &cap, TOK_GE, ">=", 2, line, col);
+            append_token(&vec, TOK_GE, ">=", 2, line, col);
             i += 2; col += 2;
         } else {
-            read_punct(c, &tokens, &count, &cap, line, col);
+            read_punct(c, &vec, line, col);
             i++; col++;
         }
     }
 
-    append_token(&tokens, &count, &cap, TOK_EOF, "", 0, line, col);
+    append_token(&vec, TOK_EOF, "", 0, line, col);
     if (out_count)
-        *out_count = count;
-    return tokens;
+        *out_count = vec.count;
+    return (token_t *)vec.data;
 }
 
 void lexer_free_tokens(token_t *tokens, size_t count)
