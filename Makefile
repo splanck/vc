@@ -3,8 +3,9 @@ CFLAGS ?= -Wall -Wextra -std=c99
 OPTFLAGS ?=
 BIN = vc
 # Core compiler sources
-CORE_SRC = src/main.c src/lexer.c src/ast.c src/parser.c src/semantic.c \
-    src/ir.c src/codegen.c src/regalloc.c src/strbuf.c src/util.c
+CORE_SRC = src/main.c src/lexer.c src/ast.c src/parser.c src/parser_expr.c \
+    src/parser_stmt.c src/semantic.c src/ir.c src/codegen.c src/regalloc.c \
+    src/strbuf.c src/util.c
 # Optional optimization sources
 OPT_SRC = src/opt.c
 # Additional sources can be specified by the user

@@ -12,6 +12,23 @@ typedef struct {
     size_t pos;
 } parser_t;
 
+static inline token_t *peek(parser_t *p)
+{
+    if (p->pos >= p->count)
+        return NULL;
+    return &p->tokens[p->pos];
+}
+
+static inline int match(parser_t *p, token_type_t type)
+{
+    token_t *tok = peek(p);
+    if (tok && tok->type == type) {
+        p->pos++;
+        return 1;
+    }
+    return 0;
+}
+
 /* Initialize the parser with a token array */
 void parser_init(parser_t *p, token_t *tokens, size_t count);
 
@@ -27,6 +44,9 @@ int parser_parse_toplevel(parser_t *p, func_t **out_func, stmt_t **out_global);
 
 /* Parse an expression starting at the current token. Returns NULL on error. */
 expr_t *parser_parse_expr(parser_t *p);
+
+/* Parse an initializer list of expressions between '{' and '}'. */
+expr_t **parser_parse_init_list(parser_t *p, size_t *out_count);
 
 /* Returns non-zero if the parser has reached EOF */
 int parser_is_eof(parser_t *p);
