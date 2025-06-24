@@ -21,6 +21,7 @@ static void print_usage(const char *prog)
     printf("      --no-fold        Disable constant folding\n");
     printf("      --no-dce         Disable dead code elimination\n");
     printf("      --x86-64         Generate 64-bit x86 assembly\n");
+    printf("      --dump-ir        Print assembly to stdout and exit\n");
 }
 
 static char *read_file(const char *path)
@@ -65,6 +66,7 @@ int main(int argc, char **argv)
         {"no-fold", no_argument,       0, 1},
         {"no-dce",  no_argument,       0, 2},
         {"x86-64", no_argument,       0, 3},
+        {"dump-ir", no_argument,      0, 4},
         {0, 0, 0, 0}
     };
 
@@ -72,6 +74,7 @@ int main(int argc, char **argv)
     int opt;
     opt_config_t opt_cfg = {1, 1, 1};
     int use_x86_64 = 0;
+    int dump_ir = 0;
 
     while ((opt = getopt_long(argc, argv, "hvo:", long_opts, NULL)) != -1) {
         switch (opt) {
@@ -93,6 +96,9 @@ int main(int argc, char **argv)
         case 3:
             use_x86_64 = 1;
             break;
+        case 4:
+            dump_ir = 1;
+            break;
         default:
             print_usage(argv[0]);
             return 1;
@@ -105,7 +111,7 @@ int main(int argc, char **argv)
         return 1;
     }
 
-    if (!output) {
+    if (!output && !dump_ir) {
         fprintf(stderr, "Error: no output path specified.\n");
         print_usage(argv[0]);
         return 1;
@@ -199,7 +205,13 @@ int main(int argc, char **argv)
         opt_run(&ir, &opt_cfg);
 
     /* Generate assembly output */
-    if (ok) {
+    if (ok && dump_ir) {
+        char *text = codegen_ir_to_string(&ir, use_x86_64);
+        if (text) {
+            printf("%s", text);
+            free(text);
+        }
+    } else if (ok) {
         FILE *outf = fopen(output, "w");
         if (!outf) {
             perror("fopen");
@@ -224,8 +236,12 @@ int main(int argc, char **argv)
     lexer_free_tokens(tokens, tok_count);
     free(src_text);
 
-    if (ok)
-        printf("Compiling %s -> %s\n", source, output);
+    if (ok) {
+        if (dump_ir)
+            printf("Compiling %s (dumped to stdout)\n", source);
+        else
+            printf("Compiling %s -> %s\n", source, output);
+    }
 
     return ok ? 0 : 1;
 }

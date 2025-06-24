@@ -29,6 +29,15 @@ if [ $ret -eq 0 ] || ! grep -q "line" "$err"; then
 fi
 rm -f "$out" "$err"
 
+# test --dump-ir option
+dump_out=$(mktemp)
+"$BINARY" --dump-ir "$DIR/fixtures/simple_add.c" > "$dump_out"
+if ! grep -q "movl \$7, %eax" "$dump_out"; then
+    echo "Test dump_ir failed"
+    fail=1
+fi
+rm -f "$dump_out"
+
 if [ $fail -eq 0 ]; then
     echo "All tests passed"
 else
