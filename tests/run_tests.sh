@@ -43,6 +43,19 @@ if [ $ret -eq 0 ] || ! grep -q "Unexpected token" "$err" || ! grep -q "expected"
 fi
 rm -f "$out" "$err"
 
+# negative test for undefined variable error message
+err=$(mktemp)
+out=$(mktemp)
+set +e
+"$BINARY" -o "$out" "$DIR/invalid/undef_var.c" 2> "$err"
+ret=$?
+set -e
+if [ $ret -eq 0 ] || ! grep -q "Semantic error" "$err"; then
+    echo "Test undef_var failed"
+    fail=1
+fi
+rm -f "$out" "$err"
+
 # test --dump-asm option
 dump_out=$(mktemp)
 "$BINARY" --dump-asm "$DIR/fixtures/simple_add.c" > "$dump_out"
