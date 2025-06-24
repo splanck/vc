@@ -1,6 +1,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include "parser.h"
+#include "vector.h"
 
 void parser_init(parser_t *p, token_t *tokens, size_t count)
 {
@@ -105,14 +106,9 @@ func_t *parser_parse_func(parser_t *p)
     if (!match(p, TOK_LPAREN))
         return NULL;
 
-    size_t pcap = 4, pcount = 0;
-    char **param_names = malloc(pcap * sizeof(*param_names));
-    type_kind_t *param_types = malloc(pcap * sizeof(*param_types));
-    if (!param_names || !param_types) {
-        free(param_names);
-        free(param_types);
-        return NULL;
-    }
+    vector_t param_names_v, param_types_v;
+    vector_init(&param_names_v, sizeof(char *));
+    vector_init(&param_types_v, sizeof(type_kind_t));
 
     if (!match(p, TOK_RPAREN)) {
         do {
@@ -126,89 +122,78 @@ func_t *parser_parse_func(parser_t *p)
                 if (match(p, TOK_STAR))
                     pt = TYPE_PTR;
             } else {
-                free(param_names);
-                free(param_types);
+                vector_free(&param_names_v);
+                vector_free(&param_types_v);
                 return NULL;
             }
             token_t *ptok = peek(p);
             if (!ptok || ptok->type != TOK_IDENT) {
-                free(param_names);
-                free(param_types);
+                vector_free(&param_names_v);
+                vector_free(&param_types_v);
                 return NULL;
             }
             p->pos++;
-            if (pcount >= pcap) {
-                pcap *= 2;
-                char **n1 = realloc(param_names, pcap * sizeof(*n1));
-                type_kind_t *n2 = realloc(param_types, pcap * sizeof(*n2));
-                if (!n1 || !n2) {
-                    free(n1 ? n1 : param_names);
-                    free(n2 ? n2 : param_types);
-                    return NULL;
-                }
-                param_names = n1;
-                param_types = n2;
+            char *tmp_name = ptok->lexeme;
+            if (!vector_push(&param_names_v, &tmp_name) ||
+                !vector_push(&param_types_v, &pt)) {
+                vector_free(&param_names_v);
+                vector_free(&param_types_v);
+                return NULL;
             }
-            param_names[pcount] = ptok->lexeme;
-            param_types[pcount] = pt;
-            pcount++;
         } while (match(p, TOK_COMMA));
         if (!match(p, TOK_RPAREN)) {
-            free(param_names);
-            free(param_types);
+            vector_free(&param_names_v);
+            vector_free(&param_types_v);
             return NULL;
         }
     }
 
     if (!match(p, TOK_LBRACE)) {
-        free(param_names);
-        free(param_types);
+        vector_free(&param_names_v);
+        vector_free(&param_types_v);
         return NULL;
     }
 
-    size_t cap = 4, count = 0;
-    stmt_t **body = malloc(cap * sizeof(*body));
-    if (!body) {
-        free(param_names);
-        free(param_types);
-        return NULL;
-    }
+    vector_t body_v;
+    vector_init(&body_v, sizeof(stmt_t *));
 
     while (!match(p, TOK_RBRACE)) {
         stmt_t *stmt = parser_parse_stmt(p);
         if (!stmt) {
-            for (size_t i = 0; i < count; i++)
-                ast_free_stmt(body[i]);
-            free(body);
-            free(param_names);
-            free(param_types);
+            for (size_t i = 0; i < body_v.count; i++)
+                ast_free_stmt(((stmt_t **)body_v.data)[i]);
+            vector_free(&body_v);
+            vector_free(&param_names_v);
+            vector_free(&param_types_v);
             return NULL;
         }
-        if (count >= cap) {
-            cap *= 2;
-            stmt_t **tmp = realloc(body, cap * sizeof(*tmp));
-            if (!tmp) {
-                for (size_t i = 0; i < count; i++)
-                    ast_free_stmt(body[i]);
-                free(body);
-                free(param_names);
-                free(param_types);
-                return NULL;
-            }
-            body = tmp;
+        if (!vector_push(&body_v, &stmt)) {
+            ast_free_stmt(stmt);
+            for (size_t i = 0; i < body_v.count; i++)
+                ast_free_stmt(((stmt_t **)body_v.data)[i]);
+            vector_free(&body_v);
+            vector_free(&param_names_v);
+            vector_free(&param_types_v);
+            return NULL;
         }
-        body[count++] = stmt;
     }
+
+    char **param_names = (char **)param_names_v.data;
+    type_kind_t *param_types = (type_kind_t *)param_types_v.data;
+    size_t pcount = param_names_v.count;
+    stmt_t **body = (stmt_t **)body_v.data;
+    size_t count = body_v.count;
 
     func_t *fn = ast_make_func(name, ret_type,
                                param_names, param_types, pcount,
                                body, count);
-    free(param_names);
-    free(param_types);
     if (!fn) {
         for (size_t i = 0; i < count; i++)
             ast_free_stmt(body[i]);
         free(body);
+        free(param_names);
+        free(param_types);
+        return NULL;
     }
     return fn;
 }
