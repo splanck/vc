@@ -258,6 +258,22 @@ Compile with:
 vc -o ptr.s ptr.c
 ```
 
+#### Pointer arithmetic
+```c
+/* ptr_arith.c */
+int main() {
+    int a[3] = {1, 2, 3};
+    int *p = a;
+    int second = *(p + 1);
+    p = p + 2;
+    return *(p - 1);
+}
+```
+Compile with:
+```sh
+vc -o ptr_arith.s ptr_arith.c
+```
+
 ### Arrays
 ```c
 /* array.c */
