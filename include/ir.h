@@ -11,6 +11,8 @@ typedef enum {
     IR_GLOB_STRING,
     IR_LOAD,
     IR_STORE,
+    IR_LOAD_PARAM,
+    IR_STORE_PARAM,
     IR_ADDR,
     IR_LOAD_PTR,
     IR_STORE_PTR,
@@ -57,6 +59,8 @@ ir_value_t ir_build_const(ir_builder_t *b, int value);
 ir_value_t ir_build_load(ir_builder_t *b, const char *name);
 ir_value_t ir_build_binop(ir_builder_t *b, ir_op_t op, ir_value_t left, ir_value_t right);
 void ir_build_store(ir_builder_t *b, const char *name, ir_value_t val);
+ir_value_t ir_build_load_param(ir_builder_t *b, int index);
+void ir_build_store_param(ir_builder_t *b, int index, ir_value_t val);
 ir_value_t ir_build_addr(ir_builder_t *b, const char *name);
 ir_value_t ir_build_load_ptr(ir_builder_t *b, ir_value_t addr);
 void ir_build_store_ptr(ir_builder_t *b, ir_value_t addr, ir_value_t val);

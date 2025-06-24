@@ -137,11 +137,16 @@ void ast_free_stmt(stmt_t *stmt);
 struct func {
     char *name;
     type_kind_t return_type;
+    char **param_names;
+    type_kind_t *param_types;
+    size_t param_count;
     stmt_t **body;
     size_t body_count;
 };
 
 func_t *ast_make_func(const char *name, type_kind_t ret_type,
+                      char **param_names, type_kind_t *param_types,
+                      size_t param_count,
                       stmt_t **body, size_t body_count);
 void ast_free_func(func_t *func);
 

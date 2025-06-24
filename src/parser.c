@@ -267,15 +267,73 @@ func_t *parser_parse_func(parser_t *p)
     p->pos++;
     char *name = tok->lexeme;
 
-    if (!match(p, TOK_LPAREN) || !match(p, TOK_RPAREN))
+    if (!match(p, TOK_LPAREN))
         return NULL;
-    if (!match(p, TOK_LBRACE))
+
+    size_t pcap = 4, pcount = 0;
+    char **param_names = malloc(pcap * sizeof(*param_names));
+    type_kind_t *param_types = malloc(pcap * sizeof(*param_types));
+    if (!param_names || !param_types) {
+        free(param_names);
+        free(param_types);
         return NULL;
+    }
+
+    if (!match(p, TOK_RPAREN)) {
+        do {
+            type_kind_t pt;
+            if (match(p, TOK_KW_INT)) {
+                pt = TYPE_INT;
+                if (match(p, TOK_STAR))
+                    pt = TYPE_PTR;
+            } else {
+                free(param_names);
+                free(param_types);
+                return NULL;
+            }
+            token_t *ptok = peek(p);
+            if (!ptok || ptok->type != TOK_IDENT) {
+                free(param_names);
+                free(param_types);
+                return NULL;
+            }
+            p->pos++;
+            if (pcount >= pcap) {
+                pcap *= 2;
+                char **n1 = realloc(param_names, pcap * sizeof(*n1));
+                type_kind_t *n2 = realloc(param_types, pcap * sizeof(*n2));
+                if (!n1 || !n2) {
+                    free(n1 ? n1 : param_names);
+                    free(n2 ? n2 : param_types);
+                    return NULL;
+                }
+                param_names = n1;
+                param_types = n2;
+            }
+            param_names[pcount] = ptok->lexeme;
+            param_types[pcount] = pt;
+            pcount++;
+        } while (match(p, TOK_COMMA));
+        if (!match(p, TOK_RPAREN)) {
+            free(param_names);
+            free(param_types);
+            return NULL;
+        }
+    }
+
+    if (!match(p, TOK_LBRACE)) {
+        free(param_names);
+        free(param_types);
+        return NULL;
+    }
 
     size_t cap = 4, count = 0;
     stmt_t **body = malloc(cap * sizeof(*body));
-    if (!body)
+    if (!body) {
+        free(param_names);
+        free(param_types);
         return NULL;
+    }
 
     while (!match(p, TOK_RBRACE)) {
         stmt_t *stmt = parser_parse_stmt(p);
@@ -283,6 +341,8 @@ func_t *parser_parse_func(parser_t *p)
             for (size_t i = 0; i < count; i++)
                 ast_free_stmt(body[i]);
             free(body);
+            free(param_names);
+            free(param_types);
             return NULL;
         }
         if (count >= cap) {
@@ -292,6 +352,8 @@ func_t *parser_parse_func(parser_t *p)
                 for (size_t i = 0; i < count; i++)
                     ast_free_stmt(body[i]);
                 free(body);
+                free(param_names);
+                free(param_types);
                 return NULL;
             }
             body = tmp;
@@ -299,5 +361,15 @@ func_t *parser_parse_func(parser_t *p)
         body[count++] = stmt;
     }
 
-    return ast_make_func(name, ret_type, body, count);
+    func_t *fn = ast_make_func(name, ret_type,
+                               param_names, param_types, pcount,
+                               body, count);
+    free(param_names);
+    free(param_types);
+    if (!fn) {
+        for (size_t i = 0; i < count; i++)
+            ast_free_stmt(body[i]);
+        free(body);
+    }
+    return fn;
 }

@@ -54,6 +54,27 @@ int symtable_add(symtable_t *table, const char *name, type_kind_t type)
         return 0;
     }
     sym->type = type;
+    sym->param_index = -1;
+    sym->next = table->head;
+    table->head = sym;
+    return 1;
+}
+
+int symtable_add_param(symtable_t *table, const char *name, type_kind_t type,
+                       int index)
+{
+    if (symtable_lookup(table, name))
+        return 0;
+    symbol_t *sym = malloc(sizeof(*sym));
+    if (!sym)
+        return 0;
+    sym->name = dup_string(name ? name : "");
+    if (!sym->name) {
+        free(sym);
+        return 0;
+    }
+    sym->type = type;
+    sym->param_index = index;
     sym->next = table->head;
     table->head = sym;
     return 1;
@@ -124,8 +145,12 @@ type_kind_t check_expr(expr_t *expr, symtable_t *vars, symtable_t *funcs,
         symbol_t *sym = symtable_lookup(vars, expr->ident.name);
         if (!sym)
             return TYPE_UNKNOWN;
-        if (out)
-            *out = ir_build_load(ir, expr->ident.name);
+        if (out) {
+            if (sym->param_index >= 0)
+                *out = ir_build_load_param(ir, sym->param_index);
+            else
+                *out = ir_build_load(ir, expr->ident.name);
+        }
         return sym->type;
     }
     case EXPR_BINARY:
@@ -137,7 +162,10 @@ type_kind_t check_expr(expr_t *expr, symtable_t *vars, symtable_t *funcs,
         if (!sym)
             return TYPE_UNKNOWN;
         if (check_expr(expr->assign.value, vars, funcs, ir, &val) == sym->type) {
-            ir_build_store(ir, expr->assign.name, val);
+            if (sym->param_index >= 0)
+                ir_build_store_param(ir, sym->param_index, val);
+            else
+                ir_build_store(ir, expr->assign.name, val);
             if (out)
                 *out = val;
             return sym->type;
@@ -232,6 +260,10 @@ int check_func(func_t *func, symtable_t *funcs, ir_builder_t *ir)
 
     symtable_t locals;
     symtable_init(&locals);
+
+    for (size_t i = 0; i < func->param_count; i++)
+        symtable_add_param(&locals, func->param_names[i],
+                           func->param_types[i], (int)i);
 
     ir_build_func_begin(ir, func->name);
 
