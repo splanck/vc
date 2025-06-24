@@ -34,6 +34,8 @@ int parser_is_eof(parser_t *p)
 /* Forward declarations */
 static expr_t *parse_expression(parser_t *p);
 static expr_t *parse_assignment(parser_t *p);
+static expr_t *parse_equality(parser_t *p);
+static expr_t *parse_relational(parser_t *p);
 static expr_t *parse_additive(parser_t *p);
 static expr_t *parse_primary(parser_t *p)
 {
@@ -138,9 +140,79 @@ static expr_t *parse_additive(parser_t *p)
     return left;
 }
 
-static expr_t *parse_assignment(parser_t *p)
+static expr_t *parse_relational(parser_t *p)
 {
     expr_t *left = parse_additive(p);
+    if (!left)
+        return NULL;
+
+    while (1) {
+        if (match(p, TOK_LT)) {
+            expr_t *right = parse_additive(p);
+            if (!right) {
+                ast_free_expr(left);
+                return NULL;
+            }
+            left = ast_make_binary(BINOP_LT, left, right);
+        } else if (match(p, TOK_GT)) {
+            expr_t *right = parse_additive(p);
+            if (!right) {
+                ast_free_expr(left);
+                return NULL;
+            }
+            left = ast_make_binary(BINOP_GT, left, right);
+        } else if (match(p, TOK_LE)) {
+            expr_t *right = parse_additive(p);
+            if (!right) {
+                ast_free_expr(left);
+                return NULL;
+            }
+            left = ast_make_binary(BINOP_LE, left, right);
+        } else if (match(p, TOK_GE)) {
+            expr_t *right = parse_additive(p);
+            if (!right) {
+                ast_free_expr(left);
+                return NULL;
+            }
+            left = ast_make_binary(BINOP_GE, left, right);
+        } else {
+            break;
+        }
+    }
+    return left;
+}
+
+static expr_t *parse_equality(parser_t *p)
+{
+    expr_t *left = parse_relational(p);
+    if (!left)
+        return NULL;
+
+    while (1) {
+        if (match(p, TOK_EQ)) {
+            expr_t *right = parse_relational(p);
+            if (!right) {
+                ast_free_expr(left);
+                return NULL;
+            }
+            left = ast_make_binary(BINOP_EQ, left, right);
+        } else if (match(p, TOK_NEQ)) {
+            expr_t *right = parse_relational(p);
+            if (!right) {
+                ast_free_expr(left);
+                return NULL;
+            }
+            left = ast_make_binary(BINOP_NEQ, left, right);
+        } else {
+            break;
+        }
+    }
+    return left;
+}
+
+static expr_t *parse_assignment(parser_t *p)
+{
+    expr_t *left = parse_equality(p);
     if (!left)
         return NULL;
 

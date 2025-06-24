@@ -24,6 +24,8 @@ static void fold_constants(ir_builder_t *ir)
             }
             break;
         case IR_ADD: case IR_SUB: case IR_MUL: case IR_DIV:
+        case IR_CMPEQ: case IR_CMPNE: case IR_CMPLT:
+        case IR_CMPGT: case IR_CMPLE: case IR_CMPGE:
             if (ins->src1 < max_id && ins->src2 < max_id &&
                 is_const[ins->src1] && is_const[ins->src2]) {
                 int a = values[ins->src1];
@@ -34,6 +36,12 @@ static void fold_constants(ir_builder_t *ir)
                 case IR_SUB: result = a - b; break;
                 case IR_MUL: result = a * b; break;
                 case IR_DIV: result = b != 0 ? a / b : 0; break;
+                case IR_CMPEQ: result = a == b; break;
+                case IR_CMPNE: result = a != b; break;
+                case IR_CMPLT: result = a < b; break;
+                case IR_CMPGT: result = a > b; break;
+                case IR_CMPLE: result = a <= b; break;
+                case IR_CMPGE: result = a >= b; break;
                 default: break;
                 }
                 ins->op = IR_CONST;

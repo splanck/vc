@@ -181,6 +181,8 @@ static void read_punct(char c, token_t **tokens, size_t *count, size_t *cap,
     case '*': type = TOK_STAR; break;
     case '/': type = TOK_SLASH; break;
     case '=': type = TOK_ASSIGN; break;
+    case '<': type = TOK_LT; break;
+    case '>': type = TOK_GT; break;
     case ';': type = TOK_SEMI; break;
     case ',': type = TOK_COMMA; break;
     case '(': type = TOK_LPAREN; break;
@@ -216,10 +218,21 @@ token_t *lexer_tokenize(const char *src, size_t *out_count)
             read_string_lit(src, &i, &col, &tokens, &count, &cap, line);
         } else if (c == '\'') {
             read_char_const(src, &i, &col, &tokens, &count, &cap, line);
+        } else if (c == '=' && src[i + 1] == '=') {
+            append_token(&tokens, &count, &cap, TOK_EQ, "==", 2, line, col);
+            i += 2; col += 2;
+        } else if (c == '!' && src[i + 1] == '=') {
+            append_token(&tokens, &count, &cap, TOK_NEQ, "!=", 2, line, col);
+            i += 2; col += 2;
+        } else if (c == '<' && src[i + 1] == '=') {
+            append_token(&tokens, &count, &cap, TOK_LE, "<=", 2, line, col);
+            i += 2; col += 2;
+        } else if (c == '>' && src[i + 1] == '=') {
+            append_token(&tokens, &count, &cap, TOK_GE, ">=", 2, line, col);
+            i += 2; col += 2;
         } else {
             read_punct(c, &tokens, &count, &cap, line, col);
-            i++;
-            col++;
+            i++; col++;
         }
     }
 

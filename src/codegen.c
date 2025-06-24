@@ -166,6 +166,29 @@ static void emit_instr(strbuf_t *sb, ir_instr_t *ins, regalloc_t *ra, int x64)
             sb_appendf(sb, "    mov%s %s, %s\n", sfx, ax,
                        loc_str(buf2, ra, ins->dest, x64));
         break;
+    case IR_CMPEQ: case IR_CMPNE: case IR_CMPLT: case IR_CMPGT:
+    case IR_CMPLE: case IR_CMPGE: {
+        const char *cc = "";
+        switch (ins->op) {
+        case IR_CMPEQ: cc = "e"; break;
+        case IR_CMPNE: cc = "ne"; break;
+        case IR_CMPLT: cc = "l"; break;
+        case IR_CMPGT: cc = "g"; break;
+        case IR_CMPLE: cc = "le"; break;
+        case IR_CMPGE: cc = "ge"; break;
+        default: break;
+        }
+        sb_appendf(sb, "    mov%s %s, %s\n", sfx,
+                   loc_str(buf1, ra, ins->src1, x64),
+                   loc_str(buf2, ra, ins->dest, x64));
+        sb_appendf(sb, "    cmp%s %s, %s\n", sfx,
+                   loc_str(buf1, ra, ins->src2, x64),
+                   loc_str(buf2, ra, ins->dest, x64));
+        sb_appendf(sb, "    set%s %s\n", cc, "%al");
+        sb_appendf(sb, "    %s %s, %s\n", x64 ? "movzbq" : "movzbl",
+                   "%al", loc_str(buf2, ra, ins->dest, x64));
+        break;
+    }
     case IR_GLOB_STRING:
         sb_appendf(sb, "%s:\n", ins->name);
         sb_appendf(sb, "    .asciz \"%s\"\n", ins->data);

@@ -95,6 +95,12 @@ static type_kind_t check_binary(expr_t *left, expr_t *right, symtable_t *vars,
             case BINOP_SUB: ir_op = IR_SUB; break;
             case BINOP_MUL: ir_op = IR_MUL; break;
             case BINOP_DIV: ir_op = IR_DIV; break;
+            case BINOP_EQ:  ir_op = IR_CMPEQ; break;
+            case BINOP_NEQ: ir_op = IR_CMPNE; break;
+            case BINOP_LT:  ir_op = IR_CMPLT; break;
+            case BINOP_GT:  ir_op = IR_CMPGT; break;
+            case BINOP_LE:  ir_op = IR_CMPLE; break;
+            case BINOP_GE:  ir_op = IR_CMPGE; break;
             }
             *out = ir_build_binop(ir, ir_op, lval, rval);
         }
