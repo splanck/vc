@@ -7,6 +7,7 @@
 #include "vector.h"
 #include "symtable.h"
 #include "semantic.h"
+#include "error.h"
 #include "ir.h"
 #include "ir_dump.h"
 #include "opt.h"
@@ -91,14 +92,14 @@ int main(int argc, char **argv)
                           func_list[i]->param_count);
     for (size_t i = 0; i < gcount; i++) {
         if (!check_global(glob_list[i], &globals, &ir)) {
-            semantic_print_error("Semantic error");
+            error_print("Semantic error");
             ok = 0;
         }
     }
 
     for (size_t i = 0; i < fcount && ok; i++) {
         if (!check_func(func_list[i], &funcs, &globals, &ir)) {
-            semantic_print_error("Semantic error");
+            error_print("Semantic error");
             ok = 0;
         }
     }
