@@ -269,6 +269,18 @@ static type_kind_t check_binary(expr_t *left, expr_t *right, symtable_t *vars,
             *out = ir_build_binop(ir, ir_op, lval, rval);
         }
         return TYPE_INT;
+    } else if ((lt == TYPE_PTR && rt == TYPE_INT &&
+                (op == BINOP_ADD || op == BINOP_SUB)) ||
+               (lt == TYPE_INT && rt == TYPE_PTR && op == BINOP_ADD)) {
+        ir_value_t ptr = (lt == TYPE_PTR) ? lval : rval;
+        ir_value_t idx = (lt == TYPE_PTR) ? rval : lval;
+        if (op == BINOP_SUB && lt == TYPE_PTR) {
+            ir_value_t zero = ir_build_const(ir, 0);
+            idx = ir_build_binop(ir, IR_SUB, zero, idx);
+        }
+        if (out)
+            *out = ir_build_binop(ir, IR_PTR_ADD, ptr, idx);
+        return TYPE_PTR;
     }
     set_error(left->line, left->column);
     return TYPE_UNKNOWN;
