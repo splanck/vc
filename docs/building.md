@@ -21,6 +21,10 @@ make PLATFORM=generic
 
 This disables any NetBSD specific extensions.
 
+`vc` can generate either 32-bit or 64-bit x86 assembly. Use the
+`--x86-64` flag when invoking the compiler to enable 64-bit output. The
+default without this flag is 32-bit code.
+
 ## Additional build steps
 
 Extra source files can be passed to the build using the `EXTRA_SRC`

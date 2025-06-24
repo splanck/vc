@@ -20,6 +20,7 @@ static void print_usage(const char *prog)
     printf("  -v, --version        Print version information and exit\n");
     printf("      --no-fold        Disable constant folding\n");
     printf("      --no-dce         Disable dead code elimination\n");
+    printf("      --x86-64         Generate 64-bit x86 assembly\n");
 }
 
 static char *read_file(const char *path)
@@ -63,12 +64,14 @@ int main(int argc, char **argv)
         {"output",  required_argument, 0, 'o'},
         {"no-fold", no_argument,       0, 1},
         {"no-dce",  no_argument,       0, 2},
+        {"x86-64", no_argument,       0, 3},
         {0, 0, 0, 0}
     };
 
     char *output = NULL;
     int opt;
     opt_config_t opt_cfg = {1, 1};
+    int use_x86_64 = 0;
 
     while ((opt = getopt_long(argc, argv, "hvo:", long_opts, NULL)) != -1) {
         switch (opt) {
@@ -86,6 +89,9 @@ int main(int argc, char **argv)
             break;
         case 2:
             opt_cfg.dead_code = 0;
+            break;
+        case 3:
+            use_x86_64 = 1;
             break;
         default:
             print_usage(argv[0]);
@@ -174,7 +180,7 @@ int main(int argc, char **argv)
             perror("fopen");
             ok = 0;
         } else {
-            codegen_emit_x86(outf, &ir);
+            codegen_emit_x86(outf, &ir, use_x86_64);
             fclose(outf);
         }
     }
