@@ -6,6 +6,7 @@
 /* Basic type categories used for type checking and function signatures */
 typedef enum {
     TYPE_INT,
+    TYPE_PTR,
     TYPE_VOID,
     TYPE_UNKNOWN
 } type_kind_t;
@@ -16,6 +17,7 @@ typedef enum {
     EXPR_IDENT,
     EXPR_STRING,
     EXPR_CHAR,
+    EXPR_UNARY,
     EXPR_BINARY,
     EXPR_ASSIGN,
     EXPR_CALL
@@ -28,6 +30,11 @@ typedef enum {
     BINOP_MUL,
     BINOP_DIV
 } binop_t;
+
+typedef enum {
+    UNOP_ADDR,
+    UNOP_DEREF
+} unop_t;
 
 struct expr;
 struct stmt;
@@ -52,6 +59,10 @@ struct expr {
         struct {
             char value;
         } ch;
+        struct {
+            unop_t op;
+            expr_t *operand;
+        } unary;
         struct {
             binop_t op;
             expr_t *left;
@@ -87,6 +98,7 @@ struct stmt {
         } ret;
         struct {
             char *name;
+            type_kind_t type;
         } var_decl;
         struct {
             expr_t *cond;
@@ -106,12 +118,13 @@ expr_t *ast_make_ident(const char *name);
 expr_t *ast_make_string(const char *value);
 expr_t *ast_make_char(char value);
 expr_t *ast_make_binary(binop_t op, expr_t *left, expr_t *right);
+expr_t *ast_make_unary(unop_t op, expr_t *operand);
 expr_t *ast_make_assign(const char *name, expr_t *value);
 expr_t *ast_make_call(const char *name);
 
 stmt_t *ast_make_expr_stmt(expr_t *expr);
 stmt_t *ast_make_return(expr_t *expr);
-stmt_t *ast_make_var_decl(const char *name);
+stmt_t *ast_make_var_decl(const char *name, type_kind_t type);
 stmt_t *ast_make_if(expr_t *cond, stmt_t *then_branch, stmt_t *else_branch);
 stmt_t *ast_make_while(expr_t *cond, stmt_t *body);
 

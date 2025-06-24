@@ -153,6 +153,7 @@ static void read_punct(char c, token_t **tokens, size_t *count, size_t *cap,
     switch (c) {
     case '+': type = TOK_PLUS; break;
     case '-': type = TOK_MINUS; break;
+    case '&': type = TOK_AMP; break;
     case '*': type = TOK_STAR; break;
     case '/': type = TOK_SLASH; break;
     case '=': type = TOK_ASSIGN; break;

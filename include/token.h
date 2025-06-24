@@ -24,6 +24,7 @@ typedef enum {
     TOK_COMMA,
     TOK_PLUS,
     TOK_MINUS,
+    TOK_AMP,
     TOK_STAR,
     TOK_SLASH,
     TOK_ASSIGN,

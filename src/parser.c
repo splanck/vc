@@ -41,6 +41,18 @@ static expr_t *parse_primary(parser_t *p)
     if (!tok)
         return NULL;
 
+    if (match(p, TOK_STAR)) {
+        expr_t *op = parse_primary(p);
+        if (!op)
+            return NULL;
+        return ast_make_unary(UNOP_DEREF, op);
+    } else if (match(p, TOK_AMP)) {
+        expr_t *op = parse_primary(p);
+        if (!op)
+            return NULL;
+        return ast_make_unary(UNOP_ADDR, op);
+    }
+
     if (match(p, TOK_NUMBER)) {
         return ast_make_number(tok->lexeme);
     } else if (match(p, TOK_STRING)) {
@@ -164,6 +176,9 @@ expr_t *parser_parse_expr(parser_t *p)
 stmt_t *parser_parse_stmt(parser_t *p)
 {
     if (match(p, TOK_KW_INT)) {
+        type_kind_t t = TYPE_INT;
+        if (match(p, TOK_STAR))
+            t = TYPE_PTR;
         token_t *tok = peek(p);
         if (!tok || tok->type != TOK_IDENT)
             return NULL;
@@ -171,7 +186,7 @@ stmt_t *parser_parse_stmt(parser_t *p)
         char *name = tok->lexeme;
         if (!match(p, TOK_SEMI))
             return NULL;
-        return ast_make_var_decl(name);
+        return ast_make_var_decl(name, t);
     }
 
     if (match(p, TOK_KW_RETURN)) {

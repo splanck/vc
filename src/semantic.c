@@ -100,6 +100,26 @@ type_kind_t check_expr(expr_t *expr, symtable_t *vars, symtable_t *funcs,
         if (out)
             *out = ir_build_const(ir, (int)expr->ch.value);
         return TYPE_INT;
+    case EXPR_UNARY:
+        if (expr->unary.op == UNOP_DEREF) {
+            ir_value_t addr;
+            if (check_expr(expr->unary.operand, vars, funcs, ir, &addr) == TYPE_PTR) {
+                if (out)
+                    *out = ir_build_load_ptr(ir, addr);
+                return TYPE_INT;
+            }
+            return TYPE_UNKNOWN;
+        } else if (expr->unary.op == UNOP_ADDR) {
+            if (expr->unary.operand->kind != EXPR_IDENT)
+                return TYPE_UNKNOWN;
+            symbol_t *sym = symtable_lookup(vars, expr->unary.operand->ident.name);
+            if (!sym)
+                return TYPE_UNKNOWN;
+            if (out)
+                *out = ir_build_addr(ir, sym->name);
+            return TYPE_PTR;
+        }
+        return TYPE_UNKNOWN;
     case EXPR_IDENT: {
         symbol_t *sym = symtable_lookup(vars, expr->ident.name);
         if (!sym)
@@ -116,11 +136,11 @@ type_kind_t check_expr(expr_t *expr, symtable_t *vars, symtable_t *funcs,
         symbol_t *sym = symtable_lookup(vars, expr->assign.name);
         if (!sym)
             return TYPE_UNKNOWN;
-        if (check_expr(expr->assign.value, vars, funcs, ir, &val) == TYPE_INT) {
+        if (check_expr(expr->assign.value, vars, funcs, ir, &val) == sym->type) {
             ir_build_store(ir, expr->assign.name, val);
             if (out)
                 *out = val;
-            return TYPE_INT;
+            return sym->type;
         }
         return TYPE_UNKNOWN;
     }
@@ -193,7 +213,7 @@ int check_stmt(stmt_t *stmt, symtable_t *vars, symtable_t *funcs,
         return 1;
     }
     case STMT_VAR_DECL:
-        return symtable_add(vars, stmt->var_decl.name, TYPE_INT);
+        return symtable_add(vars, stmt->var_decl.name, stmt->var_decl.type);
     }
     return 0;
 }
