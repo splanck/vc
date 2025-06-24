@@ -5,6 +5,7 @@ aims to be portable across POSIX systems with a focus on NetBSD.
 
 - [Compiler architecture](docs/architecture.md)
 - [Building vc](docs/building.md)
+- [User documentation](docs/vcdoc.md)
 - [Contributing](CONTRIBUTING.md)
 
 Development is in an early stage. See the documents above for more
