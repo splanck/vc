@@ -190,10 +190,13 @@ stmt_t *parser_parse_stmt(parser_t *p)
     }
 
     if (match(p, TOK_KW_RETURN)) {
-        expr_t *expr = parse_expression(p);
-        if (!expr || !match(p, TOK_SEMI)) {
-            ast_free_expr(expr);
-            return NULL;
+        expr_t *expr = NULL;
+        if (!match(p, TOK_SEMI)) {
+            expr = parse_expression(p);
+            if (!expr || !match(p, TOK_SEMI)) {
+                ast_free_expr(expr);
+                return NULL;
+            }
         }
         return ast_make_return(expr);
     }
