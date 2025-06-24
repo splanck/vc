@@ -21,6 +21,7 @@ static void print_usage(const char *prog)
     printf("  -v, --version        Print version information and exit\n");
     printf("      --no-fold        Disable constant folding\n");
     printf("      --no-dce         Disable dead code elimination\n");
+    printf("      --no-cprop       Disable constant propagation\n");
     printf("      --x86-64         Generate 64-bit x86 assembly\n");
     printf("      --dump-ir        Print assembly to stdout and exit\n");
 }
@@ -68,6 +69,7 @@ int main(int argc, char **argv)
         {"no-dce",  no_argument,       0, 2},
         {"x86-64", no_argument,       0, 3},
         {"dump-ir", no_argument,      0, 4},
+        {"no-cprop", no_argument,     0, 5},
         {0, 0, 0, 0}
     };
 
@@ -111,6 +113,9 @@ int main(int argc, char **argv)
             break;
         case 4:
             dump_ir = 1;
+            break;
+        case 5:
+            opt_cfg.const_prop = 0;
             break;
         default:
             print_usage(argv[0]);

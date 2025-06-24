@@ -264,6 +264,7 @@ The compiler supports the following options:
 - `-v`, `--version` – print version information and exit.
 - `--no-fold` – disable constant folding.
 - `--no-dce` – disable dead code elimination.
+- `--no-cprop` – disable constant propagation.
 - `--x86-64` – generate 64‑bit x86 assembly.
 - `--dump-ir` – print the generated assembly to stdout instead of creating a file.
 - `-O<N>` – set optimization level (0 disables all passes).
