@@ -78,6 +78,7 @@ static void propagate_load_consts(ir_builder_t *ir)
             break;
         }
         case IR_STORE_PTR:
+        case IR_STORE_IDX:
         case IR_CALL:
         case IR_ARG:
             clear_var_list(vars);
@@ -87,6 +88,7 @@ static void propagate_load_consts(ir_builder_t *ir)
         case IR_LOAD_PARAM:
         case IR_ADDR:
         case IR_LOAD_PTR:
+        case IR_LOAD_IDX:
         case IR_STORE_PARAM:
         case IR_RETURN:
         case IR_FUNC_BEGIN:
@@ -171,15 +173,22 @@ static void fold_constants(ir_builder_t *ir)
             }
             break;
         case IR_LOAD:
+        case IR_LOAD_IDX:
             if (ins->dest >= 0 && ins->dest < max_id)
                 is_const[ins->dest] = 0;
             break;
         case IR_STORE:
         case IR_LOAD_PARAM:
+        case IR_STORE_IDX:
             if (ins->dest >= 0 && ins->dest < max_id)
                 is_const[ins->dest] = 0;
             break;
         case IR_STORE_PARAM:
+        case IR_ADDR:
+        case IR_LOAD_PTR:
+        case IR_STORE_PTR:
+            if (ins->dest >= 0 && ins->dest < max_id)
+                is_const[ins->dest] = 0;
             break;
         case IR_RETURN:
             /* nothing to do */
@@ -209,6 +218,7 @@ static int has_side_effect(ir_instr_t *ins)
     switch (ins->op) {
     case IR_STORE:
     case IR_STORE_PTR:
+    case IR_STORE_IDX:
     case IR_STORE_PARAM:
     case IR_CALL:
     case IR_ARG:
