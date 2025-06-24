@@ -77,6 +77,75 @@ static void read_number(const char *src, size_t *i, size_t *col,
     *col += len;
 }
 
+static int unescape_char(char c)
+{
+    switch (c) {
+    case 'n': return '\n';
+    case 't': return '\t';
+    case '\\': return '\\';
+    case '\'': return '\''; /* single quote */
+    case '"': return '"';
+    default: return c;
+    }
+}
+
+static void read_char_const(const char *src, size_t *i, size_t *col,
+                            token_t **tokens, size_t *count, size_t *cap,
+                            size_t line)
+{
+    size_t column = *col;
+    (*i)++; /* skip opening quote */
+    (*col)++;
+    char value = src[*i];
+    if (value == '\\') {
+        (*i)++;
+        value = (char)unescape_char(src[*i]);
+    }
+    (*i)++;
+    (*col)++;
+    if (src[*i] == '\'') {
+        (*i)++;
+        (*col)++;
+    }
+    char buf[2] = {value, '\0'};
+    append_token(tokens, count, cap, TOK_CHAR, buf, 1, line, column);
+}
+
+static void read_string_lit(const char *src, size_t *i, size_t *col,
+                            token_t **tokens, size_t *count, size_t *cap,
+                            size_t line)
+{
+    size_t column = *col;
+    (*i)++; /* skip opening quote */
+    (*col)++;
+    size_t cap_buf = 16, len = 0;
+    char *buf = malloc(cap_buf);
+    if (!buf)
+        return;
+    while (src[*i] && src[*i] != '"') {
+        char c = src[*i];
+        if (c == '\\') {
+            (*i)++;
+            c = (char)unescape_char(src[*i]);
+        }
+        if (len + 1 >= cap_buf) {
+            cap_buf *= 2;
+            char *tmp = realloc(buf, cap_buf);
+            if (!tmp) { free(buf); return; }
+            buf = tmp;
+        }
+        buf[len++] = c;
+        (*i)++;
+        (*col)++;
+    }
+    if (src[*i] == '"') {
+        (*i)++;
+        (*col)++;
+    }
+    append_token(tokens, count, cap, TOK_STRING, buf, len, line, column);
+    free(buf);
+}
+
 static void read_punct(char c, token_t **tokens, size_t *count, size_t *cap,
                        size_t line, size_t column)
 {
@@ -118,6 +187,10 @@ token_t *lexer_tokenize(const char *src, size_t *out_count)
             read_identifier(src, &i, &col, &tokens, &count, &cap, line);
         } else if (isdigit((unsigned char)c)) {
             read_number(src, &i, &col, &tokens, &count, &cap, line);
+        } else if (c == '"') {
+            read_string_lit(src, &i, &col, &tokens, &count, &cap, line);
+        } else if (c == '\'') {
+            read_char_const(src, &i, &col, &tokens, &count, &cap, line);
         } else {
             read_punct(c, &tokens, &count, &cap, line, col);
             i++;

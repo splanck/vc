@@ -40,6 +40,30 @@ expr_t *ast_make_ident(const char *name)
     return expr;
 }
 
+expr_t *ast_make_string(const char *value)
+{
+    expr_t *expr = malloc(sizeof(*expr));
+    if (!expr)
+        return NULL;
+    expr->kind = EXPR_STRING;
+    expr->string.value = dup_string(value ? value : "");
+    if (!expr->string.value) {
+        free(expr);
+        return NULL;
+    }
+    return expr;
+}
+
+expr_t *ast_make_char(char value)
+{
+    expr_t *expr = malloc(sizeof(*expr));
+    if (!expr)
+        return NULL;
+    expr->kind = EXPR_CHAR;
+    expr->ch.value = value;
+    return expr;
+}
+
 expr_t *ast_make_binary(binop_t op, expr_t *left, expr_t *right)
 {
     expr_t *expr = malloc(sizeof(*expr));
@@ -167,6 +191,11 @@ void ast_free_expr(expr_t *expr)
         break;
     case EXPR_IDENT:
         free(expr->ident.name);
+        break;
+    case EXPR_STRING:
+        free(expr->string.value);
+        break;
+    case EXPR_CHAR:
         break;
     case EXPR_BINARY:
         ast_free_expr(expr->binary.left);

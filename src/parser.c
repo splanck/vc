@@ -43,6 +43,10 @@ static expr_t *parse_primary(parser_t *p)
 
     if (match(p, TOK_NUMBER)) {
         return ast_make_number(tok->lexeme);
+    } else if (match(p, TOK_STRING)) {
+        return ast_make_string(tok->lexeme);
+    } else if (match(p, TOK_CHAR)) {
+        return ast_make_char(tok->lexeme[0]);
     } else if (tok->type == TOK_IDENT) {
         token_t *next = p->pos + 1 < p->count ? &p->tokens[p->pos + 1] : NULL;
         if (next && next->type == TOK_LPAREN) {
