@@ -118,3 +118,28 @@ The compiler supports the following options:
 
 Use `vc -o out.s source.c` to compile a file, or `vc --dump-ir source.c` to
 print the output to the terminal.
+
+## Compiling a Simple Program
+
+Example source files can be found under `tests/fixtures`. The simplest is
+`simple_add.c`, which returns the result of `1 + 2 * 3`. Compile it with
+optimizations disabled and request 64‑bit assembly like so:
+
+```sh
+vc --no-fold --no-dce --x86-64 -o simple_add.s tests/fixtures/simple_add.c
+```
+
+The generated file `simple_add.s` should match
+`tests/fixtures/simple_add.s`:
+
+```asm
+main:
+    pushl %ebp
+    movl %esp, %ebp
+    movl $7, %eax
+    movl %eax, %eax
+    ret
+```
+
+Any program compiled with the same options will produce assembly identical to
+the corresponding `.s` file under `tests/fixtures`.
