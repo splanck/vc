@@ -1,0 +1,113 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <getopt.h>
+
+#include "cli.h"
+
+#define VERSION "0.1.0"
+
+static void print_usage(const char *prog)
+{
+    printf("Usage: %s [options] <source>\n", prog);
+    printf("Options:\n");
+    printf("  -o, --output <file>  Output path\n");
+    printf("  -O<N>               Optimization level (0-3)\n");
+    printf("  -h, --help           Display this help and exit\n");
+    printf("  -v, --version        Print version information and exit\n");
+    printf("      --no-fold        Disable constant folding\n");
+    printf("      --no-dce         Disable dead code elimination\n");
+    printf("      --no-cprop       Disable constant propagation\n");
+    printf("      --x86-64         Generate 64-bit x86 assembly\n");
+    printf("      --dump-asm       Print assembly to stdout and exit\n");
+    printf("      --dump-ir        Print IR to stdout and exit\n");
+}
+
+int cli_parse_args(int argc, char **argv, cli_options_t *opts)
+{
+    static struct option long_opts[] = {
+        {"help",    no_argument,       0, 'h'},
+        {"version", no_argument,       0, 'v'},
+        {"output",  required_argument, 0, 'o'},
+        {"no-fold", no_argument,       0, 1},
+        {"no-dce",  no_argument,       0, 2},
+        {"x86-64", no_argument,       0, 3},
+        {"dump-asm", no_argument,     0, 4},
+        {"no-cprop", no_argument,     0, 5},
+        {"dump-ir", no_argument,      0, 6},
+        {0, 0, 0, 0}
+    };
+
+    opts->output = NULL;
+    opts->opt_cfg.opt_level = 1;
+    opts->opt_cfg.fold_constants = 1;
+    opts->opt_cfg.dead_code = 1;
+    opts->opt_cfg.const_prop = 1;
+    opts->use_x86_64 = 0;
+    opts->dump_asm = 0;
+    opts->dump_ir = 0;
+    opts->source = NULL;
+
+    int opt;
+    while ((opt = getopt_long(argc, argv, "hvo:O:", long_opts, NULL)) != -1) {
+        switch (opt) {
+        case 'h':
+            print_usage(argv[0]);
+            exit(0);
+        case 'v':
+            printf("vc version %s\n", VERSION);
+            exit(0);
+        case 'o':
+            opts->output = optarg;
+            break;
+        case 'O':
+            opts->opt_cfg.opt_level = atoi(optarg);
+            if (opts->opt_cfg.opt_level <= 0) {
+                opts->opt_cfg.fold_constants = 0;
+                opts->opt_cfg.dead_code = 0;
+                opts->opt_cfg.const_prop = 0;
+            } else {
+                opts->opt_cfg.fold_constants = 1;
+                opts->opt_cfg.dead_code = 1;
+                opts->opt_cfg.const_prop = 1;
+            }
+            break;
+        case 1:
+            opts->opt_cfg.fold_constants = 0;
+            break;
+        case 2:
+            opts->opt_cfg.dead_code = 0;
+            break;
+        case 3:
+            opts->use_x86_64 = 1;
+            break;
+        case 4:
+            opts->dump_asm = 1;
+            break;
+        case 5:
+            opts->opt_cfg.const_prop = 0;
+            break;
+        case 6:
+            opts->dump_ir = 1;
+            break;
+        default:
+            print_usage(argv[0]);
+            return 1;
+        }
+    }
+
+    if (optind >= argc) {
+        fprintf(stderr, "Error: no source file specified.\n");
+        print_usage(argv[0]);
+        return 1;
+    }
+
+    if (!opts->output && !opts->dump_asm && !opts->dump_ir) {
+        fprintf(stderr, "Error: no output path specified.\n");
+        print_usage(argv[0]);
+        return 1;
+    }
+
+    opts->source = argv[optind];
+    return 0;
+}
+

@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include <getopt.h>
 #include "util.h"
+#include "cli.h"
 #include "token.h"
 #include "parser.h"
 #include "symtable.h"
@@ -10,107 +10,18 @@
 #include "opt.h"
 #include "codegen.h"
 
-#define VERSION "0.1.0"
-
-static void print_usage(const char *prog)
-{
-    printf("Usage: %s [options] <source>\n", prog);
-    printf("Options:\n");
-    printf("  -o, --output <file>  Output path\n");
-    printf("  -O<N>               Optimization level (0-3)\n");
-    printf("  -h, --help           Display this help and exit\n");
-    printf("  -v, --version        Print version information and exit\n");
-    printf("      --no-fold        Disable constant folding\n");
-    printf("      --no-dce         Disable dead code elimination\n");
-    printf("      --no-cprop       Disable constant propagation\n");
-    printf("      --x86-64         Generate 64-bit x86 assembly\n");
-    printf("      --dump-asm       Print assembly to stdout and exit\n");
-    printf("      --dump-ir        Print IR to stdout and exit\n");
-}
-
-
 int main(int argc, char **argv)
 {
-    static struct option long_opts[] = {
-        {"help",    no_argument,       0, 'h'},
-        {"version", no_argument,       0, 'v'},
-        {"output",  required_argument, 0, 'o'},
-        {"no-fold", no_argument,       0, 1},
-        {"no-dce",  no_argument,       0, 2},
-        {"x86-64", no_argument,       0, 3},
-        {"dump-asm", no_argument,     0, 4},
-        {"no-cprop", no_argument,     0, 5},
-        {"dump-ir", no_argument,      0, 6},
-        {0, 0, 0, 0}
-    };
-
-    char *output = NULL;
-    int opt;
-    opt_config_t opt_cfg = {1, 1, 1, 1};
-    int use_x86_64 = 0;
-    int dump_asm = 0;
-    int dump_ir = 0;
-
-    while ((opt = getopt_long(argc, argv, "hvo:O:", long_opts, NULL)) != -1) {
-        switch (opt) {
-        case 'h':
-            print_usage(argv[0]);
-            return 0;
-        case 'v':
-            printf("vc version %s\n", VERSION);
-            return 0;
-        case 'o':
-            output = optarg;
-            break;
-        case 'O':
-            opt_cfg.opt_level = atoi(optarg);
-            if (opt_cfg.opt_level <= 0) {
-                opt_cfg.fold_constants = 0;
-                opt_cfg.dead_code = 0;
-                opt_cfg.const_prop = 0;
-            } else {
-                opt_cfg.fold_constants = 1;
-                opt_cfg.dead_code = 1;
-                opt_cfg.const_prop = 1;
-            }
-            break;
-        case 1:
-            opt_cfg.fold_constants = 0;
-            break;
-        case 2:
-            opt_cfg.dead_code = 0;
-            break;
-        case 3:
-            use_x86_64 = 1;
-            break;
-        case 4:
-            dump_asm = 1;
-            break;
-        case 5:
-            opt_cfg.const_prop = 0;
-            break;
-        case 6:
-            dump_ir = 1;
-            break;
-        default:
-            print_usage(argv[0]);
-            return 1;
-        }
-    }
-
-    if (optind >= argc) {
-        fprintf(stderr, "Error: no source file specified.\n");
-        print_usage(argv[0]);
+    cli_options_t cli;
+    if (cli_parse_args(argc, argv, &cli) != 0)
         return 1;
-    }
 
-    if (!output && !dump_asm && !dump_ir) {
-        fprintf(stderr, "Error: no output path specified.\n");
-        print_usage(argv[0]);
-        return 1;
-    }
-
-    const char *source = argv[optind];
+    const char *source = cli.source;
+    char *output = cli.output;
+    opt_config_t opt_cfg = cli.opt_cfg;
+    int use_x86_64 = cli.use_x86_64;
+    int dump_asm = cli.dump_asm;
+    int dump_ir = cli.dump_ir;
 
     char *src_text = vc_read_file(source);
     if (!src_text) {

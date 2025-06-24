@@ -4,7 +4,7 @@ OPTFLAGS ?=
 BIN = vc
 # Core compiler sources
 
-CORE_SRC = src/main.c src/lexer.c src/ast.c src/parser.c src/symtable.c src/parser_expr.c \
+CORE_SRC = src/main.c src/cli.c src/lexer.c src/ast.c src/parser.c src/symtable.c src/parser_expr.c \
            src/parser_stmt.c src/semantic.c src/ir.c src/codegen.c src/regalloc.c src/strbuf.c src/util.c
 
 # Optional optimization sources
@@ -15,7 +15,7 @@ EXTRA_SRC ?=
 SRC = $(CORE_SRC) $(OPT_SRC) $(EXTRA_SRC)
 HDR = include/token.h include/ast.h include/parser.h include/symtable.h include/semantic.h \
     include/ir.h include/opt.h include/codegen.h include/strbuf.h \
-    include/util.h
+    include/util.h include/cli.h
 PREFIX ?= /usr/local
 INCLUDEDIR ?= $(PREFIX)/include/vc
 MANDIR ?= $(PREFIX)/share/man
