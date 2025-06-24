@@ -13,6 +13,7 @@ SRC = $(CORE_SRC) $(OPT_SRC) $(EXTRA_SRC)
 HDR = include/token.h include/ast.h include/parser.h include/semantic.h include/ir.h include/opt.h include/codegen.h
 PREFIX ?= /usr/local
 INCLUDEDIR ?= $(PREFIX)/include/vc
+MANDIR ?= $(PREFIX)/share/man
 
 all: $(BIN)
 
@@ -27,6 +28,8 @@ install: $(BIN)
 	install -m 644 $(HDR) $(DESTDIR)$(INCLUDEDIR)
 	install -d $(DESTDIR)$(PREFIX)/bin
 	install $(BIN) $(DESTDIR)$(PREFIX)/bin/
+	install -d $(DESTDIR)$(MANDIR)/man1
+	install -m 644 man/vc.1 $(DESTDIR)$(MANDIR)/man1/
 
 clean:
 	rm -f $(BIN)

@@ -1,0 +1,44 @@
+.TH VC 1 "2025-06-24" "vc 0.1.0" "User Commands"
+.SH NAME
+vc \- lightweight ANSI C compiler
+.SH SYNOPSIS
+.B vc
+.RI [ options ] " source.c"
+.SH DESCRIPTION
+.B vc
+is a lightweight ANSI C compiler with experimental C99 support.
+It processes input through lexical analysis, parsing, semantic analysis,
+optional optimizations, register allocation and code generation.
+The resulting assembly can be written to a file or printed to stdout.
+.SH OPTIONS
+.TP
+.BR -o "," \fB--output\fR \fIfile\fR
+Write assembly output to \fIfile\fR.
+.TP
+.BR -h "," \fB--help\fR
+Display usage information and exit.
+.TP
+.BR -v "," \fB--version\fR
+Print version information and exit.
+.TP
+.B --no-fold
+Disable constant folding optimization.
+.TP
+.B --no-dce
+Disable dead code elimination.
+.TP
+.B --x86-64
+Generate x86-64 assembly instead of 32-bit.
+.TP
+.B --dump-ir
+Print generated assembly to stdout rather than creating a file.
+.SH EXAMPLES
+Compile a source file to \fIout.s\fR:
+.PP
+.B vc -o out.s source.c
+.PP
+Print the generated assembly:
+.PP
+.B vc --dump-ir source.c
+.SH SEE ALSO
+README.md, docs/vcdoc.md
