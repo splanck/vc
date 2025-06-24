@@ -644,6 +644,22 @@ int parser_parse_toplevel(parser_t *p, func_t **out_func, stmt_t **out_global)
             *out_global = ast_make_var_decl(id->lexeme, t, NULL,
                                            tok->line, tok->column);
         return *out_global != NULL;
+    } else if (next && next->type == TOK_ASSIGN) {
+        if (t == TYPE_VOID) {
+            p->pos = save;
+            return 0;
+        }
+        p->pos++; /* consume '=' */
+        expr_t *init = parser_parse_expr(p);
+        if (!init || !match(p, TOK_SEMI)) {
+            ast_free_expr(init);
+            p->pos = save;
+            return 0;
+        }
+        if (out_global)
+            *out_global = ast_make_var_decl(id->lexeme, t, init,
+                                           tok->line, tok->column);
+        return *out_global != NULL;
     }
 
     p->pos = save;

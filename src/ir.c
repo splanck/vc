@@ -235,12 +235,13 @@ void ir_build_label(ir_builder_t *b, const char *label)
     ins->name = dup_string(label ? label : "");
 }
 
-void ir_build_glob_var(ir_builder_t *b, const char *name)
+void ir_build_glob_var(ir_builder_t *b, const char *name, int value)
 {
     ir_instr_t *ins = append_instr(b);
     if (!ins)
         return;
     ins->op = IR_GLOB_VAR;
     ins->name = dup_string(name ? name : "");
+    ins->imm = value;
 }
 

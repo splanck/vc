@@ -189,6 +189,56 @@ symbol_t *symtable_lookup_global(symtable_t *table, const char *name)
     return NULL;
 }
 
+/* Evaluate a constant expression at compile time. Returns non-zero on success. */
+static int eval_const_expr(expr_t *expr, int *out)
+{
+    if (!expr)
+        return 0;
+    switch (expr->kind) {
+    case EXPR_NUMBER:
+        if (out)
+            *out = (int)strtol(expr->number.value, NULL, 10);
+        return 1;
+    case EXPR_CHAR:
+        if (out)
+            *out = (int)expr->ch.value;
+        return 1;
+    case EXPR_UNARY:
+        if (expr->unary.op == UNOP_NEG) {
+            int val;
+            if (eval_const_expr(expr->unary.operand, &val)) {
+                if (out)
+                    *out = -val;
+                return 1;
+            }
+        }
+        return 0;
+    case EXPR_BINARY: {
+        int a, b;
+        if (!eval_const_expr(expr->binary.left, &a) ||
+            !eval_const_expr(expr->binary.right, &b))
+            return 0;
+        switch (expr->binary.op) {
+        case BINOP_ADD: if (out) *out = a + b; break;
+        case BINOP_SUB: if (out) *out = a - b; break;
+        case BINOP_MUL: if (out) *out = a * b; break;
+        case BINOP_DIV: if (out) *out = b != 0 ? a / b : 0; break;
+        case BINOP_EQ:  if (out) *out = (a == b); break;
+        case BINOP_NEQ: if (out) *out = (a != b); break;
+        case BINOP_LT:  if (out) *out = (a < b); break;
+        case BINOP_GT:  if (out) *out = (a > b); break;
+        case BINOP_LE:  if (out) *out = (a <= b); break;
+        case BINOP_GE:  if (out) *out = (a >= b); break;
+        default:
+            return 0;
+        }
+        return 1;
+    }
+    default:
+        return 0;
+    }
+}
+
 static type_kind_t check_binary(expr_t *left, expr_t *right, symtable_t *vars,
                                 symtable_t *funcs, ir_builder_t *ir,
                                 ir_value_t *out, binop_t op)
@@ -503,7 +553,14 @@ int check_global(stmt_t *decl, symtable_t *globals, ir_builder_t *ir)
         set_error(decl->line, decl->column);
         return 0;
     }
-    ir_build_glob_var(ir, decl->var_decl.name);
+    int value = 0;
+    if (decl->var_decl.init) {
+        if (!eval_const_expr(decl->var_decl.init, &value)) {
+            set_error(decl->var_decl.init->line, decl->var_decl.init->column);
+            return 0;
+        }
+    }
+    ir_build_glob_var(ir, decl->var_decl.name, value);
     return 1;
 }
 

@@ -266,7 +266,7 @@ void codegen_emit_x86(FILE *out, ir_builder_t *ir, int x64)
             }
             fprintf(out, "%s:\n", ins->name);
             if (ins->op == IR_GLOB_VAR)
-                fprintf(out, "    %s 0\n", size_directive);
+                fprintf(out, "    %s %d\n", size_directive, ins->imm);
             else
                 fprintf(out, "    .asciz \"%s\"\n", ins->data);
         }
