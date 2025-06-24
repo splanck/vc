@@ -11,6 +11,7 @@ typedef enum {
     TOK_STRING,
     TOK_CHAR,
     TOK_KW_INT,
+    TOK_KW_CHAR,
     TOK_KW_VOID,
     TOK_KW_RETURN,
     TOK_KW_IF,

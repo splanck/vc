@@ -6,6 +6,7 @@
 /* Basic type categories used for type checking and function signatures */
 typedef enum {
     TYPE_INT,
+    TYPE_CHAR,
     TYPE_PTR,
     TYPE_ARRAY,
     TYPE_VOID,

@@ -87,6 +87,8 @@ static void read_identifier(const char *src, size_t *i, size_t *col,
         type = TOK_KW_CONTINUE;
     else if (len == 3 && strncmp(src + start, "int", 3) == 0)
         type = TOK_KW_INT;
+    else if (len == 4 && strncmp(src + start, "char", 4) == 0)
+        type = TOK_KW_CHAR;
     else if (len == 4 && strncmp(src + start, "void", 4) == 0)
         type = TOK_KW_VOID;
     else if (len == 6 && strncmp(src + start, "return", 6) == 0)
