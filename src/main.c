@@ -153,7 +153,8 @@ int main(int argc, char **argv)
         func_t *fn = NULL;
         stmt_t *g = NULL;
         if (!parser_parse_toplevel(&parser, &fn, &g)) {
-            parser_print_error(&parser, "Parse error");
+            token_type_t expected[] = { TOK_KW_INT, TOK_KW_VOID };
+            parser_print_error(&parser, expected, 2);
             ok = 0;
             break;
         }

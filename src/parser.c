@@ -32,15 +32,69 @@ int parser_is_eof(parser_t *p)
     return !tok || tok->type == TOK_EOF;
 }
 
-void parser_print_error(parser_t *p, const char *msg)
+static const char *token_name(token_type_t type)
+{
+    switch (type) {
+    case TOK_EOF: return "end of file";
+    case TOK_IDENT: return "identifier";
+    case TOK_NUMBER: return "number";
+    case TOK_STRING: return "string";
+    case TOK_CHAR: return "character";
+    case TOK_KW_INT: return "\"int\"";
+    case TOK_KW_VOID: return "\"void\"";
+    case TOK_KW_RETURN: return "\"return\"";
+    case TOK_KW_IF: return "\"if\"";
+    case TOK_KW_ELSE: return "\"else\"";
+    case TOK_KW_WHILE: return "\"while\"";
+    case TOK_KW_FOR: return "\"for\"";
+    case TOK_KW_BREAK: return "\"break\"";
+    case TOK_KW_CONTINUE: return "\"continue\"";
+    case TOK_LPAREN: return "'('";
+    case TOK_RPAREN: return "')'";
+    case TOK_LBRACE: return "'{'";
+    case TOK_RBRACE: return "'}'";
+    case TOK_SEMI: return "';'";
+    case TOK_COMMA: return "','";
+    case TOK_PLUS: return "'+'";
+    case TOK_MINUS: return "'-'";
+    case TOK_AMP: return "'&'";
+    case TOK_STAR: return "'*'";
+    case TOK_SLASH: return "'/'";
+    case TOK_ASSIGN: return "'='";
+    case TOK_EQ: return "'=='";
+    case TOK_NEQ: return "'!='";
+    case TOK_LT: return "'<'";
+    case TOK_GT: return "'>'";
+    case TOK_LE: return "'<='";
+    case TOK_GE: return "'>='";
+    case TOK_LBRACKET: return "'['";
+    case TOK_RBRACKET: return "']'";
+    case TOK_UNKNOWN: return "unknown";
+    }
+    return "unknown";
+}
+
+void parser_print_error(parser_t *p, const token_type_t *expected,
+                        size_t expected_count)
 {
     token_t *tok = peek(p);
     if (tok) {
-        fprintf(stderr, "%s at line %zu, column %zu\n",
-                msg, tok->line, tok->column);
+        fprintf(stderr, "Unexpected token '%s' at line %zu, column %zu",
+                tok->lexeme, tok->line, tok->column);
     } else {
-        fprintf(stderr, "%s at end of file\n", msg);
+        fprintf(stderr, "Unexpected end of file");
     }
+
+    if (expected_count > 0) {
+        fprintf(stderr, ", expected ");
+        for (size_t i = 0; i < expected_count; i++) {
+            fprintf(stderr, "%s", token_name(expected[i]));
+            if (i + 1 < expected_count)
+                fprintf(stderr, ", ");
+        }
+    }
+
+    fprintf(stderr, "\n");
 }
 
 /* Forward declarations */
