@@ -28,7 +28,13 @@ typedef enum {
     BINOP_ADD,
     BINOP_SUB,
     BINOP_MUL,
-    BINOP_DIV
+    BINOP_DIV,
+    BINOP_EQ,
+    BINOP_NEQ,
+    BINOP_LT,
+    BINOP_GT,
+    BINOP_LE,
+    BINOP_GE
 } binop_t;
 
 typedef enum {

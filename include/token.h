@@ -28,6 +28,12 @@ typedef enum {
     TOK_STAR,
     TOK_SLASH,
     TOK_ASSIGN,
+    TOK_EQ,
+    TOK_NEQ,
+    TOK_LT,
+    TOK_GT,
+    TOK_LE,
+    TOK_GE,
     TOK_UNKNOWN
 } token_type_t;
 
