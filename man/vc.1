@@ -39,8 +39,11 @@ Disable constant propagation.
 .B --x86-64
 Generate x86-64 assembly instead of 32-bit.
 .TP
-.B --dump-ir
+.B --dump-asm
 Print generated assembly to stdout rather than creating a file.
+.TP
+.B --dump-ir
+Print IR to stdout before generating assembly.
 .SH EXAMPLES
 Compile a source file to \fIout.s\fR:
 .PP
@@ -48,6 +51,6 @@ Compile a source file to \fIout.s\fR:
 .PP
 Print the generated assembly:
 .PP
-.B vc --dump-ir source.c
+.B vc --dump-asm source.c
 .SH SEE ALSO
 README.md, docs/vcdoc.md

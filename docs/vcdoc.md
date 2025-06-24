@@ -336,11 +336,12 @@ The compiler supports the following options:
 - `--no-dce` – disable dead code elimination.
 - `--no-cprop` – disable constant propagation.
 - `--x86-64` – generate 64‑bit x86 assembly.
-- `--dump-ir` – print the generated assembly to stdout instead of creating a file.
+- `--dump-asm` – print the generated assembly to stdout instead of creating a file.
+- `--dump-ir` – print the IR to stdout before code generation.
 - `-O<N>` – set optimization level (0 disables all passes).
 
-Use `vc -o out.s source.c` to compile a file, or `vc --dump-ir source.c` to
-print the output to the terminal.
+Use `vc -o out.s source.c` to compile a file, or `vc --dump-asm source.c` to
+print the assembly to the terminal.
 
 ## Compiling a Simple Program
 

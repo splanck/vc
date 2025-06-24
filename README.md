@@ -20,10 +20,10 @@ vc -o out.s source.c
 ```
 
 To print the generated assembly to stdout instead of creating a file,
-pass `--dump-ir`:
+pass `--dump-asm`:
 
 ```sh
-vc --dump-ir source.c
+vc --dump-asm source.c
 ```
 
 ## Installation

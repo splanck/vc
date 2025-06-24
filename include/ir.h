@@ -90,4 +90,7 @@ void ir_build_label(ir_builder_t *b, const char *label);
 ir_value_t ir_build_string(ir_builder_t *b, const char *data);
 void ir_build_glob_var(ir_builder_t *b, const char *name, int value);
 
+/* Generate a string representation of the IR. Caller must free. */
+char *ir_to_string(ir_builder_t *b);
+
 #endif /* VC_IR_H */
