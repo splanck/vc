@@ -81,6 +81,6 @@ void ir_build_br(ir_builder_t *b, const char *label);
 void ir_build_bcond(ir_builder_t *b, ir_value_t cond, const char *label);
 void ir_build_label(ir_builder_t *b, const char *label);
 ir_value_t ir_build_string(ir_builder_t *b, const char *data);
-void ir_build_glob_var(ir_builder_t *b, const char *name);
+void ir_build_glob_var(ir_builder_t *b, const char *name, int value);
 
 #endif /* VC_IR_H */
