@@ -1,0 +1,110 @@
+#include <stdlib.h>
+#include <string.h>
+#include "ast.h"
+
+static char *dup_string(const char *s)
+{
+    size_t len = strlen(s);
+    char *out = malloc(len + 1);
+    if (!out)
+        return NULL;
+    memcpy(out, s, len + 1);
+    return out;
+}
+/* Constructors for expressions */
+expr_t *ast_make_number(const char *value)
+{
+    expr_t *expr = malloc(sizeof(*expr));
+    if (!expr)
+        return NULL;
+    expr->kind = EXPR_NUMBER;
+    expr->number.value = dup_string(value ? value : "");
+    if (!expr->number.value) {
+        free(expr);
+        return NULL;
+    }
+    return expr;
+}
+
+expr_t *ast_make_ident(const char *name)
+{
+    expr_t *expr = malloc(sizeof(*expr));
+    if (!expr)
+        return NULL;
+    expr->kind = EXPR_IDENT;
+    expr->ident.name = dup_string(name ? name : "");
+    if (!expr->ident.name) {
+        free(expr);
+        return NULL;
+    }
+    return expr;
+}
+
+expr_t *ast_make_binary(binop_t op, expr_t *left, expr_t *right)
+{
+    expr_t *expr = malloc(sizeof(*expr));
+    if (!expr)
+        return NULL;
+    expr->kind = EXPR_BINARY;
+    expr->binary.op = op;
+    expr->binary.left = left;
+    expr->binary.right = right;
+    return expr;
+}
+
+/* Constructors for statements */
+stmt_t *ast_make_expr_stmt(expr_t *expr)
+{
+    stmt_t *stmt = malloc(sizeof(*stmt));
+    if (!stmt)
+        return NULL;
+    stmt->kind = STMT_EXPR;
+    stmt->expr.expr = expr;
+    return stmt;
+}
+
+stmt_t *ast_make_return(expr_t *expr)
+{
+    stmt_t *stmt = malloc(sizeof(*stmt));
+    if (!stmt)
+        return NULL;
+    stmt->kind = STMT_RETURN;
+    stmt->ret.expr = expr;
+    return stmt;
+}
+
+/* Destructors */
+void ast_free_expr(expr_t *expr)
+{
+    if (!expr)
+        return;
+    switch (expr->kind) {
+    case EXPR_NUMBER:
+        free(expr->number.value);
+        break;
+    case EXPR_IDENT:
+        free(expr->ident.name);
+        break;
+    case EXPR_BINARY:
+        ast_free_expr(expr->binary.left);
+        ast_free_expr(expr->binary.right);
+        break;
+    }
+    free(expr);
+}
+
+void ast_free_stmt(stmt_t *stmt)
+{
+    if (!stmt)
+        return;
+    switch (stmt->kind) {
+    case STMT_EXPR:
+        ast_free_expr(stmt->expr.expr);
+        break;
+    case STMT_RETURN:
+        ast_free_expr(stmt->ret.expr);
+        break;
+    }
+    free(stmt);
+}
+
