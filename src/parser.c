@@ -46,6 +46,7 @@ static const char *token_name(token_type_t type)
     case TOK_KW_RETURN: return "\"return\"";
     case TOK_KW_IF: return "\"if\"";
     case TOK_KW_ELSE: return "\"else\"";
+    case TOK_KW_DO: return "\"do\"";
     case TOK_KW_WHILE: return "\"while\"";
     case TOK_KW_FOR: return "\"for\"";
     case TOK_KW_BREAK: return "\"break\"";
@@ -540,6 +541,33 @@ stmt_t *parser_parse_stmt(parser_t *p)
             return NULL;
         }
         return ast_make_while(cond, body, kw_tok->line, kw_tok->column);
+    }
+
+    if (match(p, TOK_KW_DO)) {
+        token_t *kw_tok = &p->tokens[p->pos - 1];
+        stmt_t *body = parser_parse_stmt(p);
+        if (!body)
+            return NULL;
+        if (!match(p, TOK_KW_WHILE)) {
+            ast_free_stmt(body);
+            return NULL;
+        }
+        if (!match(p, TOK_LPAREN)) {
+            ast_free_stmt(body);
+            return NULL;
+        }
+        expr_t *cond = parse_expression(p);
+        if (!cond || !match(p, TOK_RPAREN)) {
+            ast_free_stmt(body);
+            ast_free_expr(cond);
+            return NULL;
+        }
+        if (!match(p, TOK_SEMI)) {
+            ast_free_stmt(body);
+            ast_free_expr(cond);
+            return NULL;
+        }
+        return ast_make_do_while(cond, body, kw_tok->line, kw_tok->column);
     }
 
     if (match(p, TOK_KW_FOR)) {

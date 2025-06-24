@@ -77,6 +77,8 @@ static void read_identifier(const char *src, size_t *i, size_t *col,
         type = TOK_KW_IF;
     else if (len == 4 && strncmp(src + start, "else", 4) == 0)
         type = TOK_KW_ELSE;
+    else if (len == 2 && strncmp(src + start, "do", 2) == 0)
+        type = TOK_KW_DO;
     else if (len == 5 && strncmp(src + start, "while", 5) == 0)
         type = TOK_KW_WHILE;
     else if (len == 3 && strncmp(src + start, "for", 3) == 0)

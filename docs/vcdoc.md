@@ -196,7 +196,7 @@ RETURN v2
 
 - Basic arithmetic expressions
 - Function definitions and calls
-- `for` and `while` loops
+- `for`, `while` and `do`/`while` loops
 - Pointers
 - Arrays
 - Global variables
@@ -244,6 +244,22 @@ int main() {
 Compile with:
 ```sh
 vc -o loop.s loop.c
+```
+
+`do`/`while` loops are also supported:
+```c
+/* do_loop.c */
+int main() {
+    int i = 0;
+    do
+        i = i + 1;
+    while (i < 3);
+    return i;
+}
+```
+Compile with:
+```sh
+vc -o do_loop.s do_loop.c
 ```
 
 ### Pointers

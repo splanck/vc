@@ -109,6 +109,7 @@ typedef enum {
     STMT_VAR_DECL,
     STMT_IF,
     STMT_WHILE,
+    STMT_DO_WHILE,
     STMT_FOR,
     STMT_BREAK,
     STMT_CONTINUE,
@@ -143,6 +144,10 @@ struct stmt {
             expr_t *cond;
             stmt_t *body;
         } while_stmt;
+        struct {
+            expr_t *cond;
+            stmt_t *body;
+        } do_while_stmt;
         struct {
             expr_t *init;
             expr_t *cond;
@@ -182,6 +187,8 @@ stmt_t *ast_make_if(expr_t *cond, stmt_t *then_branch, stmt_t *else_branch,
                     size_t line, size_t column);
 stmt_t *ast_make_while(expr_t *cond, stmt_t *body,
                        size_t line, size_t column);
+stmt_t *ast_make_do_while(expr_t *cond, stmt_t *body,
+                         size_t line, size_t column);
 stmt_t *ast_make_for(expr_t *init, expr_t *cond, expr_t *incr, stmt_t *body,
                      size_t line, size_t column);
 stmt_t *ast_make_break(size_t line, size_t column);
