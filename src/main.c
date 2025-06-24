@@ -23,7 +23,8 @@ static void print_usage(const char *prog)
     printf("      --no-dce         Disable dead code elimination\n");
     printf("      --no-cprop       Disable constant propagation\n");
     printf("      --x86-64         Generate 64-bit x86 assembly\n");
-    printf("      --dump-ir        Print assembly to stdout and exit\n");
+    printf("      --dump-asm       Print assembly to stdout and exit\n");
+    printf("      --dump-ir        Print IR to stdout and exit\n");
 }
 
 static char *read_file(const char *path)
@@ -68,8 +69,9 @@ int main(int argc, char **argv)
         {"no-fold", no_argument,       0, 1},
         {"no-dce",  no_argument,       0, 2},
         {"x86-64", no_argument,       0, 3},
-        {"dump-ir", no_argument,      0, 4},
+        {"dump-asm", no_argument,     0, 4},
         {"no-cprop", no_argument,     0, 5},
+        {"dump-ir", no_argument,      0, 6},
         {0, 0, 0, 0}
     };
 
@@ -77,6 +79,7 @@ int main(int argc, char **argv)
     int opt;
     opt_config_t opt_cfg = {1, 1, 1, 1};
     int use_x86_64 = 0;
+    int dump_asm = 0;
     int dump_ir = 0;
 
     while ((opt = getopt_long(argc, argv, "hvo:O:", long_opts, NULL)) != -1) {
@@ -112,10 +115,13 @@ int main(int argc, char **argv)
             use_x86_64 = 1;
             break;
         case 4:
-            dump_ir = 1;
+            dump_asm = 1;
             break;
         case 5:
             opt_cfg.const_prop = 0;
+            break;
+        case 6:
+            dump_ir = 1;
             break;
         default:
             print_usage(argv[0]);
@@ -129,7 +135,7 @@ int main(int argc, char **argv)
         return 1;
     }
 
-    if (!output && !dump_ir) {
+    if (!output && !dump_asm && !dump_ir) {
         fprintf(stderr, "Error: no output path specified.\n");
         print_usage(argv[0]);
         return 1;
@@ -226,8 +232,14 @@ int main(int argc, char **argv)
     if (ok)
         opt_run(&ir, &opt_cfg);
 
-    /* Generate assembly output */
+    /* Generate output */
     if (ok && dump_ir) {
+        char *text = ir_to_string(&ir);
+        if (text) {
+            printf("%s", text);
+            free(text);
+        }
+    } else if (ok && dump_asm) {
         char *text = codegen_ir_to_string(&ir, use_x86_64);
         if (text) {
             printf("%s", text);
@@ -260,7 +272,9 @@ int main(int argc, char **argv)
 
     if (ok) {
         if (dump_ir)
-            printf("Compiling %s (dumped to stdout)\n", source);
+            printf("Compiling %s (IR dumped to stdout)\n", source);
+        else if (dump_asm)
+            printf("Compiling %s (assembly dumped to stdout)\n", source);
         else
             printf("Compiling %s -> %s\n", source, output);
     }

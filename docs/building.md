@@ -26,7 +26,7 @@ This disables any NetBSD specific extensions.
 default without this flag is 32-bit code.
 
 To dump the generated assembly to stdout instead of creating a file, use
-`--dump-ir`. When this flag is given the `-o` option is not required.
+`--dump-asm`. When this flag is given the `-o` option is not required.
 
 ## Additional build steps
 

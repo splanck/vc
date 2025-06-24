@@ -43,14 +43,23 @@ if [ $ret -eq 0 ] || ! grep -q "Unexpected token" "$err" || ! grep -q "expected"
 fi
 rm -f "$out" "$err"
 
-# test --dump-ir option
+# test --dump-asm option
 dump_out=$(mktemp)
-"$BINARY" --dump-ir "$DIR/fixtures/simple_add.c" > "$dump_out"
+"$BINARY" --dump-asm "$DIR/fixtures/simple_add.c" > "$dump_out"
 if ! grep -q "movl \$7, %eax" "$dump_out"; then
-    echo "Test dump_ir failed"
+    echo "Test dump_asm failed"
     fail=1
 fi
 rm -f "$dump_out"
+
+# test --dump-ir option
+ir_out=$(mktemp)
+"$BINARY" --dump-ir "$DIR/fixtures/simple_add.c" > "$ir_out"
+if ! grep -q "IR_CONST" "$ir_out"; then
+    echo "Test dump_ir failed"
+    fail=1
+fi
+rm -f "$ir_out"
 
 # test --no-cprop option
 cprop_out=$(mktemp)
