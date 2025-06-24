@@ -131,6 +131,24 @@ static void test_parser_func(void)
     lexer_free_tokens(toks, count);
 }
 
+static void test_parser_block(void)
+{
+    const char *src = "{ int x; { int y; } }";
+    size_t count = 0;
+    token_t *toks = lexer_tokenize(src, &count);
+    parser_t p; parser_init(&p, toks, count);
+    stmt_t *stmt = parser_parse_stmt(&p);
+    ASSERT(stmt);
+    ASSERT(stmt->kind == STMT_BLOCK);
+    ASSERT(stmt->block.count == 2);
+    ASSERT(stmt->block.stmts[0]->kind == STMT_VAR_DECL);
+    ASSERT(stmt->block.stmts[1]->kind == STMT_BLOCK);
+    ASSERT(stmt->block.stmts[1]->block.count == 1);
+    ASSERT(stmt->block.stmts[1]->block.stmts[0]->kind == STMT_VAR_DECL);
+    ast_free_stmt(stmt);
+    lexer_free_tokens(toks, count);
+}
+
 int main(void)
 {
     test_lexer_basic();
@@ -140,6 +158,7 @@ int main(void)
     test_parser_stmt_return_void();
     test_parser_var_decl_init();
     test_parser_func();
+    test_parser_block();
     if (failures == 0) {
         printf("All unit tests passed\n");
     } else {

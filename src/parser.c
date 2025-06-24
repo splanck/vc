@@ -308,6 +308,39 @@ static expr_t *parse_expression(parser_t *p)
     return parse_assignment(p);
 }
 
+static stmt_t *parse_block(parser_t *p)
+{
+    if (!match(p, TOK_LBRACE))
+        return NULL;
+    token_t *lb_tok = &p->tokens[p->pos - 1];
+    size_t cap = 4, count = 0;
+    stmt_t **stmts = malloc(cap * sizeof(*stmts));
+    if (!stmts)
+        return NULL;
+    while (!match(p, TOK_RBRACE)) {
+        stmt_t *s = parser_parse_stmt(p);
+        if (!s) {
+            for (size_t i = 0; i < count; i++)
+                ast_free_stmt(stmts[i]);
+            free(stmts);
+            return NULL;
+        }
+        if (count >= cap) {
+            cap *= 2;
+            stmt_t **tmp = realloc(stmts, cap * sizeof(*tmp));
+            if (!tmp) {
+                for (size_t i = 0; i < count; i++)
+                    ast_free_stmt(stmts[i]);
+                free(stmts);
+                return NULL;
+            }
+            stmts = tmp;
+        }
+        stmts[count++] = s;
+    }
+    return ast_make_block(stmts, count, lb_tok->line, lb_tok->column);
+}
+
 expr_t *parser_parse_expr(parser_t *p)
 {
     return parse_expression(p);
@@ -315,6 +348,10 @@ expr_t *parser_parse_expr(parser_t *p)
 
 stmt_t *parser_parse_stmt(parser_t *p)
 {
+    token_t *tok = peek(p);
+    if (tok && tok->type == TOK_LBRACE)
+        return parse_block(p);
+
     if (match(p, TOK_KW_INT)) {
         token_t *kw_tok = &p->tokens[p->pos - 1];
         type_kind_t t = TYPE_INT;

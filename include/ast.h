@@ -95,7 +95,8 @@ typedef enum {
     STMT_VAR_DECL,
     STMT_IF,
     STMT_WHILE,
-    STMT_FOR
+    STMT_FOR,
+    STMT_BLOCK
 } stmt_kind_t;
 
 struct stmt {
@@ -131,6 +132,10 @@ struct stmt {
             expr_t *incr;
             stmt_t *body;
         } for_stmt;
+        struct {
+            stmt_t **stmts;
+            size_t count;
+        } block;
     };
 };
 
@@ -158,6 +163,8 @@ stmt_t *ast_make_while(expr_t *cond, stmt_t *body,
                        size_t line, size_t column);
 stmt_t *ast_make_for(expr_t *init, expr_t *cond, expr_t *incr, stmt_t *body,
                      size_t line, size_t column);
+stmt_t *ast_make_block(stmt_t **stmts, size_t count,
+                       size_t line, size_t column);
 
 /* Destructors */
 void ast_free_expr(expr_t *expr);
