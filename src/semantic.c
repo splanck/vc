@@ -260,6 +260,17 @@ type_kind_t check_expr(expr_t *expr, symtable_t *vars, symtable_t *funcs,
             if (out)
                 *out = ir_build_addr(ir, sym->name);
             return TYPE_PTR;
+        } else if (expr->unary.op == UNOP_NEG) {
+            ir_value_t val;
+            if (check_expr(expr->unary.operand, vars, funcs, ir, &val) == TYPE_INT) {
+                if (out) {
+                    ir_value_t zero = ir_build_const(ir, 0);
+                    *out = ir_build_binop(ir, IR_SUB, zero, val);
+                }
+                return TYPE_INT;
+            }
+            set_error(expr->unary.operand->line, expr->unary.operand->column);
+            return TYPE_UNKNOWN;
         }
         return TYPE_UNKNOWN;
     case EXPR_IDENT: {

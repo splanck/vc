@@ -39,7 +39,8 @@ typedef enum {
 
 typedef enum {
     UNOP_ADDR,
-    UNOP_DEREF
+    UNOP_DEREF,
+    UNOP_NEG
 } unop_t;
 
 struct expr;
