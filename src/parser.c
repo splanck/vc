@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include "parser.h"
 #include "vector.h"
+#include "error.h"
 
 void parser_init(parser_t *p, token_t *tokens, size_t count)
 {
@@ -64,23 +65,27 @@ void parser_print_error(parser_t *p, const token_type_t *expected,
                         size_t expected_count)
 {
     token_t *tok = peek(p);
+    char msg[256];
+    size_t off;
     if (tok) {
-        fprintf(stderr, "Unexpected token '%s' at line %zu, column %zu",
-                tok->lexeme, tok->line, tok->column);
+        error_set(tok->line, tok->column);
+        off = snprintf(msg, sizeof(msg), "Unexpected token '%s'", tok->lexeme);
     } else {
-        fprintf(stderr, "Unexpected end of file");
+        error_set(0, 0);
+        off = snprintf(msg, sizeof(msg), "Unexpected end of file");
     }
 
-    if (expected_count > 0) {
-        fprintf(stderr, ", expected ");
-        for (size_t i = 0; i < expected_count; i++) {
-            fprintf(stderr, "%s", token_name(expected[i]));
-            if (i + 1 < expected_count)
-                fprintf(stderr, ", ");
+    if (expected_count > 0 && off < sizeof(msg)) {
+        off += snprintf(msg + off, sizeof(msg) - off, ", expected ");
+        for (size_t i = 0; i < expected_count && off < sizeof(msg); i++) {
+            off += snprintf(msg + off, sizeof(msg) - off, "%s",
+                            token_name(expected[i]));
+            if (i + 1 < expected_count && off < sizeof(msg))
+                off += snprintf(msg + off, sizeof(msg) - off, ", ");
         }
     }
 
-    fprintf(stderr, "\n");
+    error_print(msg);
 }
 
 

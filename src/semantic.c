@@ -5,28 +5,12 @@
 #include "symtable.h"
 #include "util.h"
 #include "label.h"
+#include "error.h"
 
 static int is_intlike(type_kind_t t)
 {
     return t == TYPE_INT || t == TYPE_CHAR;
 }
-
-
-static size_t error_line = 0;
-static size_t error_column = 0;
-
-static void set_error(size_t line, size_t column)
-{
-    error_line = line;
-    error_column = column;
-}
-
-void semantic_print_error(const char *msg)
-{
-    fprintf(stderr, "%s at line %zu, column %zu\n",
-            msg, error_line, error_column);
-}
-
 
 static void symtable_pop_scope(symtable_t *table, symbol_t *old_head)
 {
@@ -132,7 +116,7 @@ static type_kind_t check_binary(expr_t *left, expr_t *right, symtable_t *vars,
             *out = ir_build_binop(ir, IR_PTR_DIFF, lval, rval);
         return TYPE_INT;
     }
-    set_error(left->line, left->column);
+    error_set(left->line, left->column);
     return TYPE_UNKNOWN;
 }
 
@@ -162,16 +146,16 @@ type_kind_t check_expr(expr_t *expr, symtable_t *vars, symtable_t *funcs,
                     *out = ir_build_load_ptr(ir, addr);
                 return TYPE_INT;
             }
-            set_error(expr->unary.operand->line, expr->unary.operand->column);
+            error_set(expr->unary.operand->line, expr->unary.operand->column);
             return TYPE_UNKNOWN;
         } else if (expr->unary.op == UNOP_ADDR) {
             if (expr->unary.operand->kind != EXPR_IDENT) {
-                set_error(expr->unary.operand->line, expr->unary.operand->column);
+                error_set(expr->unary.operand->line, expr->unary.operand->column);
                 return TYPE_UNKNOWN;
             }
             symbol_t *sym = symtable_lookup(vars, expr->unary.operand->ident.name);
             if (!sym) {
-                set_error(expr->unary.operand->line, expr->unary.operand->column);
+                error_set(expr->unary.operand->line, expr->unary.operand->column);
                 return TYPE_UNKNOWN;
             }
             if (out)
@@ -186,14 +170,14 @@ type_kind_t check_expr(expr_t *expr, symtable_t *vars, symtable_t *funcs,
                 }
                 return TYPE_INT;
             }
-            set_error(expr->unary.operand->line, expr->unary.operand->column);
+            error_set(expr->unary.operand->line, expr->unary.operand->column);
             return TYPE_UNKNOWN;
         }
         return TYPE_UNKNOWN;
     case EXPR_IDENT: {
         symbol_t *sym = symtable_lookup(vars, expr->ident.name);
         if (!sym) {
-            set_error(expr->line, expr->column);
+            error_set(expr->line, expr->column);
             return TYPE_UNKNOWN;
         }
         if (sym->type == TYPE_ARRAY) {
@@ -217,7 +201,7 @@ type_kind_t check_expr(expr_t *expr, symtable_t *vars, symtable_t *funcs,
         ir_value_t val;
         symbol_t *sym = symtable_lookup(vars, expr->assign.name);
         if (!sym) {
-            set_error(expr->line, expr->column);
+            error_set(expr->line, expr->column);
             return TYPE_UNKNOWN;
         }
         type_kind_t vt = check_expr(expr->assign.value, vars, funcs, ir, &val);
@@ -230,28 +214,28 @@ type_kind_t check_expr(expr_t *expr, symtable_t *vars, symtable_t *funcs,
                 *out = val;
             return sym->type;
         }
-        set_error(expr->line, expr->column);
+        error_set(expr->line, expr->column);
         return TYPE_UNKNOWN;
     }
     case EXPR_INDEX: {
         if (expr->index.array->kind != EXPR_IDENT) {
-            set_error(expr->line, expr->column);
+            error_set(expr->line, expr->column);
             return TYPE_UNKNOWN;
         }
         symbol_t *sym = symtable_lookup(vars, expr->index.array->ident.name);
         if (!sym || sym->type != TYPE_ARRAY) {
-            set_error(expr->line, expr->column);
+            error_set(expr->line, expr->column);
             return TYPE_UNKNOWN;
         }
         ir_value_t idx_val;
         if (check_expr(expr->index.index, vars, funcs, ir, &idx_val) != TYPE_INT) {
-            set_error(expr->index.index->line, expr->index.index->column);
+            error_set(expr->index.index->line, expr->index.index->column);
             return TYPE_UNKNOWN;
         }
         int cval;
         if (sym->array_size && eval_const_expr(expr->index.index, &cval)) {
             if (cval < 0 || (size_t)cval >= sym->array_size) {
-                set_error(expr->index.index->line, expr->index.index->column);
+                error_set(expr->index.index->line, expr->index.index->column);
                 return TYPE_UNKNOWN;
             }
         }
@@ -261,27 +245,27 @@ type_kind_t check_expr(expr_t *expr, symtable_t *vars, symtable_t *funcs,
     }
     case EXPR_ASSIGN_INDEX: {
         if (expr->assign_index.array->kind != EXPR_IDENT) {
-            set_error(expr->line, expr->column);
+            error_set(expr->line, expr->column);
             return TYPE_UNKNOWN;
         }
         symbol_t *sym = symtable_lookup(vars, expr->assign_index.array->ident.name);
         if (!sym || sym->type != TYPE_ARRAY) {
-            set_error(expr->line, expr->column);
+            error_set(expr->line, expr->column);
             return TYPE_UNKNOWN;
         }
         ir_value_t idx_val, val;
         if (check_expr(expr->assign_index.index, vars, funcs, ir, &idx_val) != TYPE_INT) {
-            set_error(expr->assign_index.index->line, expr->assign_index.index->column);
+            error_set(expr->assign_index.index->line, expr->assign_index.index->column);
             return TYPE_UNKNOWN;
         }
         if (check_expr(expr->assign_index.value, vars, funcs, ir, &val) != TYPE_INT) {
-            set_error(expr->assign_index.value->line, expr->assign_index.value->column);
+            error_set(expr->assign_index.value->line, expr->assign_index.value->column);
             return TYPE_UNKNOWN;
         }
         int cval;
         if (sym->array_size && eval_const_expr(expr->assign_index.index, &cval)) {
             if (cval < 0 || (size_t)cval >= sym->array_size) {
-                set_error(expr->assign_index.index->line, expr->assign_index.index->column);
+                error_set(expr->assign_index.index->line, expr->assign_index.index->column);
                 return TYPE_UNKNOWN;
             }
         }
@@ -293,11 +277,11 @@ type_kind_t check_expr(expr_t *expr, symtable_t *vars, symtable_t *funcs,
     case EXPR_CALL: {
         symbol_t *fsym = symtable_lookup(funcs, expr->call.name);
         if (!fsym) {
-            set_error(expr->line, expr->column);
+            error_set(expr->line, expr->column);
             return TYPE_UNKNOWN;
         }
         if (fsym->param_count != expr->call.arg_count) {
-            set_error(expr->line, expr->column);
+            error_set(expr->line, expr->column);
             return TYPE_UNKNOWN;
         }
         ir_value_t *vals = NULL;
@@ -311,7 +295,7 @@ type_kind_t check_expr(expr_t *expr, symtable_t *vars, symtable_t *funcs,
                                         &vals[i]);
             type_kind_t pt = fsym->param_types[i];
             if (!((pt == TYPE_CHAR && is_intlike(at)) || at == pt)) {
-                set_error(expr->call.args[i]->line, expr->call.args[i]->column);
+                error_set(expr->call.args[i]->line, expr->call.args[i]->column);
                 free(vals);
                 return TYPE_UNKNOWN;
             }
@@ -326,7 +310,7 @@ type_kind_t check_expr(expr_t *expr, symtable_t *vars, symtable_t *funcs,
         return fsym->type;
     }
     }
-    set_error(expr->line, expr->column);
+    error_set(expr->line, expr->column);
     return TYPE_UNKNOWN;
 }
 
@@ -344,7 +328,7 @@ int check_stmt(stmt_t *stmt, symtable_t *vars, symtable_t *funcs,
     case STMT_RETURN: {
         if (!stmt->ret.expr) {
             if (func_ret_type != TYPE_VOID) {
-                set_error(stmt->line, stmt->column);
+                error_set(stmt->line, stmt->column);
                 return 0;
             }
             ir_value_t zero = ir_build_const(ir, 0);
@@ -353,7 +337,7 @@ int check_stmt(stmt_t *stmt, symtable_t *vars, symtable_t *funcs,
         }
         ir_value_t val;
         if (check_expr(stmt->ret.expr, vars, funcs, ir, &val) == TYPE_UNKNOWN) {
-            set_error(stmt->ret.expr->line, stmt->ret.expr->column);
+            error_set(stmt->ret.expr->line, stmt->ret.expr->column);
             return 0;
         }
         ir_build_return(ir, val);
@@ -449,14 +433,14 @@ int check_stmt(stmt_t *stmt, symtable_t *vars, symtable_t *funcs,
     }
     case STMT_BREAK:
         if (!break_label) {
-            set_error(stmt->line, stmt->column);
+            error_set(stmt->line, stmt->column);
             return 0;
         }
         ir_build_br(ir, break_label);
         return 1;
     case STMT_CONTINUE:
         if (!continue_label) {
-            set_error(stmt->line, stmt->column);
+            error_set(stmt->line, stmt->column);
             return 0;
         }
         ir_build_br(ir, continue_label);
@@ -476,7 +460,7 @@ int check_stmt(stmt_t *stmt, symtable_t *vars, symtable_t *funcs,
     case STMT_VAR_DECL: {
         if (!symtable_add(vars, stmt->var_decl.name, stmt->var_decl.type,
                           stmt->var_decl.array_size)) {
-            set_error(stmt->line, stmt->column);
+            error_set(stmt->line, stmt->column);
             return 0;
         }
         if (stmt->var_decl.init) {
@@ -484,20 +468,20 @@ int check_stmt(stmt_t *stmt, symtable_t *vars, symtable_t *funcs,
             type_kind_t vt = check_expr(stmt->var_decl.init, vars, funcs, ir, &val);
             if (!((stmt->var_decl.type == TYPE_CHAR && is_intlike(vt)) ||
                   vt == stmt->var_decl.type)) {
-                set_error(stmt->var_decl.init->line, stmt->var_decl.init->column);
+                error_set(stmt->var_decl.init->line, stmt->var_decl.init->column);
                 return 0;
             }
             ir_build_store(ir, stmt->var_decl.name, val);
         } else if (stmt->var_decl.init_list) {
             if (stmt->var_decl.type != TYPE_ARRAY ||
                 stmt->var_decl.array_size < stmt->var_decl.init_count) {
-                set_error(stmt->line, stmt->column);
+                error_set(stmt->line, stmt->column);
                 return 0;
             }
             for (size_t i = 0; i < stmt->var_decl.init_count; i++) {
                 int v;
                 if (!eval_const_expr(stmt->var_decl.init_list[i], &v)) {
-                    set_error(stmt->var_decl.init_list[i]->line,
+                    error_set(stmt->var_decl.init_list[i]->line,
                               stmt->var_decl.init_list[i]->column);
                     return 0;
                 }
@@ -547,7 +531,7 @@ int check_global(stmt_t *decl, symtable_t *globals, ir_builder_t *ir)
     if (!symtable_add_global(globals, decl->var_decl.name,
                              decl->var_decl.type,
                              decl->var_decl.array_size)) {
-        set_error(decl->line, decl->column);
+        error_set(decl->line, decl->column);
         return 0;
     }
     if (decl->var_decl.type == TYPE_ARRAY) {
@@ -558,13 +542,13 @@ int check_global(stmt_t *decl, symtable_t *globals, ir_builder_t *ir)
         size_t init_count = decl->var_decl.init_count;
         if (init_count > count) {
             free(vals);
-            set_error(decl->line, decl->column);
+            error_set(decl->line, decl->column);
             return 0;
         }
         for (size_t i = 0; i < init_count; i++) {
             if (!eval_const_expr(decl->var_decl.init_list[i], &vals[i])) {
                 free(vals);
-                set_error(decl->var_decl.init_list[i]->line,
+                error_set(decl->var_decl.init_list[i]->line,
                           decl->var_decl.init_list[i]->column);
                 return 0;
             }
@@ -575,7 +559,7 @@ int check_global(stmt_t *decl, symtable_t *globals, ir_builder_t *ir)
         int value = 0;
         if (decl->var_decl.init) {
             if (!eval_const_expr(decl->var_decl.init, &value)) {
-                set_error(decl->var_decl.init->line, decl->var_decl.init->column);
+                error_set(decl->var_decl.init->line, decl->var_decl.init->column);
                 return 0;
             }
         }

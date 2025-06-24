@@ -77,7 +77,7 @@ int foo() { return 3; }
 int main() { return foo(); }
 ```
 
-Any mismatch results in `semantic_print_error` reporting the source
+Any mismatch results in `error_print` reporting the source
 location of the failure.
 
 ### ir
