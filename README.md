@@ -25,3 +25,14 @@ pass `--dump-ir`:
 ```sh
 vc --dump-ir source.c
 ```
+
+## Installation
+
+To install the compiler, run:
+
+```sh
+make install PREFIX=/usr/local
+```
+
+This installs `vc` under `PREFIX/bin`, the public headers under
+`PREFIX/include/vc`, and the manual page under `PREFIX/share/man/man1`.
