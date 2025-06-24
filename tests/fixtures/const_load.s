@@ -4,5 +4,7 @@ main:
     movl $5, %eax
     movl %eax, x
     movl $5, %eax
+    movl %eax, y
+    movl $5, %eax
     movl %eax, %eax
     ret

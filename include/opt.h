@@ -6,6 +6,7 @@
 typedef struct {
     int fold_constants; /* enable constant folding */
     int dead_code;      /* enable dead code elimination */
+    int const_prop;     /* enable store/load constant propagation */
 } opt_config_t;
 
 /* Run optimization passes on the given IR builder */
