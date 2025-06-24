@@ -241,6 +241,20 @@ stmt_t *ast_make_while(expr_t *cond, stmt_t *body,
     return stmt;
 }
 
+stmt_t *ast_make_do_while(expr_t *cond, stmt_t *body,
+                          size_t line, size_t column)
+{
+    stmt_t *stmt = malloc(sizeof(*stmt));
+    if (!stmt)
+        return NULL;
+    stmt->kind = STMT_DO_WHILE;
+    stmt->line = line;
+    stmt->column = column;
+    stmt->do_while_stmt.cond = cond;
+    stmt->do_while_stmt.body = body;
+    return stmt;
+}
+
 stmt_t *ast_make_for(expr_t *init, expr_t *cond, expr_t *incr, stmt_t *body,
                      size_t line, size_t column)
 {
@@ -405,6 +419,10 @@ void ast_free_stmt(stmt_t *stmt)
     case STMT_WHILE:
         ast_free_expr(stmt->while_stmt.cond);
         ast_free_stmt(stmt->while_stmt.body);
+        break;
+    case STMT_DO_WHILE:
+        ast_free_expr(stmt->do_while_stmt.cond);
+        ast_free_stmt(stmt->do_while_stmt.body);
         break;
     case STMT_FOR:
         ast_free_expr(stmt->for_stmt.init);

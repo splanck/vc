@@ -560,6 +560,27 @@ int check_stmt(stmt_t *stmt, symtable_t *vars, symtable_t *funcs,
         ir_build_label(ir, end_label);
         return 1;
     }
+    case STMT_DO_WHILE: {
+        ir_value_t cond_val;
+        char start_label[32];
+        char cond_label[32];
+        char end_label[32];
+        int id = next_label_id++;
+        snprintf(start_label, sizeof(start_label), "L%d_start", id);
+        snprintf(cond_label, sizeof(cond_label), "L%d_cond", id);
+        snprintf(end_label, sizeof(end_label), "L%d_end", id);
+        ir_build_label(ir, start_label);
+        if (!check_stmt(stmt->do_while_stmt.body, vars, funcs, ir, func_ret_type,
+                        end_label, cond_label))
+            return 0;
+        ir_build_label(ir, cond_label);
+        if (check_expr(stmt->do_while_stmt.cond, vars, funcs, ir, &cond_val) == TYPE_UNKNOWN)
+            return 0;
+        ir_build_bcond(ir, cond_val, end_label);
+        ir_build_br(ir, start_label);
+        ir_build_label(ir, end_label);
+        return 1;
+    }
     case STMT_FOR: {
         ir_value_t cond_val;
         char start_label[32];
