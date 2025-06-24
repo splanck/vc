@@ -185,7 +185,10 @@ int main(int argc, char **argv)
     }
 
     for (size_t i = 0; i < fcount; i++)
-        symtable_add(&funcs, func_list[i]->name, func_list[i]->return_type);
+        symtable_add_func(&funcs, func_list[i]->name,
+                          func_list[i]->return_type,
+                          func_list[i]->param_types,
+                          func_list[i]->param_count);
     for (size_t i = 0; i < gcount; i++) {
         if (!check_global(glob_list[i], &globals, &ir)) {
             semantic_print_error("Semantic error");

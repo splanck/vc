@@ -81,9 +81,42 @@ static expr_t *parse_primary(parser_t *p)
             p->pos++; /* consume ident */
             char *name = tok->lexeme;
             match(p, TOK_LPAREN);
-            if (!match(p, TOK_RPAREN))
+            size_t cap = 4, count = 0;
+            expr_t **args = malloc(cap * sizeof(*args));
+            if (!args)
                 return NULL;
-            return ast_make_call(name, tok->line, tok->column);
+            if (!match(p, TOK_RPAREN)) {
+                do {
+                    expr_t *arg = parse_expression(p);
+                    if (!arg) {
+                        for (size_t i = 0; i < count; i++)
+                            ast_free_expr(args[i]);
+                        free(args);
+                        return NULL;
+                    }
+                    if (count >= cap) {
+                        cap *= 2;
+                        expr_t **tmp = realloc(args, cap * sizeof(*tmp));
+                        if (!tmp) {
+                            for (size_t i = 0; i < count; i++)
+                                ast_free_expr(args[i]);
+                            free(args);
+                            return NULL;
+                        }
+                        args = tmp;
+                    }
+                    args[count++] = arg;
+                } while (match(p, TOK_COMMA));
+                if (!match(p, TOK_RPAREN)) {
+                    for (size_t i = 0; i < count; i++)
+                        ast_free_expr(args[i]);
+                    free(args);
+                    return NULL;
+                }
+            }
+            expr_t *call = ast_make_call(name, args, count,
+                                         tok->line, tok->column);
+            return call;
         } else if (match(p, TOK_IDENT)) {
             return ast_make_ident(tok->lexeme, tok->line, tok->column);
         }

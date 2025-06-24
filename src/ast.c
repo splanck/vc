@@ -119,7 +119,8 @@ expr_t *ast_make_assign(const char *name, expr_t *value,
     return expr;
 }
 
-expr_t *ast_make_call(const char *name, size_t line, size_t column)
+expr_t *ast_make_call(const char *name, expr_t **args, size_t arg_count,
+                      size_t line, size_t column)
 {
     expr_t *expr = malloc(sizeof(*expr));
     if (!expr)
@@ -132,6 +133,8 @@ expr_t *ast_make_call(const char *name, size_t line, size_t column)
         free(expr);
         return NULL;
     }
+    expr->call.args = args;
+    expr->call.arg_count = arg_count;
     return expr;
 }
 
@@ -295,6 +298,9 @@ void ast_free_expr(expr_t *expr)
         ast_free_expr(expr->assign.value);
         break;
     case EXPR_CALL:
+        for (size_t i = 0; i < expr->call.arg_count; i++)
+            ast_free_expr(expr->call.args[i]);
+        free(expr->call.args);
         free(expr->call.name);
         break;
     }

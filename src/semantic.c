@@ -42,6 +42,7 @@ void symtable_free(symtable_t *table)
     while (sym) {
         symbol_t *next = sym->next;
         free(sym->name);
+        free(sym->param_types);
         free(sym);
         sym = next;
     }
@@ -49,6 +50,7 @@ void symtable_free(symtable_t *table)
     while (sym) {
         symbol_t *next = sym->next;
         free(sym->name);
+        free(sym->param_types);
         free(sym);
         sym = next;
     }
@@ -83,6 +85,8 @@ int symtable_add(symtable_t *table, const char *name, type_kind_t type)
     }
     sym->type = type;
     sym->param_index = -1;
+    sym->param_types = NULL;
+    sym->param_count = 0;
     sym->next = table->head;
     table->head = sym;
     return 1;
@@ -103,6 +107,8 @@ int symtable_add_param(symtable_t *table, const char *name, type_kind_t type,
     }
     sym->type = type;
     sym->param_index = index;
+    sym->param_types = NULL;
+    sym->param_count = 0;
     sym->next = table->head;
     table->head = sym;
     return 1;
@@ -124,8 +130,42 @@ int symtable_add_global(symtable_t *table, const char *name, type_kind_t type)
     }
     sym->type = type;
     sym->param_index = -1;
+    sym->param_types = NULL;
+    sym->param_count = 0;
     sym->next = table->globals;
     table->globals = sym;
+    return 1;
+}
+
+int symtable_add_func(symtable_t *table, const char *name, type_kind_t ret_type,
+                      type_kind_t *param_types, size_t param_count)
+{
+    if (symtable_lookup(table, name))
+        return 0;
+    symbol_t *sym = malloc(sizeof(*sym));
+    if (!sym)
+        return 0;
+    sym->name = dup_string(name ? name : "");
+    if (!sym->name) {
+        free(sym);
+        return 0;
+    }
+    sym->type = ret_type;
+    sym->param_index = -1;
+    sym->param_count = param_count;
+    sym->param_types = NULL;
+    if (param_count) {
+        sym->param_types = malloc(param_count * sizeof(*sym->param_types));
+        if (!sym->param_types) {
+            free(sym->name);
+            free(sym);
+            return 0;
+        }
+        for (size_t i = 0; i < param_count; i++)
+            sym->param_types[i] = param_types[i];
+    }
+    sym->next = table->head;
+    table->head = sym;
     return 1;
 }
 
@@ -253,8 +293,32 @@ type_kind_t check_expr(expr_t *expr, symtable_t *vars, symtable_t *funcs,
             set_error(expr->line, expr->column);
             return TYPE_UNKNOWN;
         }
+        if (fsym->param_count != expr->call.arg_count) {
+            set_error(expr->line, expr->column);
+            return TYPE_UNKNOWN;
+        }
+        ir_value_t *vals = NULL;
+        if (expr->call.arg_count) {
+            vals = malloc(expr->call.arg_count * sizeof(*vals));
+            if (!vals)
+                return TYPE_UNKNOWN;
+        }
+        for (size_t i = 0; i < expr->call.arg_count; i++) {
+            type_kind_t at = check_expr(expr->call.args[i], vars, funcs, ir,
+                                        &vals[i]);
+            if (at != fsym->param_types[i]) {
+                set_error(expr->call.args[i]->line, expr->call.args[i]->column);
+                free(vals);
+                return TYPE_UNKNOWN;
+            }
+        }
+        for (size_t i = expr->call.arg_count; i > 0; i--)
+            ir_build_arg(ir, vals[i - 1]);
+        free(vals);
+        ir_value_t call_val = ir_build_call(ir, expr->call.name,
+                                           expr->call.arg_count);
         if (out)
-            *out = ir_build_call(ir, expr->call.name);
+            *out = call_val;
         return fsym->type;
     }
     }

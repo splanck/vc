@@ -131,6 +131,10 @@ static void emit_instr(strbuf_t *sb, ir_instr_t *ins, regalloc_t *ra, int x64)
                    loc_str(buf1, ra, ins->src2, x64),
                    loc_str(buf2, ra, ins->src1, x64));
         break;
+    case IR_ARG:
+        sb_appendf(sb, "    push%s %s\n", sfx,
+                   loc_str(buf1, ra, ins->src1, x64));
+        break;
     case IR_ADD:
         sb_appendf(sb, "    mov%s %s, %s\n", sfx,
                    loc_str(buf1, ra, ins->src1, x64),
@@ -203,6 +207,9 @@ static void emit_instr(strbuf_t *sb, ir_instr_t *ins, regalloc_t *ra, int x64)
         break;
     case IR_CALL:
         sb_appendf(sb, "    call %s\n", ins->name);
+        if (ins->imm > 0)
+            sb_appendf(sb, "    add%s $%d, %s\n", sfx,
+                       ins->imm * (x64 ? 8 : 4), sp);
         sb_appendf(sb, "    mov%s %s, %s\n", sfx, ax,
                    loc_str(buf1, ra, ins->dest, x64));
         break;
