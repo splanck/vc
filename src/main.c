@@ -16,6 +16,7 @@ static void print_usage(const char *prog)
     printf("Usage: %s [options] <source>\n", prog);
     printf("Options:\n");
     printf("  -o, --output <file>  Output path\n");
+    printf("  -O<N>               Optimization level (0-3)\n");
     printf("  -h, --help           Display this help and exit\n");
     printf("  -v, --version        Print version information and exit\n");
     printf("      --no-fold        Disable constant folding\n");
@@ -72,11 +73,11 @@ int main(int argc, char **argv)
 
     char *output = NULL;
     int opt;
-    opt_config_t opt_cfg = {1, 1, 1};
+    opt_config_t opt_cfg = {1, 1, 1, 1};
     int use_x86_64 = 0;
     int dump_ir = 0;
 
-    while ((opt = getopt_long(argc, argv, "hvo:", long_opts, NULL)) != -1) {
+    while ((opt = getopt_long(argc, argv, "hvo:O:", long_opts, NULL)) != -1) {
         switch (opt) {
         case 'h':
             print_usage(argv[0]);
@@ -86,6 +87,18 @@ int main(int argc, char **argv)
             return 0;
         case 'o':
             output = optarg;
+            break;
+        case 'O':
+            opt_cfg.opt_level = atoi(optarg);
+            if (opt_cfg.opt_level <= 0) {
+                opt_cfg.fold_constants = 0;
+                opt_cfg.dead_code = 0;
+                opt_cfg.const_prop = 0;
+            } else {
+                opt_cfg.fold_constants = 1;
+                opt_cfg.dead_code = 1;
+                opt_cfg.const_prop = 1;
+            }
             break;
         case 1:
             opt_cfg.fold_constants = 0;

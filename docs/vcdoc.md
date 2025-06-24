@@ -266,6 +266,7 @@ The compiler supports the following options:
 - `--no-dce` – disable dead code elimination.
 - `--x86-64` – generate 64‑bit x86 assembly.
 - `--dump-ir` – print the generated assembly to stdout instead of creating a file.
+- `-O<N>` – set optimization level (0 disables all passes).
 
 Use `vc -o out.s source.c` to compile a file, or `vc --dump-ir source.c` to
 print the output to the terminal.
@@ -277,7 +278,7 @@ Example source files can be found under `tests/fixtures`. The simplest is
 optimizations disabled and request 64‑bit assembly like so:
 
 ```sh
-vc --no-fold --no-dce --x86-64 -o simple_add.s tests/fixtures/simple_add.c
+vc -O0 --x86-64 -o simple_add.s tests/fixtures/simple_add.c
 ```
 
 The generated file `simple_add.s` should match

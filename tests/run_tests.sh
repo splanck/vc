@@ -16,6 +16,19 @@ for cfile in "$DIR"/fixtures/*.c; do
     rm -f "$out"
 done
 
+# verify -O0 disables all optimizations for selected fixtures
+for o0asm in "$DIR"/fixtures/*_O0.s; do
+    base=$(basename "$o0asm" _O0.s)
+    cfile="$DIR/fixtures/$base.c"
+    out=$(mktemp)
+    "$BINARY" -O0 -o "$out" "$cfile"
+    if ! diff -u "$o0asm" "$out"; then
+        echo "Test O0_$base failed"
+        fail=1
+    fi
+    rm -f "$out"
+done
+
 # negative test for parse error message
 err=$(mktemp)
 out=$(mktemp)
