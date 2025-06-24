@@ -27,7 +27,31 @@ static void skip_whitespace(const char *src, size_t *i, size_t *line,
 {
     while (src[*i]) {
         char c = src[*i];
-        if (c == '\n') {
+        if (c == '/' && src[*i + 1] == '/') { /* line comment */
+            (*i) += 2;
+            (*col) += 2;
+            while (src[*i] && src[*i] != '\n') {
+                (*i)++;
+                (*col)++;
+            }
+        } else if (c == '/' && src[*i + 1] == '*') { /* block comment */
+            (*i) += 2;
+            (*col) += 2;
+            while (src[*i]) {
+                if (src[*i] == '\n') {
+                    (*line)++;
+                    *col = 1;
+                    (*i)++;
+                } else if (src[*i] == '*' && src[*i + 1] == '/') {
+                    (*i) += 2;
+                    (*col) += 2;
+                    break;
+                } else {
+                    (*i)++;
+                    (*col)++;
+                }
+            }
+        } else if (c == '\n') {
             (*line)++;
             *col = 1;
             (*i)++;
