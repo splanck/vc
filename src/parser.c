@@ -1,4 +1,5 @@
 #include <stdlib.h>
+#include <stdio.h>
 #include "parser.h"
 
 static token_t *peek(parser_t *p)
@@ -31,6 +32,17 @@ int parser_is_eof(parser_t *p)
     return !tok || tok->type == TOK_EOF;
 }
 
+void parser_print_error(parser_t *p, const char *msg)
+{
+    token_t *tok = peek(p);
+    if (tok) {
+        fprintf(stderr, "%s at line %zu, column %zu\n",
+                msg, tok->line, tok->column);
+    } else {
+        fprintf(stderr, "%s at end of file\n", msg);
+    }
+}
+
 /* Forward declarations */
 static expr_t *parse_expression(parser_t *p);
 static expr_t *parse_assignment(parser_t *p);
@@ -44,23 +56,25 @@ static expr_t *parse_primary(parser_t *p)
         return NULL;
 
     if (match(p, TOK_STAR)) {
+        token_t *op_tok = &p->tokens[p->pos - 1];
         expr_t *op = parse_primary(p);
         if (!op)
             return NULL;
-        return ast_make_unary(UNOP_DEREF, op);
+        return ast_make_unary(UNOP_DEREF, op, op_tok->line, op_tok->column);
     } else if (match(p, TOK_AMP)) {
+        token_t *op_tok = &p->tokens[p->pos - 1];
         expr_t *op = parse_primary(p);
         if (!op)
             return NULL;
-        return ast_make_unary(UNOP_ADDR, op);
+        return ast_make_unary(UNOP_ADDR, op, op_tok->line, op_tok->column);
     }
 
     if (match(p, TOK_NUMBER)) {
-        return ast_make_number(tok->lexeme);
+        return ast_make_number(tok->lexeme, tok->line, tok->column);
     } else if (match(p, TOK_STRING)) {
-        return ast_make_string(tok->lexeme);
+        return ast_make_string(tok->lexeme, tok->line, tok->column);
     } else if (match(p, TOK_CHAR)) {
-        return ast_make_char(tok->lexeme[0]);
+        return ast_make_char(tok->lexeme[0], tok->line, tok->column);
     } else if (tok->type == TOK_IDENT) {
         token_t *next = p->pos + 1 < p->count ? &p->tokens[p->pos + 1] : NULL;
         if (next && next->type == TOK_LPAREN) {
@@ -69,9 +83,9 @@ static expr_t *parse_primary(parser_t *p)
             match(p, TOK_LPAREN);
             if (!match(p, TOK_RPAREN))
                 return NULL;
-            return ast_make_call(name);
+            return ast_make_call(name, tok->line, tok->column);
         } else if (match(p, TOK_IDENT)) {
-            return ast_make_ident(tok->lexeme);
+            return ast_make_ident(tok->lexeme, tok->line, tok->column);
         }
     } else if (match(p, TOK_LPAREN)) {
         expr_t *expr = parse_expression(p);
@@ -92,19 +106,23 @@ static expr_t *parse_term(parser_t *p)
 
     while (1) {
         if (match(p, TOK_STAR)) {
+            token_t *op_tok = &p->tokens[p->pos - 1];
             expr_t *right = parse_primary(p);
             if (!right) {
                 ast_free_expr(left);
                 return NULL;
             }
-            left = ast_make_binary(BINOP_MUL, left, right);
+            left = ast_make_binary(BINOP_MUL, left, right,
+                                  op_tok->line, op_tok->column);
         } else if (match(p, TOK_SLASH)) {
+            token_t *op_tok = &p->tokens[p->pos - 1];
             expr_t *right = parse_primary(p);
             if (!right) {
                 ast_free_expr(left);
                 return NULL;
             }
-            left = ast_make_binary(BINOP_DIV, left, right);
+            left = ast_make_binary(BINOP_DIV, left, right,
+                                  op_tok->line, op_tok->column);
         } else {
             break;
         }
@@ -120,19 +138,23 @@ static expr_t *parse_additive(parser_t *p)
 
     while (1) {
         if (match(p, TOK_PLUS)) {
+            token_t *op_tok = &p->tokens[p->pos - 1];
             expr_t *right = parse_term(p);
             if (!right) {
                 ast_free_expr(left);
                 return NULL;
             }
-            left = ast_make_binary(BINOP_ADD, left, right);
+            left = ast_make_binary(BINOP_ADD, left, right,
+                                  op_tok->line, op_tok->column);
         } else if (match(p, TOK_MINUS)) {
+            token_t *op_tok = &p->tokens[p->pos - 1];
             expr_t *right = parse_term(p);
             if (!right) {
                 ast_free_expr(left);
                 return NULL;
             }
-            left = ast_make_binary(BINOP_SUB, left, right);
+            left = ast_make_binary(BINOP_SUB, left, right,
+                                  op_tok->line, op_tok->column);
         } else {
             break;
         }
@@ -148,33 +170,41 @@ static expr_t *parse_relational(parser_t *p)
 
     while (1) {
         if (match(p, TOK_LT)) {
+            token_t *op_tok = &p->tokens[p->pos - 1];
             expr_t *right = parse_additive(p);
             if (!right) {
                 ast_free_expr(left);
                 return NULL;
             }
-            left = ast_make_binary(BINOP_LT, left, right);
+            left = ast_make_binary(BINOP_LT, left, right,
+                                  op_tok->line, op_tok->column);
         } else if (match(p, TOK_GT)) {
+            token_t *op_tok = &p->tokens[p->pos - 1];
             expr_t *right = parse_additive(p);
             if (!right) {
                 ast_free_expr(left);
                 return NULL;
             }
-            left = ast_make_binary(BINOP_GT, left, right);
+            left = ast_make_binary(BINOP_GT, left, right,
+                                  op_tok->line, op_tok->column);
         } else if (match(p, TOK_LE)) {
+            token_t *op_tok = &p->tokens[p->pos - 1];
             expr_t *right = parse_additive(p);
             if (!right) {
                 ast_free_expr(left);
                 return NULL;
             }
-            left = ast_make_binary(BINOP_LE, left, right);
+            left = ast_make_binary(BINOP_LE, left, right,
+                                  op_tok->line, op_tok->column);
         } else if (match(p, TOK_GE)) {
+            token_t *op_tok = &p->tokens[p->pos - 1];
             expr_t *right = parse_additive(p);
             if (!right) {
                 ast_free_expr(left);
                 return NULL;
             }
-            left = ast_make_binary(BINOP_GE, left, right);
+            left = ast_make_binary(BINOP_GE, left, right,
+                                  op_tok->line, op_tok->column);
         } else {
             break;
         }
@@ -190,19 +220,23 @@ static expr_t *parse_equality(parser_t *p)
 
     while (1) {
         if (match(p, TOK_EQ)) {
+            token_t *op_tok = &p->tokens[p->pos - 1];
             expr_t *right = parse_relational(p);
             if (!right) {
                 ast_free_expr(left);
                 return NULL;
             }
-            left = ast_make_binary(BINOP_EQ, left, right);
+            left = ast_make_binary(BINOP_EQ, left, right,
+                                  op_tok->line, op_tok->column);
         } else if (match(p, TOK_NEQ)) {
+            token_t *op_tok = &p->tokens[p->pos - 1];
             expr_t *right = parse_relational(p);
             if (!right) {
                 ast_free_expr(left);
                 return NULL;
             }
-            left = ast_make_binary(BINOP_NEQ, left, right);
+            left = ast_make_binary(BINOP_NEQ, left, right,
+                                  op_tok->line, op_tok->column);
         } else {
             break;
         }
@@ -217,6 +251,7 @@ static expr_t *parse_assignment(parser_t *p)
         return NULL;
 
     if (match(p, TOK_ASSIGN)) {
+        token_t *op_tok = &p->tokens[p->pos - 1];
         if (left->kind != EXPR_IDENT) {
             ast_free_expr(left);
             return NULL;
@@ -229,7 +264,7 @@ static expr_t *parse_assignment(parser_t *p)
         }
         char *name = left->ident.name;
         free(left);
-        left = ast_make_assign(name, right);
+        left = ast_make_assign(name, right, op_tok->line, op_tok->column);
         free(name);
     }
     return left;
@@ -248,6 +283,7 @@ expr_t *parser_parse_expr(parser_t *p)
 stmt_t *parser_parse_stmt(parser_t *p)
 {
     if (match(p, TOK_KW_INT)) {
+        token_t *kw_tok = &p->tokens[p->pos - 1];
         type_kind_t t = TYPE_INT;
         if (match(p, TOK_STAR))
             t = TYPE_PTR;
@@ -267,10 +303,11 @@ stmt_t *parser_parse_stmt(parser_t *p)
             if (!match(p, TOK_SEMI))
                 return NULL;
         }
-        return ast_make_var_decl(name, t, init);
+        return ast_make_var_decl(name, t, init, kw_tok->line, kw_tok->column);
     }
 
     if (match(p, TOK_KW_RETURN)) {
+        token_t *kw_tok = &p->tokens[p->pos - 1];
         expr_t *expr = NULL;
         if (!match(p, TOK_SEMI)) {
             expr = parse_expression(p);
@@ -279,10 +316,11 @@ stmt_t *parser_parse_stmt(parser_t *p)
                 return NULL;
             }
         }
-        return ast_make_return(expr);
+        return ast_make_return(expr, kw_tok->line, kw_tok->column);
     }
 
     if (match(p, TOK_KW_IF)) {
+        token_t *kw_tok = &p->tokens[p->pos - 1];
         if (!match(p, TOK_LPAREN))
             return NULL;
         expr_t *cond = parse_expression(p);
@@ -304,10 +342,12 @@ stmt_t *parser_parse_stmt(parser_t *p)
                 return NULL;
             }
         }
-        return ast_make_if(cond, then_branch, else_branch);
+        return ast_make_if(cond, then_branch, else_branch,
+                           kw_tok->line, kw_tok->column);
     }
 
     if (match(p, TOK_KW_WHILE)) {
+        token_t *kw_tok = &p->tokens[p->pos - 1];
         if (!match(p, TOK_LPAREN))
             return NULL;
         expr_t *cond = parse_expression(p);
@@ -320,10 +360,11 @@ stmt_t *parser_parse_stmt(parser_t *p)
             ast_free_expr(cond);
             return NULL;
         }
-        return ast_make_while(cond, body);
+        return ast_make_while(cond, body, kw_tok->line, kw_tok->column);
     }
 
     if (match(p, TOK_KW_FOR)) {
+        token_t *kw_tok = &p->tokens[p->pos - 1];
         if (!match(p, TOK_LPAREN))
             return NULL;
         expr_t *init = parse_expression(p);
@@ -351,7 +392,8 @@ stmt_t *parser_parse_stmt(parser_t *p)
             ast_free_expr(incr);
             return NULL;
         }
-        return ast_make_for(init, cond, incr, body);
+        return ast_make_for(init, cond, incr, body,
+                            kw_tok->line, kw_tok->column);
     }
 
     expr_t *expr = parse_expression(p);
@@ -359,7 +401,7 @@ stmt_t *parser_parse_stmt(parser_t *p)
         ast_free_expr(expr);
         return NULL;
     }
-    return ast_make_expr_stmt(expr);
+    return ast_make_expr_stmt(expr, expr->line, expr->column);
 }
 
 func_t *parser_parse_func(parser_t *p)
@@ -523,7 +565,8 @@ int parser_parse_toplevel(parser_t *p, func_t **out_func, stmt_t **out_global)
         }
         p->pos++; /* consume ';' */
         if (out_global)
-            *out_global = ast_make_var_decl(id->lexeme, t, NULL);
+            *out_global = ast_make_var_decl(id->lexeme, t, NULL,
+                                           tok->line, tok->column);
         return *out_global != NULL;
     }
 

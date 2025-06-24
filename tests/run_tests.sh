@@ -16,6 +16,19 @@ for cfile in "$DIR"/fixtures/*.c; do
     rm -f "$out"
 done
 
+# negative test for parse error message
+err=$(mktemp)
+out=$(mktemp)
+set +e
+"$BINARY" -o "$out" "$DIR/invalid/parse_error.c" 2> "$err"
+ret=$?
+set -e
+if [ $ret -eq 0 ] || ! grep -q "line" "$err"; then
+    echo "Test parse_error failed"
+    fail=1
+fi
+rm -f "$out" "$err"
+
 if [ $fail -eq 0 ]; then
     echo "All tests passed"
 else

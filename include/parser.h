@@ -31,4 +31,7 @@ expr_t *parser_parse_expr(parser_t *p);
 /* Returns non-zero if the parser has reached EOF */
 int parser_is_eof(parser_t *p);
 
+/* Print a parser error message with source location */
+void parser_print_error(parser_t *p, const char *msg);
+
 #endif /* VC_PARSER_H */
