@@ -43,8 +43,18 @@ static expr_t *parse_primary(parser_t *p)
 
     if (match(p, TOK_NUMBER)) {
         return ast_make_number(tok->lexeme);
-    } else if (match(p, TOK_IDENT)) {
-        return ast_make_ident(tok->lexeme);
+    } else if (tok->type == TOK_IDENT) {
+        token_t *next = p->pos + 1 < p->count ? &p->tokens[p->pos + 1] : NULL;
+        if (next && next->type == TOK_LPAREN) {
+            p->pos++; /* consume ident */
+            char *name = tok->lexeme;
+            match(p, TOK_LPAREN);
+            if (!match(p, TOK_RPAREN))
+                return NULL;
+            return ast_make_call(name);
+        } else if (match(p, TOK_IDENT)) {
+            return ast_make_ident(tok->lexeme);
+        }
     } else if (match(p, TOK_LPAREN)) {
         expr_t *expr = parse_expression(p);
         if (!match(p, TOK_RPAREN)) {
@@ -175,4 +185,56 @@ stmt_t *parser_parse_stmt(parser_t *p)
         return NULL;
     }
     return ast_make_expr_stmt(expr);
+}
+
+func_t *parser_parse_func(parser_t *p)
+{
+    type_kind_t ret_type;
+    if (match(p, TOK_KW_INT)) {
+        ret_type = TYPE_INT;
+    } else if (match(p, TOK_KW_VOID)) {
+        ret_type = TYPE_VOID;
+    } else {
+        return NULL;
+    }
+
+    token_t *tok = peek(p);
+    if (!tok || tok->type != TOK_IDENT)
+        return NULL;
+    p->pos++;
+    char *name = tok->lexeme;
+
+    if (!match(p, TOK_LPAREN) || !match(p, TOK_RPAREN))
+        return NULL;
+    if (!match(p, TOK_LBRACE))
+        return NULL;
+
+    size_t cap = 4, count = 0;
+    stmt_t **body = malloc(cap * sizeof(*body));
+    if (!body)
+        return NULL;
+
+    while (!match(p, TOK_RBRACE)) {
+        stmt_t *stmt = parser_parse_stmt(p);
+        if (!stmt) {
+            for (size_t i = 0; i < count; i++)
+                ast_free_stmt(body[i]);
+            free(body);
+            return NULL;
+        }
+        if (count >= cap) {
+            cap *= 2;
+            stmt_t **tmp = realloc(body, cap * sizeof(*tmp));
+            if (!tmp) {
+                for (size_t i = 0; i < count; i++)
+                    ast_free_stmt(body[i]);
+                free(body);
+                return NULL;
+            }
+            body = tmp;
+        }
+        body[count++] = stmt;
+    }
+
+    return ast_make_func(name, ret_type, body, count);
 }

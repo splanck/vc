@@ -98,3 +98,31 @@ void ir_build_return(ir_builder_t *b, ir_value_t val)
     ins->src1 = val.id;
 }
 
+ir_value_t ir_build_call(ir_builder_t *b, const char *name)
+{
+    ir_instr_t *ins = append_instr(b);
+    if (!ins)
+        return (ir_value_t){0};
+    ins->op = IR_CALL;
+    ins->dest = b->next_value_id++;
+    ins->name = dup_string(name ? name : "");
+    return (ir_value_t){ins->dest};
+}
+
+void ir_build_func_begin(ir_builder_t *b, const char *name)
+{
+    ir_instr_t *ins = append_instr(b);
+    if (!ins)
+        return;
+    ins->op = IR_FUNC_BEGIN;
+    ins->name = dup_string(name ? name : "");
+}
+
+void ir_build_func_end(ir_builder_t *b)
+{
+    ir_instr_t *ins = append_instr(b);
+    if (!ins)
+        return;
+    ins->op = IR_FUNC_END;
+}
+

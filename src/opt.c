@@ -56,6 +56,10 @@ static void fold_constants(ir_builder_t *ir)
         case IR_RETURN:
             /* nothing to do */
             break;
+        case IR_CALL: case IR_FUNC_BEGIN: case IR_FUNC_END:
+            if (ins->dest >= 0 && ins->dest < max_id)
+                is_const[ins->dest] = 0;
+            break;
         }
     }
 

@@ -51,6 +51,8 @@ static void read_identifier(const char *src, size_t *i, size_t *col,
     token_type_t type = TOK_IDENT;
     if (len == 3 && strncmp(src + start, "int", 3) == 0)
         type = TOK_KW_INT;
+    else if (len == 4 && strncmp(src + start, "void", 4) == 0)
+        type = TOK_KW_VOID;
     else if (len == 6 && strncmp(src + start, "return", 6) == 0)
         type = TOK_KW_RETURN;
     append_token(tokens, count, cap, type, src + start, len, line, *col);

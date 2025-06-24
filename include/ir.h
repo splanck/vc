@@ -10,7 +10,10 @@ typedef enum {
     IR_DIV,
     IR_LOAD,
     IR_STORE,
-    IR_RETURN
+    IR_RETURN,
+    IR_CALL,
+    IR_FUNC_BEGIN,
+    IR_FUNC_END
 } ir_op_t;
 
 /* Forward declaration */
@@ -47,5 +50,8 @@ ir_value_t ir_build_load(ir_builder_t *b, const char *name);
 ir_value_t ir_build_binop(ir_builder_t *b, ir_op_t op, ir_value_t left, ir_value_t right);
 void ir_build_store(ir_builder_t *b, const char *name, ir_value_t val);
 void ir_build_return(ir_builder_t *b, ir_value_t val);
+ir_value_t ir_build_call(ir_builder_t *b, const char *name);
+void ir_build_func_begin(ir_builder_t *b, const char *name);
+void ir_build_func_end(ir_builder_t *b);
 
 #endif /* VC_IR_H */

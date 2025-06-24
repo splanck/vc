@@ -56,12 +56,13 @@ int symtable_add(symtable_t *table, const char *name, type_kind_t type)
     return 1;
 }
 
-static type_kind_t check_binary(expr_t *left, expr_t *right, symtable_t *table,
-                                ir_builder_t *ir, ir_value_t *out, binop_t op)
+static type_kind_t check_binary(expr_t *left, expr_t *right, symtable_t *vars,
+                                symtable_t *funcs, ir_builder_t *ir,
+                                ir_value_t *out, binop_t op)
 {
     ir_value_t lval, rval;
-    type_kind_t lt = check_expr(left, table, ir, &lval);
-    type_kind_t rt = check_expr(right, table, ir, &rval);
+    type_kind_t lt = check_expr(left, vars, funcs, ir, &lval);
+    type_kind_t rt = check_expr(right, vars, funcs, ir, &rval);
     if (lt == TYPE_INT && rt == TYPE_INT) {
         if (out) {
             ir_op_t ir_op;
@@ -78,8 +79,8 @@ static type_kind_t check_binary(expr_t *left, expr_t *right, symtable_t *table,
     return TYPE_UNKNOWN;
 }
 
-type_kind_t check_expr(expr_t *expr, symtable_t *table, ir_builder_t *ir,
-                       ir_value_t *out)
+type_kind_t check_expr(expr_t *expr, symtable_t *vars, symtable_t *funcs,
+                       ir_builder_t *ir, ir_value_t *out)
 {
     if (!expr)
         return TYPE_UNKNOWN;
@@ -89,7 +90,7 @@ type_kind_t check_expr(expr_t *expr, symtable_t *table, ir_builder_t *ir,
             *out = ir_build_const(ir, (int)strtol(expr->number.value, NULL, 10));
         return TYPE_INT;
     case EXPR_IDENT: {
-        symbol_t *sym = symtable_lookup(table, expr->ident.name);
+        symbol_t *sym = symtable_lookup(vars, expr->ident.name);
         if (!sym)
             return TYPE_UNKNOWN;
         if (out)
@@ -97,14 +98,14 @@ type_kind_t check_expr(expr_t *expr, symtable_t *table, ir_builder_t *ir,
         return sym->type;
     }
     case EXPR_BINARY:
-        return check_binary(expr->binary.left, expr->binary.right, table, ir,
-                           out, expr->binary.op);
+        return check_binary(expr->binary.left, expr->binary.right, vars, funcs,
+                           ir, out, expr->binary.op);
     case EXPR_ASSIGN: {
         ir_value_t val;
-        symbol_t *sym = symtable_lookup(table, expr->assign.name);
+        symbol_t *sym = symtable_lookup(vars, expr->assign.name);
         if (!sym)
             return TYPE_UNKNOWN;
-        if (check_expr(expr->assign.value, table, ir, &val) == TYPE_INT) {
+        if (check_expr(expr->assign.value, vars, funcs, ir, &val) == TYPE_INT) {
             ir_build_store(ir, expr->assign.name, val);
             if (out)
                 *out = val;
@@ -112,29 +113,58 @@ type_kind_t check_expr(expr_t *expr, symtable_t *table, ir_builder_t *ir,
         }
         return TYPE_UNKNOWN;
     }
+    case EXPR_CALL: {
+        symbol_t *fsym = symtable_lookup(funcs, expr->call.name);
+        if (!fsym)
+            return TYPE_UNKNOWN;
+        if (out)
+            *out = ir_build_call(ir, expr->call.name);
+        return fsym->type;
+    }
     }
     return TYPE_UNKNOWN;
 }
 
-int check_stmt(stmt_t *stmt, symtable_t *table, ir_builder_t *ir)
+int check_stmt(stmt_t *stmt, symtable_t *vars, symtable_t *funcs,
+               ir_builder_t *ir)
 {
     if (!stmt)
         return 0;
     switch (stmt->kind) {
     case STMT_EXPR: {
         ir_value_t tmp;
-        return check_expr(stmt->expr.expr, table, ir, &tmp) != TYPE_UNKNOWN;
+        return check_expr(stmt->expr.expr, vars, funcs, ir, &tmp) != TYPE_UNKNOWN;
     }
     case STMT_RETURN: {
         ir_value_t val;
-        if (check_expr(stmt->ret.expr, table, ir, &val) == TYPE_UNKNOWN)
+        if (check_expr(stmt->ret.expr, vars, funcs, ir, &val) == TYPE_UNKNOWN)
             return 0;
         ir_build_return(ir, val);
         return 1;
     }
     case STMT_VAR_DECL:
-        return symtable_add(table, stmt->var_decl.name, TYPE_INT);
+        return symtable_add(vars, stmt->var_decl.name, TYPE_INT);
     }
     return 0;
+}
+
+int check_func(func_t *func, symtable_t *funcs, ir_builder_t *ir)
+{
+    if (!func)
+        return 0;
+
+    symtable_t locals;
+    symtable_init(&locals);
+
+    ir_build_func_begin(ir, func->name);
+
+    int ok = 1;
+    for (size_t i = 0; i < func->body_count && ok; i++)
+        ok = check_stmt(func->body[i], &locals, funcs, ir);
+
+    ir_build_func_end(ir);
+
+    symtable_free(&locals);
+    return ok;
 }
 

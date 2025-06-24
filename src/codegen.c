@@ -111,6 +111,18 @@ static void emit_instr(strbuf_t *sb, ir_instr_t *ins)
         sb_appendf(sb, "    movl %s, %s\n", reg_for(ins->src1), "%eax");
         sb_append(sb, "    ret\n");
         break;
+    case IR_CALL:
+        sb_appendf(sb, "    call %s\n", ins->name);
+        sb_appendf(sb, "    movl %s, %s\n", "%eax", reg_for(ins->dest));
+        break;
+    case IR_FUNC_BEGIN:
+        sb_appendf(sb, "%s:\n", ins->name);
+        sb_append(sb, "    pushl %ebp\n");
+        sb_append(sb, "    movl %esp, %ebp\n");
+        break;
+    case IR_FUNC_END:
+        /* nothing for now */
+        break;
     }
 }
 
