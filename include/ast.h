@@ -64,7 +64,8 @@ typedef enum {
     STMT_EXPR,
     STMT_RETURN,
     STMT_VAR_DECL,
-    STMT_IF
+    STMT_IF,
+    STMT_WHILE
 } stmt_kind_t;
 
 struct stmt {
@@ -84,6 +85,10 @@ struct stmt {
             stmt_t *then_branch;
             stmt_t *else_branch; /* may be NULL */
         } if_stmt;
+        struct {
+            expr_t *cond;
+            stmt_t *body;
+        } while_stmt;
     };
 };
 
@@ -98,6 +103,7 @@ stmt_t *ast_make_expr_stmt(expr_t *expr);
 stmt_t *ast_make_return(expr_t *expr);
 stmt_t *ast_make_var_decl(const char *name);
 stmt_t *ast_make_if(expr_t *cond, stmt_t *then_branch, stmt_t *else_branch);
+stmt_t *ast_make_while(expr_t *cond, stmt_t *body);
 
 /* Destructors */
 void ast_free_expr(expr_t *expr);

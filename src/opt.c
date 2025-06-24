@@ -60,7 +60,7 @@ static void fold_constants(ir_builder_t *ir)
             if (ins->dest >= 0 && ins->dest < max_id)
                 is_const[ins->dest] = 0;
             break;
-        case IR_BCOND: case IR_LABEL:
+        case IR_BCOND: case IR_LABEL: case IR_BR:
             break;
         }
     }

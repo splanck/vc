@@ -128,6 +128,17 @@ stmt_t *ast_make_if(expr_t *cond, stmt_t *then_branch, stmt_t *else_branch)
     return stmt;
 }
 
+stmt_t *ast_make_while(expr_t *cond, stmt_t *body)
+{
+    stmt_t *stmt = malloc(sizeof(*stmt));
+    if (!stmt)
+        return NULL;
+    stmt->kind = STMT_WHILE;
+    stmt->while_stmt.cond = cond;
+    stmt->while_stmt.body = body;
+    return stmt;
+}
+
 func_t *ast_make_func(const char *name, type_kind_t ret_type,
                       stmt_t **body, size_t body_count)
 {
@@ -190,6 +201,10 @@ void ast_free_stmt(stmt_t *stmt)
         ast_free_expr(stmt->if_stmt.cond);
         ast_free_stmt(stmt->if_stmt.then_branch);
         ast_free_stmt(stmt->if_stmt.else_branch);
+        break;
+    case STMT_WHILE:
+        ast_free_expr(stmt->while_stmt.cond);
+        ast_free_stmt(stmt->while_stmt.body);
         break;
     }
     free(stmt);
