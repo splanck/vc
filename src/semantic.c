@@ -247,8 +247,18 @@ int check_stmt(stmt_t *stmt, symtable_t *vars, symtable_t *funcs,
         ir_build_label(ir, end_label);
         return 1;
     }
-    case STMT_VAR_DECL:
-        return symtable_add(vars, stmt->var_decl.name, stmt->var_decl.type);
+    case STMT_VAR_DECL: {
+        if (!symtable_add(vars, stmt->var_decl.name, stmt->var_decl.type))
+            return 0;
+        if (stmt->var_decl.init) {
+            ir_value_t val;
+            if (check_expr(stmt->var_decl.init, vars, funcs, ir, &val) !=
+                stmt->var_decl.type)
+                return 0;
+            ir_build_store(ir, stmt->var_decl.name, val);
+        }
+        return 1;
+    }
     }
     return 0;
 }

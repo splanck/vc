@@ -137,7 +137,7 @@ stmt_t *ast_make_return(expr_t *expr)
     return stmt;
 }
 
-stmt_t *ast_make_var_decl(const char *name, type_kind_t type)
+stmt_t *ast_make_var_decl(const char *name, type_kind_t type, expr_t *init)
 {
     stmt_t *stmt = malloc(sizeof(*stmt));
     if (!stmt)
@@ -149,6 +149,7 @@ stmt_t *ast_make_var_decl(const char *name, type_kind_t type)
         return NULL;
     }
     stmt->var_decl.type = type;
+    stmt->var_decl.init = init;
     return stmt;
 }
 
@@ -265,6 +266,7 @@ void ast_free_stmt(stmt_t *stmt)
         break;
     case STMT_VAR_DECL:
         free(stmt->var_decl.name);
+        ast_free_expr(stmt->var_decl.init);
         break;
     case STMT_IF:
         ast_free_expr(stmt->if_stmt.cond);
