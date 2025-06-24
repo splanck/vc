@@ -7,6 +7,7 @@
 #include "semantic.h"
 #include "ir.h"
 #include "opt.h"
+#include "codegen.h"
 
 #define VERSION "0.1.0"
 
@@ -136,6 +137,18 @@ int main(int argc, char **argv)
     /* Run optimizations on the generated IR */
     if (ok)
         opt_run(&ir);
+
+    /* Generate assembly output */
+    if (ok) {
+        FILE *outf = fopen(output, "w");
+        if (!outf) {
+            perror("fopen");
+            ok = 0;
+        } else {
+            codegen_emit_x86(outf, &ir);
+            fclose(outf);
+        }
+    }
 
     ir_builder_free(&ir);
 
