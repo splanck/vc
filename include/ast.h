@@ -14,6 +14,8 @@ typedef enum {
 typedef enum {
     EXPR_NUMBER,
     EXPR_IDENT,
+    EXPR_STRING,
+    EXPR_CHAR,
     EXPR_BINARY,
     EXPR_ASSIGN,
     EXPR_CALL
@@ -44,6 +46,12 @@ struct expr {
         struct {
             char *name;
         } ident;
+        struct {
+            char *value;
+        } string;
+        struct {
+            char value;
+        } ch;
         struct {
             binop_t op;
             expr_t *left;
@@ -95,6 +103,8 @@ struct stmt {
 /* Constructors */
 expr_t *ast_make_number(const char *value);
 expr_t *ast_make_ident(const char *name);
+expr_t *ast_make_string(const char *value);
+expr_t *ast_make_char(char value);
 expr_t *ast_make_binary(binop_t op, expr_t *left, expr_t *right);
 expr_t *ast_make_assign(const char *name, expr_t *value);
 expr_t *ast_make_call(const char *name);

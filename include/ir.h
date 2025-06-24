@@ -8,6 +8,7 @@ typedef enum {
     IR_SUB,
     IR_MUL,
     IR_DIV,
+    IR_GLOB_STRING,
     IR_LOAD,
     IR_STORE,
     IR_RETURN,
@@ -34,7 +35,8 @@ typedef struct ir_instr {
     int src1;             /* first operand */
     int src2;             /* second operand */
     int imm;              /* immediate value for constants */
-    char *name;           /* identifier for loads */
+    char *name;           /* identifier / label */
+    char *data;           /* for string literals */
     struct ir_instr *next;
 } ir_instr_t;
 
@@ -59,5 +61,6 @@ void ir_build_func_end(ir_builder_t *b);
 void ir_build_br(ir_builder_t *b, const char *label);
 void ir_build_bcond(ir_builder_t *b, ir_value_t cond, const char *label);
 void ir_build_label(ir_builder_t *b, const char *label);
+ir_value_t ir_build_string(ir_builder_t *b, const char *data);
 
 #endif /* VC_IR_H */

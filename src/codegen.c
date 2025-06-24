@@ -107,6 +107,11 @@ static void emit_instr(strbuf_t *sb, ir_instr_t *ins)
         if (strcmp(reg_for(ins->dest), "%eax") != 0)
             sb_appendf(sb, "    movl %s, %s\n", "%eax", reg_for(ins->dest));
         break;
+    case IR_GLOB_STRING:
+        sb_appendf(sb, "%s:\n", ins->name);
+        sb_appendf(sb, "    .asciz \"%s\"\n", ins->data);
+        sb_appendf(sb, "    movl $%s, %s\n", ins->name, reg_for(ins->dest));
+        break;
     case IR_RETURN:
         sb_appendf(sb, "    movl %s, %s\n", reg_for(ins->src1), "%eax");
         sb_append(sb, "    ret\n");

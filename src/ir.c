@@ -1,5 +1,6 @@
 #include <stdlib.h>
 #include <string.h>
+#include <stdio.h>
 #include "ir.h"
 
 static char *dup_string(const char *s)
@@ -24,6 +25,7 @@ void ir_builder_free(ir_builder_t *b)
     while (ins) {
         ir_instr_t *next = ins->next;
         free(ins->name);
+        free(ins->data);
         free(ins);
         ins = next;
     }
@@ -37,6 +39,8 @@ static ir_instr_t *append_instr(ir_builder_t *b)
     if (!ins)
         return NULL;
     ins->dest = -1;
+    ins->name = NULL;
+    ins->data = NULL;
     if (!b->head)
         b->head = ins;
     else
@@ -53,6 +57,20 @@ ir_value_t ir_build_const(ir_builder_t *b, int value)
     ins->op = IR_CONST;
     ins->dest = b->next_value_id++;
     ins->imm = value;
+    return (ir_value_t){ins->dest};
+}
+
+ir_value_t ir_build_string(ir_builder_t *b, const char *str)
+{
+    ir_instr_t *ins = append_instr(b);
+    if (!ins)
+        return (ir_value_t){0};
+    ins->op = IR_GLOB_STRING;
+    ins->dest = b->next_value_id++;
+    char label[32];
+    snprintf(label, sizeof(label), "Lstr%d", ins->dest);
+    ins->name = dup_string(label);
+    ins->data = dup_string(str ? str : "");
     return (ir_value_t){ins->dest};
 }
 

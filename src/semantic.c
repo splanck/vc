@@ -92,6 +92,14 @@ type_kind_t check_expr(expr_t *expr, symtable_t *vars, symtable_t *funcs,
         if (out)
             *out = ir_build_const(ir, (int)strtol(expr->number.value, NULL, 10));
         return TYPE_INT;
+    case EXPR_STRING:
+        if (out)
+            *out = ir_build_string(ir, expr->string.value);
+        return TYPE_INT;
+    case EXPR_CHAR:
+        if (out)
+            *out = ir_build_const(ir, (int)expr->ch.value);
+        return TYPE_INT;
     case EXPR_IDENT: {
         symbol_t *sym = symtable_lookup(vars, expr->ident.name);
         if (!sym)
