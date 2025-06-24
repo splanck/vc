@@ -16,6 +16,9 @@ INCLUDEDIR ?= $(PREFIX)/include/vc
 
 all: $(BIN)
 
+test: $(BIN)
+	./tests/run_tests.sh
+
 $(BIN): $(SRC) $(HDR)
 	$(CC) $(CFLAGS) $(OPTFLAGS) -Iinclude -o $@ $(SRC)
 
@@ -28,4 +31,4 @@ install: $(BIN)
 clean:
 	rm -f $(BIN)
 
-.PHONY: all clean install
+.PHONY: all clean install test
