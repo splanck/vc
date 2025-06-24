@@ -25,7 +25,59 @@ Translates raw characters into tokens for the parser.
 Constructs the AST and reports syntax errors.
 
 ### semantic
-Performs type checking and converts the AST into IR.
+Performs type checking and converts the AST into IR.  The
+implementation in [`src/semantic.c`](../src/semantic.c) relies on a
+simple symbol table defined in [`include/semantic.h`](../include/semantic.h).
+
+The table tracks local variables, function parameters and global
+symbols.  Each `symbol_t` entry stores the name, its `type_kind_t` and
+an optional parameter index:
+
+```c
+typedef struct symbol {
+    char *name;
+    type_kind_t type;
+    int param_index; /* -1 for locals */
+    struct symbol *next;
+} symbol_t;
+```
+
+Symbols are inserted with `symtable_add` or
+`symtable_add_global`, while `symtable_lookup` retrieves an entry.  The
+semantic checker uses these helpers when processing function bodies and
+global declarations.
+
+#### Variable declarations
+
+`check_stmt` handles `STMT_VAR_DECL` nodes.  The variable is added to
+the current table and any initializer is evaluated and stored:
+
+```c
+int x;          /* adds 'x' with TYPE_INT */
+int y = 5;      /* evaluates 5 and stores to 'y' */
+```
+
+Pointers work the same way and may be dereferenced using
+`UNOP_DEREF`:
+
+```c
+int *p = &x;
+return *p;
+```
+
+#### Type checking and functions
+
+`check_expr` verifies binary operations and resolves function calls by
+consulting the symbol table.  A call returns the function's declared
+type:
+
+```c
+int foo() { return 3; }
+int main() { return foo(); }
+```
+
+Any mismatch results in `semantic_print_error` reporting the source
+location of the failure.
 
 ### ir
 Defines the IR structures used throughout the rest of the compiler.
