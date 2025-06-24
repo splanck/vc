@@ -4,6 +4,7 @@
 #include "ir.h"
 
 typedef struct {
+    int opt_level;     /* numeric optimization level */
     int fold_constants; /* enable constant folding */
     int dead_code;      /* enable dead code elimination */
     int const_prop;     /* enable store/load constant propagation */

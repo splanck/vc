@@ -293,7 +293,7 @@ static void dead_code_elim(ir_builder_t *ir)
 
 void opt_run(ir_builder_t *ir, const opt_config_t *cfg)
 {
-    opt_config_t def = {1, 1, 1};
+    opt_config_t def = {1, 1, 1, 1};
     const opt_config_t *c = cfg ? cfg : &def;
     if (c->const_prop)
         propagate_load_consts(ir);
