@@ -16,6 +16,7 @@ typedef enum {
     TOK_KW_IF,
     TOK_KW_ELSE,
     TOK_KW_WHILE,
+    TOK_KW_FOR,
     TOK_LPAREN,
     TOK_RPAREN,
     TOK_LBRACE,

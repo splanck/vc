@@ -323,6 +323,37 @@ stmt_t *parser_parse_stmt(parser_t *p)
         return ast_make_while(cond, body);
     }
 
+    if (match(p, TOK_KW_FOR)) {
+        if (!match(p, TOK_LPAREN))
+            return NULL;
+        expr_t *init = parse_expression(p);
+        if (!init || !match(p, TOK_SEMI)) {
+            ast_free_expr(init);
+            return NULL;
+        }
+        expr_t *cond = parse_expression(p);
+        if (!cond || !match(p, TOK_SEMI)) {
+            ast_free_expr(init);
+            ast_free_expr(cond);
+            return NULL;
+        }
+        expr_t *incr = parse_expression(p);
+        if (!incr || !match(p, TOK_RPAREN)) {
+            ast_free_expr(init);
+            ast_free_expr(cond);
+            ast_free_expr(incr);
+            return NULL;
+        }
+        stmt_t *body = parser_parse_stmt(p);
+        if (!body) {
+            ast_free_expr(init);
+            ast_free_expr(cond);
+            ast_free_expr(incr);
+            return NULL;
+        }
+        return ast_make_for(init, cond, incr, body);
+    }
+
     expr_t *expr = parse_expression(p);
     if (!expr || !match(p, TOK_SEMI)) {
         ast_free_expr(expr);
