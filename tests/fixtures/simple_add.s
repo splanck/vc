@@ -1,6 +1,6 @@
 main:
     pushl %ebp
     movl %esp, %ebp
-    movl $7, %esi
-    movl %esi, %eax
+    movl $7, %eax
+    movl %eax, %eax
     ret

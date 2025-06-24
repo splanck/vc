@@ -4,16 +4,16 @@ main:
     movl $3, %eax
     movl %eax, i
 L0_start:
-    movl i, %ebx
-    cmpl $0, %ebx
+    movl i, %eax
+    cmpl $0, %eax
     je L0_end
-    movl i, %ecx
-    movl $1, %edx
-    movl %ecx, %esi
-    subl %edx, %esi
-    movl %esi, i
+    movl i, %eax
+    movl $1, %ebx
+    movl %eax, %ecx
+    subl %ebx, %ecx
+    movl %ecx, i
     jmp L0_start
 L0_end:
-    movl i, %edi
-    movl %edi, %eax
+    movl i, %ecx
+    movl %ecx, %eax
     ret
