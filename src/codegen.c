@@ -4,6 +4,7 @@
 #include <stdarg.h>
 #include "codegen.h"
 #include "regalloc.h"
+#include "regalloc_x86.h"
 #include "strbuf.h"
 
 
