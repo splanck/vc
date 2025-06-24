@@ -11,6 +11,7 @@
 #include "ir_dump.h"
 #include "opt.h"
 #include "codegen.h"
+#include "label.h"
 
 int main(int argc, char **argv)
 {
@@ -24,6 +25,8 @@ int main(int argc, char **argv)
     int use_x86_64 = cli.use_x86_64;
     int dump_asm = cli.dump_asm;
     int dump_ir = cli.dump_ir;
+
+    label_init();
 
     char *src_text = vc_read_file(source);
     if (!src_text) {
@@ -141,6 +144,8 @@ int main(int argc, char **argv)
     symtable_free(&globals);
     lexer_free_tokens(tokens, tok_count);
     free(src_text);
+
+    label_reset();
 
     if (ok) {
         if (dump_ir)

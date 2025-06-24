@@ -4,13 +4,13 @@
 #include "semantic.h"
 #include "symtable.h"
 #include "util.h"
+#include "label.h"
 
 static int is_intlike(type_kind_t t)
 {
     return t == TYPE_INT || t == TYPE_CHAR;
 }
 
-static int next_label_id = 0;
 
 static size_t error_line = 0;
 static size_t error_column = 0;
@@ -365,7 +365,7 @@ int check_stmt(stmt_t *stmt, symtable_t *vars, symtable_t *funcs,
             return 0;
         char else_label[32];
         char end_label[32];
-        int id = next_label_id++;
+        int id = label_next_id();
         snprintf(else_label, sizeof(else_label), "L%d_else", id);
         snprintf(end_label, sizeof(end_label), "L%d_end", id);
         const char *target = stmt->if_stmt.else_branch ? else_label : end_label;
@@ -387,7 +387,7 @@ int check_stmt(stmt_t *stmt, symtable_t *vars, symtable_t *funcs,
         ir_value_t cond_val;
         char start_label[32];
         char end_label[32];
-        int id = next_label_id++;
+        int id = label_next_id();
         snprintf(start_label, sizeof(start_label), "L%d_start", id);
         snprintf(end_label, sizeof(end_label), "L%d_end", id);
         ir_build_label(ir, start_label);
@@ -406,7 +406,7 @@ int check_stmt(stmt_t *stmt, symtable_t *vars, symtable_t *funcs,
         char start_label[32];
         char cond_label[32];
         char end_label[32];
-        int id = next_label_id++;
+        int id = label_next_id();
         snprintf(start_label, sizeof(start_label), "L%d_start", id);
         snprintf(cond_label, sizeof(cond_label), "L%d_cond", id);
         snprintf(end_label, sizeof(end_label), "L%d_end", id);
@@ -426,7 +426,7 @@ int check_stmt(stmt_t *stmt, symtable_t *vars, symtable_t *funcs,
         ir_value_t cond_val;
         char start_label[32];
         char end_label[32];
-        int id = next_label_id++;
+        int id = label_next_id();
         snprintf(start_label, sizeof(start_label), "L%d_start", id);
         snprintf(end_label, sizeof(end_label), "L%d_end", id);
         if (check_expr(stmt->for_stmt.init, vars, funcs, ir, &cond_val) == TYPE_UNKNOWN)
