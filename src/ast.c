@@ -76,6 +76,17 @@ expr_t *ast_make_binary(binop_t op, expr_t *left, expr_t *right)
     return expr;
 }
 
+expr_t *ast_make_unary(unop_t op, expr_t *operand)
+{
+    expr_t *expr = malloc(sizeof(*expr));
+    if (!expr)
+        return NULL;
+    expr->kind = EXPR_UNARY;
+    expr->unary.op = op;
+    expr->unary.operand = operand;
+    return expr;
+}
+
 expr_t *ast_make_assign(const char *name, expr_t *value)
 {
     expr_t *expr = malloc(sizeof(*expr));
@@ -126,7 +137,7 @@ stmt_t *ast_make_return(expr_t *expr)
     return stmt;
 }
 
-stmt_t *ast_make_var_decl(const char *name)
+stmt_t *ast_make_var_decl(const char *name, type_kind_t type)
 {
     stmt_t *stmt = malloc(sizeof(*stmt));
     if (!stmt)
@@ -137,6 +148,7 @@ stmt_t *ast_make_var_decl(const char *name)
         free(stmt);
         return NULL;
     }
+    stmt->var_decl.type = type;
     return stmt;
 }
 
@@ -196,6 +208,9 @@ void ast_free_expr(expr_t *expr)
         free(expr->string.value);
         break;
     case EXPR_CHAR:
+        break;
+    case EXPR_UNARY:
+        ast_free_expr(expr->unary.operand);
         break;
     case EXPR_BINARY:
         ast_free_expr(expr->binary.left);

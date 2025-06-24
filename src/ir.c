@@ -95,6 +95,38 @@ void ir_build_store(ir_builder_t *b, const char *name, ir_value_t val)
     ins->name = dup_string(name ? name : "");
 }
 
+ir_value_t ir_build_addr(ir_builder_t *b, const char *name)
+{
+    ir_instr_t *ins = append_instr(b);
+    if (!ins)
+        return (ir_value_t){0};
+    ins->op = IR_ADDR;
+    ins->dest = b->next_value_id++;
+    ins->name = dup_string(name ? name : "");
+    return (ir_value_t){ins->dest};
+}
+
+ir_value_t ir_build_load_ptr(ir_builder_t *b, ir_value_t addr)
+{
+    ir_instr_t *ins = append_instr(b);
+    if (!ins)
+        return (ir_value_t){0};
+    ins->op = IR_LOAD_PTR;
+    ins->dest = b->next_value_id++;
+    ins->src1 = addr.id;
+    return (ir_value_t){ins->dest};
+}
+
+void ir_build_store_ptr(ir_builder_t *b, ir_value_t addr, ir_value_t val)
+{
+    ir_instr_t *ins = append_instr(b);
+    if (!ins)
+        return;
+    ins->op = IR_STORE_PTR;
+    ins->src1 = addr.id;
+    ins->src2 = val.id;
+}
+
 ir_value_t ir_build_binop(ir_builder_t *b, ir_op_t op, ir_value_t left, ir_value_t right)
 {
     ir_instr_t *ins = append_instr(b);
