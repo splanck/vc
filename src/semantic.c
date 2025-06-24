@@ -286,6 +286,10 @@ static type_kind_t check_binary(expr_t *left, expr_t *right, symtable_t *vars,
         if (out)
             *out = ir_build_binop(ir, IR_PTR_ADD, ptr, idx);
         return TYPE_PTR;
+    } else if (lt == TYPE_PTR && rt == TYPE_PTR && op == BINOP_SUB) {
+        if (out)
+            *out = ir_build_binop(ir, IR_PTR_DIFF, lval, rval);
+        return TYPE_INT;
     }
     set_error(left->line, left->column);
     return TYPE_UNKNOWN;

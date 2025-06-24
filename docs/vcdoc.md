@@ -92,7 +92,8 @@ The IR uses a straightforward three-address format. The operations defined in
 - comparison ops `IR_CMPEQ`, `IR_CMPNE`, `IR_CMPLT`, `IR_CMPGT`, `IR_CMPLE`, `IR_CMPGE`
 - global data directives `IR_GLOB_STRING`, `IR_GLOB_VAR`
 - variable access `IR_LOAD`, `IR_STORE`, `IR_LOAD_PARAM`, `IR_STORE_PARAM`
-- pointer ops `IR_ADDR`, `IR_LOAD_PTR`, `IR_STORE_PTR`
+- pointer ops `IR_ADDR`, `IR_LOAD_PTR`, `IR_STORE_PTR`, `IR_PTR_ADD`,
+  `IR_PTR_DIFF`
 - function and call ops `IR_RETURN`, `IR_CALL`, `IR_FUNC_BEGIN`, `IR_FUNC_END`
 - control flow `IR_BR`, `IR_BCOND`, `IR_LABEL`
 
@@ -265,15 +266,17 @@ vc -o ptr.s ptr.c
 int main() {
     int a[3] = {1, 2, 3};
     int *p = a;
-    int second = *(p + 1);
-    p = p + 2;
-    return *(p - 1);
+int second = *(p + 1);
+p = p + 2;
+return *(p - 1);
 }
 ```
 Compile with:
 ```sh
 vc -o ptr_arith.s ptr_arith.c
 ```
+Pointer subtraction of two pointers is also supported and returns the
+element distance between them.
 
 ### Arrays
 ```c

@@ -9,6 +9,7 @@ typedef enum {
     IR_MUL,
     IR_DIV,
     IR_PTR_ADD,
+    IR_PTR_DIFF,
     IR_CMPEQ,
     IR_CMPNE,
     IR_CMPLT,

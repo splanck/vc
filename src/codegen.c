@@ -159,6 +159,18 @@ static void emit_instr(strbuf_t *sb, ir_instr_t *ins, regalloc_t *ra, int x64)
                    loc_str(buf2, ra, ins->dest, x64));
         break;
     }
+    case IR_PTR_DIFF: {
+        int shift = x64 ? 3 : 2;
+        sb_appendf(sb, "    mov%s %s, %s\n", sfx,
+                   loc_str(buf1, ra, ins->src1, x64),
+                   loc_str(buf2, ra, ins->dest, x64));
+        sb_appendf(sb, "    sub%s %s, %s\n", sfx,
+                   loc_str(buf1, ra, ins->src2, x64),
+                   loc_str(buf2, ra, ins->dest, x64));
+        sb_appendf(sb, "    sar%s $%d, %s\n", sfx, shift,
+                   loc_str(buf2, ra, ins->dest, x64));
+        break;
+    }
     case IR_ADD:
         sb_appendf(sb, "    mov%s %s, %s\n", sfx,
                    loc_str(buf1, ra, ins->src1, x64),
