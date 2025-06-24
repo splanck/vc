@@ -1,6 +1,10 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <getopt.h>
+#include "token.h"
+#include "parser.h"
+#include "semantic.h"
 
 #define VERSION "0.1.0"
 
@@ -11,6 +15,39 @@ static void print_usage(const char *prog)
     printf("  -o, --output <file>  Output path\n");
     printf("  -h, --help           Display this help and exit\n");
     printf("  -v, --version        Print version information and exit\n");
+}
+
+static char *read_file(const char *path)
+{
+    FILE *f = fopen(path, "rb");
+    if (!f)
+        return NULL;
+    if (fseek(f, 0, SEEK_END) != 0) {
+        fclose(f);
+        return NULL;
+    }
+    long len = ftell(f);
+    if (len < 0) {
+        fclose(f);
+        return NULL;
+    }
+    if (fseek(f, 0, SEEK_SET) != 0) {
+        fclose(f);
+        return NULL;
+    }
+    char *buf = malloc((size_t)len + 1);
+    if (!buf) {
+        fclose(f);
+        return NULL;
+    }
+    if (fread(buf, 1, (size_t)len, f) != (size_t)len) {
+        fclose(f);
+        free(buf);
+        return NULL;
+    }
+    buf[len] = '\0';
+    fclose(f);
+    return buf;
 }
 
 int main(int argc, char **argv)
@@ -56,8 +93,48 @@ int main(int argc, char **argv)
 
     const char *source = argv[optind];
 
-    /* Placeholder for compilation logic */
-    printf("Compiling %s -> %s\n", source, output);
+    char *src_text = read_file(source);
+    if (!src_text) {
+        perror("read_file");
+        return 1;
+    }
 
-    return 0;
+    size_t tok_count = 0;
+    token_t *tokens = lexer_tokenize(src_text, &tok_count);
+    if (!tokens) {
+        fprintf(stderr, "Tokenization failed\n");
+        free(src_text);
+        return 1;
+    }
+
+    parser_t parser;
+    parser_init(&parser, tokens, tok_count);
+    symtable_t syms;
+    symtable_init(&syms);
+
+    int ok = 1;
+    while (!parser_is_eof(&parser)) {
+        stmt_t *stmt = parser_parse_stmt(&parser);
+        if (!stmt) {
+            fprintf(stderr, "Parse error\n");
+            ok = 0;
+            break;
+        }
+        if (!check_stmt(stmt, &syms)) {
+            fprintf(stderr, "Semantic error\n");
+            ok = 0;
+            ast_free_stmt(stmt);
+            break;
+        }
+        ast_free_stmt(stmt);
+    }
+
+    symtable_free(&syms);
+    lexer_free_tokens(tokens, tok_count);
+    free(src_text);
+
+    if (ok)
+        printf("Compiling %s -> %s\n", source, output);
+
+    return ok ? 0 : 1;
 }
