@@ -3,9 +3,9 @@ main:
     movl %esp, %ebp
     movl $x, %eax
     movl %eax, p
-    movl $42, %ebx
-    movl %ebx, x
-    movl p, %ecx
-    movl (%ecx), %edx
-    movl %edx, %eax
+    movl $42, %eax
+    movl %eax, x
+    movl p, %eax
+    movl (%eax), %ebx
+    movl %ebx, %eax
     ret

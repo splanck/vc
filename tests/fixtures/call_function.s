@@ -8,6 +8,6 @@ main:
     pushl %ebp
     movl %esp, %ebp
     call foo
-    movl %eax, %ebx
-    movl %ebx, %eax
+    movl %eax, %eax
+    movl %eax, %eax
     ret

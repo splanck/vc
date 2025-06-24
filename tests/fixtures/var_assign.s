@@ -3,6 +3,6 @@ main:
     movl %esp, %ebp
     movl $5, %eax
     movl %eax, x
-    movl x, %ebx
-    movl %ebx, %eax
+    movl x, %eax
+    movl %eax, %eax
     ret
