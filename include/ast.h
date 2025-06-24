@@ -100,6 +100,8 @@ struct stmt {
         struct {
             char *name;
             type_kind_t type;
+            /* optional initializer expression */
+            expr_t *init;
         } var_decl;
         struct {
             expr_t *cond;
@@ -125,7 +127,7 @@ expr_t *ast_make_call(const char *name);
 
 stmt_t *ast_make_expr_stmt(expr_t *expr);
 stmt_t *ast_make_return(expr_t *expr);
-stmt_t *ast_make_var_decl(const char *name, type_kind_t type);
+stmt_t *ast_make_var_decl(const char *name, type_kind_t type, expr_t *init);
 stmt_t *ast_make_if(expr_t *cond, stmt_t *then_branch, stmt_t *else_branch);
 stmt_t *ast_make_while(expr_t *cond, stmt_t *body);
 

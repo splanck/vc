@@ -184,9 +184,18 @@ stmt_t *parser_parse_stmt(parser_t *p)
             return NULL;
         p->pos++;
         char *name = tok->lexeme;
-        if (!match(p, TOK_SEMI))
-            return NULL;
-        return ast_make_var_decl(name, t);
+        expr_t *init = NULL;
+        if (match(p, TOK_ASSIGN)) {
+            init = parse_expression(p);
+            if (!init || !match(p, TOK_SEMI)) {
+                ast_free_expr(init);
+                return NULL;
+            }
+        } else {
+            if (!match(p, TOK_SEMI))
+                return NULL;
+        }
+        return ast_make_var_decl(name, t, init);
     }
 
     if (match(p, TOK_KW_RETURN)) {
