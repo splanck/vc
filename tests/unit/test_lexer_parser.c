@@ -1,0 +1,91 @@
+#include <stdio.h>
+#include <string.h>
+#include "token.h"
+#include "parser.h"
+#include "ast.h"
+
+static int failures = 0;
+#define ASSERT(cond) do { \
+    if (!(cond)) { \
+        fprintf(stderr, "Assertion failed: %s (%s:%d)\n", #cond, __FILE__, __LINE__); \
+        failures++; \
+    } \
+} while (0)
+
+static void test_lexer_basic(void)
+{
+    const char *src = "int x;";
+    size_t count = 0;
+    token_t *toks = lexer_tokenize(src, &count);
+    ASSERT(count >= 4);
+    ASSERT(toks[0].type == TOK_KW_INT);
+    ASSERT(toks[1].type == TOK_IDENT && strcmp(toks[1].lexeme, "x") == 0);
+    ASSERT(toks[2].type == TOK_SEMI);
+    ASSERT(toks[3].type == TOK_EOF);
+    lexer_free_tokens(toks, count);
+}
+
+static void test_parser_expr(void)
+{
+    const char *src = "1 + 2 * 3";
+    size_t count = 0;
+    token_t *toks = lexer_tokenize(src, &count);
+    parser_t p; parser_init(&p, toks, count);
+    expr_t *expr = parser_parse_expr(&p);
+    ASSERT(expr);
+    ASSERT(expr->kind == EXPR_BINARY);
+    ASSERT(expr->binary.op == BINOP_ADD);
+    expr_t *left = expr->binary.left;
+    expr_t *right = expr->binary.right;
+    ASSERT(left && left->kind == EXPR_NUMBER && strcmp(left->number.value, "1") == 0);
+    ASSERT(right && right->kind == EXPR_BINARY);
+    ASSERT(right->binary.op == BINOP_MUL);
+    ASSERT(right->binary.left->kind == EXPR_NUMBER && strcmp(right->binary.left->number.value, "2") == 0);
+    ASSERT(right->binary.right->kind == EXPR_NUMBER && strcmp(right->binary.right->number.value, "3") == 0);
+    ast_free_expr(expr);
+    lexer_free_tokens(toks, count);
+}
+
+static void test_parser_stmt_return(void)
+{
+    const char *src = "return 5;";
+    size_t count = 0;
+    token_t *toks = lexer_tokenize(src, &count);
+    parser_t p; parser_init(&p, toks, count);
+    stmt_t *stmt = parser_parse_stmt(&p);
+    ASSERT(stmt);
+    ASSERT(stmt->kind == STMT_RETURN);
+    ASSERT(stmt->ret.expr->kind == EXPR_NUMBER && strcmp(stmt->ret.expr->number.value, "5") == 0);
+    ast_free_stmt(stmt);
+    lexer_free_tokens(toks, count);
+}
+
+static void test_parser_func(void)
+{
+    const char *src = "int main() { return 0; }";
+    size_t count = 0;
+    token_t *toks = lexer_tokenize(src, &count);
+    parser_t p; parser_init(&p, toks, count);
+    func_t *fn = parser_parse_func(&p);
+    ASSERT(fn);
+    ASSERT(strcmp(fn->name, "main") == 0);
+    ASSERT(fn->return_type == TYPE_INT);
+    ASSERT(fn->body_count == 1);
+    ASSERT(fn->body[0]->kind == STMT_RETURN);
+    ast_free_func(fn);
+    lexer_free_tokens(toks, count);
+}
+
+int main(void)
+{
+    test_lexer_basic();
+    test_parser_expr();
+    test_parser_stmt_return();
+    test_parser_func();
+    if (failures == 0) {
+        printf("All unit tests passed\n");
+    } else {
+        printf("%d unit test(s) failed\n", failures);
+    }
+    return failures ? 1 : 0;
+}
