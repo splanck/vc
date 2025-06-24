@@ -67,6 +67,16 @@ ir_value_t ir_build_load(ir_builder_t *b, const char *name)
     return (ir_value_t){ins->dest};
 }
 
+void ir_build_store(ir_builder_t *b, const char *name, ir_value_t val)
+{
+    ir_instr_t *ins = append_instr(b);
+    if (!ins)
+        return;
+    ins->op = IR_STORE;
+    ins->src1 = val.id;
+    ins->name = dup_string(name ? name : "");
+}
+
 ir_value_t ir_build_binop(ir_builder_t *b, ir_op_t op, ir_value_t left, ir_value_t right)
 {
     ir_instr_t *ins = append_instr(b);

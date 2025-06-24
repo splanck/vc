@@ -52,6 +52,21 @@ expr_t *ast_make_binary(binop_t op, expr_t *left, expr_t *right)
     return expr;
 }
 
+expr_t *ast_make_assign(const char *name, expr_t *value)
+{
+    expr_t *expr = malloc(sizeof(*expr));
+    if (!expr)
+        return NULL;
+    expr->kind = EXPR_ASSIGN;
+    expr->assign.name = dup_string(name ? name : "");
+    if (!expr->assign.name) {
+        free(expr);
+        return NULL;
+    }
+    expr->assign.value = value;
+    return expr;
+}
+
 /* Constructors for statements */
 stmt_t *ast_make_expr_stmt(expr_t *expr)
 {
@@ -73,6 +88,20 @@ stmt_t *ast_make_return(expr_t *expr)
     return stmt;
 }
 
+stmt_t *ast_make_var_decl(const char *name)
+{
+    stmt_t *stmt = malloc(sizeof(*stmt));
+    if (!stmt)
+        return NULL;
+    stmt->kind = STMT_VAR_DECL;
+    stmt->var_decl.name = dup_string(name ? name : "");
+    if (!stmt->var_decl.name) {
+        free(stmt);
+        return NULL;
+    }
+    return stmt;
+}
+
 /* Destructors */
 void ast_free_expr(expr_t *expr)
 {
@@ -89,6 +118,10 @@ void ast_free_expr(expr_t *expr)
         ast_free_expr(expr->binary.left);
         ast_free_expr(expr->binary.right);
         break;
+    case EXPR_ASSIGN:
+        free(expr->assign.name);
+        ast_free_expr(expr->assign.value);
+        break;
     }
     free(expr);
 }
@@ -103,6 +136,9 @@ void ast_free_stmt(stmt_t *stmt)
         break;
     case STMT_RETURN:
         ast_free_expr(stmt->ret.expr);
+        break;
+    case STMT_VAR_DECL:
+        free(stmt->var_decl.name);
         break;
     }
     free(stmt);

@@ -22,6 +22,7 @@ typedef enum {
     TOK_MINUS,
     TOK_STAR,
     TOK_SLASH,
+    TOK_ASSIGN,
     TOK_UNKNOWN
 } token_type_t;
 

@@ -85,6 +85,9 @@ static void emit_instr(strbuf_t *sb, ir_instr_t *ins)
     case IR_LOAD:
         sb_appendf(sb, "    movl %s, %s\n", ins->name, reg_for(ins->dest));
         break;
+    case IR_STORE:
+        sb_appendf(sb, "    movl %s, %s\n", reg_for(ins->src1), ins->name);
+        break;
     case IR_ADD:
         sb_appendf(sb, "    movl %s, %s\n", reg_for(ins->src1), reg_for(ins->dest));
         sb_appendf(sb, "    addl %s, %s\n", reg_for(ins->src2), reg_for(ins->dest));
