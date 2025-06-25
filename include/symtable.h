@@ -29,16 +29,25 @@ typedef struct {
 } symtable_t;
 
 /* Initialize and free a symbol table */
+/*
+ * The table maintains two singly linked lists: one for the current scope and
+ * one for global symbols.  Insertion helpers add new entries to these lists and
+ * lookup helpers search through them.
+ */
 void symtable_init(symtable_t *table);
 void symtable_free(symtable_t *table);
 
 /* Add a symbol to the table. Returns non-zero on success. */
+/* Locals */
 int symtable_add(symtable_t *table, const char *name, type_kind_t type,
                  size_t array_size);
+/* Parameters are stored as locals with an index */
 int symtable_add_param(symtable_t *table, const char *name, type_kind_t type,
                        int index);
+/* Functions record return and parameter types */
 int symtable_add_func(symtable_t *table, const char *name, type_kind_t ret_type,
                       type_kind_t *param_types, size_t param_count);
+/* Globals live in a separate list */
 int symtable_add_global(symtable_t *table, const char *name, type_kind_t type,
                         size_t array_size);
 
