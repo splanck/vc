@@ -4,7 +4,7 @@ DIR=$(dirname "$0")
 BINARY="$DIR/../vc"
 
 fail=0
-for cfile in "$DIR"/fixtures/*.c; do
+for cfile in $(ls "$DIR"/fixtures/*.c | sort); do
     base=$(basename "$cfile" .c)
     expect="$DIR/fixtures/$base.s"
     out=$(mktemp)
