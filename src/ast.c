@@ -9,6 +9,7 @@
 #include "ast.h"
 #include "util.h"
 /* Constructors for expressions */
+/* Create a numeric literal expression node. */
 expr_t *ast_make_number(const char *value, size_t line, size_t column)
 {
     expr_t *expr = malloc(sizeof(*expr));
@@ -25,6 +26,7 @@ expr_t *ast_make_number(const char *value, size_t line, size_t column)
     return expr;
 }
 
+/* Create an identifier expression node. */
 expr_t *ast_make_ident(const char *name, size_t line, size_t column)
 {
     expr_t *expr = malloc(sizeof(*expr));
@@ -41,6 +43,7 @@ expr_t *ast_make_ident(const char *name, size_t line, size_t column)
     return expr;
 }
 
+/* Create a string literal expression node. */
 expr_t *ast_make_string(const char *value, size_t line, size_t column)
 {
     expr_t *expr = malloc(sizeof(*expr));
@@ -57,6 +60,7 @@ expr_t *ast_make_string(const char *value, size_t line, size_t column)
     return expr;
 }
 
+/* Create a character literal expression node. */
 expr_t *ast_make_char(char value, size_t line, size_t column)
 {
     expr_t *expr = malloc(sizeof(*expr));
@@ -69,6 +73,7 @@ expr_t *ast_make_char(char value, size_t line, size_t column)
     return expr;
 }
 
+/* Create a binary operation expression node. */
 expr_t *ast_make_binary(binop_t op, expr_t *left, expr_t *right,
                         size_t line, size_t column)
 {
@@ -84,6 +89,7 @@ expr_t *ast_make_binary(binop_t op, expr_t *left, expr_t *right,
     return expr;
 }
 
+/* Create a unary operation expression node. */
 expr_t *ast_make_unary(unop_t op, expr_t *operand,
                        size_t line, size_t column)
 {
@@ -98,6 +104,7 @@ expr_t *ast_make_unary(unop_t op, expr_t *operand,
     return expr;
 }
 
+/* Create an assignment expression node assigning to \p name. */
 expr_t *ast_make_assign(const char *name, expr_t *value,
                         size_t line, size_t column)
 {
@@ -116,6 +123,7 @@ expr_t *ast_make_assign(const char *name, expr_t *value,
     return expr;
 }
 
+/* Create an array indexing expression node. */
 expr_t *ast_make_index(expr_t *array, expr_t *index,
                        size_t line, size_t column)
 {
@@ -130,6 +138,7 @@ expr_t *ast_make_index(expr_t *array, expr_t *index,
     return expr;
 }
 
+/* Create an array element assignment expression node. */
 expr_t *ast_make_assign_index(expr_t *array, expr_t *index, expr_t *value,
                               size_t line, size_t column)
 {
@@ -145,6 +154,7 @@ expr_t *ast_make_assign_index(expr_t *array, expr_t *index, expr_t *value,
     return expr;
 }
 
+/* Create a function call expression node. */
 expr_t *ast_make_call(const char *name, expr_t **args, size_t arg_count,
                       size_t line, size_t column)
 {
@@ -165,6 +175,7 @@ expr_t *ast_make_call(const char *name, expr_t **args, size_t arg_count,
 }
 
 /* Constructors for statements */
+/* Wrap an expression as a statement. */
 stmt_t *ast_make_expr_stmt(expr_t *expr, size_t line, size_t column)
 {
     stmt_t *stmt = malloc(sizeof(*stmt));
@@ -177,6 +188,7 @@ stmt_t *ast_make_expr_stmt(expr_t *expr, size_t line, size_t column)
     return stmt;
 }
 
+/* Create a return statement node. */
 stmt_t *ast_make_return(expr_t *expr, size_t line, size_t column)
 {
     stmt_t *stmt = malloc(sizeof(*stmt));
@@ -189,6 +201,7 @@ stmt_t *ast_make_return(expr_t *expr, size_t line, size_t column)
     return stmt;
 }
 
+/* Create a variable declaration statement. */
 stmt_t *ast_make_var_decl(const char *name, type_kind_t type, size_t array_size,
                           expr_t *init, expr_t **init_list, size_t init_count,
                           size_t line, size_t column)
@@ -212,6 +225,7 @@ stmt_t *ast_make_var_decl(const char *name, type_kind_t type, size_t array_size,
     return stmt;
 }
 
+/* Create an if/else statement node. */
 stmt_t *ast_make_if(expr_t *cond, stmt_t *then_branch, stmt_t *else_branch,
                     size_t line, size_t column)
 {
@@ -227,6 +241,7 @@ stmt_t *ast_make_if(expr_t *cond, stmt_t *then_branch, stmt_t *else_branch,
     return stmt;
 }
 
+/* Create a while loop statement node. */
 stmt_t *ast_make_while(expr_t *cond, stmt_t *body,
                        size_t line, size_t column)
 {
@@ -241,6 +256,7 @@ stmt_t *ast_make_while(expr_t *cond, stmt_t *body,
     return stmt;
 }
 
+/* Create a do-while loop statement node. */
 stmt_t *ast_make_do_while(expr_t *cond, stmt_t *body,
                           size_t line, size_t column)
 {
@@ -255,6 +271,7 @@ stmt_t *ast_make_do_while(expr_t *cond, stmt_t *body,
     return stmt;
 }
 
+/* Create a for loop statement node. */
 stmt_t *ast_make_for(expr_t *init, expr_t *cond, expr_t *incr, stmt_t *body,
                      size_t line, size_t column)
 {
@@ -271,6 +288,7 @@ stmt_t *ast_make_for(expr_t *init, expr_t *cond, expr_t *incr, stmt_t *body,
     return stmt;
 }
 
+/* Create a break statement node. */
 stmt_t *ast_make_break(size_t line, size_t column)
 {
     stmt_t *stmt = malloc(sizeof(*stmt));
@@ -282,6 +300,7 @@ stmt_t *ast_make_break(size_t line, size_t column)
     return stmt;
 }
 
+/* Create a continue statement node. */
 stmt_t *ast_make_continue(size_t line, size_t column)
 {
     stmt_t *stmt = malloc(sizeof(*stmt));
@@ -293,6 +312,7 @@ stmt_t *ast_make_continue(size_t line, size_t column)
     return stmt;
 }
 
+/* Create a block statement containing \p count child statements. */
 stmt_t *ast_make_block(stmt_t **stmts, size_t count,
                        size_t line, size_t column)
 {
@@ -307,6 +327,7 @@ stmt_t *ast_make_block(stmt_t **stmts, size_t count,
     return stmt;
 }
 
+/* Create a function definition node with parameters and body. */
 func_t *ast_make_func(const char *name, type_kind_t ret_type,
                       char **param_names, type_kind_t *param_types,
                       size_t param_count,
@@ -350,6 +371,7 @@ func_t *ast_make_func(const char *name, type_kind_t ret_type,
 }
 
 /* Destructors */
+/* Recursively free an expression node and its children. */
 void ast_free_expr(expr_t *expr)
 {
     if (!expr)
@@ -396,6 +418,7 @@ void ast_free_expr(expr_t *expr)
     free(expr);
 }
 
+/* Free a statement node and all of its children. */
 void ast_free_stmt(stmt_t *stmt)
 {
     if (!stmt)
@@ -445,6 +468,7 @@ void ast_free_stmt(stmt_t *stmt)
     free(stmt);
 }
 
+/* Free a function definition and its entire body. */
 void ast_free_func(func_t *func)
 {
     if (!func)
