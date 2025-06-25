@@ -36,23 +36,27 @@ static inline int match(parser_t *p, token_type_t type)
     return 0;
 }
 
-/* Initialize the parser with a token array */
+/* Initialize the parser with a token array.  Resets the position to 0. */
 void parser_init(parser_t *p, token_t *tokens, size_t count);
 
-/* Parse a single statement. Returns NULL on error. */
+/* Parse a single statement at the current position and advance past it.
+ * Returns the constructed stmt_t or NULL on failure. */
 stmt_t *parser_parse_stmt(parser_t *p);
 
-/* Parse a function definition. Returns NULL on error. */
+/* Parse an entire function definition beginning with its return type.
+ * The returned func_t owns all allocated memory. */
 func_t *parser_parse_func(parser_t *p);
 
-/* Parse a top-level declaration (function or global variable).
- * Returns 1 on success with one of out_func/out_global set. */
+/* Parse a top-level declaration.  Exactly one of out_func or out_global
+ * will be set on success.  The return value is non-zero if a valid
+ * declaration was consumed. */
 int parser_parse_toplevel(parser_t *p, func_t **out_func, stmt_t **out_global);
 
-/* Parse an expression starting at the current token. Returns NULL on error. */
+/* Entry point for expression parsing. */
 expr_t *parser_parse_expr(parser_t *p);
 
-/* Parse an initializer list of expressions between '{' and '}'. */
+/* Parse an initializer list between '{' and '}'.  The number of parsed
+ * expressions is stored in out_count. */
 expr_t **parser_parse_init_list(parser_t *p, size_t *out_count);
 
 /* Returns non-zero if the parser has reached EOF */

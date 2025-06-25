@@ -1,6 +1,11 @@
 /*
  * Recursive descent expression parser.
  *
+ * Expressions are parsed starting from the lowest precedence
+ * (assignments) down to primary terms.  Each helper returns a newly
+ * allocated expr_t and advances the parser on success.  A NULL return
+ * indicates a syntax error.
+ *
  * Part of vc under the BSD 2-Clause license.
  * See LICENSE for details.
  */
@@ -16,6 +21,11 @@ static expr_t *parse_relational(parser_t *p);
 static expr_t *parse_additive(parser_t *p);
 static expr_t *parse_primary(parser_t *p);
 
+/*
+ * Parse the most basic expression forms: literals, identifiers, function
+ * calls and array indexing.  Prefix unary operators are also handled
+ * here.  The returned expr_t represents the parsed sub-expression.
+ */
 static expr_t *parse_primary(parser_t *p)
 {
     token_t *tok = peek(p);
@@ -117,6 +127,11 @@ static expr_t *parse_primary(parser_t *p)
     return base;
 }
 
+/*
+ * Handle multiplication and division.  The function expects that any
+ * higher precedence unary/primary expression has already been consumed
+ * and returns the combined binary expression tree.
+ */
 static expr_t *parse_term(parser_t *p)
 {
     expr_t *left = parse_primary(p);
@@ -149,6 +164,7 @@ static expr_t *parse_term(parser_t *p)
     return left;
 }
 
+/* Build addition and subtraction expressions. */
 static expr_t *parse_additive(parser_t *p)
 {
     expr_t *left = parse_term(p);
@@ -181,6 +197,7 @@ static expr_t *parse_additive(parser_t *p)
     return left;
 }
 
+/* Comparison operators <, >, <= and >=. */
 static expr_t *parse_relational(parser_t *p)
 {
     expr_t *left = parse_additive(p);
@@ -231,6 +248,7 @@ static expr_t *parse_relational(parser_t *p)
     return left;
 }
 
+/* Parse == and != comparisons. */
 static expr_t *parse_equality(parser_t *p)
 {
     expr_t *left = parse_relational(p);
@@ -263,6 +281,8 @@ static expr_t *parse_equality(parser_t *p)
     return left;
 }
 
+/* Assignment has the lowest precedence and recurses to itself for chained
+ * assignments. */
 static expr_t *parse_assignment(parser_t *p)
 {
     expr_t *left = parse_equality(p);
@@ -298,11 +318,17 @@ static expr_t *parse_assignment(parser_t *p)
     return left;
 }
 
+/* Entry point that parses the full expression grammar. */
 static expr_t *parse_expression(parser_t *p)
 {
     return parse_assignment(p);
 }
 
+/*
+ * Parse an initializer list surrounded by braces.  The returned array of
+ * expressions has "*out_count" elements and must be freed by the
+ * caller.  NULL is returned on error.
+ */
 expr_t **parser_parse_init_list(parser_t *p, size_t *out_count)
 {
     if (!match(p, TOK_LBRACE))
@@ -345,6 +371,7 @@ expr_t **parser_parse_init_list(parser_t *p, size_t *out_count)
     return vals;
 }
 
+/* Public wrapper for expression parsing used by other modules. */
 expr_t *parser_parse_expr(parser_t *p)
 {
     return parse_expression(p);
