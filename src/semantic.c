@@ -80,6 +80,29 @@ static int is_intlike(type_kind_t t)
     }
 }
 
+/* Mapping from BINOP_* to corresponding IR op.  Logical ops are
+ * handled separately and use IR_CMPEQ here just as a placeholder. */
+static const ir_op_t binop_to_ir[] = {
+    [BINOP_ADD]    = IR_ADD,
+    [BINOP_SUB]    = IR_SUB,
+    [BINOP_MUL]    = IR_MUL,
+    [BINOP_DIV]    = IR_DIV,
+    [BINOP_MOD]    = IR_MOD,
+    [BINOP_SHL]    = IR_SHL,
+    [BINOP_SHR]    = IR_SHR,
+    [BINOP_BITAND] = IR_AND,
+    [BINOP_BITXOR] = IR_XOR,
+    [BINOP_BITOR]  = IR_OR,
+    [BINOP_EQ]     = IR_CMPEQ,
+    [BINOP_NEQ]    = IR_CMPNE,
+    [BINOP_LOGAND] = IR_CMPEQ, /* unreachable */
+    [BINOP_LOGOR]  = IR_CMPEQ, /* unreachable */
+    [BINOP_LT]     = IR_CMPLT,
+    [BINOP_GT]     = IR_CMPGT,
+    [BINOP_LE]     = IR_CMPLE,
+    [BINOP_GE]     = IR_CMPGE,
+};
+
 static void symtable_pop_scope(symtable_t *table, symbol_t *old_head)
 {
     while (table->head != old_head) {
@@ -192,27 +215,7 @@ static type_kind_t check_binary(expr_t *left, expr_t *right, symtable_t *vars,
     type_kind_t rt = check_expr(right, vars, funcs, ir, &rval);
     if (is_intlike(lt) && is_intlike(rt)) {
         if (out) {
-            ir_op_t ir_op;
-            switch (op) {
-            case BINOP_ADD: ir_op = IR_ADD; break;
-            case BINOP_SUB: ir_op = IR_SUB; break;
-            case BINOP_MUL: ir_op = IR_MUL; break;
-            case BINOP_DIV: ir_op = IR_DIV; break;
-            case BINOP_MOD: ir_op = IR_MOD; break;
-            case BINOP_SHL: ir_op = IR_SHL; break;
-            case BINOP_SHR: ir_op = IR_SHR; break;
-            case BINOP_BITAND: ir_op = IR_AND; break;
-            case BINOP_BITXOR: ir_op = IR_XOR; break;
-            case BINOP_BITOR: ir_op = IR_OR; break;
-            case BINOP_EQ:  ir_op = IR_CMPEQ; break;
-            case BINOP_NEQ: ir_op = IR_CMPNE; break;
-            case BINOP_LT:  ir_op = IR_CMPLT; break;
-            case BINOP_GT:  ir_op = IR_CMPGT; break;
-            case BINOP_LE:  ir_op = IR_CMPLE; break;
-            case BINOP_GE:  ir_op = IR_CMPGE; break;
-            case BINOP_LOGAND: ir_op = IR_CMPEQ; break; /* unreachable */
-            case BINOP_LOGOR:  ir_op = IR_CMPEQ; break; /* unreachable */
-            }
+            ir_op_t ir_op = binop_to_ir[op];
             *out = ir_build_binop(ir, ir_op, lval, rval);
         }
         return TYPE_INT;
