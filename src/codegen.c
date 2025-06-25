@@ -267,8 +267,8 @@ static void emit_arith_instr(strbuf_t *sb, ir_instr_t *ins,
     case IR_LOGAND: {
         int id = label_next_id();
         char fl[32]; char end[32];
-        snprintf(fl, sizeof(fl), "L%d_false", id);
-        snprintf(end, sizeof(end), "L%d_end", id);
+        label_format_suffix("L", id, "_false", fl);
+        label_format_suffix("L", id, "_end", end);
         strbuf_appendf(sb, "    mov%s %s, %s\n", sfx,
                        loc_str(buf1, ra, ins->src1, x64),
                        loc_str(buf2, ra, ins->dest, x64));
@@ -293,8 +293,8 @@ static void emit_arith_instr(strbuf_t *sb, ir_instr_t *ins,
     case IR_LOGOR: {
         int id = label_next_id();
         char tl[32]; char end[32];
-        snprintf(tl, sizeof(tl), "L%d_true", id);
-        snprintf(end, sizeof(end), "L%d_end", id);
+        label_format_suffix("L", id, "_true", tl);
+        label_format_suffix("L", id, "_end", end);
         strbuf_appendf(sb, "    mov%s %s, %s\n", sfx,
                        loc_str(buf1, ra, ins->src1, x64),
                        loc_str(buf2, ra, ins->dest, x64));

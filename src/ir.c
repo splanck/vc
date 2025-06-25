@@ -9,6 +9,7 @@
 #include <stdio.h>
 #include <stdarg.h>
 #include "ir.h"
+#include "label.h"
 #include "strbuf.h"
 #include "util.h"
 
@@ -82,8 +83,7 @@ ir_value_t ir_build_string(ir_builder_t *b, const char *str)
     ins->op = IR_GLOB_STRING;
     ins->dest = b->next_value_id++;
     char label[32];
-    snprintf(label, sizeof(label), "Lstr%d", ins->dest);
-    ins->name = vc_strdup(label);
+    ins->name = vc_strdup(label_format("Lstr", ins->dest, label));
     ins->data = vc_strdup(str ? str : "");
     return (ir_value_t){ins->dest};
 }

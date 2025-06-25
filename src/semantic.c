@@ -58,8 +58,7 @@ static const char *label_table_get_or_add(label_table_t *t, const char *name)
         return NULL;
     e->name = vc_strdup(name);
     char buf[32];
-    snprintf(buf, sizeof(buf), "Luser%d", label_next_id());
-    e->ir_name = vc_strdup(buf);
+    e->ir_name = vc_strdup(label_format("Luser", label_next_id(), buf));
     e->next = t->head;
     t->head = e;
     return e->ir_name;
@@ -415,9 +414,9 @@ type_kind_t check_expr(expr_t *expr, symtable_t *vars, symtable_t *funcs,
         }
         char flabel[32], endlabel[32], tmp[32];
         int id = label_next_id();
-        snprintf(flabel, sizeof(flabel), "L%d_false", id);
-        snprintf(endlabel, sizeof(endlabel), "L%d_end", id);
-        snprintf(tmp, sizeof(tmp), "tmp%d", id);
+        label_format_suffix("L", id, "_false", flabel);
+        label_format_suffix("L", id, "_end", endlabel);
+        label_format("tmp", id, tmp);
         ir_build_bcond(ir, cond_val, flabel);
         ir_value_t tval;
         type_kind_t tt = check_expr(expr->cond.then_expr, vars, funcs, ir, &tval);
@@ -608,8 +607,8 @@ static int check_if_stmt(stmt_t *stmt, symtable_t *vars, symtable_t *funcs,
     char else_label[32];
     char end_label[32];
     int id = label_next_id();
-    snprintf(else_label, sizeof(else_label), "L%d_else", id);
-    snprintf(end_label, sizeof(end_label), "L%d_end", id);
+    label_format_suffix("L", id, "_else", else_label);
+    label_format_suffix("L", id, "_end", end_label);
     const char *target = stmt->if_stmt.else_branch ? else_label : end_label;
     ir_build_bcond(ir, cond_val, target);
     if (!check_stmt(stmt->if_stmt.then_branch, vars, funcs, labels, ir,
@@ -634,8 +633,8 @@ static int check_while_stmt(stmt_t *stmt, symtable_t *vars, symtable_t *funcs,
     char start_label[32];
     char end_label[32];
     int id = label_next_id();
-    snprintf(start_label, sizeof(start_label), "L%d_start", id);
-    snprintf(end_label, sizeof(end_label), "L%d_end", id);
+    label_format_suffix("L", id, "_start", start_label);
+    label_format_suffix("L", id, "_end", end_label);
     ir_build_label(ir, start_label);
     if (check_expr(stmt->while_stmt.cond, vars, funcs, ir, &cond_val) == TYPE_UNKNOWN)
         return 0;
@@ -657,9 +656,9 @@ static int check_do_while_stmt(stmt_t *stmt, symtable_t *vars, symtable_t *funcs
     char cond_label[32];
     char end_label[32];
     int id = label_next_id();
-    snprintf(start_label, sizeof(start_label), "L%d_start", id);
-    snprintf(cond_label, sizeof(cond_label), "L%d_cond", id);
-    snprintf(end_label, sizeof(end_label), "L%d_end", id);
+    label_format_suffix("L", id, "_start", start_label);
+    label_format_suffix("L", id, "_cond", cond_label);
+    label_format_suffix("L", id, "_end", end_label);
     ir_build_label(ir, start_label);
     if (!check_stmt(stmt->do_while_stmt.body, vars, funcs, labels, ir,
                     func_ret_type, end_label, cond_label))
@@ -681,8 +680,8 @@ static int check_for_stmt(stmt_t *stmt, symtable_t *vars, symtable_t *funcs,
     char start_label[32];
     char end_label[32];
     int id = label_next_id();
-    snprintf(start_label, sizeof(start_label), "L%d_start", id);
-    snprintf(end_label, sizeof(end_label), "L%d_end", id);
+    label_format_suffix("L", id, "_start", start_label);
+    label_format_suffix("L", id, "_end", end_label);
     symbol_t *old_head = vars->head;
     if (stmt->for_stmt.init_decl) {
         if (!check_stmt(stmt->for_stmt.init_decl, vars, funcs, labels, ir,
@@ -703,7 +702,7 @@ static int check_for_stmt(stmt_t *stmt, symtable_t *vars, symtable_t *funcs,
     }
     ir_build_bcond(ir, cond_val, end_label);
     char cont_label[32];
-    snprintf(cont_label, sizeof(cont_label), "L%d_cont", id);
+    label_format_suffix("L", id, "_cont", cont_label);
     if (!check_stmt(stmt->for_stmt.body, vars, funcs, labels, ir,
                     func_ret_type, end_label, cont_label)) {
         symtable_pop_scope(vars, old_head);
@@ -730,8 +729,8 @@ static int check_switch_stmt(stmt_t *stmt, symtable_t *vars, symtable_t *funcs,
     char end_label[32];
     char default_label[32];
     int id = label_next_id();
-    snprintf(end_label, sizeof(end_label), "L%d_end", id);
-    snprintf(default_label, sizeof(default_label), "L%d_default", id);
+    label_format_suffix("L", id, "_end", end_label);
+    label_format_suffix("L", id, "_default", default_label);
     char **case_labels = calloc(stmt->switch_stmt.case_count, sizeof(char *));
     if (!case_labels)
         return 0;
@@ -896,8 +895,7 @@ int check_stmt(stmt_t *stmt, symtable_t *vars, symtable_t *funcs,
         char ir_name_buf[32];
         const char *ir_name = stmt->var_decl.name;
         if (stmt->var_decl.is_static) {
-            snprintf(ir_name_buf, sizeof(ir_name_buf), "__static%d", label_next_id());
-            ir_name = ir_name_buf;
+            ir_name = label_format("__static", label_next_id(), ir_name_buf);
         }
         if (!symtable_add(vars, stmt->var_decl.name, ir_name,
                           stmt->var_decl.type,
