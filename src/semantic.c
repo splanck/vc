@@ -988,8 +988,6 @@ int check_stmt(stmt_t *stmt, symtable_t *vars, symtable_t *funcs,
             for (size_t i = 0; i < stmt->var_decl.member_count; i++) {
                 union_member_t *m = &stmt->var_decl.members[i];
                 size_t sz = m->elem_size;
-                if (m->type == TYPE_ARRAY)
-                    sz *= m->array_size;
                 if (sz > max)
                     max = sz;
             }
@@ -1159,8 +1157,6 @@ int check_global(stmt_t *decl, symtable_t *globals, ir_builder_t *ir)
         for (size_t i = 0; i < decl->var_decl.member_count; i++) {
             union_member_t *m = &decl->var_decl.members[i];
             size_t sz = m->elem_size;
-            if (m->type == TYPE_ARRAY)
-                sz *= m->array_size;
             if (sz > max)
                 max = sz;
         }
