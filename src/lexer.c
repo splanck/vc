@@ -12,6 +12,7 @@
 #include "token.h"
 #include "vector.h"
 
+/* Helper to create and append a token to the vector */
 static void append_token(vector_t *vec, token_type_t type, const char *lexeme,
                          size_t len, size_t line, size_t column)
 {
@@ -25,6 +26,7 @@ static void append_token(vector_t *vec, token_type_t type, const char *lexeme,
         exit(1);
 }
 
+/* Skip comments and whitespace, updating position counters */
 static void skip_whitespace(const char *src, size_t *i, size_t *line,
                             size_t *col)
 {
@@ -67,6 +69,7 @@ static void skip_whitespace(const char *src, size_t *i, size_t *line,
     }
 }
 
+/* Read an identifier or keyword starting at src[*i] */
 static void read_identifier(const char *src, size_t *i, size_t *col,
                             vector_t *tokens, size_t line)
 {
@@ -101,6 +104,7 @@ static void read_identifier(const char *src, size_t *i, size_t *col,
     *col += len;
 }
 
+/* Parse a numeric literal */
 static void read_number(const char *src, size_t *i, size_t *col,
                         vector_t *tokens, size_t line)
 {
@@ -112,6 +116,7 @@ static void read_number(const char *src, size_t *i, size_t *col,
     *col += len;
 }
 
+/* Translate escape sequences within character and string literals */
 static int unescape_char(char c)
 {
     switch (c) {
@@ -124,6 +129,7 @@ static int unescape_char(char c)
     }
 }
 
+/* Parse a character constant like '\n' or 'a' */
 static void read_char_const(const char *src, size_t *i, size_t *col,
                             vector_t *tokens, size_t line)
 {
@@ -145,6 +151,7 @@ static void read_char_const(const char *src, size_t *i, size_t *col,
     append_token(tokens, TOK_CHAR, buf, 1, line, column);
 }
 
+/* Parse a double-quoted string literal */
 static void read_string_lit(const char *src, size_t *i, size_t *col,
                             vector_t *tokens, size_t line)
 {
@@ -179,6 +186,7 @@ static void read_string_lit(const char *src, size_t *i, size_t *col,
     free(buf);
 }
 
+/* Convert punctuation characters to tokens */
 static void read_punct(char c, vector_t *tokens, size_t line, size_t column)
 {
     token_type_t type = TOK_UNKNOWN;
@@ -206,6 +214,7 @@ static void read_punct(char c, vector_t *tokens, size_t line, size_t column)
 
 /* Public API */
 
+/* Tokenize the entire source string */
 token_t *lexer_tokenize(const char *src, size_t *out_count)
 {
     vector_t vec;
@@ -249,6 +258,7 @@ token_t *lexer_tokenize(const char *src, size_t *out_count)
     return (token_t *)vec.data;
 }
 
+/* Free an array of tokens produced by lexer_tokenize */
 void lexer_free_tokens(token_t *tokens, size_t count)
 {
     for (size_t i = 0; i < count; i++)

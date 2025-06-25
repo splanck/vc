@@ -1,6 +1,13 @@
 /*
  * Entry point of the vc compiler.
  *
+ * This file drives the entire compilation pipeline:
+ *  1. Source code is tokenized by the lexer.
+ *  2. The parser builds an AST from those tokens.
+ *  3. Semantic analysis creates an intermediate representation (IR).
+ *  4. Optimization passes run on the IR.
+ *  5. Code generation emits x86 assembly or an object file.
+ *
  * Part of vc under the BSD 2-Clause license.
  * See LICENSE for details.
  */
