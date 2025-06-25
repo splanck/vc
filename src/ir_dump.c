@@ -51,6 +51,11 @@ static const char *op_name(ir_op_t op)
     return "";
 }
 
+/*
+ * Convert the instruction list into a textual form suitable for
+ * debugging. Each line contains the opcode followed by the common
+ * fields. Global arrays list the element count instead.
+ */
 char *ir_to_string(ir_builder_t *ir)
 {
     if (!ir)
