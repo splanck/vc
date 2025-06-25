@@ -86,9 +86,9 @@ constant initializers.
 The `const` qualifier marks a variable as read-only after initialization.
 Any attempt to assign to a `const` object results in a semantic error.
 
-Struct and union objects are declared similarly using the new
-`struct` and `union` keywords. Member access is parsed with `.` or
-`->`:
+Struct and union objects are declared using the `struct` and
+`union` keywords.  Members are accessed with `.` for objects or
+`->` when using pointers:
 
 ```c
 struct Point { int x; int y; };
@@ -97,10 +97,11 @@ p.x = 3;
 return p.x;
 ```
 
-Union declarations follow the same pattern using the `union` keyword. Only
-basic member types are supported and the maximum member size determines the
-size of the union object. Member access syntax is parsed but not semantically
-checked yet.
+Union declarations follow the same pattern using the `union` keyword.
+Each member shares the same storage and the overall size of the object is
+determined by the largest member.  Access uses the same `.` and `->`
+operators as for structures.  The compiler currently parses these accesses
+but does not verify which member is active.
 
 #### Typedef aliases
 
@@ -594,6 +595,24 @@ int main() {
 Compile with:
 ```sh
 vc -o enum_example.s enum_example.c
+```
+
+### Union declarations
+```c
+/* union_example.c */
+union Value {
+    int i;
+    char c;
+};
+int main() {
+    union Value v;
+    v.i = 65;
+    return v.i;
+}
+```
+Compile with:
+```sh
+vc -o union_example.s union_example.c
 ```
 
 ### Labels and goto
