@@ -220,6 +220,13 @@ static void emit_instr(strbuf_t *sb, ir_instr_t *ins, regalloc_t *ra, int x64)
     }
 }
 
+/*
+ * Translate the IR instruction stream to x86 and return it as a string.
+ *
+ * Register allocation is performed and each instruction is lowered by
+ * `emit_instr`. Global data directives are not included. The returned
+ * buffer is heap allocated and must be freed by the caller.
+ */
 char *codegen_ir_to_string(ir_builder_t *ir, int x64)
 {
     if (!ir)
@@ -237,6 +244,14 @@ char *codegen_ir_to_string(ir_builder_t *ir, int x64)
     return sb.data; /* caller takes ownership */
 }
 
+/*
+ * Emit the assembly representation of `ir` to the stream `out`.
+ *
+ * Global declarations are written first using the appropriate `.data`
+ * directives. The remaining instructions are lowered via
+ * `codegen_ir_to_string` and printed after an optional `.text` header.
+ * Set `x64` to enable 64-bit output.
+ */
 void codegen_emit_x86(FILE *out, ir_builder_t *ir, int x64)
 {
     if (!out)
