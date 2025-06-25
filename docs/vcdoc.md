@@ -218,6 +218,7 @@ RETURN v2
 - `for`, `while` and `do`/`while` loops
 - Pointers
 - Arrays
+- `sizeof` operator
 - Global variables
 - `break` and `continue` statements
 - Labels and `goto`
@@ -341,6 +342,22 @@ int main() {
 Compile with:
 ```sh
 vc -o array_init.s array_init.c
+```
+
+### sizeof
+`sizeof` returns the number of bytes for a type or expression without
+evaluating the expression.
+
+```c
+/* sz.c */
+int main() {
+    int x;
+    return sizeof(int) + sizeof(x);
+}
+```
+Compile with:
+```sh
+vc -o sz.s sz.c
 ```
 
 ### Global variables

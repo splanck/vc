@@ -35,6 +35,7 @@ typedef enum {
     TOK_KW_SWITCH,
     TOK_KW_CASE,
     TOK_KW_DEFAULT,
+    TOK_KW_SIZEOF,
     TOK_LPAREN,
     TOK_RPAREN,
     TOK_LBRACE,

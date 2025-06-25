@@ -20,6 +20,7 @@ static expr_t *parse_equality(parser_t *p);
 static expr_t *parse_relational(parser_t *p);
 static expr_t *parse_additive(parser_t *p);
 static expr_t *parse_primary(parser_t *p);
+static int parse_type(parser_t *p, type_kind_t *out_type, size_t *out_size);
 
 /*
  * Parse the most basic expression forms: literals, identifiers, function
@@ -50,6 +51,21 @@ static expr_t *parse_primary(parser_t *p)
         if (!op)
             return NULL;
         return ast_make_unary(UNOP_NEG, op, op_tok->line, op_tok->column);
+    } else if (match(p, TOK_KW_SIZEOF)) {
+        token_t *kw = &p->tokens[p->pos - 1];
+        if (!match(p, TOK_LPAREN))
+            return NULL;
+        size_t save = p->pos;
+        type_kind_t t; size_t sz;
+        if (parse_type(p, &t, &sz) && match(p, TOK_RPAREN))
+            return ast_make_sizeof_type(t, sz, kw->line, kw->column);
+        p->pos = save;
+        expr_t *e = parse_expression(p);
+        if (!e || !match(p, TOK_RPAREN)) {
+            ast_free_expr(e);
+            return NULL;
+        }
+        return ast_make_sizeof_expr(e, kw->line, kw->column);
     }
 
     expr_t *base = NULL;
@@ -389,5 +405,45 @@ expr_t **parser_parse_init_list(parser_t *p, size_t *out_count)
 expr_t *parser_parse_expr(parser_t *p)
 {
     return parse_expression(p);
+}
+
+/* Parse a basic type specification used by sizeof. */
+static int parse_type(parser_t *p, type_kind_t *out_type, size_t *out_size)
+{
+    size_t save = p->pos;
+    token_t *tok = peek(p);
+    type_kind_t t;
+    if (match(p, TOK_KW_INT)) {
+        t = TYPE_INT;
+    } else if (match(p, TOK_KW_CHAR)) {
+        t = TYPE_CHAR;
+    } else if (match(p, TOK_KW_VOID)) {
+        t = TYPE_VOID;
+    } else {
+        p->pos = save;
+        return 0;
+    }
+    if ((t == TYPE_INT || t == TYPE_CHAR) && match(p, TOK_STAR))
+        t = TYPE_PTR;
+    size_t arr = 0;
+    if (match(p, TOK_LBRACKET)) {
+        token_t *num = peek(p);
+        if (!num || num->type != TOK_NUMBER) {
+            p->pos = save;
+            return 0;
+        }
+        p->pos++;
+        arr = strtoul(num->lexeme, NULL, 10);
+        if (!match(p, TOK_RBRACKET)) {
+            p->pos = save;
+            return 0;
+        }
+        t = TYPE_ARRAY;
+    }
+    if (out_type)
+        *out_type = t;
+    if (out_size)
+        *out_size = arr;
+    return 1;
 }
 

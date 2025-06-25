@@ -174,6 +174,39 @@ expr_t *ast_make_member(expr_t *object, const char *member, int via_ptr,
     return expr;
 }
 
+/* Create a sizeof expression for a type. */
+expr_t *ast_make_sizeof_type(type_kind_t type, size_t array_size,
+                             size_t line, size_t column)
+{
+    expr_t *expr = malloc(sizeof(*expr));
+    if (!expr)
+        return NULL;
+    expr->kind = EXPR_SIZEOF;
+    expr->line = line;
+    expr->column = column;
+    expr->sizeof_expr.is_type = 1;
+    expr->sizeof_expr.type = type;
+    expr->sizeof_expr.array_size = array_size;
+    expr->sizeof_expr.expr = NULL;
+    return expr;
+}
+
+/* Create a sizeof expression for another expression. */
+expr_t *ast_make_sizeof_expr(expr_t *e, size_t line, size_t column)
+{
+    expr_t *expr = malloc(sizeof(*expr));
+    if (!expr)
+        return NULL;
+    expr->kind = EXPR_SIZEOF;
+    expr->line = line;
+    expr->column = column;
+    expr->sizeof_expr.is_type = 0;
+    expr->sizeof_expr.type = TYPE_UNKNOWN;
+    expr->sizeof_expr.array_size = 0;
+    expr->sizeof_expr.expr = e;
+    return expr;
+}
+
 /* Create a function call expression node. */
 expr_t *ast_make_call(const char *name, expr_t **args, size_t arg_count,
                       size_t line, size_t column)
@@ -502,6 +535,10 @@ void ast_free_expr(expr_t *expr)
     case EXPR_MEMBER:
         ast_free_expr(expr->member.object);
         free(expr->member.member);
+        break;
+    case EXPR_SIZEOF:
+        if (!expr->sizeof_expr.is_type)
+            ast_free_expr(expr->sizeof_expr.expr);
         break;
     case EXPR_CALL:
         for (size_t i = 0; i < expr->call.arg_count; i++)

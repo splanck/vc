@@ -106,6 +106,8 @@ static void read_identifier(const char *src, size_t *i, size_t *col,
         type = TOK_KW_CASE;
     else if (len == 7 && strncmp(src + start, "default", 7) == 0)
         type = TOK_KW_DEFAULT;
+    else if (len == 6 && strncmp(src + start, "sizeof", 6) == 0)
+        type = TOK_KW_SIZEOF;
     else if (len == 3 && strncmp(src + start, "int", 3) == 0)
         type = TOK_KW_INT;
     else if (len == 4 && strncmp(src + start, "char", 4) == 0)
