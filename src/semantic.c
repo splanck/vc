@@ -416,6 +416,10 @@ type_kind_t check_expr(expr_t *expr, symtable_t *vars, symtable_t *funcs,
             error_set(expr->line, expr->column);
             return TYPE_UNKNOWN;
         }
+        if (sym->is_const) {
+            error_set(expr->line, expr->column);
+            return TYPE_UNKNOWN;
+        }
         type_kind_t vt = check_expr(expr->assign.value, vars, funcs, ir, &val);
         if ((is_intlike(sym->type) && is_intlike(vt)) || vt == sym->type) {
             if (sym->param_index >= 0)
@@ -462,6 +466,10 @@ type_kind_t check_expr(expr_t *expr, symtable_t *vars, symtable_t *funcs,
         }
         symbol_t *sym = symtable_lookup(vars, expr->assign_index.array->ident.name);
         if (!sym || sym->type != TYPE_ARRAY) {
+            error_set(expr->line, expr->column);
+            return TYPE_UNKNOWN;
+        }
+        if (sym->is_const) {
             error_set(expr->line, expr->column);
             return TYPE_UNKNOWN;
         }
@@ -838,7 +846,8 @@ int check_stmt(stmt_t *stmt, symtable_t *vars, symtable_t *funcs,
         if (!symtable_add(vars, stmt->var_decl.name, ir_name,
                           stmt->var_decl.type,
                           stmt->var_decl.array_size,
-                          stmt->var_decl.is_static)) {
+                          stmt->var_decl.is_static,
+                          stmt->var_decl.is_const)) {
             error_set(stmt->line, stmt->column);
             return 0;
         }
@@ -986,7 +995,9 @@ int check_global(stmt_t *decl, symtable_t *globals, ir_builder_t *ir)
         return 0;
     if (!symtable_add_global(globals, decl->var_decl.name, decl->var_decl.name,
                              decl->var_decl.type,
-                             decl->var_decl.array_size, decl->var_decl.is_static)) {
+                             decl->var_decl.array_size,
+                             decl->var_decl.is_static,
+                             decl->var_decl.is_const)) {
         error_set(decl->line, decl->column);
         return 0;
     }
