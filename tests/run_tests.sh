@@ -109,6 +109,15 @@ if ! grep -q "movl x, %eax" "$cprop_out"; then
 fi
 rm -f "$cprop_out"
 
+# test -c/--compile option
+obj_out=$(mktemp --suffix=.o)
+"$BINARY" -c -o "$obj_out" "$DIR/fixtures/simple_add.c"
+if ! od -An -t x1 "$obj_out" | head -n 1 | grep -q "7f 45 4c 46"; then
+    echo "Test compile_option failed"
+    fail=1
+fi
+rm -f "$obj_out"
+
 if [ $fail -eq 0 ]; then
     echo "All tests passed"
 else

@@ -1,3 +1,4 @@
+#define _POSIX_C_SOURCE 200809L
 /*
  * Entry point of the vc compiler.
  *
@@ -14,6 +15,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <unistd.h>
 #include "util.h"
 #include "cli.h"
 #include "token.h"
@@ -41,7 +43,7 @@ static int semantic_stage(func_t **func_list, size_t fcount,
                           ir_builder_t *ir);
 static void optimize_stage(ir_builder_t *ir, const opt_config_t *cfg);
 static int output_stage(ir_builder_t *ir, const char *output,
-                        int dump_ir, int dump_asm, int use_x86_64);
+                        int dump_ir, int dump_asm, int use_x86_64, int compile);
 
 /* Tokenize the preprocessed source file */
 static int tokenize_stage(const char *source, char **out_src,
@@ -161,7 +163,7 @@ static void optimize_stage(ir_builder_t *ir, const opt_config_t *cfg)
 
 /* Emit the requested output */
 static int output_stage(ir_builder_t *ir, const char *output,
-                        int dump_ir, int dump_asm, int use_x86_64)
+                        int dump_ir, int dump_asm, int use_x86_64, int compile)
 {
     if (dump_ir) {
         char *text = ir_to_string(ir);
@@ -180,14 +182,43 @@ static int output_stage(ir_builder_t *ir, const char *output,
         return 1;
     }
 
-    FILE *outf = fopen(output, "w");
-    if (!outf) {
-        perror("fopen");
-        return 0;
+    if (compile) {
+        char tmpname[] = "/tmp/vcXXXXXX";
+        int fd = mkstemp(tmpname);
+        if (fd < 0) {
+            perror("mkstemp");
+            return 0;
+        }
+        FILE *tmpf = fdopen(fd, "w");
+        if (!tmpf) {
+            perror("fdopen");
+            close(fd);
+            unlink(tmpname);
+            return 0;
+        }
+        codegen_emit_x86(tmpf, ir, use_x86_64);
+        fclose(tmpf);
+
+        char cmd[512];
+        const char *arch_flag = use_x86_64 ? "-m64" : "-m32";
+        snprintf(cmd, sizeof(cmd), "cc -x assembler %s -c %s -o %s", arch_flag, tmpname, output);
+        int ret = system(cmd);
+        unlink(tmpname);
+        if (ret != 0) {
+            fprintf(stderr, "cc failed\n");
+            return 0;
+        }
+        return 1;
+    } else {
+        FILE *outf = fopen(output, "w");
+        if (!outf) {
+            perror("fopen");
+            return 0;
+        }
+        codegen_emit_x86(outf, ir, use_x86_64);
+        fclose(outf);
+        return 1;
     }
-    codegen_emit_x86(outf, ir, use_x86_64);
-    fclose(outf);
-    return 1;
 }
 
 int main(int argc, char **argv)
@@ -222,7 +253,7 @@ int main(int argc, char **argv)
     if (ok)
         optimize_stage(&ir, &opt_cfg);
     if (ok)
-        ok = output_stage(&ir, output, dump_ir, dump_asm, use_x86_64);
+        ok = output_stage(&ir, output, dump_ir, dump_asm, use_x86_64, cli.compile);
 
     for (size_t i = 0; i < func_list_v.count; i++)
         ast_free_func(((func_t **)func_list_v.data)[i]);
@@ -244,6 +275,8 @@ int main(int argc, char **argv)
             printf("Compiling %s (IR dumped to stdout)\n", source);
         else if (dump_asm)
             printf("Compiling %s (assembly dumped to stdout)\n", source);
+        else if (cli.compile)
+            printf("Compiling %s -> %s (object)\n", source, output);
         else
             printf("Compiling %s -> %s\n", source, output);
     }

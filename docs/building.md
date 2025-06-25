@@ -28,6 +28,10 @@ default without this flag is 32-bit code.
 To dump the generated assembly to stdout instead of creating a file, use
 `--dump-asm`. When this flag is given the `-o` option is not required.
 
+To assemble the output directly into an object file, pass `-c` or
+`--compile` along with an output path ending in `.o`. The compiler will
+invoke `cc -c` on the generated assembly to produce the object file.
+
 ## Additional build steps
 
 Extra source files can be passed to the build using the `EXTRA_SRC`

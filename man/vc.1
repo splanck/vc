@@ -45,6 +45,9 @@ Disable constant propagation.
 .B --x86-64
 Generate x86-64 assembly instead of 32-bit.
 .TP
+.BR -c "," \fB--compile\fR
+Assemble the output into an object file using \fBcc -c\fR.
+.TP
 .B --dump-asm
 Print generated assembly to stdout rather than creating a file.
 .TP
@@ -54,6 +57,10 @@ Print IR to stdout before generating assembly.
 Compile a source file to \fIout.s\fR:
 .PP
 .B vc -o out.s source.c
+.PP
+Create an object file:
+.PP
+.B vc -c -o out.o source.c
 .PP
 Print the generated assembly:
 .PP

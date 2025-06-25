@@ -2,6 +2,7 @@ CC ?= gcc
 CFLAGS ?= -Wall -Wextra -std=c99
 OPTFLAGS ?=
 BIN = vc
+# The resulting binary accepts -c/--compile to assemble objects using cc
 # Core compiler sources
 
 CORE_SRC = src/main.c src/cli.c src/lexer.c src/ast.c src/parser.c src/symtable.c src/parser_expr.c \
