@@ -52,6 +52,7 @@ static const char *token_name(token_type_t type)
     case TOK_KW_INT: return "\"int\"";
     case TOK_KW_CHAR: return "\"char\"";
     case TOK_KW_VOID: return "\"void\"";
+    case TOK_KW_ENUM: return "\"enum\"";
     case TOK_KW_RETURN: return "\"return\"";
     case TOK_KW_IF: return "\"if\"";
     case TOK_KW_ELSE: return "\"else\"";
@@ -257,6 +258,18 @@ int parser_parse_toplevel(parser_t *p, func_t **out_func, stmt_t **out_global)
     token_t *tok = peek(p);
     if (!tok)
         return 0;
+
+    if (tok->type == TOK_KW_ENUM) {
+        p->pos++;
+        stmt_t *decl = parser_parse_enum_decl(p);
+        if (!decl) {
+            p->pos = save;
+            return 0;
+        }
+        if (out_global)
+            *out_global = decl;
+        return 1;
+    }
 
     type_kind_t t;
     if (tok->type == TOK_KW_INT) {

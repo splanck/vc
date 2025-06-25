@@ -57,11 +57,13 @@ typedef enum {
 struct expr;
 struct stmt;
 struct switch_case;
+struct enumerator;
 struct func;
 
 typedef struct expr expr_t;
 typedef struct stmt stmt_t;
 typedef struct switch_case switch_case_t;
+typedef struct enumerator enumerator_t;
 typedef struct func func_t;
 
 struct expr {
@@ -125,6 +127,7 @@ typedef enum {
     STMT_CONTINUE,
     STMT_LABEL,
     STMT_GOTO,
+    STMT_ENUM_DECL,
     STMT_BLOCK
 } stmt_kind_t;
 
@@ -182,6 +185,11 @@ struct stmt {
             char *name;
         } goto_stmt;
         struct {
+            char *tag;
+            enumerator_t *items;
+            size_t count;
+        } enum_decl;
+        struct {
             stmt_t **stmts;
             size_t count;
         } block;
@@ -191,6 +199,11 @@ struct stmt {
 struct switch_case {
     expr_t *expr;
     stmt_t *body;
+};
+
+struct enumerator {
+    char *name;
+    expr_t *value; /* may be NULL */
 };
 
 /* Constructors */
@@ -252,6 +265,9 @@ stmt_t *ast_make_continue(size_t line, size_t column);
 stmt_t *ast_make_label(const char *name, size_t line, size_t column);
 /* goto statement */
 stmt_t *ast_make_goto(const char *name, size_t line, size_t column);
+/* Declare an enum with \p count enumerators. */
+stmt_t *ast_make_enum_decl(const char *tag, enumerator_t *items, size_t count,
+                           size_t line, size_t column);
 /* Create a block of statements containing \p count elements. */
 stmt_t *ast_make_block(stmt_t **stmts, size_t count,
                        size_t line, size_t column);
