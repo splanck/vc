@@ -97,22 +97,11 @@ promises that the pointer is the sole reference to its pointed-to object
 for the lifetime of the pointer.  This lets the optimizer assume no aliasing
 between `restrict` qualified pointers.
 
-Struct and union objects are declared using the `struct` and
-`union` keywords.  Members are accessed with `.` for objects or
-`->` when using pointers:
-
-```c
-struct Point { int x; int y; };
-struct Point p;
-p.x = 3;
-return p.x;
-```
-
-Union declarations follow the same pattern using the `union` keyword.
-Each member shares the same storage and the overall size of the object is
-determined by the largest member.  Access uses the same `.` and `->`
-operators as for structures.  The compiler currently parses these accesses
-but does not verify which member is active.
+Union objects are declared with the `union` keyword.  Members are accessed
+using `.` for objects or `->` when working through a pointer.  Each
+member shares the same storage and the overall size of the object is
+determined by the largest member.  The compiler currently parses member
+access but does not verify which member is active.
 
 #### Typedef aliases
 
@@ -344,8 +333,8 @@ vc -o incdec.s incdec.c
 ```c
 /* float_add.c */
 float main() {
-    float a = 1.0f;
-    float b = 2.0f;
+    float a = 1;
+    float b = 2;
     return a + b;
 }
 ```
@@ -590,26 +579,6 @@ Compile with:
 vc -o logical.s logical.c
 ```
 
-### Switch statements
-```c
-/* switch_example.c */
-int main() {
-    int x = 2;
-    switch (x) {
-    case 1:
-        return 10;
-    case 2:
-        return 20;
-    default:
-        return 0;
-    }
-}
-```
-Compile with:
-```sh
-vc -o switch.s switch_example.c
-```
-
 ### Enum declarations
 ```c
 /* enum_example.c */
@@ -630,14 +599,10 @@ vc -o enum_example.s enum_example.c
 ### Union declarations
 ```c
 /* union_example.c */
-union Value {
-    int i;
-    char c;
-};
+union { int i; char c; } u;
 int main() {
-    union Value v;
-    v.i = 65;
-    return v.i;
+    u.i = 65;
+    return u.i;
 }
 ```
 Compile with:
@@ -695,6 +660,7 @@ The compiler supports the following options:
 - `--link` – build an executable by assembling and linking with `cc`.
 - `--dump-asm` – print the generated assembly to stdout instead of creating a file.
 - `--dump-ir` – print the IR to stdout before code generation.
+- `-E`, `--preprocess` – print the preprocessed source to stdout and exit.
 - `-I`, `--include <dir>` – add directory to the `#include` search path.
 - `-O<N>` – set optimization level (0 disables all passes).
 
