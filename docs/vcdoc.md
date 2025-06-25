@@ -282,6 +282,10 @@ RETURN v2
 - Global variables
 - `break` and `continue` statements
 - Labels and `goto`
+- `union` objects and member assignments
+- Object-like and single argument `#define` macros
+- Conditional preprocessing directives (`#if`, `#ifdef`, `#ifndef`, `#elif`, `#else`, `#endif`)
+- 64-bit integer literals and arithmetic when using `long long`
 
 Examples below show how to compile each feature.
 
@@ -353,6 +357,20 @@ int main() {
 Compile with:
 ```sh
 vc -o bitwise.s bitwise.c
+```
+
+### 64-bit integers
+```c
+/* ll_const.c */
+int main() {
+    long long a = 5000000000;
+    return a + 5;
+}
+```
+Compile with:
+```sh
+vc -o ll_const.s ll_const.c
+vc --x86-64 -o ll_const_x86-64.s ll_const.c
 ```
 
 ### Function calls
@@ -617,6 +635,22 @@ Compile with:
 vc -o union_example.s union_example.c
 ```
 
+Another example assigns a character and accesses the same storage via a
+different member:
+
+```c
+/* union_char.c */
+union { int i; char c; } u;
+int main() {
+    u.c = 'A';
+    return u.c;
+}
+```
+Compile with:
+```sh
+vc -o union_char.s union_char.c
+```
+
 ### Labels and goto
 ```c
 /* goto_example.c */
@@ -670,6 +704,18 @@ argument macros of the form `#define NAME(arg)`:
 #define DOUBLE(x) x + x
 #include "header.h"
 int main() { return DOUBLE(VAL); }
+```
+
+Conditional blocks may be controlled using the `defined` operator or
+numeric expressions:
+
+```c
+#define FEATURE
+#if defined(FEATURE)
+int main() { return 1; }
+#else
+int main() { return 0; }
+#endif
 ```
 
 Macro expansion is purely textual; macros inside strings or comments are not
