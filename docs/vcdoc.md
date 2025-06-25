@@ -100,7 +100,7 @@ The IR uses a straightforward three-address format. The operations defined in
 [`include/ir.h`](../include/ir.h) include:
 
 - `IR_CONST` for integer constants
-- arithmetic ops `IR_ADD`, `IR_SUB`, `IR_MUL`, `IR_DIV`
+ - arithmetic ops `IR_ADD`, `IR_SUB`, `IR_MUL`, `IR_DIV`, `IR_MOD`
 - comparison ops `IR_CMPEQ`, `IR_CMPNE`, `IR_CMPLT`, `IR_CMPGT`, `IR_CMPLE`, `IR_CMPGE`
 - global data directives `IR_GLOB_STRING`, `IR_GLOB_VAR`
 - variable access `IR_LOAD`, `IR_STORE`, `IR_LOAD_PARAM`, `IR_STORE_PARAM`
