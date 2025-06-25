@@ -11,6 +11,7 @@
 #include <stddef.h>
 #include "token.h"
 #include "ast.h"
+#include "symtable.h"
 
 /* Parser state */
 typedef struct {
@@ -50,7 +51,8 @@ func_t *parser_parse_func(parser_t *p);
 /* Parse a top-level declaration.  Exactly one of out_func or out_global
  * will be set on success.  The return value is non-zero if a valid
  * declaration was consumed. */
-int parser_parse_toplevel(parser_t *p, func_t **out_func, stmt_t **out_global);
+int parser_parse_toplevel(parser_t *p, symtable_t *funcs,
+                          func_t **out_func, stmt_t **out_global);
 
 /* Entry point for expression parsing. */
 expr_t *parser_parse_expr(parser_t *p);

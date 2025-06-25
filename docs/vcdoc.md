@@ -113,6 +113,17 @@ int foo() { return 3; }
 int main() { return foo(); }
 ```
 
+Functions may be declared before they are defined using prototypes:
+
+```c
+int bar(int);
+int main() { return bar(1); }
+int bar(int x) { return x + 1; }
+```
+
+Prototypes are stored in the function symbol table. Later definitions
+must match the previously declared signature.
+
 Any mismatch results in `error_print` reporting the source
 location of the failure.
 

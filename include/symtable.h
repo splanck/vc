@@ -23,6 +23,7 @@ typedef struct symbol {
     type_kind_t alias_type;
     type_kind_t *param_types; /* for functions */
     size_t param_count;
+    int is_prototype;
     struct symbol *next;
 } symbol_t;
 
@@ -50,7 +51,8 @@ int symtable_add_param(symtable_t *table, const char *name, type_kind_t type,
                        int index);
 /* Functions record return and parameter types */
 int symtable_add_func(symtable_t *table, const char *name, type_kind_t ret_type,
-                      type_kind_t *param_types, size_t param_count);
+                      type_kind_t *param_types, size_t param_count,
+                      int is_prototype);
 /* Globals live in a separate list */
 int symtable_add_global(symtable_t *table, const char *name, type_kind_t type,
                         size_t array_size);

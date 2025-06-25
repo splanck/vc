@@ -247,12 +247,14 @@ static void test_parser_global_init(void)
     size_t count = 0;
     token_t *toks = lexer_tokenize(src, &count);
     parser_t p; parser_init(&p, toks, count);
+    symtable_t funcs; symtable_init(&funcs);
     func_t *fn = NULL; stmt_t *global = NULL;
-    ASSERT(parser_parse_toplevel(&p, &fn, &global));
+    ASSERT(parser_parse_toplevel(&p, &funcs, &fn, &global));
     ASSERT(fn == NULL);
     ASSERT(global && global->kind == STMT_VAR_DECL);
     ASSERT(strcmp(global->var_decl.name, "y") == 0);
     ASSERT(global->var_decl.init && global->var_decl.init->kind == EXPR_BINARY);
+    symtable_free(&funcs);
     ast_free_stmt(global);
     lexer_free_tokens(toks, count);
 }
