@@ -23,6 +23,32 @@ static void clear_var_list(var_const_t *head)
         v->known = 0;
 }
 
+/* Evaluate a binary integer op for constant folding */
+static int eval_int_op(ir_op_t op, int a, int b)
+{
+    switch (op) {
+    case IR_ADD: return a + b;
+    case IR_SUB: return a - b;
+    case IR_MUL: return a * b;
+    case IR_DIV: return b != 0 ? a / b : 0;
+    case IR_MOD: return b != 0 ? a % b : 0;
+    case IR_SHL: return a << b;
+    case IR_SHR: return a >> b;
+    case IR_AND: return a & b;
+    case IR_OR:  return a | b;
+    case IR_XOR: return a ^ b;
+    case IR_CMPEQ: return a == b;
+    case IR_CMPNE: return a != b;
+    case IR_CMPLT: return a < b;
+    case IR_CMPGT: return a > b;
+    case IR_CMPLE: return a <= b;
+    case IR_CMPGE: return a >= b;
+    case IR_LOGAND: return (a && b);
+    case IR_LOGOR:  return (a || b);
+    default: return 0;
+    }
+}
+
 /* Propagate constants from stores to subsequent loads */
 static void propagate_load_consts(ir_builder_t *ir)
 {
@@ -162,28 +188,7 @@ static void fold_constants(ir_builder_t *ir)
                 is_const[ins->src1] && is_const[ins->src2]) {
                 int a = values[ins->src1];
                 int b = values[ins->src2];
-                int result = 0;
-                switch (ins->op) {
-                case IR_ADD: result = a + b; break;
-                case IR_SUB: result = a - b; break;
-                case IR_MUL: result = a * b; break;
-                case IR_DIV: result = b != 0 ? a / b : 0; break;
-                case IR_MOD: result = b != 0 ? a % b : 0; break;
-                case IR_SHL: result = a << b; break;
-                case IR_SHR: result = a >> b; break;
-                case IR_AND: result = a & b; break;
-                case IR_OR:  result = a | b; break;
-                case IR_XOR: result = a ^ b; break;
-                case IR_CMPEQ: result = a == b; break;
-                case IR_CMPNE: result = a != b; break;
-                case IR_CMPLT: result = a < b; break;
-                case IR_CMPGT: result = a > b; break;
-                case IR_CMPLE: result = a <= b; break;
-                case IR_CMPGE: result = a >= b; break;
-                case IR_LOGAND: result = (a && b); break;
-                case IR_LOGOR: result = (a || b); break;
-                default: break;
-                }
+                int result = eval_int_op(ins->op, a, b);
                 ins->op = IR_CONST;
                 ins->imm = result;
                 ins->src1 = ins->src2 = 0;
