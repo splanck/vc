@@ -321,6 +321,25 @@ int parser_parse_toplevel(parser_t *p, symtable_t *funcs,
         return out_global ? *out_global != NULL : 1;
     }
 
+    if (tok->type == TOK_KW_STRUCT) {
+        token_t *next = &p->tokens[p->pos + 1];
+        if (next && next->type == TOK_IDENT &&
+            p->pos + 2 < p->count && p->tokens[p->pos + 2].type == TOK_LBRACE) {
+            p->pos = save;
+            if (out_global)
+                *out_global = parser_parse_struct_decl(p);
+            else
+                parser_parse_struct_decl(p);
+            return out_global ? *out_global != NULL : 1;
+        }
+        p->pos = save;
+        if (out_global)
+            *out_global = parser_parse_struct_var_decl(p);
+        else
+            parser_parse_struct_var_decl(p);
+        return out_global ? *out_global != NULL : 1;
+    }
+
     if (tok->type == TOK_KW_ENUM) {
         p->pos++;
         stmt_t *decl = parser_parse_enum_decl(p);
@@ -453,7 +472,7 @@ int parser_parse_toplevel(parser_t *p, symtable_t *funcs,
             *out_global = ast_make_var_decl(id->lexeme, t, arr_size,
                                            elem_size, is_static, is_const,
                                            NULL, NULL, 0,
-                                           NULL, NULL, 0,
+                                           NULL, NULL, 0, NULL, 0,
                                            tok->line, tok->column);
         return *out_global != NULL;
     } else if (next_tok && next_tok->type == TOK_ASSIGN) {
@@ -488,7 +507,7 @@ int parser_parse_toplevel(parser_t *p, symtable_t *funcs,
             *out_global = ast_make_var_decl(id->lexeme, t, arr_size,
                                            elem_size, is_static, is_const,
                                            init, init_list, init_count,
-                                           NULL, NULL, 0,
+                                           NULL, NULL, 0, NULL, 0,
                                            tok->line, tok->column);
         return *out_global != NULL;
     }

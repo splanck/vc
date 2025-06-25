@@ -39,6 +39,7 @@ typedef enum {
     IR_GLOB_VAR,
     IR_GLOB_ARRAY,
     IR_GLOB_UNION,
+    IR_GLOB_STRUCT,
     IR_LOAD,
     IR_STORE,
     IR_LOAD_PARAM,
@@ -159,5 +160,7 @@ void ir_build_glob_array(ir_builder_t *b, const char *name,
                          const long long *values, size_t count, int is_static);
 void ir_build_glob_union(ir_builder_t *b, const char *name, int size,
                          int is_static);
+void ir_build_glob_struct(ir_builder_t *b, const char *name, int size,
+                          int is_static);
 
 #endif /* VC_IR_H */

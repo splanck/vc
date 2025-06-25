@@ -617,6 +617,24 @@ Compile with:
 vc -o enum_example.s enum_example.c
 ```
 
+### Struct declarations
+```c
+/* struct_example.c */
+struct Point {
+    int x;
+    int y;
+};
+int main() {
+    struct Point p;
+    p.x = 1;
+    return p.x;
+}
+```
+Compile with:
+```sh
+vc -o struct_example.s struct_example.c
+```
+
 ### Union declarations
 ```c
 /* union_example.c */

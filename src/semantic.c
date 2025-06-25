@@ -100,6 +100,16 @@ static size_t layout_union_members(union_member_t *members, size_t count)
     return max;
 }
 
+static size_t layout_struct_members(struct_member_t *members, size_t count)
+{
+    size_t off = 0;
+    for (size_t i = 0; i < count; i++) {
+        members[i].offset = off;
+        off += members[i].elem_size;
+    }
+    return off;
+}
+
 /* Mapping from BINOP_* to corresponding IR op.  Logical ops are
  * handled separately and use IR_CMPEQ here just as a placeholder. */
 static const ir_op_t binop_to_ir[] = {
@@ -642,7 +652,7 @@ type_kind_t check_expr(expr_t *expr, symtable_t *vars, symtable_t *funcs,
                 return TYPE_UNKNOWN;
             }
             obj_sym = symtable_lookup(vars, expr->assign_member.object->ident.name);
-            if (!obj_sym || obj_sym->type != TYPE_UNION) {
+            if (!obj_sym || (obj_sym->type != TYPE_UNION && obj_sym->type != TYPE_STRUCT)) {
                 error_set(expr->assign_member.object->line,
                           expr->assign_member.object->column);
                 return TYPE_UNKNOWN;
@@ -650,38 +660,49 @@ type_kind_t check_expr(expr_t *expr, symtable_t *vars, symtable_t *funcs,
             base_addr = ir_build_addr(ir, obj_sym->ir_name);
         }
 
-        if (!obj_sym || obj_sym->type != TYPE_UNION || obj_sym->member_count == 0) {
+        if (!obj_sym || ((obj_sym->type != TYPE_UNION && obj_sym->type != TYPE_STRUCT)) ||
+            ((obj_sym->type == TYPE_UNION ? obj_sym->member_count : obj_sym->struct_member_count) == 0)) {
             error_set(expr->line, expr->column);
             return TYPE_UNKNOWN;
         }
-
-        union_member_t *member = NULL;
-        for (size_t i = 0; i < obj_sym->member_count; i++) {
-            if (strcmp(obj_sym->members[i].name, expr->assign_member.member) == 0) {
-                member = &obj_sym->members[i];
-                break;
+        union_member_t *member = NULL; struct_member_t *smb = NULL;
+        if (obj_sym->type == TYPE_UNION) {
+            for (size_t i = 0; i < obj_sym->member_count; i++) {
+                if (strcmp(obj_sym->members[i].name, expr->assign_member.member) == 0) {
+                    member = &obj_sym->members[i];
+                    break;
+                }
+            }
+        } else {
+            for (size_t i = 0; i < obj_sym->struct_member_count; i++) {
+                if (strcmp(obj_sym->struct_members[i].name, expr->assign_member.member) == 0) {
+                    smb = &obj_sym->struct_members[i];
+                    break;
+                }
             }
         }
-        if (!member) {
+        if (!member && !smb) {
             error_set(expr->line, expr->column);
             return TYPE_UNKNOWN;
         }
 
         ir_value_t val;
+        type_kind_t mtype = member ? member->type : smb->type;
         type_kind_t vt = check_expr(expr->assign_member.value, vars, funcs, ir, &val);
-        if (!(((is_intlike(member->type) && is_intlike(vt)) ||
-               (is_floatlike(member->type) && (is_floatlike(vt) || is_intlike(vt)))) ||
-              vt == member->type)) {
+        if (!(((is_intlike(mtype) && is_intlike(vt)) ||
+               (is_floatlike(mtype) && (is_floatlike(vt) || is_intlike(vt)))) ||
+              vt == mtype)) {
             error_set(expr->assign_member.value->line, expr->assign_member.value->column);
             return TYPE_UNKNOWN;
         }
 
-        ir_value_t idx = ir_build_const(ir, (int)member->offset);
+        size_t off = member ? member->offset : smb->offset;
+        ir_value_t idx = ir_build_const(ir, (int)off);
         ir_value_t addr = ir_build_ptr_add(ir, base_addr, idx, 1);
         ir_build_store_ptr(ir, addr, val);
         if (out)
             *out = val;
-        return member->type;
+        return mtype;
     }
     case EXPR_MEMBER: {
         if (!expr->member.object)
@@ -705,7 +726,7 @@ type_kind_t check_expr(expr_t *expr, symtable_t *vars, symtable_t *funcs,
                 return TYPE_UNKNOWN;
             }
             obj_sym = symtable_lookup(vars, expr->member.object->ident.name);
-            if (!obj_sym || obj_sym->type != TYPE_UNION) {
+            if (!obj_sym || (obj_sym->type != TYPE_UNION && obj_sym->type != TYPE_STRUCT)) {
                 error_set(expr->member.object->line,
                           expr->member.object->column);
                 return TYPE_UNKNOWN;
@@ -713,29 +734,40 @@ type_kind_t check_expr(expr_t *expr, symtable_t *vars, symtable_t *funcs,
             base_addr = ir_build_addr(ir, obj_sym->ir_name);
         }
 
-        if (!obj_sym || obj_sym->type != TYPE_UNION || obj_sym->member_count == 0) {
+        if (!obj_sym || ((obj_sym->type != TYPE_UNION && obj_sym->type != TYPE_STRUCT)) ||
+            ((obj_sym->type == TYPE_UNION ? obj_sym->member_count : obj_sym->struct_member_count) == 0)) {
             error_set(expr->line, expr->column);
             return TYPE_UNKNOWN;
         }
 
-        union_member_t *member = NULL;
-        for (size_t i = 0; i < obj_sym->member_count; i++) {
-            if (strcmp(obj_sym->members[i].name, expr->member.member) == 0) {
-                member = &obj_sym->members[i];
-                break;
+        union_member_t *member = NULL; struct_member_t *smb = NULL;
+        if (obj_sym->type == TYPE_UNION) {
+            for (size_t i = 0; i < obj_sym->member_count; i++) {
+                if (strcmp(obj_sym->members[i].name, expr->member.member) == 0) {
+                    member = &obj_sym->members[i];
+                    break;
+                }
+            }
+        } else {
+            for (size_t i = 0; i < obj_sym->struct_member_count; i++) {
+                if (strcmp(obj_sym->struct_members[i].name, expr->member.member) == 0) {
+                    smb = &obj_sym->struct_members[i];
+                    break;
+                }
             }
         }
-        if (!member) {
+        if (!member && !smb) {
             error_set(expr->line, expr->column);
             return TYPE_UNKNOWN;
         }
 
         if (out) {
-            ir_value_t idx = ir_build_const(ir, (int)member->offset);
+            size_t off = member ? member->offset : smb->offset;
+            ir_value_t idx = ir_build_const(ir, (int)off);
             ir_value_t addr = ir_build_ptr_add(ir, base_addr, idx, 1);
             *out = ir_build_load_ptr(ir, addr);
         }
-        return member->type;
+        return member ? member->type : smb->type;
     }
     case EXPR_SIZEOF: {
         int sz = 0;
@@ -766,7 +798,7 @@ type_kind_t check_expr(expr_t *expr, symtable_t *vars, symtable_t *funcs,
                 if (expr->sizeof_expr.expr->kind == EXPR_IDENT)
                     sym = symtable_lookup(vars, expr->sizeof_expr.expr->ident.name);
                 sz = sym ? (int)sym->array_size * (int)sym->elem_size : 4;
-            } else if (t == TYPE_UNION) {
+            } else if (t == TYPE_UNION || t == TYPE_STRUCT) {
                 symbol_t *sym = NULL;
                 if (expr->sizeof_expr.expr->kind == EXPR_IDENT)
                     sym = symtable_lookup(vars, expr->sizeof_expr.expr->ident.name);
@@ -1116,6 +1148,18 @@ int check_stmt(stmt_t *stmt, symtable_t *vars, symtable_t *funcs,
         }
         return 1;
     }
+    case STMT_STRUCT_DECL: {
+        size_t total = layout_struct_members(stmt->struct_decl.members,
+                                             stmt->struct_decl.count);
+        (void)total;
+        if (!symtable_add_struct(vars, stmt->struct_decl.tag,
+                                 stmt->struct_decl.members,
+                                 stmt->struct_decl.count)) {
+            error_set(stmt->line, stmt->column);
+            return 0;
+        }
+        return 1;
+    }
     case STMT_TYPEDEF: {
         if (!symtable_add_typedef(vars, stmt->typedef_decl.name,
                                   stmt->typedef_decl.type,
@@ -1136,6 +1180,10 @@ int check_stmt(stmt_t *stmt, symtable_t *vars, symtable_t *funcs,
             size_t max = layout_union_members(stmt->var_decl.members,
                                              stmt->var_decl.member_count);
             stmt->var_decl.elem_size = max;
+        } else if (stmt->var_decl.type == TYPE_STRUCT) {
+            size_t total = layout_struct_members(stmt->var_decl.struct_members,
+                                                stmt->var_decl.struct_member_count);
+            stmt->var_decl.elem_size = total;
         }
         if (!symtable_add(vars, stmt->var_decl.name, ir_name,
                           stmt->var_decl.type,
@@ -1163,6 +1211,22 @@ int check_stmt(stmt_t *stmt, symtable_t *vars, symtable_t *funcs,
                     sym->members[i].offset = m->offset;
                 }
             }
+        } else if (stmt->var_decl.type == TYPE_STRUCT) {
+            sym->total_size = stmt->var_decl.elem_size;
+            if (stmt->var_decl.struct_member_count) {
+                sym->struct_members = malloc(stmt->var_decl.struct_member_count *
+                                              sizeof(*sym->struct_members));
+                if (!sym->struct_members)
+                    return 0;
+                sym->struct_member_count = stmt->var_decl.struct_member_count;
+                for (size_t i = 0; i < sym->struct_member_count; i++) {
+                    struct_member_t *m = &stmt->var_decl.struct_members[i];
+                    sym->struct_members[i].name = vc_strdup(m->name);
+                    sym->struct_members[i].type = m->type;
+                    sym->struct_members[i].elem_size = m->elem_size;
+                    sym->struct_members[i].offset = m->offset;
+                }
+            }
         }
         if (stmt->var_decl.init) {
             if (stmt->var_decl.is_static) {
@@ -1171,7 +1235,7 @@ int check_stmt(stmt_t *stmt, symtable_t *vars, symtable_t *funcs,
                     error_set(stmt->var_decl.init->line, stmt->var_decl.init->column);
                     return 0;
                 }
-                if (stmt->var_decl.type == TYPE_UNION)
+                if (stmt->var_decl.type == TYPE_UNION || stmt->var_decl.type == TYPE_STRUCT)
                     ir_build_glob_union(ir, sym->ir_name, (int)sym->elem_size, 1);
                 else
                     ir_build_glob_var(ir, sym->ir_name, cval, 1);
@@ -1311,6 +1375,16 @@ int check_global(stmt_t *decl, symtable_t *globals, ir_builder_t *ir)
         }
         return 1;
     }
+    if (decl->kind == STMT_STRUCT_DECL) {
+        layout_struct_members(decl->struct_decl.members, decl->struct_decl.count);
+        if (!symtable_add_struct_global(globals, decl->struct_decl.tag,
+                                        decl->struct_decl.members,
+                                        decl->struct_decl.count)) {
+            error_set(decl->line, decl->column);
+            return 0;
+        }
+        return 1;
+    }
     if (decl->kind == STMT_TYPEDEF) {
         if (!symtable_add_typedef_global(globals, decl->typedef_decl.name,
                                          decl->typedef_decl.type,
@@ -1327,6 +1401,10 @@ int check_global(stmt_t *decl, symtable_t *globals, ir_builder_t *ir)
         size_t max = layout_union_members(decl->var_decl.members,
                                           decl->var_decl.member_count);
         decl->var_decl.elem_size = max;
+    } else if (decl->var_decl.type == TYPE_STRUCT) {
+        size_t total = layout_struct_members(decl->var_decl.struct_members,
+                                             decl->var_decl.struct_member_count);
+        decl->var_decl.elem_size = total;
     }
     if (!symtable_add_global(globals, decl->var_decl.name, decl->var_decl.name,
                              decl->var_decl.type,
@@ -1352,6 +1430,22 @@ int check_global(stmt_t *decl, symtable_t *globals, ir_builder_t *ir)
                 gsym->members[i].type = m->type;
                 gsym->members[i].elem_size = m->elem_size;
                 gsym->members[i].offset = m->offset;
+            }
+        }
+    } else if (decl->var_decl.type == TYPE_STRUCT) {
+        gsym->total_size = decl->var_decl.elem_size;
+        if (decl->var_decl.struct_member_count) {
+            gsym->struct_members = malloc(decl->var_decl.struct_member_count *
+                                         sizeof(*gsym->struct_members));
+            if (!gsym->struct_members)
+                return 0;
+            gsym->struct_member_count = decl->var_decl.struct_member_count;
+            for (size_t i = 0; i < gsym->struct_member_count; i++) {
+                struct_member_t *m = &decl->var_decl.struct_members[i];
+                gsym->struct_members[i].name = vc_strdup(m->name);
+                gsym->struct_members[i].type = m->type;
+                gsym->struct_members[i].elem_size = m->elem_size;
+                gsym->struct_members[i].offset = m->offset;
             }
         }
     }
@@ -1385,7 +1479,7 @@ int check_global(stmt_t *decl, symtable_t *globals, ir_builder_t *ir)
                 return 0;
             }
         }
-        if (decl->var_decl.type == TYPE_UNION)
+        if (decl->var_decl.type == TYPE_UNION || decl->var_decl.type == TYPE_STRUCT)
             ir_build_glob_union(ir, decl->var_decl.name,
                                (int)decl->var_decl.elem_size,
                                decl->var_decl.is_static);

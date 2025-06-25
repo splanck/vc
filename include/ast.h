@@ -89,6 +89,7 @@ struct stmt;
 struct switch_case;
 struct enumerator;
 struct union_member;
+struct struct_member;
 struct func;
 
 typedef struct expr expr_t;
@@ -96,6 +97,7 @@ typedef struct stmt stmt_t;
 typedef struct switch_case switch_case_t;
 typedef struct enumerator enumerator_t;
 typedef struct union_member union_member_t;
+typedef struct struct_member struct_member_t;
 typedef struct func func_t;
 
 struct expr {
@@ -185,6 +187,7 @@ typedef enum {
     STMT_TYPEDEF,
     STMT_ENUM_DECL,
     STMT_UNION_DECL,
+    STMT_STRUCT_DECL,
     STMT_BLOCK
 } stmt_kind_t;
 
@@ -215,6 +218,8 @@ struct stmt {
             size_t init_count;
             union_member_t *members;
             size_t member_count;
+            struct_member_t *struct_members;
+            size_t struct_member_count;
         } var_decl;
         struct {
             expr_t *cond;
@@ -265,6 +270,11 @@ struct stmt {
             size_t count;
         } union_decl;
         struct {
+            char *tag;
+            struct_member_t *members;
+            size_t count;
+        } struct_decl;
+        struct {
             stmt_t **stmts;
             size_t count;
         } block;
@@ -282,6 +292,13 @@ struct enumerator {
 };
 
 struct union_member {
+    char *name;
+    type_kind_t type;
+    size_t elem_size;
+    size_t offset;
+};
+
+struct struct_member {
     char *name;
     type_kind_t type;
     size_t elem_size;
@@ -339,7 +356,8 @@ stmt_t *ast_make_var_decl(const char *name, type_kind_t type, size_t array_size,
                           size_t elem_size, int is_static, int is_const,
                           expr_t *init, expr_t **init_list, size_t init_count,
                           const char *tag, union_member_t *members,
-                          size_t member_count, size_t line, size_t column);
+                          size_t member_count, struct_member_t *struct_members,
+                          size_t struct_member_count, size_t line, size_t column);
 /* Create an if/else statement. \p else_branch may be NULL. */
 stmt_t *ast_make_if(expr_t *cond, stmt_t *then_branch, stmt_t *else_branch,
                     size_t line, size_t column);
@@ -373,6 +391,9 @@ stmt_t *ast_make_enum_decl(const char *tag, enumerator_t *items, size_t count,
 /* Declare a union with \p count members. */
 stmt_t *ast_make_union_decl(const char *tag, union_member_t *members,
                            size_t count, size_t line, size_t column);
+/* Declare a struct with \p count members. */
+stmt_t *ast_make_struct_decl(const char *tag, struct_member_t *members,
+                            size_t count, size_t line, size_t column);
 /* Create a block of statements containing \p count elements. */
 stmt_t *ast_make_block(stmt_t **stmts, size_t count,
                        size_t line, size_t column);

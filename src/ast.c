@@ -298,7 +298,8 @@ stmt_t *ast_make_var_decl(const char *name, type_kind_t type, size_t array_size,
                           size_t elem_size, int is_static, int is_const,
                           expr_t *init, expr_t **init_list, size_t init_count,
                           const char *tag, union_member_t *members,
-                          size_t member_count, size_t line, size_t column)
+                          size_t member_count, struct_member_t *struct_members,
+                          size_t struct_member_count, size_t line, size_t column)
 {
     stmt_t *stmt = malloc(sizeof(*stmt));
     if (!stmt)
@@ -331,6 +332,8 @@ stmt_t *ast_make_var_decl(const char *name, type_kind_t type, size_t array_size,
     stmt->var_decl.init_count = init_count;
     stmt->var_decl.members = members;
     stmt->var_decl.member_count = member_count;
+    stmt->var_decl.struct_members = struct_members;
+    stmt->var_decl.struct_member_count = struct_member_count;
     return stmt;
 }
 
@@ -535,6 +538,26 @@ stmt_t *ast_make_union_decl(const char *tag, union_member_t *members,
     return stmt;
 }
 
+/* Create a struct declaration statement */
+stmt_t *ast_make_struct_decl(const char *tag, struct_member_t *members,
+                             size_t count, size_t line, size_t column)
+{
+    stmt_t *stmt = malloc(sizeof(*stmt));
+    if (!stmt)
+        return NULL;
+    stmt->kind = STMT_STRUCT_DECL;
+    stmt->line = line;
+    stmt->column = column;
+    stmt->struct_decl.tag = vc_strdup(tag ? tag : "");
+    if (!stmt->struct_decl.tag) {
+        free(stmt);
+        return NULL;
+    }
+    stmt->struct_decl.members = members;
+    stmt->struct_decl.count = count;
+    return stmt;
+}
+
 /* Create a block statement containing \p count child statements. */
 stmt_t *ast_make_block(stmt_t **stmts, size_t count,
                        size_t line, size_t column)
@@ -685,6 +708,9 @@ void ast_free_stmt(stmt_t *stmt)
         for (size_t i = 0; i < stmt->var_decl.member_count; i++)
             free(stmt->var_decl.members[i].name);
         free(stmt->var_decl.members);
+        for (size_t i = 0; i < stmt->var_decl.struct_member_count; i++)
+            free(stmt->var_decl.struct_members[i].name);
+        free(stmt->var_decl.struct_members);
         break;
     case STMT_IF:
         ast_free_expr(stmt->if_stmt.cond);
@@ -737,6 +763,12 @@ void ast_free_stmt(stmt_t *stmt)
         for (size_t i = 0; i < stmt->union_decl.count; i++)
             free(stmt->union_decl.members[i].name);
         free(stmt->union_decl.members);
+        break;
+    case STMT_STRUCT_DECL:
+        free(stmt->struct_decl.tag);
+        for (size_t i = 0; i < stmt->struct_decl.count; i++)
+            free(stmt->struct_decl.members[i].name);
+        free(stmt->struct_decl.members);
         break;
     case STMT_BREAK:
     case STMT_CONTINUE:
