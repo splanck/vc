@@ -329,6 +329,40 @@ stmt_t *ast_make_continue(size_t line, size_t column)
     return stmt;
 }
 
+/* Create a label statement */
+stmt_t *ast_make_label(const char *name, size_t line, size_t column)
+{
+    stmt_t *stmt = malloc(sizeof(*stmt));
+    if (!stmt)
+        return NULL;
+    stmt->kind = STMT_LABEL;
+    stmt->line = line;
+    stmt->column = column;
+    stmt->label.name = vc_strdup(name ? name : "");
+    if (!stmt->label.name) {
+        free(stmt);
+        return NULL;
+    }
+    return stmt;
+}
+
+/* Create a goto statement */
+stmt_t *ast_make_goto(const char *name, size_t line, size_t column)
+{
+    stmt_t *stmt = malloc(sizeof(*stmt));
+    if (!stmt)
+        return NULL;
+    stmt->kind = STMT_GOTO;
+    stmt->line = line;
+    stmt->column = column;
+    stmt->goto_stmt.name = vc_strdup(name ? name : "");
+    if (!stmt->goto_stmt.name) {
+        free(stmt);
+        return NULL;
+    }
+    return stmt;
+}
+
 /* Create a block statement containing \p count child statements. */
 stmt_t *ast_make_block(stmt_t **stmts, size_t count,
                        size_t line, size_t column)
@@ -481,6 +515,12 @@ void ast_free_stmt(stmt_t *stmt)
         }
         free(stmt->switch_stmt.cases);
         ast_free_stmt(stmt->switch_stmt.default_body);
+        break;
+    case STMT_LABEL:
+        free(stmt->label.name);
+        break;
+    case STMT_GOTO:
+        free(stmt->goto_stmt.name);
         break;
     case STMT_BREAK:
     case STMT_CONTINUE:

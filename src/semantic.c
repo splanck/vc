@@ -14,6 +14,57 @@
 #include "label.h"
 #include "error.h"
 
+typedef struct label_entry {
+    char *name;
+    char *ir_name;
+    struct label_entry *next;
+} label_entry_t;
+
+typedef struct {
+    label_entry_t *head;
+} label_table_t;
+
+static void label_table_init(label_table_t *t) { t->head = NULL; }
+
+static void label_table_free(label_table_t *t)
+{
+    label_entry_t *e = t->head;
+    while (e) {
+        label_entry_t *n = e->next;
+        free(e->name);
+        free(e->ir_name);
+        free(e);
+        e = n;
+    }
+    t->head = NULL;
+}
+
+static const char *label_table_get(label_table_t *t, const char *name)
+{
+    for (label_entry_t *e = t->head; e; e = e->next) {
+        if (strcmp(e->name, name) == 0)
+            return e->ir_name;
+    }
+    return NULL;
+}
+
+static const char *label_table_get_or_add(label_table_t *t, const char *name)
+{
+    const char *ir = label_table_get(t, name);
+    if (ir)
+        return ir;
+    label_entry_t *e = malloc(sizeof(*e));
+    if (!e)
+        return NULL;
+    e->name = vc_strdup(name);
+    char buf[32];
+    snprintf(buf, sizeof(buf), "Luser%d", label_next_id());
+    e->ir_name = vc_strdup(buf);
+    e->next = t->head;
+    t->head = e;
+    return e->ir_name;
+}
+
 static int is_intlike(type_kind_t t)
 {
     return t == TYPE_INT || t == TYPE_CHAR;
@@ -330,9 +381,10 @@ type_kind_t check_expr(expr_t *expr, symtable_t *vars, symtable_t *funcs,
  * 'continue' targets.  Returns non-zero on success.
  */
 int check_stmt(stmt_t *stmt, symtable_t *vars, symtable_t *funcs,
-               ir_builder_t *ir, type_kind_t func_ret_type,
+               void *label_tab, ir_builder_t *ir, type_kind_t func_ret_type,
                const char *break_label, const char *continue_label)
 {
+    label_table_t *labels = (label_table_t *)label_tab;
     if (!stmt)
         return 0;
     switch (stmt->kind) {
@@ -369,13 +421,13 @@ int check_stmt(stmt_t *stmt, symtable_t *vars, symtable_t *funcs,
         snprintf(end_label, sizeof(end_label), "L%d_end", id);
         const char *target = stmt->if_stmt.else_branch ? else_label : end_label;
         ir_build_bcond(ir, cond_val, target);
-        if (!check_stmt(stmt->if_stmt.then_branch, vars, funcs, ir, func_ret_type,
+        if (!check_stmt(stmt->if_stmt.then_branch, vars, funcs, labels, ir, func_ret_type,
                         break_label, continue_label))
             return 0;
         if (stmt->if_stmt.else_branch) {
             ir_build_br(ir, end_label);
             ir_build_label(ir, else_label);
-            if (!check_stmt(stmt->if_stmt.else_branch, vars, funcs, ir, func_ret_type,
+            if (!check_stmt(stmt->if_stmt.else_branch, vars, funcs, labels, ir, func_ret_type,
                             break_label, continue_label))
                 return 0;
         }
@@ -393,7 +445,7 @@ int check_stmt(stmt_t *stmt, symtable_t *vars, symtable_t *funcs,
         if (check_expr(stmt->while_stmt.cond, vars, funcs, ir, &cond_val) == TYPE_UNKNOWN)
             return 0;
         ir_build_bcond(ir, cond_val, end_label);
-        if (!check_stmt(stmt->while_stmt.body, vars, funcs, ir, func_ret_type,
+        if (!check_stmt(stmt->while_stmt.body, vars, funcs, labels, ir, func_ret_type,
                         end_label, start_label))
             return 0;
         ir_build_br(ir, start_label);
@@ -410,7 +462,7 @@ int check_stmt(stmt_t *stmt, symtable_t *vars, symtable_t *funcs,
         snprintf(cond_label, sizeof(cond_label), "L%d_cond", id);
         snprintf(end_label, sizeof(end_label), "L%d_end", id);
         ir_build_label(ir, start_label);
-        if (!check_stmt(stmt->do_while_stmt.body, vars, funcs, ir, func_ret_type,
+        if (!check_stmt(stmt->do_while_stmt.body, vars, funcs, labels, ir, func_ret_type,
                         end_label, cond_label))
             return 0;
         ir_build_label(ir, cond_label);
@@ -436,7 +488,7 @@ int check_stmt(stmt_t *stmt, symtable_t *vars, symtable_t *funcs,
         ir_build_bcond(ir, cond_val, end_label);
         char cont_label[32];
         snprintf(cont_label, sizeof(cont_label), "L%d_cont", id);
-        if (!check_stmt(stmt->for_stmt.body, vars, funcs, ir, func_ret_type,
+        if (!check_stmt(stmt->for_stmt.body, vars, funcs, labels, ir, func_ret_type,
                         end_label, cont_label))
             return 0;
         ir_build_label(ir, cont_label);
@@ -480,7 +532,7 @@ int check_stmt(stmt_t *stmt, symtable_t *vars, symtable_t *funcs,
             ir_build_br(ir, end_label);
         for (size_t i = 0; i < stmt->switch_stmt.case_count; i++) {
             ir_build_label(ir, case_labels[i]);
-            if (!check_stmt(stmt->switch_stmt.cases[i].body, vars, funcs, ir,
+            if (!check_stmt(stmt->switch_stmt.cases[i].body, vars, funcs, labels, ir,
                             func_ret_type, end_label, NULL)) {
                 for (size_t j = 0; j < stmt->switch_stmt.case_count; j++)
                     free(case_labels[j]);
@@ -491,7 +543,7 @@ int check_stmt(stmt_t *stmt, symtable_t *vars, symtable_t *funcs,
         }
         if (stmt->switch_stmt.default_body) {
             ir_build_label(ir, default_label);
-            if (!check_stmt(stmt->switch_stmt.default_body, vars, funcs, ir,
+            if (!check_stmt(stmt->switch_stmt.default_body, vars, funcs, labels, ir,
                             func_ret_type, end_label, NULL)) {
                 for (size_t j = 0; j < stmt->switch_stmt.case_count; j++)
                     free(case_labels[j]);
@@ -503,6 +555,16 @@ int check_stmt(stmt_t *stmt, symtable_t *vars, symtable_t *funcs,
         for (size_t j = 0; j < stmt->switch_stmt.case_count; j++)
             free(case_labels[j]);
         free(case_labels);
+        return 1;
+    }
+    case STMT_LABEL: {
+        const char *ir_name = label_table_get_or_add(labels, stmt->label.name);
+        ir_build_label(ir, ir_name);
+        return 1;
+    }
+    case STMT_GOTO: {
+        const char *ir_name = label_table_get_or_add(labels, stmt->goto_stmt.name);
+        ir_build_br(ir, ir_name);
         return 1;
     }
     case STMT_BREAK:
@@ -522,7 +584,7 @@ int check_stmt(stmt_t *stmt, symtable_t *vars, symtable_t *funcs,
     case STMT_BLOCK: {
         symbol_t *old_head = vars->head;
         for (size_t i = 0; i < stmt->block.count; i++) {
-            if (!check_stmt(stmt->block.stmts[i], vars, funcs, ir, func_ret_type,
+            if (!check_stmt(stmt->block.stmts[i], vars, funcs, labels, ir, func_ret_type,
                             break_label, continue_label)) {
                 symtable_pop_scope(vars, old_head);
                 return 0;
@@ -591,13 +653,17 @@ int check_func(func_t *func, symtable_t *funcs, symtable_t *globals,
 
     ir_build_func_begin(ir, func->name);
 
+    label_table_t labels;
+    label_table_init(&labels);
+
     int ok = 1;
     for (size_t i = 0; i < func->body_count && ok; i++)
-        ok = check_stmt(func->body[i], &locals, funcs, ir, func->return_type,
+        ok = check_stmt(func->body[i], &locals, funcs, &labels, ir, func->return_type,
                         NULL, NULL);
 
     ir_build_func_end(ir);
 
+    label_table_free(&labels);
     locals.globals = NULL;
     symtable_free(&locals);
     return ok;

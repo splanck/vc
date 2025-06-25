@@ -63,6 +63,11 @@ stmt_t *parser_parse_stmt(parser_t *p)
     if (tok && tok->type == TOK_LBRACE)
         return parse_block(p);
 
+    if (match(p, TOK_LABEL)) {
+        token_t *lbl = &p->tokens[p->pos - 1];
+        return ast_make_label(lbl->lexeme, lbl->line, lbl->column);
+    }
+
     if (match(p, TOK_KW_INT) || match(p, TOK_KW_CHAR)) {
         token_t *kw_tok = &p->tokens[p->pos - 1];
         type_kind_t t = (kw_tok->type == TOK_KW_INT) ? TYPE_INT : TYPE_CHAR;
@@ -139,6 +144,18 @@ stmt_t *parser_parse_stmt(parser_t *p)
         if (!match(p, TOK_SEMI))
             return NULL;
         return ast_make_continue(kw_tok->line, kw_tok->column);
+    }
+
+    if (match(p, TOK_KW_GOTO)) {
+        token_t *kw_tok = &p->tokens[p->pos - 1];
+        token_t *id = peek(p);
+        if (!id || id->type != TOK_IDENT)
+            return NULL;
+        p->pos++;
+        char *name = id->lexeme;
+        if (!match(p, TOK_SEMI))
+            return NULL;
+        return ast_make_goto(name, kw_tok->line, kw_tok->column);
     }
 
     if (match(p, TOK_KW_IF)) {

@@ -21,7 +21,7 @@
 type_kind_t check_expr(expr_t *expr, symtable_t *vars, symtable_t *funcs,
                        ir_builder_t *ir, ir_value_t *out);
 int check_stmt(stmt_t *stmt, symtable_t *vars, symtable_t *funcs,
-               ir_builder_t *ir, type_kind_t func_ret_type,
+               void *labels, ir_builder_t *ir, type_kind_t func_ret_type,
                const char *break_label, const char *continue_label);
 /* Validate an entire function definition */
 int check_func(func_t *func, symtable_t *funcs, symtable_t *globals,

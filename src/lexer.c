@@ -78,6 +78,12 @@ static void read_identifier(const char *src, size_t *i, size_t *col,
         (*i)++;
     size_t len = *i - start;
     token_type_t type = TOK_IDENT;
+    if (src[*i] == ':') {
+        (*i)++; /* consume ':' */
+        append_token(tokens, TOK_LABEL, src + start, len, line, *col);
+        *col += len + 1;
+        return;
+    }
     if (len == 2 && strncmp(src + start, "if", 2) == 0)
         type = TOK_KW_IF;
     else if (len == 4 && strncmp(src + start, "else", 4) == 0)
@@ -92,6 +98,8 @@ static void read_identifier(const char *src, size_t *i, size_t *col,
         type = TOK_KW_BREAK;
     else if (len == 8 && strncmp(src + start, "continue", 8) == 0)
         type = TOK_KW_CONTINUE;
+    else if (len == 4 && strncmp(src + start, "goto", 4) == 0)
+        type = TOK_KW_GOTO;
     else if (len == 6 && strncmp(src + start, "switch", 6) == 0)
         type = TOK_KW_SWITCH;
     else if (len == 4 && strncmp(src + start, "case", 4) == 0)
