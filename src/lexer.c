@@ -116,6 +116,14 @@ static void read_identifier(const char *src, size_t *i, size_t *col,
         type = TOK_KW_FLOAT;
     else if (len == 6 && strncmp(src + start, "double", 6) == 0)
         type = TOK_KW_DOUBLE;
+    else if (len == 5 && strncmp(src + start, "short", 5) == 0)
+        type = TOK_KW_SHORT;
+    else if (len == 4 && strncmp(src + start, "long", 4) == 0)
+        type = TOK_KW_LONG;
+    else if (len == 4 && strncmp(src + start, "bool", 4) == 0)
+        type = TOK_KW_BOOL;
+    else if (len == 8 && strncmp(src + start, "unsigned", 8) == 0)
+        type = TOK_KW_UNSIGNED;
     else if (len == 4 && strncmp(src + start, "void", 4) == 0)
         type = TOK_KW_VOID;
     else if (len == 4 && strncmp(src + start, "enum", 4) == 0)

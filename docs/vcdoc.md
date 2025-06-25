@@ -66,6 +66,10 @@ char c = 'a';   /* adds 'c' with TYPE_CHAR */
 int y = 5;      /* evaluates 5 and stores to 'y' */
 ```
 
+Additional built-in types such as `short`, `long`, `long long` and
+`bool` are recognized.  Each integer type also has an unsigned variant
+using the `unsigned` keyword.
+
 Pointers work the same way and may be dereferenced using
 `UNOP_DEREF`:
 

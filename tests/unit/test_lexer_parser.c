@@ -58,6 +58,19 @@ static void test_lexer_percent(void)
     lexer_free_tokens(toks, count);
 }
 
+static void test_lexer_new_types(void)
+{
+    const char *src = "short s; long l; bool b; unsigned long long u;";
+    size_t count = 0;
+    token_t *toks = lexer_tokenize(src, &count);
+    ASSERT(toks[0].type == TOK_KW_SHORT);
+    ASSERT(toks[3].type == TOK_KW_LONG);
+    ASSERT(toks[6].type == TOK_KW_BOOL);
+    ASSERT(toks[9].type == TOK_KW_UNSIGNED);
+    ASSERT(toks[10].type == TOK_KW_LONG && toks[11].type == TOK_KW_LONG);
+    lexer_free_tokens(toks, count);
+}
+
 static void test_parser_expr(void)
 {
     const char *src = "1 + 2 * 3";
@@ -120,6 +133,32 @@ static void test_parser_var_decl_init(void)
     ASSERT(stmt->var_decl.type == TYPE_INT);
     ASSERT(stmt->var_decl.init && stmt->var_decl.init->kind == EXPR_NUMBER &&
            strcmp(stmt->var_decl.init->number.value, "5") == 0);
+    ast_free_stmt(stmt);
+    lexer_free_tokens(toks, count);
+}
+
+static void test_parser_short_decl(void)
+{
+    const char *src = "short s;";
+    size_t count = 0;
+    token_t *toks = lexer_tokenize(src, &count);
+    parser_t p; parser_init(&p, toks, count);
+    stmt_t *stmt = parser_parse_stmt(&p);
+    ASSERT(stmt && stmt->kind == STMT_VAR_DECL);
+    ASSERT(stmt->var_decl.type == TYPE_SHORT);
+    ast_free_stmt(stmt);
+    lexer_free_tokens(toks, count);
+}
+
+static void test_parser_bool_decl(void)
+{
+    const char *src = "bool b;";
+    size_t count = 0;
+    token_t *toks = lexer_tokenize(src, &count);
+    parser_t p; parser_init(&p, toks, count);
+    stmt_t *stmt = parser_parse_stmt(&p);
+    ASSERT(stmt && stmt->kind == STMT_VAR_DECL);
+    ASSERT(stmt->var_decl.type == TYPE_BOOL);
     ast_free_stmt(stmt);
     lexer_free_tokens(toks, count);
 }
@@ -326,10 +365,13 @@ int main(void)
     test_lexer_basic();
     test_lexer_comments();
     test_lexer_percent();
+    test_lexer_new_types();
     test_parser_expr();
     test_parser_stmt_return();
     test_parser_stmt_return_void();
     test_parser_var_decl_init();
+    test_parser_short_decl();
+    test_parser_bool_decl();
     test_parser_array_decl();
     test_parser_index_expr();
     test_parser_unary_neg();
