@@ -11,6 +11,9 @@
 /* Duplicate a string using malloc */
 char *vc_strdup(const char *s);
 
+/* Duplicate at most 'n' characters of a string */
+char *vc_strndup(const char *s, size_t n);
+
 /* Allocate memory or exit on failure */
 void *vc_alloc_or_exit(size_t size);
 
