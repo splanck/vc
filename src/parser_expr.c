@@ -105,6 +105,18 @@ static expr_t *clone_expr(const expr_t *expr)
         return ast_make_assign_index(a, i, v,
                                      expr->line, expr->column);
     }
+    case EXPR_ASSIGN_MEMBER: {
+        expr_t *obj = clone_expr(expr->assign_member.object);
+        expr_t *val = clone_expr(expr->assign_member.value);
+        if (!obj || !val) {
+            ast_free_expr(obj);
+            ast_free_expr(val);
+            return NULL;
+        }
+        return ast_make_assign_member(obj, expr->assign_member.member,
+                                      val, expr->assign_member.via_ptr,
+                                      expr->line, expr->column);
+    }
     case EXPR_MEMBER: {
         expr_t *obj = clone_expr(expr->member.object);
         if (!obj)
@@ -638,7 +650,8 @@ static expr_t *parse_assignment(parser_t *p)
         match(p, TOK_PIPEEQ) || match(p, TOK_CARETEQ) ||
         match(p, TOK_SHLEQ) || match(p, TOK_SHREQ)) {
         token_t *op_tok = &p->tokens[p->pos - 1];
-        if (left->kind != EXPR_IDENT && left->kind != EXPR_INDEX) {
+        if (left->kind != EXPR_IDENT && left->kind != EXPR_INDEX &&
+            left->kind != EXPR_MEMBER) {
             ast_free_expr(left);
             return NULL;
         }
@@ -680,12 +693,20 @@ static expr_t *parse_assignment(parser_t *p)
             free(left);
             left = ast_make_assign(name, right, op_tok->line, op_tok->column);
             free(name);
-        } else {
+        } else if (left->kind == EXPR_INDEX) {
             expr_t *arr = left->index.array;
             expr_t *idx = left->index.index;
             free(left);
             left = ast_make_assign_index(arr, idx, right,
                                         op_tok->line, op_tok->column);
+        } else {
+            expr_t *obj = left->member.object;
+            char *mem = left->member.member;
+            int via_ptr = left->member.via_ptr;
+            free(left);
+            left = ast_make_assign_member(obj, mem, right, via_ptr,
+                                          op_tok->line, op_tok->column);
+            free(mem);
         }
     }
     return left;

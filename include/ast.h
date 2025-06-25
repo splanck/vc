@@ -46,6 +46,7 @@ typedef enum {
     EXPR_CALL,
     EXPR_INDEX,
     EXPR_ASSIGN_INDEX,
+    EXPR_ASSIGN_MEMBER,
     EXPR_MEMBER,
     EXPR_SIZEOF
 } expr_kind_t;
@@ -141,6 +142,12 @@ struct expr {
             expr_t *index;
             expr_t *value;
         } assign_index;
+        struct {
+            expr_t *object;
+            char *member;
+            expr_t *value;
+            int via_ptr;
+        } assign_member;
         struct {
             expr_t *object;
             char *member;
@@ -308,6 +315,9 @@ expr_t *ast_make_index(expr_t *array, expr_t *index,
 /* Create an array element assignment expression. */
 expr_t *ast_make_assign_index(expr_t *array, expr_t *index, expr_t *value,
                               size_t line, size_t column);
+/* Create a struct/union member assignment expression. */
+expr_t *ast_make_assign_member(expr_t *object, const char *member, expr_t *value,
+                               int via_ptr, size_t line, size_t column);
 /* Create a struct/union member access expression. */
 expr_t *ast_make_member(expr_t *object, const char *member, int via_ptr,
                         size_t line, size_t column);

@@ -170,6 +170,27 @@ expr_t *ast_make_assign_index(expr_t *array, expr_t *index, expr_t *value,
     return expr;
 }
 
+/* Create a union/struct member assignment expression node. */
+expr_t *ast_make_assign_member(expr_t *object, const char *member, expr_t *value,
+                               int via_ptr, size_t line, size_t column)
+{
+    expr_t *expr = malloc(sizeof(*expr));
+    if (!expr)
+        return NULL;
+    expr->kind = EXPR_ASSIGN_MEMBER;
+    expr->line = line;
+    expr->column = column;
+    expr->assign_member.object = object;
+    expr->assign_member.member = vc_strdup(member ? member : "");
+    if (!expr->assign_member.member) {
+        free(expr);
+        return NULL;
+    }
+    expr->assign_member.value = value;
+    expr->assign_member.via_ptr = via_ptr;
+    return expr;
+}
+
 /* Create a member access expression node. */
 expr_t *ast_make_member(expr_t *object, const char *member, int via_ptr,
                         size_t line, size_t column)
@@ -618,6 +639,11 @@ void ast_free_expr(expr_t *expr)
         ast_free_expr(expr->assign_index.array);
         ast_free_expr(expr->assign_index.index);
         ast_free_expr(expr->assign_index.value);
+        break;
+    case EXPR_ASSIGN_MEMBER:
+        ast_free_expr(expr->assign_member.object);
+        free(expr->assign_member.member);
+        ast_free_expr(expr->assign_member.value);
         break;
     case EXPR_MEMBER:
         ast_free_expr(expr->member.object);

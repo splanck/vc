@@ -611,6 +611,67 @@ type_kind_t check_expr(expr_t *expr, symtable_t *vars, symtable_t *funcs,
             *out = val;
         return TYPE_INT;
     }
+    case EXPR_ASSIGN_MEMBER: {
+        symbol_t *obj_sym = NULL;
+        ir_value_t base_addr;
+        if (expr->assign_member.via_ptr) {
+            if (check_expr(expr->assign_member.object, vars, funcs, ir,
+                           &base_addr) != TYPE_PTR) {
+                error_set(expr->assign_member.object->line,
+                          expr->assign_member.object->column);
+                return TYPE_UNKNOWN;
+            }
+            if (expr->assign_member.object->kind == EXPR_IDENT)
+                obj_sym = symtable_lookup(vars,
+                                          expr->assign_member.object->ident.name);
+        } else {
+            if (expr->assign_member.object->kind != EXPR_IDENT) {
+                error_set(expr->assign_member.object->line,
+                          expr->assign_member.object->column);
+                return TYPE_UNKNOWN;
+            }
+            obj_sym = symtable_lookup(vars, expr->assign_member.object->ident.name);
+            if (!obj_sym || obj_sym->type != TYPE_UNION) {
+                error_set(expr->assign_member.object->line,
+                          expr->assign_member.object->column);
+                return TYPE_UNKNOWN;
+            }
+            base_addr = ir_build_addr(ir, obj_sym->ir_name);
+        }
+
+        if (!obj_sym || obj_sym->type != TYPE_UNION || obj_sym->member_count == 0) {
+            error_set(expr->line, expr->column);
+            return TYPE_UNKNOWN;
+        }
+
+        union_member_t *member = NULL;
+        for (size_t i = 0; i < obj_sym->member_count; i++) {
+            if (strcmp(obj_sym->members[i].name, expr->assign_member.member) == 0) {
+                member = &obj_sym->members[i];
+                break;
+            }
+        }
+        if (!member) {
+            error_set(expr->line, expr->column);
+            return TYPE_UNKNOWN;
+        }
+
+        ir_value_t val;
+        type_kind_t vt = check_expr(expr->assign_member.value, vars, funcs, ir, &val);
+        if (!(((is_intlike(member->type) && is_intlike(vt)) ||
+               (is_floatlike(member->type) && (is_floatlike(vt) || is_intlike(vt)))) ||
+              vt == member->type)) {
+            error_set(expr->assign_member.value->line, expr->assign_member.value->column);
+            return TYPE_UNKNOWN;
+        }
+
+        ir_value_t idx = ir_build_const(ir, (int)member->offset);
+        ir_value_t addr = ir_build_ptr_add(ir, base_addr, idx, 1);
+        ir_build_store_ptr(ir, addr, val);
+        if (out)
+            *out = val;
+        return member->type;
+    }
     case EXPR_MEMBER: {
         if (!expr->member.object)
             return TYPE_UNKNOWN;
