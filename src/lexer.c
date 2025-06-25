@@ -188,23 +188,20 @@ static void read_string_lit(const char *src, size_t *i, size_t *col,
     size_t column = *col;
     (*i)++; /* skip opening quote */
     (*col)++;
-    size_t cap_buf = 16, len = 0;
-    char *buf = malloc(cap_buf);
-    if (!buf)
-        return;
+
+    vector_t buf_v;
+    vector_init(&buf_v, sizeof(char));
+
     while (src[*i] && src[*i] != '"') {
         char c = src[*i];
         if (c == '\\') {
             (*i)++;
             c = (char)unescape_char(src[*i]);
         }
-        if (len + 1 >= cap_buf) {
-            cap_buf *= 2;
-            char *tmp = realloc(buf, cap_buf);
-            if (!tmp) { free(buf); return; }
-            buf = tmp;
+        if (!vector_push(&buf_v, &c)) {
+            vector_free(&buf_v);
+            return;
         }
-        buf[len++] = c;
         (*i)++;
         (*col)++;
     }
@@ -212,8 +209,9 @@ static void read_string_lit(const char *src, size_t *i, size_t *col,
         (*i)++;
         (*col)++;
     }
-    append_token(tokens, TOK_STRING, buf, len, line, column);
-    free(buf);
+
+    append_token(tokens, TOK_STRING, buf_v.data, buf_v.count, line, column);
+    vector_free(&buf_v);
 }
 
 /* Convert punctuation characters to tokens */
