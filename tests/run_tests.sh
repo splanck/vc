@@ -4,11 +4,13 @@ DIR=$(dirname "$0")
 BINARY="$DIR/../vc"
 
 fail=0
-for cfile in "$DIR"/fixtures/*.c; do
+for cfile in $(ls "$DIR"/fixtures/*.c | sort); do
     base=$(basename "$cfile" .c)
+
     case "$base" in
         *_x86-64) continue;;
     esac
+    [ "$base" = "include_search" ] && continue
     expect="$DIR/fixtures/$base.s"
     out=$(mktemp)
     echo "Running fixture $base"
@@ -45,6 +47,15 @@ for asm64 in "$DIR"/fixtures/*_x86-64.s; do
     fi
     rm -f "$out"
 done
+
+# verify include search path option
+inc_out=$(mktemp)
+"$BINARY" -I "$DIR/includes" -o "$inc_out" "$DIR/fixtures/include_search.c"
+if ! diff -u "$DIR/fixtures/include_search.s" "$inc_out"; then
+    echo "Test include_search failed"
+    fail=1
+fi
+rm -f "$inc_out"
 
 # negative test for parse error message
 err=$(mktemp)
