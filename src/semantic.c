@@ -203,6 +203,9 @@ static int eval_const_expr(expr_t *expr, symtable_t *vars, int *out)
                 sz = (int)expr->sizeof_expr.array_size *
                      (int)expr->sizeof_expr.elem_size;
                 break;
+            case TYPE_UNION:
+                sz = (int)expr->sizeof_expr.elem_size;
+                break;
             default: sz = 0; break;
             }
             *out = sz;
@@ -626,6 +629,11 @@ type_kind_t check_expr(expr_t *expr, symtable_t *vars, symtable_t *funcs,
                 if (expr->sizeof_expr.expr->kind == EXPR_IDENT)
                     sym = symtable_lookup(vars, expr->sizeof_expr.expr->ident.name);
                 sz = sym ? (int)sym->array_size * (int)sym->elem_size : 4;
+            } else if (t == TYPE_UNION) {
+                symbol_t *sym = NULL;
+                if (expr->sizeof_expr.expr->kind == EXPR_IDENT)
+                    sym = symtable_lookup(vars, expr->sizeof_expr.expr->ident.name);
+                sz = sym ? (int)sym->elem_size : 0;
             }
         }
         if (out)
@@ -975,6 +983,18 @@ int check_stmt(stmt_t *stmt, symtable_t *vars, symtable_t *funcs,
         if (stmt->var_decl.is_static) {
             ir_name = label_format("__static", label_next_id(), ir_name_buf);
         }
+        if (stmt->var_decl.type == TYPE_UNION) {
+            size_t max = 0;
+            for (size_t i = 0; i < stmt->var_decl.member_count; i++) {
+                union_member_t *m = &stmt->var_decl.members[i];
+                size_t sz = m->elem_size;
+                if (m->type == TYPE_ARRAY)
+                    sz *= m->array_size;
+                if (sz > max)
+                    max = sz;
+            }
+            stmt->var_decl.elem_size = max;
+        }
         if (!symtable_add(vars, stmt->var_decl.name, ir_name,
                           stmt->var_decl.type,
                           stmt->var_decl.array_size,
@@ -992,7 +1012,10 @@ int check_stmt(stmt_t *stmt, symtable_t *vars, symtable_t *funcs,
                     error_set(stmt->var_decl.init->line, stmt->var_decl.init->column);
                     return 0;
                 }
-                ir_build_glob_var(ir, sym->ir_name, cval, 1);
+                if (stmt->var_decl.type == TYPE_UNION)
+                    ir_build_glob_union(ir, sym->ir_name, (int)sym->elem_size, 1);
+                else
+                    ir_build_glob_var(ir, sym->ir_name, cval, 1);
             } else {
                 ir_value_t val;
                 type_kind_t vt = check_expr(stmt->var_decl.init, vars, funcs, ir, &val);
@@ -1131,6 +1154,18 @@ int check_global(stmt_t *decl, symtable_t *globals, ir_builder_t *ir)
     }
     if (decl->kind != STMT_VAR_DECL)
         return 0;
+    if (decl->var_decl.type == TYPE_UNION) {
+        size_t max = 0;
+        for (size_t i = 0; i < decl->var_decl.member_count; i++) {
+            union_member_t *m = &decl->var_decl.members[i];
+            size_t sz = m->elem_size;
+            if (m->type == TYPE_ARRAY)
+                sz *= m->array_size;
+            if (sz > max)
+                max = sz;
+        }
+        decl->var_decl.elem_size = max;
+    }
     if (!symtable_add_global(globals, decl->var_decl.name, decl->var_decl.name,
                              decl->var_decl.type,
                              decl->var_decl.array_size,
@@ -1170,8 +1205,13 @@ int check_global(stmt_t *decl, symtable_t *globals, ir_builder_t *ir)
                 return 0;
             }
         }
-        ir_build_glob_var(ir, decl->var_decl.name, value,
-                          decl->var_decl.is_static);
+        if (decl->var_decl.type == TYPE_UNION)
+            ir_build_glob_union(ir, decl->var_decl.name,
+                               (int)decl->var_decl.elem_size,
+                               decl->var_decl.is_static);
+        else
+            ir_build_glob_var(ir, decl->var_decl.name, value,
+                              decl->var_decl.is_static);
     }
     return 1;
 }

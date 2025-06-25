@@ -302,6 +302,15 @@ int parser_parse_toplevel(parser_t *p, symtable_t *funcs,
     if (!tok)
         return 0;
 
+    if (tok->type == TOK_KW_UNION) {
+        p->pos = save;
+        if (out_global)
+            *out_global = parser_parse_union_decl(p);
+        else
+            parser_parse_union_decl(p);
+        return out_global ? *out_global != NULL : 1;
+    }
+
     if (tok->type == TOK_KW_ENUM) {
         p->pos++;
         stmt_t *decl = parser_parse_enum_decl(p);
@@ -434,6 +443,7 @@ int parser_parse_toplevel(parser_t *p, symtable_t *funcs,
             *out_global = ast_make_var_decl(id->lexeme, t, arr_size,
                                            elem_size, is_static, is_const,
                                            NULL, NULL, 0,
+                                           NULL, 0,
                                            tok->line, tok->column);
         return *out_global != NULL;
     } else if (next_tok && next_tok->type == TOK_ASSIGN) {
@@ -468,6 +478,7 @@ int parser_parse_toplevel(parser_t *p, symtable_t *funcs,
             *out_global = ast_make_var_decl(id->lexeme, t, arr_size,
                                            elem_size, is_static, is_const,
                                            init, init_list, init_count,
+                                           NULL, 0,
                                            tok->line, tok->column);
         return *out_global != NULL;
     }

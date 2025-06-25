@@ -276,6 +276,7 @@ stmt_t *ast_make_return(expr_t *expr, size_t line, size_t column)
 stmt_t *ast_make_var_decl(const char *name, type_kind_t type, size_t array_size,
                           size_t elem_size, int is_static, int is_const,
                           expr_t *init, expr_t **init_list, size_t init_count,
+                          union_member_t *members, size_t member_count,
                           size_t line, size_t column)
 {
     stmt_t *stmt = malloc(sizeof(*stmt));
@@ -297,6 +298,8 @@ stmt_t *ast_make_var_decl(const char *name, type_kind_t type, size_t array_size,
     stmt->var_decl.init = init;
     stmt->var_decl.init_list = init_list;
     stmt->var_decl.init_count = init_count;
+    stmt->var_decl.members = members;
+    stmt->var_decl.member_count = member_count;
     return stmt;
 }
 
@@ -622,6 +625,9 @@ void ast_free_stmt(stmt_t *stmt)
         for (size_t i = 0; i < stmt->var_decl.init_count; i++)
             ast_free_expr(stmt->var_decl.init_list[i]);
         free(stmt->var_decl.init_list);
+        for (size_t i = 0; i < stmt->var_decl.member_count; i++)
+            free(stmt->var_decl.members[i].name);
+        free(stmt->var_decl.members);
         break;
     case STMT_IF:
         ast_free_expr(stmt->if_stmt.cond);

@@ -87,12 +87,14 @@ struct expr;
 struct stmt;
 struct switch_case;
 struct enumerator;
+struct union_member;
 struct func;
 
 typedef struct expr expr_t;
 typedef struct stmt stmt_t;
 typedef struct switch_case switch_case_t;
 typedef struct enumerator enumerator_t;
+typedef struct union_member union_member_t;
 typedef struct func func_t;
 
 struct expr {
@@ -202,6 +204,8 @@ struct stmt {
             /* optional initializer list for arrays */
             expr_t **init_list;
             size_t init_count;
+            union_member_t *members;
+            size_t member_count;
         } var_decl;
         struct {
             expr_t *cond;
@@ -263,6 +267,13 @@ struct enumerator {
     expr_t *value; /* may be NULL */
 };
 
+struct union_member {
+    char *name;
+    type_kind_t type;
+    size_t array_size;
+    size_t elem_size;
+};
+
 /* Constructors */
 /* Create a numeric literal expression from the given string representation. */
 expr_t *ast_make_number(const char *value, size_t line, size_t column);
@@ -310,6 +321,7 @@ stmt_t *ast_make_return(expr_t *expr, size_t line, size_t column);
 stmt_t *ast_make_var_decl(const char *name, type_kind_t type, size_t array_size,
                           size_t elem_size, int is_static, int is_const,
                           expr_t *init, expr_t **init_list, size_t init_count,
+                          union_member_t *members, size_t member_count,
                           size_t line, size_t column);
 /* Create an if/else statement. \p else_branch may be NULL. */
 stmt_t *ast_make_if(expr_t *cond, stmt_t *then_branch, stmt_t *else_branch,
