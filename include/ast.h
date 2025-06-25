@@ -13,7 +13,16 @@
 /* Basic type categories used for type checking and function signatures */
 typedef enum {
     TYPE_INT,
+    TYPE_UINT,
     TYPE_CHAR,
+    TYPE_UCHAR,
+    TYPE_SHORT,
+    TYPE_USHORT,
+    TYPE_LONG,
+    TYPE_ULONG,
+    TYPE_LLONG,
+    TYPE_ULLONG,
+    TYPE_BOOL,
     TYPE_FLOAT,
     TYPE_DOUBLE,
     TYPE_PTR,

@@ -67,8 +67,18 @@ static const char *label_table_get_or_add(label_table_t *t, const char *name)
 
 static int is_intlike(type_kind_t t)
 {
-    return t == TYPE_INT || t == TYPE_CHAR ||
-           t == TYPE_FLOAT || t == TYPE_DOUBLE;
+    switch (t) {
+    case TYPE_INT: case TYPE_UINT:
+    case TYPE_CHAR: case TYPE_UCHAR:
+    case TYPE_SHORT: case TYPE_USHORT:
+    case TYPE_LONG: case TYPE_ULONG:
+    case TYPE_LLONG: case TYPE_ULLONG:
+    case TYPE_BOOL:
+    case TYPE_FLOAT: case TYPE_DOUBLE:
+        return 1;
+    default:
+        return 0;
+    }
 }
 
 static void symtable_pop_scope(symtable_t *table, symbol_t *old_head)
@@ -158,8 +168,10 @@ static int eval_const_expr(expr_t *expr, symtable_t *vars, int *out)
         if (out) {
             int sz = 0;
             switch (expr->sizeof_expr.type) {
-            case TYPE_INT:  sz = 4; break;
-            case TYPE_CHAR: sz = 1; break;
+            case TYPE_CHAR: case TYPE_UCHAR: case TYPE_BOOL: sz = 1; break;
+            case TYPE_SHORT: case TYPE_USHORT: sz = 2; break;
+            case TYPE_INT: case TYPE_UINT: case TYPE_LONG: case TYPE_ULONG: sz = 4; break;
+            case TYPE_LLONG: case TYPE_ULLONG: sz = 8; break;
             case TYPE_PTR:  sz = 4; break;
             case TYPE_ARRAY: sz = (int)expr->sizeof_expr.array_size * 4; break;
             default: sz = 0; break;
@@ -405,7 +417,7 @@ type_kind_t check_expr(expr_t *expr, symtable_t *vars, symtable_t *funcs,
             return TYPE_UNKNOWN;
         }
         type_kind_t vt = check_expr(expr->assign.value, vars, funcs, ir, &val);
-        if ((sym->type == TYPE_CHAR && is_intlike(vt)) || vt == sym->type) {
+        if ((is_intlike(sym->type) && is_intlike(vt)) || vt == sym->type) {
             if (sym->param_index >= 0)
                 ir_build_store_param(ir, sym->param_index, val);
             else
@@ -482,8 +494,10 @@ type_kind_t check_expr(expr_t *expr, symtable_t *vars, symtable_t *funcs,
         int sz = 0;
         if (expr->sizeof_expr.is_type) {
             switch (expr->sizeof_expr.type) {
-            case TYPE_INT:  sz = 4; break;
-            case TYPE_CHAR: sz = 1; break;
+            case TYPE_CHAR: case TYPE_UCHAR: case TYPE_BOOL: sz = 1; break;
+            case TYPE_SHORT: case TYPE_USHORT: sz = 2; break;
+            case TYPE_INT: case TYPE_UINT: case TYPE_LONG: case TYPE_ULONG: sz = 4; break;
+            case TYPE_LLONG: case TYPE_ULLONG: sz = 8; break;
             case TYPE_PTR:  sz = 4; break;
             case TYPE_ARRAY: sz = (int)expr->sizeof_expr.array_size * 4; break;
             default: sz = 0; break;
@@ -492,8 +506,10 @@ type_kind_t check_expr(expr_t *expr, symtable_t *vars, symtable_t *funcs,
             ir_builder_t tmp; ir_builder_init(&tmp);
             type_kind_t t = check_expr(expr->sizeof_expr.expr, vars, funcs, &tmp, NULL);
             ir_builder_free(&tmp);
-            if (t == TYPE_INT) sz = 4;
-            else if (t == TYPE_CHAR) sz = 1;
+            if (t == TYPE_CHAR || t == TYPE_UCHAR || t == TYPE_BOOL) sz = 1;
+            else if (t == TYPE_SHORT || t == TYPE_USHORT) sz = 2;
+            else if (t == TYPE_INT || t == TYPE_UINT || t == TYPE_LONG || t == TYPE_ULONG) sz = 4;
+            else if (t == TYPE_LLONG || t == TYPE_ULLONG) sz = 8;
             else if (t == TYPE_PTR) sz = 4;
             else if (t == TYPE_ARRAY) {
                 symbol_t *sym = NULL;
@@ -526,7 +542,7 @@ type_kind_t check_expr(expr_t *expr, symtable_t *vars, symtable_t *funcs,
             type_kind_t at = check_expr(expr->call.args[i], vars, funcs, ir,
                                         &vals[i]);
             type_kind_t pt = fsym->param_types[i];
-            if (!((pt == TYPE_CHAR && is_intlike(at)) || at == pt)) {
+            if (!((is_intlike(pt) && is_intlike(at)) || at == pt)) {
                 error_set(expr->call.args[i]->line, expr->call.args[i]->column);
                 free(vals);
                 return TYPE_UNKNOWN;
@@ -821,7 +837,7 @@ int check_stmt(stmt_t *stmt, symtable_t *vars, symtable_t *funcs,
         if (stmt->var_decl.init) {
             ir_value_t val;
             type_kind_t vt = check_expr(stmt->var_decl.init, vars, funcs, ir, &val);
-            if (!((stmt->var_decl.type == TYPE_CHAR && is_intlike(vt)) ||
+            if (!((is_intlike(stmt->var_decl.type) && is_intlike(vt)) ||
                   vt == stmt->var_decl.type)) {
                 error_set(stmt->var_decl.init->line, stmt->var_decl.init->column);
                 return 0;

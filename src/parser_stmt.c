@@ -16,7 +16,8 @@
 #include "util.h"
 
 static stmt_t *parse_block(parser_t *p);
-static stmt_t *parse_var_decl(parser_t *p, token_type_t kw_type);
+static stmt_t *parse_var_decl(parser_t *p);
+static int parse_basic_type(parser_t *p, type_kind_t *out);
 stmt_t *parser_parse_enum_decl(parser_t *p);
 stmt_t *parser_parse_stmt(parser_t *p);
 
@@ -54,18 +55,47 @@ static stmt_t *parse_block(parser_t *p)
     return ast_make_block(stmts, count, lb_tok->line, lb_tok->column);
 }
 
-/* Parse a variable declaration starting after a type keyword already matched */
-static stmt_t *parse_var_decl(parser_t *p, token_type_t kw_type)
+/* Parse a fundamental type specifier possibly prefixed with 'unsigned'. */
+static int parse_basic_type(parser_t *p, type_kind_t *out)
 {
-    token_t *kw_tok = &p->tokens[p->pos - 1];
+    size_t save = p->pos;
+    int is_unsigned = match(p, TOK_KW_UNSIGNED);
     type_kind_t t;
-    switch (kw_type) {
-    case TOK_KW_INT: t = TYPE_INT; break;
-    case TOK_KW_CHAR: t = TYPE_CHAR; break;
-    case TOK_KW_FLOAT: t = TYPE_FLOAT; break;
-    case TOK_KW_DOUBLE: t = TYPE_DOUBLE; break;
-    default: t = TYPE_INT; break;
+    if (match(p, TOK_KW_SHORT))
+        t = is_unsigned ? TYPE_USHORT : TYPE_SHORT;
+    else if (match(p, TOK_KW_LONG)) {
+        if (match(p, TOK_KW_LONG))
+            t = is_unsigned ? TYPE_ULLONG : TYPE_LLONG;
+        else
+            t = is_unsigned ? TYPE_ULONG : TYPE_LONG;
+    } else if (match(p, TOK_KW_BOOL)) {
+        t = TYPE_BOOL;
+    } else if (match(p, TOK_KW_INT)) {
+        t = is_unsigned ? TYPE_UINT : TYPE_INT;
+    } else if (match(p, TOK_KW_CHAR)) {
+        t = TYPE_CHAR;
+    } else if (match(p, TOK_KW_FLOAT)) {
+        t = TYPE_FLOAT;
+    } else if (match(p, TOK_KW_DOUBLE)) {
+        t = TYPE_DOUBLE;
+    } else if (match(p, TOK_KW_VOID)) {
+        t = TYPE_VOID;
+    } else {
+        p->pos = save;
+        return 0;
     }
+    if (out)
+        *out = t;
+    return 1;
+}
+
+/* Parse a variable declaration starting after a type keyword already matched */
+static stmt_t *parse_var_decl(parser_t *p)
+{
+    token_t *kw_tok = peek(p);
+    type_kind_t t;
+    if (!parse_basic_type(p, &t))
+        return NULL;
     if (match(p, TOK_STAR))
         t = TYPE_PTR;
     token_t *tok = peek(p);
@@ -193,10 +223,12 @@ stmt_t *parser_parse_stmt(parser_t *p)
     if (match(p, TOK_KW_ENUM))
         return parser_parse_enum_decl(p);
 
-    if (match(p, TOK_KW_INT) || match(p, TOK_KW_CHAR) ||
-        match(p, TOK_KW_FLOAT) || match(p, TOK_KW_DOUBLE)) {
-        token_t *kw_tok = &p->tokens[p->pos - 1];
-        return parse_var_decl(p, kw_tok->type);
+    tok = peek(p);
+    if (tok && (tok->type == TOK_KW_INT || tok->type == TOK_KW_CHAR ||
+                tok->type == TOK_KW_FLOAT || tok->type == TOK_KW_DOUBLE ||
+                tok->type == TOK_KW_SHORT || tok->type == TOK_KW_LONG ||
+                tok->type == TOK_KW_BOOL || tok->type == TOK_KW_UNSIGNED)) {
+        return parse_var_decl(p);
     }
 
     if (match(p, TOK_KW_RETURN)) {
@@ -315,10 +347,12 @@ stmt_t *parser_parse_stmt(parser_t *p)
             return NULL;
         stmt_t *init_decl = NULL;
         expr_t *init = NULL;
-        if (match(p, TOK_KW_INT) || match(p, TOK_KW_CHAR) ||
-            match(p, TOK_KW_FLOAT) || match(p, TOK_KW_DOUBLE)) {
-            token_t *kw = &p->tokens[p->pos - 1];
-            init_decl = parse_var_decl(p, kw->type);
+        tok = peek(p);
+        if (tok && (tok->type == TOK_KW_INT || tok->type == TOK_KW_CHAR ||
+                    tok->type == TOK_KW_FLOAT || tok->type == TOK_KW_DOUBLE ||
+                    tok->type == TOK_KW_SHORT || tok->type == TOK_KW_LONG ||
+                    tok->type == TOK_KW_BOOL || tok->type == TOK_KW_UNSIGNED)) {
+            init_decl = parse_var_decl(p);
             if (!init_decl)
                 return NULL;
         } else {

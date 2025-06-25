@@ -53,6 +53,10 @@ static const char *token_name(token_type_t type)
     case TOK_KW_CHAR: return "\"char\"";
     case TOK_KW_FLOAT: return "\"float\"";
     case TOK_KW_DOUBLE: return "\"double\"";
+    case TOK_KW_SHORT: return "\"short\"";
+    case TOK_KW_LONG: return "\"long\"";
+    case TOK_KW_BOOL: return "\"bool\"";
+    case TOK_KW_UNSIGNED: return "\"unsigned\"";
     case TOK_KW_VOID: return "\"void\"";
     case TOK_KW_ENUM: return "\"enum\"";
     case TOK_KW_STRUCT: return "\"struct\"";
@@ -121,6 +125,40 @@ static const char *token_name(token_type_t type)
     return "unknown";
 }
 
+/* Parse a fundamental type specifier with optional 'unsigned'. */
+static int parse_basic_type(parser_t *p, type_kind_t *out)
+{
+    size_t save = p->pos;
+    int is_unsigned = match(p, TOK_KW_UNSIGNED);
+    type_kind_t t;
+    if (match(p, TOK_KW_SHORT))
+        t = is_unsigned ? TYPE_USHORT : TYPE_SHORT;
+    else if (match(p, TOK_KW_LONG)) {
+        if (match(p, TOK_KW_LONG))
+            t = is_unsigned ? TYPE_ULLONG : TYPE_LLONG;
+        else
+            t = is_unsigned ? TYPE_ULONG : TYPE_LONG;
+    } else if (match(p, TOK_KW_BOOL)) {
+        t = TYPE_BOOL;
+    } else if (match(p, TOK_KW_INT)) {
+        t = is_unsigned ? TYPE_UINT : TYPE_INT;
+    } else if (match(p, TOK_KW_CHAR)) {
+        t = TYPE_CHAR;
+    } else if (match(p, TOK_KW_FLOAT)) {
+        t = TYPE_FLOAT;
+    } else if (match(p, TOK_KW_DOUBLE)) {
+        t = TYPE_DOUBLE;
+    } else if (match(p, TOK_KW_VOID)) {
+        t = TYPE_VOID;
+    } else {
+        p->pos = save;
+        return 0;
+    }
+    if (out)
+        *out = t;
+    return 1;
+}
+
 /*
  * Emit an error at the current token.  "expected" is an optional list of
  * token kinds that would have been valid in this context.
@@ -161,19 +199,10 @@ void parser_print_error(parser_t *p, const token_type_t *expected,
 func_t *parser_parse_func(parser_t *p)
 {
     type_kind_t ret_type;
-    if (match(p, TOK_KW_INT)) {
-        ret_type = TYPE_INT;
-    } else if (match(p, TOK_KW_CHAR)) {
-        ret_type = TYPE_CHAR;
-    } else if (match(p, TOK_KW_FLOAT)) {
-        ret_type = TYPE_FLOAT;
-    } else if (match(p, TOK_KW_DOUBLE)) {
-        ret_type = TYPE_DOUBLE;
-    } else if (match(p, TOK_KW_VOID)) {
-        ret_type = TYPE_VOID;
-    } else {
+    if (!parse_basic_type(p, &ret_type))
         return NULL;
-    }
+    if (match(p, TOK_STAR))
+        ret_type = TYPE_PTR;
 
     token_t *tok = peek(p);
     if (!tok || tok->type != TOK_IDENT)
@@ -191,27 +220,13 @@ func_t *parser_parse_func(parser_t *p)
     if (!match(p, TOK_RPAREN)) {
         do {
             type_kind_t pt;
-            if (match(p, TOK_KW_INT)) {
-                pt = TYPE_INT;
-                if (match(p, TOK_STAR))
-                    pt = TYPE_PTR;
-            } else if (match(p, TOK_KW_CHAR)) {
-                pt = TYPE_CHAR;
-                if (match(p, TOK_STAR))
-                    pt = TYPE_PTR;
-            } else if (match(p, TOK_KW_FLOAT)) {
-                pt = TYPE_FLOAT;
-                if (match(p, TOK_STAR))
-                    pt = TYPE_PTR;
-            } else if (match(p, TOK_KW_DOUBLE)) {
-                pt = TYPE_DOUBLE;
-                if (match(p, TOK_STAR))
-                    pt = TYPE_PTR;
-            } else {
+            if (!parse_basic_type(p, &pt)) {
                 vector_free(&param_names_v);
                 vector_free(&param_types_v);
                 return NULL;
             }
+            if (match(p, TOK_STAR))
+                pt = TYPE_PTR;
             token_t *ptok = peek(p);
             if (!ptok || ptok->type != TOK_IDENT) {
                 vector_free(&param_names_v);
@@ -314,16 +329,9 @@ int parser_parse_toplevel(parser_t *p, func_t **out_func, stmt_t **out_global)
 
     if (tok->type == TOK_KW_TYPEDEF) {
         p->pos++;
-        token_t *ttok = peek(p);
         type_kind_t tt;
-        if (ttok && ttok->type == TOK_KW_INT) tt = TYPE_INT;
-        else if (ttok && ttok->type == TOK_KW_CHAR) tt = TYPE_CHAR;
-        else if (ttok && ttok->type == TOK_KW_FLOAT) tt = TYPE_FLOAT;
-        else if (ttok && ttok->type == TOK_KW_DOUBLE) tt = TYPE_DOUBLE;
-        else if (ttok && ttok->type == TOK_KW_VOID) tt = TYPE_VOID;
-        else { p->pos = save; return 0; }
-        p->pos++;
-        if ((tt == TYPE_INT || tt == TYPE_CHAR || tt == TYPE_FLOAT || tt == TYPE_DOUBLE) && match(p, TOK_STAR))
+        if (!parse_basic_type(p, &tt)) { p->pos = save; return 0; }
+        if (match(p, TOK_STAR))
             tt = TYPE_PTR;
         token_t *name_tok = peek(p);
         if (!name_tok || name_tok->type != TOK_IDENT) { p->pos = save; return 0; }
@@ -345,21 +353,9 @@ int parser_parse_toplevel(parser_t *p, func_t **out_func, stmt_t **out_global)
     }
 
     type_kind_t t;
-    if (tok->type == TOK_KW_INT) {
-        t = TYPE_INT;
-    } else if (tok->type == TOK_KW_CHAR) {
-        t = TYPE_CHAR;
-    } else if (tok->type == TOK_KW_FLOAT) {
-        t = TYPE_FLOAT;
-    } else if (tok->type == TOK_KW_DOUBLE) {
-        t = TYPE_DOUBLE;
-    } else if (tok->type == TOK_KW_VOID) {
-        t = TYPE_VOID;
-    } else {
+    if (!parse_basic_type(p, &t))
         return 0;
-    }
-    p->pos++;
-    if ((t == TYPE_INT || t == TYPE_CHAR || t == TYPE_FLOAT || t == TYPE_DOUBLE) && match(p, TOK_STAR))
+    if (match(p, TOK_STAR))
         t = TYPE_PTR;
 
     token_t *id = peek(p);

@@ -755,9 +755,19 @@ expr_t *parser_parse_expr(parser_t *p)
 static int parse_type(parser_t *p, type_kind_t *out_type, size_t *out_size)
 {
     size_t save = p->pos;
+    int is_unsigned = match(p, TOK_KW_UNSIGNED);
     type_kind_t t;
-    if (match(p, TOK_KW_INT)) {
-        t = TYPE_INT;
+    if (match(p, TOK_KW_SHORT))
+        t = is_unsigned ? TYPE_USHORT : TYPE_SHORT;
+    else if (match(p, TOK_KW_LONG)) {
+        if (match(p, TOK_KW_LONG))
+            t = is_unsigned ? TYPE_ULLONG : TYPE_LLONG;
+        else
+            t = is_unsigned ? TYPE_ULONG : TYPE_LONG;
+    } else if (match(p, TOK_KW_BOOL)) {
+        t = TYPE_BOOL;
+    } else if (match(p, TOK_KW_INT)) {
+        t = is_unsigned ? TYPE_UINT : TYPE_INT;
     } else if (match(p, TOK_KW_CHAR)) {
         t = TYPE_CHAR;
     } else if (match(p, TOK_KW_FLOAT)) {
@@ -770,7 +780,7 @@ static int parse_type(parser_t *p, type_kind_t *out_type, size_t *out_size)
         p->pos = save;
         return 0;
     }
-    if ((t == TYPE_INT || t == TYPE_CHAR || t == TYPE_FLOAT || t == TYPE_DOUBLE) && match(p, TOK_STAR))
+    if (match(p, TOK_STAR))
         t = TYPE_PTR;
     size_t arr = 0;
     if (match(p, TOK_LBRACKET)) {
