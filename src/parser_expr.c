@@ -27,6 +27,7 @@ static expr_t *parse_primary(parser_t *p);
 static int parse_type(parser_t *p, type_kind_t *out_type, size_t *out_size);
 static expr_t *parse_logical_and(parser_t *p);
 static expr_t *parse_logical_or(parser_t *p);
+static expr_t *parse_conditional(parser_t *p);
 
 /* Recursively clone an expression tree. Returns NULL on allocation failure. */
 static expr_t *clone_expr(const expr_t *expr)
@@ -58,6 +59,18 @@ static expr_t *clone_expr(const expr_t *expr)
         }
         return ast_make_binary(expr->binary.op, l, r,
                                expr->line, expr->column);
+    }
+    case EXPR_COND: {
+        expr_t *c = clone_expr(expr->cond.cond);
+        expr_t *t = clone_expr(expr->cond.then_expr);
+        expr_t *e = clone_expr(expr->cond.else_expr);
+        if (!c || !t || !e) {
+            ast_free_expr(c);
+            ast_free_expr(t);
+            ast_free_expr(e);
+            return NULL;
+        }
+        return ast_make_cond(c, t, e, expr->line, expr->column);
     }
     case EXPR_ASSIGN: {
         expr_t *v = clone_expr(expr->assign.value);
@@ -585,11 +598,38 @@ static expr_t *parse_logical_or(parser_t *p)
     return left;
 }
 
+/* Parse conditional expressions with ?: */
+static expr_t *parse_conditional(parser_t *p)
+{
+    expr_t *cond = parse_logical_or(p);
+    if (!cond)
+        return NULL;
+
+    if (match(p, TOK_QMARK)) {
+        expr_t *then_expr = parse_expression(p);
+        if (!then_expr || !match(p, TOK_COLON)) {
+            ast_free_expr(cond);
+            ast_free_expr(then_expr);
+            return NULL;
+        }
+        expr_t *else_expr = parse_conditional(p);
+        if (!else_expr) {
+            ast_free_expr(cond);
+            ast_free_expr(then_expr);
+            return NULL;
+        }
+        expr_t *res = ast_make_cond(cond, then_expr, else_expr,
+                                    cond->line, cond->column);
+        return res;
+    }
+    return cond;
+}
+
 /* Assignment has the lowest precedence and recurses to itself for chained
  * assignments. */
 static expr_t *parse_assignment(parser_t *p)
 {
-    expr_t *left = parse_logical_or(p);
+    expr_t *left = parse_conditional(p);
     if (!left)
         return NULL;
 

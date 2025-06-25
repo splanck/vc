@@ -239,6 +239,7 @@ static void read_punct(char c, vector_t *tokens, size_t line, size_t column)
     case '}': type = TOK_RBRACE; break;
     case '[': type = TOK_LBRACKET; break;
     case ']': type = TOK_RBRACKET; break;
+    case '?': type = TOK_QMARK; break;
     case ':': type = TOK_COLON; break;
     default: type = TOK_UNKNOWN; break;
     }

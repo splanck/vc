@@ -134,6 +134,15 @@ static int eval_const_expr(expr_t *expr, symtable_t *vars, int *out)
         }
         return 1;
     }
+    case EXPR_COND: {
+        int cval;
+        if (!eval_const_expr(expr->cond.cond, vars, &cval))
+            return 0;
+        if (cval)
+            return eval_const_expr(expr->cond.then_expr, vars, out);
+        else
+            return eval_const_expr(expr->cond.else_expr, vars, out);
+    }
     case EXPR_IDENT: {
         symbol_t *sym = vars ? symtable_lookup(vars, expr->ident.name) : NULL;
         if (sym && sym->is_enum_const) {
@@ -359,6 +368,35 @@ type_kind_t check_expr(expr_t *expr, symtable_t *vars, symtable_t *funcs,
         }
         return check_binary(expr->binary.left, expr->binary.right, vars, funcs,
                            ir, out, expr->binary.op);
+    case EXPR_COND: {
+        ir_value_t cond_val;
+        if (!is_intlike(check_expr(expr->cond.cond, vars, funcs, ir, &cond_val))) {
+            error_set(expr->cond.cond->line, expr->cond.cond->column);
+            return TYPE_UNKNOWN;
+        }
+        char flabel[32], endlabel[32], tmp[32];
+        int id = label_next_id();
+        snprintf(flabel, sizeof(flabel), "L%d_false", id);
+        snprintf(endlabel, sizeof(endlabel), "L%d_end", id);
+        snprintf(tmp, sizeof(tmp), "tmp%d", id);
+        ir_build_bcond(ir, cond_val, flabel);
+        ir_value_t tval;
+        type_kind_t tt = check_expr(expr->cond.then_expr, vars, funcs, ir, &tval);
+        ir_build_store(ir, tmp, tval);
+        ir_build_br(ir, endlabel);
+        ir_build_label(ir, flabel);
+        ir_value_t fval;
+        type_kind_t ft = check_expr(expr->cond.else_expr, vars, funcs, ir, &fval);
+        ir_build_store(ir, tmp, fval);
+        ir_build_label(ir, endlabel);
+        if (!(is_intlike(tt) && is_intlike(ft))) {
+            error_set(expr->line, expr->column);
+            return TYPE_UNKNOWN;
+        }
+        if (out)
+            *out = ir_build_load(ir, tmp);
+        return TYPE_INT;
+    }
     case EXPR_ASSIGN: {
         ir_value_t val;
         symbol_t *sym = symtable_lookup(vars, expr->assign.name);

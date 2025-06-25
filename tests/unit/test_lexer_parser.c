@@ -249,6 +249,21 @@ static void test_parser_logical(void)
     lexer_free_tokens(toks, count);
 }
 
+static void test_parser_conditional(void)
+{
+    const char *src = "a ? b : c";
+    size_t count = 0;
+    token_t *toks = lexer_tokenize(src, &count);
+    parser_t p; parser_init(&p, toks, count);
+    expr_t *expr = parser_parse_expr(&p);
+    ASSERT(expr && expr->kind == EXPR_COND);
+    ASSERT(expr->cond.cond->kind == EXPR_IDENT);
+    ASSERT(expr->cond.then_expr->kind == EXPR_IDENT);
+    ASSERT(expr->cond.else_expr->kind == EXPR_IDENT);
+    ast_free_expr(expr);
+    lexer_free_tokens(toks, count);
+}
+
 static void test_lexer_sizeof(void)
 {
     const char *src = "sizeof(int)";
@@ -323,6 +338,7 @@ int main(void)
     test_parser_global_init();
     test_parser_unary_expr();
     test_parser_logical();
+    test_parser_conditional();
     test_lexer_sizeof();
     test_parser_sizeof();
     test_parser_func();
