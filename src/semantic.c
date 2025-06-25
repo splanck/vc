@@ -84,6 +84,21 @@ static int is_floatlike(type_kind_t t)
     return t == TYPE_FLOAT || t == TYPE_DOUBLE;
 }
 
+/* Compute byte offsets for union members sequentially and return the
+ * maximum element size. */
+static size_t layout_union_members(union_member_t *members, size_t count)
+{
+    size_t off = 0;
+    size_t max = 0;
+    for (size_t i = 0; i < count; i++) {
+        members[i].offset = off;
+        off += members[i].elem_size;
+        if (members[i].elem_size > max)
+            max = members[i].elem_size;
+    }
+    return max;
+}
+
 /* Mapping from BINOP_* to corresponding IR op.  Logical ops are
  * handled separately and use IR_CMPEQ here just as a placeholder. */
 static const ir_op_t binop_to_ir[] = {
@@ -596,10 +611,60 @@ type_kind_t check_expr(expr_t *expr, symtable_t *vars, symtable_t *funcs,
             *out = val;
         return TYPE_INT;
     }
-    case EXPR_MEMBER:
-        /* struct member access not implemented */
-        error_set(expr->line, expr->column);
-        return TYPE_UNKNOWN;
+    case EXPR_MEMBER: {
+        if (!expr->member.object)
+            return TYPE_UNKNOWN;
+        symbol_t *obj_sym = NULL;
+        ir_value_t base_addr;
+        if (expr->member.via_ptr) {
+            if (check_expr(expr->member.object, vars, funcs, ir,
+                           &base_addr) != TYPE_PTR) {
+                error_set(expr->member.object->line,
+                          expr->member.object->column);
+                return TYPE_UNKNOWN;
+            }
+            if (expr->member.object->kind == EXPR_IDENT)
+                obj_sym = symtable_lookup(vars,
+                                          expr->member.object->ident.name);
+        } else {
+            if (expr->member.object->kind != EXPR_IDENT) {
+                error_set(expr->member.object->line,
+                          expr->member.object->column);
+                return TYPE_UNKNOWN;
+            }
+            obj_sym = symtable_lookup(vars, expr->member.object->ident.name);
+            if (!obj_sym || obj_sym->type != TYPE_UNION) {
+                error_set(expr->member.object->line,
+                          expr->member.object->column);
+                return TYPE_UNKNOWN;
+            }
+            base_addr = ir_build_addr(ir, obj_sym->ir_name);
+        }
+
+        if (!obj_sym || obj_sym->type != TYPE_UNION || obj_sym->member_count == 0) {
+            error_set(expr->line, expr->column);
+            return TYPE_UNKNOWN;
+        }
+
+        union_member_t *member = NULL;
+        for (size_t i = 0; i < obj_sym->member_count; i++) {
+            if (strcmp(obj_sym->members[i].name, expr->member.member) == 0) {
+                member = &obj_sym->members[i];
+                break;
+            }
+        }
+        if (!member) {
+            error_set(expr->line, expr->column);
+            return TYPE_UNKNOWN;
+        }
+
+        if (out) {
+            ir_value_t idx = ir_build_const(ir, (int)member->offset);
+            ir_value_t addr = ir_build_ptr_add(ir, base_addr, idx, 1);
+            *out = ir_build_load_ptr(ir, addr);
+        }
+        return member->type;
+    }
     case EXPR_SIZEOF: {
         int sz = 0;
         if (expr->sizeof_expr.is_type) {
@@ -633,7 +698,7 @@ type_kind_t check_expr(expr_t *expr, symtable_t *vars, symtable_t *funcs,
                 symbol_t *sym = NULL;
                 if (expr->sizeof_expr.expr->kind == EXPR_IDENT)
                     sym = symtable_lookup(vars, expr->sizeof_expr.expr->ident.name);
-                sz = sym ? (int)sym->elem_size : 0;
+                sz = sym ? (int)sym->total_size : 0;
             }
         }
         if (out)
@@ -967,9 +1032,18 @@ int check_stmt(stmt_t *stmt, symtable_t *vars, symtable_t *funcs,
         }
         return 1;
     }
-    case STMT_UNION_DECL:
-        /* union type declarations are currently ignored */
+    case STMT_UNION_DECL: {
+        size_t max = layout_union_members(stmt->union_decl.members,
+                                          stmt->union_decl.count);
+        (void)max; /* size currently unused beyond member offsets */
+        if (!symtable_add_union(vars, stmt->union_decl.tag,
+                                stmt->union_decl.members,
+                                stmt->union_decl.count)) {
+            error_set(stmt->line, stmt->column);
+            return 0;
+        }
         return 1;
+    }
     case STMT_TYPEDEF: {
         if (!symtable_add_typedef(vars, stmt->typedef_decl.name,
                                   stmt->typedef_decl.type,
@@ -987,13 +1061,8 @@ int check_stmt(stmt_t *stmt, symtable_t *vars, symtable_t *funcs,
             ir_name = label_format("__static", label_next_id(), ir_name_buf);
         }
         if (stmt->var_decl.type == TYPE_UNION) {
-            size_t max = 0;
-            for (size_t i = 0; i < stmt->var_decl.member_count; i++) {
-                union_member_t *m = &stmt->var_decl.members[i];
-                size_t sz = m->elem_size;
-                if (sz > max)
-                    max = sz;
-            }
+            size_t max = layout_union_members(stmt->var_decl.members,
+                                             stmt->var_decl.member_count);
             stmt->var_decl.elem_size = max;
         }
         if (!symtable_add(vars, stmt->var_decl.name, ir_name,
@@ -1006,6 +1075,23 @@ int check_stmt(stmt_t *stmt, symtable_t *vars, symtable_t *funcs,
             return 0;
         }
         symbol_t *sym = symtable_lookup(vars, stmt->var_decl.name);
+        if (stmt->var_decl.type == TYPE_UNION) {
+            sym->total_size = stmt->var_decl.elem_size;
+            if (stmt->var_decl.member_count) {
+                sym->members = malloc(stmt->var_decl.member_count *
+                                      sizeof(*sym->members));
+                if (!sym->members)
+                    return 0;
+                sym->member_count = stmt->var_decl.member_count;
+                for (size_t i = 0; i < sym->member_count; i++) {
+                    union_member_t *m = &stmt->var_decl.members[i];
+                    sym->members[i].name = vc_strdup(m->name);
+                    sym->members[i].type = m->type;
+                    sym->members[i].elem_size = m->elem_size;
+                    sym->members[i].offset = m->offset;
+                }
+            }
+        }
         if (stmt->var_decl.init) {
             if (stmt->var_decl.is_static) {
                 int cval;
@@ -1144,7 +1230,13 @@ int check_global(stmt_t *decl, symtable_t *globals, ir_builder_t *ir)
         return 1;
     }
     if (decl->kind == STMT_UNION_DECL) {
-        /* union type declarations have no semantic impact */
+        layout_union_members(decl->union_decl.members, decl->union_decl.count);
+        if (!symtable_add_union_global(globals, decl->union_decl.tag,
+                                       decl->union_decl.members,
+                                       decl->union_decl.count)) {
+            error_set(decl->line, decl->column);
+            return 0;
+        }
         return 1;
     }
     if (decl->kind == STMT_TYPEDEF) {
@@ -1160,13 +1252,8 @@ int check_global(stmt_t *decl, symtable_t *globals, ir_builder_t *ir)
     if (decl->kind != STMT_VAR_DECL)
         return 0;
     if (decl->var_decl.type == TYPE_UNION) {
-        size_t max = 0;
-        for (size_t i = 0; i < decl->var_decl.member_count; i++) {
-            union_member_t *m = &decl->var_decl.members[i];
-            size_t sz = m->elem_size;
-            if (sz > max)
-                max = sz;
-        }
+        size_t max = layout_union_members(decl->var_decl.members,
+                                          decl->var_decl.member_count);
         decl->var_decl.elem_size = max;
     }
     if (!symtable_add_global(globals, decl->var_decl.name, decl->var_decl.name,
@@ -1177,6 +1264,24 @@ int check_global(stmt_t *decl, symtable_t *globals, ir_builder_t *ir)
                              decl->var_decl.is_const)) {
         error_set(decl->line, decl->column);
         return 0;
+    }
+    symbol_t *gsym = symtable_lookup_global(globals, decl->var_decl.name);
+    if (decl->var_decl.type == TYPE_UNION) {
+        gsym->total_size = decl->var_decl.elem_size;
+        if (decl->var_decl.member_count) {
+            gsym->members = malloc(decl->var_decl.member_count *
+                                   sizeof(*gsym->members));
+            if (!gsym->members)
+                return 0;
+            gsym->member_count = decl->var_decl.member_count;
+            for (size_t i = 0; i < gsym->member_count; i++) {
+                union_member_t *m = &decl->var_decl.members[i];
+                gsym->members[i].name = vc_strdup(m->name);
+                gsym->members[i].type = m->type;
+                gsym->members[i].elem_size = m->elem_size;
+                gsym->members[i].offset = m->offset;
+            }
+        }
     }
     if (decl->var_decl.type == TYPE_ARRAY) {
         size_t count = decl->var_decl.array_size;
