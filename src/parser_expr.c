@@ -114,15 +114,29 @@ static expr_t *parse_primary(parser_t *p)
     }
     if (!base)
         return NULL;
-    while (match(p, TOK_LBRACKET)) {
-        token_t *lb = &p->tokens[p->pos - 1];
-        expr_t *idx = parse_expression(p);
-        if (!idx || !match(p, TOK_RBRACKET)) {
-            ast_free_expr(base);
-            ast_free_expr(idx);
-            return NULL;
+    while (1) {
+        if (match(p, TOK_LBRACKET)) {
+            token_t *lb = &p->tokens[p->pos - 1];
+            expr_t *idx = parse_expression(p);
+            if (!idx || !match(p, TOK_RBRACKET)) {
+                ast_free_expr(base);
+                ast_free_expr(idx);
+                return NULL;
+            }
+            base = ast_make_index(base, idx, lb->line, lb->column);
+        } else if (match(p, TOK_DOT) || match(p, TOK_ARROW)) {
+            int via_ptr = (p->tokens[p->pos - 1].type == TOK_ARROW);
+            token_t *id = peek(p);
+            if (!id || id->type != TOK_IDENT) {
+                ast_free_expr(base);
+                return NULL;
+            }
+            p->pos++;
+            base = ast_make_member(base, id->lexeme, via_ptr,
+                                   id->line, id->column);
+        } else {
+            break;
         }
-        base = ast_make_index(base, idx, lb->line, lb->column);
     }
     return base;
 }

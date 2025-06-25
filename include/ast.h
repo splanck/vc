@@ -17,6 +17,8 @@ typedef enum {
     TYPE_PTR,
     TYPE_ARRAY,
     TYPE_VOID,
+    TYPE_STRUCT,
+    TYPE_UNION,
     TYPE_UNKNOWN
 } type_kind_t;
 
@@ -31,7 +33,8 @@ typedef enum {
     EXPR_ASSIGN,
     EXPR_CALL,
     EXPR_INDEX,
-    EXPR_ASSIGN_INDEX
+    EXPR_ASSIGN_INDEX,
+    EXPR_MEMBER
 } expr_kind_t;
 
 /* Binary operator types */
@@ -105,6 +108,11 @@ struct expr {
             expr_t *index;
             expr_t *value;
         } assign_index;
+        struct {
+            expr_t *object;
+            char *member;
+            int via_ptr;
+        } member;
         struct {
             char *name;
             expr_t **args;
@@ -230,6 +238,9 @@ expr_t *ast_make_index(expr_t *array, expr_t *index,
 /* Create an array element assignment expression. */
 expr_t *ast_make_assign_index(expr_t *array, expr_t *index, expr_t *value,
                               size_t line, size_t column);
+/* Create a struct/union member access expression. */
+expr_t *ast_make_member(expr_t *object, const char *member, int via_ptr,
+                        size_t line, size_t column);
 /* Create a function call expression with \p arg_count arguments. */
 expr_t *ast_make_call(const char *name, expr_t **args, size_t arg_count,
                       size_t line, size_t column);

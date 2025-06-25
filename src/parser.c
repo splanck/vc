@@ -53,6 +53,8 @@ static const char *token_name(token_type_t type)
     case TOK_KW_CHAR: return "\"char\"";
     case TOK_KW_VOID: return "\"void\"";
     case TOK_KW_ENUM: return "\"enum\"";
+    case TOK_KW_STRUCT: return "\"struct\"";
+    case TOK_KW_UNION: return "\"union\"";
     case TOK_KW_RETURN: return "\"return\"";
     case TOK_KW_IF: return "\"if\"";
     case TOK_KW_ELSE: return "\"else\"";
@@ -73,6 +75,8 @@ static const char *token_name(token_type_t type)
     case TOK_COMMA: return "','";
     case TOK_PLUS: return "'+'";
     case TOK_MINUS: return "'-'";
+    case TOK_DOT: return "'.'";
+    case TOK_ARROW: return "'->'";
     case TOK_AMP: return "'&'";
     case TOK_STAR: return "'*'";
     case TOK_SLASH: return "'/'";

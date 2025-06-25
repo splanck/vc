@@ -154,6 +154,26 @@ expr_t *ast_make_assign_index(expr_t *array, expr_t *index, expr_t *value,
     return expr;
 }
 
+/* Create a member access expression node. */
+expr_t *ast_make_member(expr_t *object, const char *member, int via_ptr,
+                        size_t line, size_t column)
+{
+    expr_t *expr = malloc(sizeof(*expr));
+    if (!expr)
+        return NULL;
+    expr->kind = EXPR_MEMBER;
+    expr->line = line;
+    expr->column = column;
+    expr->member.object = object;
+    expr->member.member = vc_strdup(member ? member : "");
+    if (!expr->member.member) {
+        free(expr);
+        return NULL;
+    }
+    expr->member.via_ptr = via_ptr;
+    return expr;
+}
+
 /* Create a function call expression node. */
 expr_t *ast_make_call(const char *name, expr_t **args, size_t arg_count,
                       size_t line, size_t column)
@@ -478,6 +498,10 @@ void ast_free_expr(expr_t *expr)
         ast_free_expr(expr->assign_index.array);
         ast_free_expr(expr->assign_index.index);
         ast_free_expr(expr->assign_index.value);
+        break;
+    case EXPR_MEMBER:
+        ast_free_expr(expr->member.object);
+        free(expr->member.member);
         break;
     case EXPR_CALL:
         for (size_t i = 0; i < expr->call.arg_count; i++)

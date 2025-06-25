@@ -66,6 +66,17 @@ int *p = &x;
 return *p;
 ```
 
+Struct and union objects are declared similarly using the new
+`struct` and `union` keywords. Member access is parsed with `.` or
+`->`:
+
+```c
+struct Point { int x; int y; };
+struct Point p;
+p.x = 3;
+return p.x;
+```
+
 #### Type checking and functions
 
 `check_expr` verifies binary operations and resolves function calls by
