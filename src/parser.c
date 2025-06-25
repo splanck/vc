@@ -86,6 +86,9 @@ static const char *token_name(token_type_t type)
     case TOK_ASSIGN: return "'='";
     case TOK_EQ: return "'=='";
     case TOK_NEQ: return "'!='";
+    case TOK_LOGAND: return "'&&'";
+    case TOK_LOGOR: return "'||'";
+    case TOK_NOT: return "'!'";
     case TOK_LT: return "'<'";
     case TOK_GT: return "'>'";
     case TOK_LE: return "'<='";

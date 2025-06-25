@@ -231,6 +231,30 @@ ir_value_t ir_build_binop(ir_builder_t *b, ir_op_t op, ir_value_t left, ir_value
     return (ir_value_t){ins->dest};
 }
 
+ir_value_t ir_build_logand(ir_builder_t *b, ir_value_t left, ir_value_t right)
+{
+    ir_instr_t *ins = append_instr(b);
+    if (!ins)
+        return (ir_value_t){0};
+    ins->op = IR_LOGAND;
+    ins->dest = b->next_value_id++;
+    ins->src1 = left.id;
+    ins->src2 = right.id;
+    return (ir_value_t){ins->dest};
+}
+
+ir_value_t ir_build_logor(ir_builder_t *b, ir_value_t left, ir_value_t right)
+{
+    ir_instr_t *ins = append_instr(b);
+    if (!ins)
+        return (ir_value_t){0};
+    ins->op = IR_LOGOR;
+    ins->dest = b->next_value_id++;
+    ins->src1 = left.id;
+    ins->src2 = right.id;
+    return (ir_value_t){ins->dest};
+}
+
 /* Emit IR_ARG to push an argument value for a call. */
 void ir_build_arg(ir_builder_t *b, ir_value_t val)
 {

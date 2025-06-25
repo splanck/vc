@@ -48,6 +48,8 @@ typedef enum {
     BINOP_DIV,
     BINOP_EQ,
     BINOP_NEQ,
+    BINOP_LOGAND,
+    BINOP_LOGOR,
     BINOP_LT,
     BINOP_GT,
     BINOP_LE,
@@ -57,7 +59,8 @@ typedef enum {
 typedef enum {
     UNOP_ADDR,
     UNOP_DEREF,
-    UNOP_NEG
+    UNOP_NEG,
+    UNOP_NOT
 } unop_t;
 
 struct expr;

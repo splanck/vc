@@ -178,6 +178,8 @@ static type_kind_t check_binary(expr_t *left, expr_t *right, symtable_t *vars,
             case BINOP_GT:  ir_op = IR_CMPGT; break;
             case BINOP_LE:  ir_op = IR_CMPLE; break;
             case BINOP_GE:  ir_op = IR_CMPGE; break;
+            case BINOP_LOGAND: ir_op = IR_CMPEQ; break; /* unreachable */
+            case BINOP_LOGOR:  ir_op = IR_CMPEQ; break; /* unreachable */
             }
             *out = ir_build_binop(ir, ir_op, lval, rval);
         }
@@ -259,6 +261,17 @@ type_kind_t check_expr(expr_t *expr, symtable_t *vars, symtable_t *funcs,
             }
             error_set(expr->unary.operand->line, expr->unary.operand->column);
             return TYPE_UNKNOWN;
+        } else if (expr->unary.op == UNOP_NOT) {
+            ir_value_t val;
+            if (is_intlike(check_expr(expr->unary.operand, vars, funcs, ir, &val))) {
+                if (out) {
+                    ir_value_t zero = ir_build_const(ir, 0);
+                    *out = ir_build_binop(ir, IR_CMPEQ, val, zero);
+                }
+                return TYPE_INT;
+            }
+            error_set(expr->unary.operand->line, expr->unary.operand->column);
+            return TYPE_UNKNOWN;
         }
         return TYPE_UNKNOWN;
     case EXPR_IDENT: {
@@ -287,6 +300,24 @@ type_kind_t check_expr(expr_t *expr, symtable_t *vars, symtable_t *funcs,
         }
     }
     case EXPR_BINARY:
+        if (expr->binary.op == BINOP_LOGAND || expr->binary.op == BINOP_LOGOR) {
+            ir_value_t lval, rval;
+            if (!is_intlike(check_expr(expr->binary.left, vars, funcs, ir, &lval))) {
+                error_set(expr->binary.left->line, expr->binary.left->column);
+                return TYPE_UNKNOWN;
+            }
+            if (!is_intlike(check_expr(expr->binary.right, vars, funcs, ir, &rval))) {
+                error_set(expr->binary.right->line, expr->binary.right->column);
+                return TYPE_UNKNOWN;
+            }
+            if (out) {
+                if (expr->binary.op == BINOP_LOGAND)
+                    *out = ir_build_logand(ir, lval, rval);
+                else
+                    *out = ir_build_logor(ir, lval, rval);
+            }
+            return TYPE_INT;
+        }
         return check_binary(expr->binary.left, expr->binary.right, vars, funcs,
                            ir, out, expr->binary.op);
     case EXPR_ASSIGN: {

@@ -210,6 +210,23 @@ static void test_parser_unary_expr(void)
     lexer_free_tokens(toks, count);
 }
 
+static void test_parser_logical(void)
+{
+    const char *src = "1 && 2 || !0";
+    size_t count = 0;
+    token_t *toks = lexer_tokenize(src, &count);
+    parser_t p; parser_init(&p, toks, count);
+    expr_t *expr = parser_parse_expr(&p);
+    ASSERT(expr && expr->kind == EXPR_BINARY);
+    ASSERT(expr->binary.op == BINOP_LOGOR);
+    ASSERT(expr->binary.left->kind == EXPR_BINARY &&
+           expr->binary.left->binary.op == BINOP_LOGAND);
+    ASSERT(expr->binary.right->kind == EXPR_UNARY &&
+           expr->binary.right->unary.op == UNOP_NOT);
+    ast_free_expr(expr);
+    lexer_free_tokens(toks, count);
+}
+
 static void test_lexer_sizeof(void)
 {
     const char *src = "sizeof(int)";
@@ -281,6 +298,7 @@ int main(void)
     test_parser_pointer_arith();
     test_parser_global_init();
     test_parser_unary_expr();
+    test_parser_logical();
     test_lexer_sizeof();
     test_parser_sizeof();
     test_parser_func();
