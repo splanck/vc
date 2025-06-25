@@ -134,6 +134,8 @@ static void read_identifier(const char *src, size_t *i, size_t *col,
         type = TOK_KW_UNION;
     else if (len == 7 && strncmp(src + start, "typedef", 7) == 0)
         type = TOK_KW_TYPEDEF;
+    else if (len == 6 && strncmp(src + start, "static", 6) == 0)
+        type = TOK_KW_STATIC;
     else if (len == 6 && strncmp(src + start, "return", 6) == 0)
         type = TOK_KW_RETURN;
     append_token(tokens, type, src + start, len, line, *col);

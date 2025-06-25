@@ -272,6 +272,7 @@ stmt_t *ast_make_return(expr_t *expr, size_t line, size_t column)
 
 /* Create a variable declaration statement. */
 stmt_t *ast_make_var_decl(const char *name, type_kind_t type, size_t array_size,
+                          int is_static,
                           expr_t *init, expr_t **init_list, size_t init_count,
                           size_t line, size_t column)
 {
@@ -288,6 +289,7 @@ stmt_t *ast_make_var_decl(const char *name, type_kind_t type, size_t array_size,
     }
     stmt->var_decl.type = type;
     stmt->var_decl.array_size = array_size;
+    stmt->var_decl.is_static = is_static;
     stmt->var_decl.init = init;
     stmt->var_decl.init_list = init_list;
     stmt->var_decl.init_count = init_count;
