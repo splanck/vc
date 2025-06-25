@@ -13,6 +13,7 @@
 #include <stdlib.h>
 #include "parser.h"
 #include "parser_types.h"
+#include "vector.h"
 
 /* Forward declarations */
 static expr_t *parse_expression(parser_t *p);
@@ -223,39 +224,34 @@ static expr_t *parse_primary(parser_t *p)
             p->pos++; /* consume ident */
             char *name = tok->lexeme;
             match(p, TOK_LPAREN);
-            size_t cap = 4, count = 0;
-            expr_t **args = malloc(cap * sizeof(*args));
-            if (!args)
-                return NULL;
+            vector_t args_v;
+            vector_init(&args_v, sizeof(expr_t *));
             if (!match(p, TOK_RPAREN)) {
                 do {
                     expr_t *arg = parse_expression(p);
                     if (!arg) {
-                        for (size_t i = 0; i < count; i++)
-                            ast_free_expr(args[i]);
-                        free(args);
+                        for (size_t i = 0; i < args_v.count; i++)
+                            ast_free_expr(((expr_t **)args_v.data)[i]);
+                        vector_free(&args_v);
                         return NULL;
                     }
-                    if (count >= cap) {
-                        cap *= 2;
-                        expr_t **tmp = realloc(args, cap * sizeof(*tmp));
-                        if (!tmp) {
-                            for (size_t i = 0; i < count; i++)
-                                ast_free_expr(args[i]);
-                            free(args);
-                            return NULL;
-                        }
-                        args = tmp;
+                    if (!vector_push(&args_v, &arg)) {
+                        ast_free_expr(arg);
+                        for (size_t i = 0; i < args_v.count; i++)
+                            ast_free_expr(((expr_t **)args_v.data)[i]);
+                        vector_free(&args_v);
+                        return NULL;
                     }
-                    args[count++] = arg;
                 } while (match(p, TOK_COMMA));
                 if (!match(p, TOK_RPAREN)) {
-                    for (size_t i = 0; i < count; i++)
-                        ast_free_expr(args[i]);
-                    free(args);
+                    for (size_t i = 0; i < args_v.count; i++)
+                        ast_free_expr(((expr_t **)args_v.data)[i]);
+                    vector_free(&args_v);
                     return NULL;
                 }
             }
+            expr_t **args = (expr_t **)args_v.data;
+            size_t count = args_v.count;
             expr_t *call = ast_make_call(name, args, count,
                                          tok->line, tok->column);
             base = call;
@@ -708,42 +704,35 @@ expr_t **parser_parse_init_list(parser_t *p, size_t *out_count)
 {
     if (!match(p, TOK_LBRACE))
         return NULL;
-    size_t cap = 4, count = 0;
-    expr_t **vals = malloc(cap * sizeof(*vals));
-    if (!vals)
-        return NULL;
+    vector_t vals_v;
+    vector_init(&vals_v, sizeof(expr_t *));
     if (!match(p, TOK_RBRACE)) {
         do {
             expr_t *e = parse_expression(p);
             if (!e) {
-                for (size_t i = 0; i < count; i++)
-                    ast_free_expr(vals[i]);
-                free(vals);
+                for (size_t i = 0; i < vals_v.count; i++)
+                    ast_free_expr(((expr_t **)vals_v.data)[i]);
+                vector_free(&vals_v);
                 return NULL;
             }
-            if (count >= cap) {
-                cap *= 2;
-                expr_t **tmp = realloc(vals, cap * sizeof(*tmp));
-                if (!tmp) {
-                    for (size_t i = 0; i < count; i++)
-                        ast_free_expr(vals[i]);
-                    free(vals);
-                    return NULL;
-                }
-                vals = tmp;
+            if (!vector_push(&vals_v, &e)) {
+                ast_free_expr(e);
+                for (size_t i = 0; i < vals_v.count; i++)
+                    ast_free_expr(((expr_t **)vals_v.data)[i]);
+                vector_free(&vals_v);
+                return NULL;
             }
-            vals[count++] = e;
         } while (match(p, TOK_COMMA));
         if (!match(p, TOK_RBRACE)) {
-            for (size_t i = 0; i < count; i++)
-                ast_free_expr(vals[i]);
-            free(vals);
+            for (size_t i = 0; i < vals_v.count; i++)
+                ast_free_expr(((expr_t **)vals_v.data)[i]);
+            vector_free(&vals_v);
             return NULL;
         }
     }
     if (out_count)
-        *out_count = count;
-    return vals;
+        *out_count = vals_v.count;
+    return (expr_t **)vals_v.data;
 }
 
 /* Public wrapper for expression parsing used by other modules. */
