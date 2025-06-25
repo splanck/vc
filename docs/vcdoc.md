@@ -219,6 +219,7 @@ RETURN v2
 - `for`, `while` and `do`/`while` loops
 - Pointers
 - Arrays
+- Compound assignment operators (`+=`, `-=`, `*=`, `/=`, `%=`)
 - Logical operators `&&`, `||` and `!`
 - Floating-point types (`float`, `double`)
 - `sizeof` operator
@@ -238,6 +239,20 @@ int main() {
 Compile with:
 ```sh
 vc -o add.s add.c
+```
+
+### Compound assignment
+```c
+/* compound.c */
+int main() {
+    int x = 1;
+    x += 2;
+    return x;
+}
+```
+Compile with:
+```sh
+vc -o compound.s compound.c
 ```
 
 ### Floating-point arithmetic

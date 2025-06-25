@@ -24,6 +24,110 @@ static int parse_type(parser_t *p, type_kind_t *out_type, size_t *out_size);
 static expr_t *parse_logical_and(parser_t *p);
 static expr_t *parse_logical_or(parser_t *p);
 
+/* Recursively clone an expression tree. Returns NULL on allocation failure. */
+static expr_t *clone_expr(const expr_t *expr)
+{
+    if (!expr)
+        return NULL;
+    switch (expr->kind) {
+    case EXPR_NUMBER:
+        return ast_make_number(expr->number.value, expr->line, expr->column);
+    case EXPR_IDENT:
+        return ast_make_ident(expr->ident.name, expr->line, expr->column);
+    case EXPR_STRING:
+        return ast_make_string(expr->string.value, expr->line, expr->column);
+    case EXPR_CHAR:
+        return ast_make_char(expr->ch.value, expr->line, expr->column);
+    case EXPR_UNARY: {
+        expr_t *op = clone_expr(expr->unary.operand);
+        if (!op)
+            return NULL;
+        return ast_make_unary(expr->unary.op, op, expr->line, expr->column);
+    }
+    case EXPR_BINARY: {
+        expr_t *l = clone_expr(expr->binary.left);
+        expr_t *r = clone_expr(expr->binary.right);
+        if (!l || !r) {
+            ast_free_expr(l);
+            ast_free_expr(r);
+            return NULL;
+        }
+        return ast_make_binary(expr->binary.op, l, r,
+                               expr->line, expr->column);
+    }
+    case EXPR_ASSIGN: {
+        expr_t *v = clone_expr(expr->assign.value);
+        if (!v)
+            return NULL;
+        return ast_make_assign(expr->assign.name, v,
+                               expr->line, expr->column);
+    }
+    case EXPR_INDEX: {
+        expr_t *a = clone_expr(expr->index.array);
+        expr_t *i = clone_expr(expr->index.index);
+        if (!a || !i) {
+            ast_free_expr(a);
+            ast_free_expr(i);
+            return NULL;
+        }
+        return ast_make_index(a, i, expr->line, expr->column);
+    }
+    case EXPR_ASSIGN_INDEX: {
+        expr_t *a = clone_expr(expr->assign_index.array);
+        expr_t *i = clone_expr(expr->assign_index.index);
+        expr_t *v = clone_expr(expr->assign_index.value);
+        if (!a || !i || !v) {
+            ast_free_expr(a);
+            ast_free_expr(i);
+            ast_free_expr(v);
+            return NULL;
+        }
+        return ast_make_assign_index(a, i, v,
+                                     expr->line, expr->column);
+    }
+    case EXPR_MEMBER: {
+        expr_t *obj = clone_expr(expr->member.object);
+        if (!obj)
+            return NULL;
+        return ast_make_member(obj, expr->member.member,
+                               expr->member.via_ptr,
+                               expr->line, expr->column);
+    }
+    case EXPR_SIZEOF:
+        if (expr->sizeof_expr.is_type)
+            return ast_make_sizeof_type(expr->sizeof_expr.type,
+                                        expr->sizeof_expr.array_size,
+                                        expr->line, expr->column);
+        else {
+            expr_t *e = clone_expr(expr->sizeof_expr.expr);
+            if (!e)
+                return NULL;
+            return ast_make_sizeof_expr(e, expr->line, expr->column);
+        }
+    case EXPR_CALL: {
+        size_t n = expr->call.arg_count;
+        expr_t **args = NULL;
+        if (n) {
+            args = malloc(n * sizeof(*args));
+            if (!args)
+                return NULL;
+            for (size_t i = 0; i < n; i++) {
+                args[i] = clone_expr(expr->call.args[i]);
+                if (!args[i]) {
+                    for (size_t j = 0; j < i; j++)
+                        ast_free_expr(args[j]);
+                    free(args);
+                    return NULL;
+                }
+            }
+        }
+        return ast_make_call(expr->call.name, args, n,
+                             expr->line, expr->column);
+    }
+    }
+    return NULL;
+}
+
 /*
  * Parse the most basic expression forms: literals, identifiers, function
  * calls and array indexing.  Prefix unary operators are also handled
@@ -376,7 +480,9 @@ static expr_t *parse_assignment(parser_t *p)
     if (!left)
         return NULL;
 
-    if (match(p, TOK_ASSIGN)) {
+    if (match(p, TOK_ASSIGN) || match(p, TOK_PLUSEQ) || match(p, TOK_MINUSEQ) ||
+        match(p, TOK_STAREQ) || match(p, TOK_SLASHEQ) ||
+        match(p, TOK_PERCENTEQ)) {
         token_t *op_tok = &p->tokens[p->pos - 1];
         if (left->kind != EXPR_IDENT && left->kind != EXPR_INDEX) {
             ast_free_expr(left);
@@ -388,6 +494,27 @@ static expr_t *parse_assignment(parser_t *p)
                 free(left->ident.name);
             ast_free_expr(left);
             return NULL;
+        }
+        binop_t bop = BINOP_ADD;
+        int compound = 1;
+        switch (op_tok->type) {
+        case TOK_ASSIGN: compound = 0; break;
+        case TOK_PLUSEQ: bop = BINOP_ADD; break;
+        case TOK_MINUSEQ: bop = BINOP_SUB; break;
+        case TOK_STAREQ: bop = BINOP_MUL; break;
+        case TOK_SLASHEQ: bop = BINOP_DIV; break;
+        case TOK_PERCENTEQ: bop = BINOP_MOD; break;
+        default: compound = 0; break;
+        }
+        if (compound) {
+            expr_t *lhs_copy = clone_expr(left);
+            if (!lhs_copy) {
+                ast_free_expr(left);
+                ast_free_expr(right);
+                return NULL;
+            }
+            right = ast_make_binary(bop, lhs_copy, right,
+                                   op_tok->line, op_tok->column);
         }
         if (left->kind == EXPR_IDENT) {
             char *name = left->ident.name;
