@@ -13,6 +13,7 @@
 #include "regalloc.h"
 #include "regalloc_x86.h"
 #include "strbuf.h"
+#include "label.h"
 
 
 static const char *loc_str(char buf[32], regalloc_t *ra, int id, int x64)
@@ -173,6 +174,58 @@ static void emit_instr(strbuf_t *sb, ir_instr_t *ins, regalloc_t *ra, int x64)
         strbuf_appendf(sb, "    set%s %s\n", cc, "%al");
         strbuf_appendf(sb, "    %s %s, %s\n", x64 ? "movzbq" : "movzbl",
                    "%al", loc_str(buf2, ra, ins->dest, x64));
+        break;
+    }
+    case IR_LOGAND: {
+        int id = label_next_id();
+        char fl[32]; char end[32];
+        snprintf(fl, sizeof(fl), "L%d_false", id);
+        snprintf(end, sizeof(end), "L%d_end", id);
+        strbuf_appendf(sb, "    mov%s %s, %s\n", sfx,
+                   loc_str(buf1, ra, ins->src1, x64),
+                   loc_str(buf2, ra, ins->dest, x64));
+        strbuf_appendf(sb, "    cmp%s $0, %s\n", sfx,
+                   loc_str(buf2, ra, ins->dest, x64));
+        strbuf_appendf(sb, "    je %s\n", fl);
+        strbuf_appendf(sb, "    mov%s %s, %s\n", sfx,
+                   loc_str(buf1, ra, ins->src2, x64),
+                   loc_str(buf2, ra, ins->dest, x64));
+        strbuf_appendf(sb, "    cmp%s $0, %s\n", sfx,
+                   loc_str(buf2, ra, ins->dest, x64));
+        strbuf_appendf(sb, "    setne %s\n", "%al");
+        strbuf_appendf(sb, "    %s %s, %s\n", x64 ? "movzbq" : "movzbl", "%al",
+                   loc_str(buf2, ra, ins->dest, x64));
+        strbuf_appendf(sb, "    jmp %s\n", end);
+        strbuf_appendf(sb, "%s:\n", fl);
+        strbuf_appendf(sb, "    mov%s $0, %s\n", sfx,
+                   loc_str(buf2, ra, ins->dest, x64));
+        strbuf_appendf(sb, "%s:\n", end);
+        break;
+    }
+    case IR_LOGOR: {
+        int id = label_next_id();
+        char tl[32]; char end[32];
+        snprintf(tl, sizeof(tl), "L%d_true", id);
+        snprintf(end, sizeof(end), "L%d_end", id);
+        strbuf_appendf(sb, "    mov%s %s, %s\n", sfx,
+                   loc_str(buf1, ra, ins->src1, x64),
+                   loc_str(buf2, ra, ins->dest, x64));
+        strbuf_appendf(sb, "    cmp%s $0, %s\n", sfx,
+                   loc_str(buf2, ra, ins->dest, x64));
+        strbuf_appendf(sb, "    jne %s\n", tl);
+        strbuf_appendf(sb, "    mov%s %s, %s\n", sfx,
+                   loc_str(buf1, ra, ins->src2, x64),
+                   loc_str(buf2, ra, ins->dest, x64));
+        strbuf_appendf(sb, "    cmp%s $0, %s\n", sfx,
+                   loc_str(buf2, ra, ins->dest, x64));
+        strbuf_appendf(sb, "    setne %s\n", "%al");
+        strbuf_appendf(sb, "    %s %s, %s\n", x64 ? "movzbq" : "movzbl", "%al",
+                   loc_str(buf2, ra, ins->dest, x64));
+        strbuf_appendf(sb, "    jmp %s\n", end);
+        strbuf_appendf(sb, "%s:\n", tl);
+        strbuf_appendf(sb, "    mov%s $1, %s\n", sfx,
+                   loc_str(buf2, ra, ins->dest, x64));
+        strbuf_appendf(sb, "%s:\n", end);
         break;
     }
     case IR_GLOB_STRING:

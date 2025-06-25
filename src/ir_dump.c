@@ -27,6 +27,8 @@ static const char *op_name(ir_op_t op)
     case IR_CMPGT: return "IR_CMPGT";
     case IR_CMPLE: return "IR_CMPLE";
     case IR_CMPGE: return "IR_CMPGE";
+    case IR_LOGAND: return "IR_LOGAND";
+    case IR_LOGOR: return "IR_LOGOR";
     case IR_GLOB_STRING: return "IR_GLOB_STRING";
     case IR_GLOB_VAR: return "IR_GLOB_VAR";
     case IR_GLOB_ARRAY: return "IR_GLOB_ARRAY";

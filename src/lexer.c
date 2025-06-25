@@ -268,6 +268,15 @@ token_t *lexer_tokenize(const char *src, size_t *out_count)
         } else if (c == '!' && src[i + 1] == '=') {
             append_token(&vec, TOK_NEQ, "!=", 2, line, col);
             i += 2; col += 2;
+        } else if (c == '&' && src[i + 1] == '&') {
+            append_token(&vec, TOK_LOGAND, "&&", 2, line, col);
+            i += 2; col += 2;
+        } else if (c == '|' && src[i + 1] == '|') {
+            append_token(&vec, TOK_LOGOR, "||", 2, line, col);
+            i += 2; col += 2;
+        } else if (c == '!') {
+            append_token(&vec, TOK_NOT, "!", 1, line, col);
+            i++; col++;
         } else if (c == '<' && src[i + 1] == '=') {
             append_token(&vec, TOK_LE, "<=", 2, line, col);
             i += 2; col += 2;

@@ -23,6 +23,8 @@ typedef enum {
     IR_CMPGT,
     IR_CMPLE,
     IR_CMPGE,
+    IR_LOGAND,
+    IR_LOGOR,
     IR_GLOB_STRING,
     IR_GLOB_VAR,
     IR_GLOB_ARRAY,
@@ -86,6 +88,8 @@ ir_value_t ir_build_load(ir_builder_t *b, const char *name);
 
 /* Append a binary arithmetic or comparison op. */
 ir_value_t ir_build_binop(ir_builder_t *b, ir_op_t op, ir_value_t left, ir_value_t right);
+ir_value_t ir_build_logand(ir_builder_t *b, ir_value_t left, ir_value_t right);
+ir_value_t ir_build_logor(ir_builder_t *b, ir_value_t left, ir_value_t right);
 
 /* Append IR_STORE assigning `val` to variable `name`. */
 void ir_build_store(ir_builder_t *b, const char *name, ir_value_t val);

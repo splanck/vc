@@ -21,6 +21,8 @@ static expr_t *parse_relational(parser_t *p);
 static expr_t *parse_additive(parser_t *p);
 static expr_t *parse_primary(parser_t *p);
 static int parse_type(parser_t *p, type_kind_t *out_type, size_t *out_size);
+static expr_t *parse_logical_and(parser_t *p);
+static expr_t *parse_logical_or(parser_t *p);
 
 /*
  * Parse the most basic expression forms: literals, identifiers, function
@@ -51,6 +53,12 @@ static expr_t *parse_primary(parser_t *p)
         if (!op)
             return NULL;
         return ast_make_unary(UNOP_NEG, op, op_tok->line, op_tok->column);
+    } else if (match(p, TOK_NOT)) {
+        token_t *op_tok = &p->tokens[p->pos - 1];
+        expr_t *op = parse_primary(p);
+        if (!op)
+            return NULL;
+        return ast_make_unary(UNOP_NOT, op, op_tok->line, op_tok->column);
     } else if (match(p, TOK_KW_SIZEOF)) {
         token_t *kw = &p->tokens[p->pos - 1];
         if (!match(p, TOK_LPAREN))
@@ -311,11 +319,51 @@ static expr_t *parse_equality(parser_t *p)
     return left;
 }
 
+/* Parse logical AND expressions. */
+static expr_t *parse_logical_and(parser_t *p)
+{
+    expr_t *left = parse_equality(p);
+    if (!left)
+        return NULL;
+
+    while (match(p, TOK_LOGAND)) {
+        token_t *op_tok = &p->tokens[p->pos - 1];
+        expr_t *right = parse_equality(p);
+        if (!right) {
+            ast_free_expr(left);
+            return NULL;
+        }
+        left = ast_make_binary(BINOP_LOGAND, left, right,
+                              op_tok->line, op_tok->column);
+    }
+    return left;
+}
+
+/* Parse logical OR expressions. */
+static expr_t *parse_logical_or(parser_t *p)
+{
+    expr_t *left = parse_logical_and(p);
+    if (!left)
+        return NULL;
+
+    while (match(p, TOK_LOGOR)) {
+        token_t *op_tok = &p->tokens[p->pos - 1];
+        expr_t *right = parse_logical_and(p);
+        if (!right) {
+            ast_free_expr(left);
+            return NULL;
+        }
+        left = ast_make_binary(BINOP_LOGOR, left, right,
+                              op_tok->line, op_tok->column);
+    }
+    return left;
+}
+
 /* Assignment has the lowest precedence and recurses to itself for chained
  * assignments. */
 static expr_t *parse_assignment(parser_t *p)
 {
-    expr_t *left = parse_equality(p);
+    expr_t *left = parse_logical_or(p);
     if (!left)
         return NULL;
 
@@ -411,7 +459,6 @@ expr_t *parser_parse_expr(parser_t *p)
 static int parse_type(parser_t *p, type_kind_t *out_type, size_t *out_size)
 {
     size_t save = p->pos;
-    token_t *tok = peek(p);
     type_kind_t t;
     if (match(p, TOK_KW_INT)) {
         t = TYPE_INT;

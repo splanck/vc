@@ -93,6 +93,7 @@ static void propagate_load_consts(ir_builder_t *ir)
             if (ins->dest >= 0 && ins->dest < max_id)
                 is_const[ins->dest] = 0;
             break;
+        case IR_LOGAND: case IR_LOGOR:
         case IR_LOAD_PARAM:
         case IR_ADDR:
         case IR_LOAD_PTR:
@@ -153,6 +154,7 @@ static void fold_constants(ir_builder_t *ir)
         case IR_ADD: case IR_SUB: case IR_MUL: case IR_DIV:
         case IR_CMPEQ: case IR_CMPNE: case IR_CMPLT:
         case IR_CMPGT: case IR_CMPLE: case IR_CMPGE:
+        case IR_LOGAND: case IR_LOGOR:
             if (ins->src1 < max_id && ins->src2 < max_id &&
                 is_const[ins->src1] && is_const[ins->src2]) {
                 int a = values[ins->src1];
@@ -169,6 +171,8 @@ static void fold_constants(ir_builder_t *ir)
                 case IR_CMPGT: result = a > b; break;
                 case IR_CMPLE: result = a <= b; break;
                 case IR_CMPGE: result = a >= b; break;
+                case IR_LOGAND: result = (a && b); break;
+                case IR_LOGOR: result = (a || b); break;
                 default: break;
                 }
                 ins->op = IR_CONST;
