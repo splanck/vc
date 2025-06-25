@@ -22,7 +22,7 @@ The modules described below implement these steps.
 
 ### preprocessor
 Expands `#include` directives and simple object-like `#define` macros before lexing.
-Only textual substitution is performed; conditional directives are not supported.
+Basic conditional directives (`#if`, `#ifdef`, `#ifndef`, `#elif`, `#else` and `#endif`) are supported using simple expression evaluation with the `defined` operator.
 
 ### lexer
 Translates raw characters into tokens for the parser.
@@ -621,7 +621,8 @@ int main() { return DOUBLE(VAL); }
 ```
 
 Macro expansion is purely textual; macros inside strings or comments are not
-recognized and conditional directives are ignored.
+recognized. Conditional directives are honored and support the `defined`
+operator along with numeric constants and the `!`, `&&` and `||` operators.
 
 ## Compiling a Simple Program
 

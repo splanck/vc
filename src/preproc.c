@@ -2,9 +2,10 @@
  * Minimal preprocessing implementation.
  *
  * Handles '#include "file"', object-like '#define' and simple single argument
- * macros '#define NAME(arg)'. Expansion performs naive text substitution with
- * no awareness of strings or comments. Nested includes are supported but there
- * are no include guards.
+ * macros '#define NAME(arg)'.  Basic conditional directives '#if', '#ifdef',
+ * '#ifndef', '#elif', '#else' and '#endif' are also recognized.  Expansion
+ * performs naive text substitution with no awareness of strings or comments.
+ * Nested includes are supported but there are no include guards.
  */
 
 #include <ctype.h>
@@ -112,7 +113,152 @@ static void expand_line(const char *line, vector_t *macros, strbuf_t *out)
 }
 
 /* Process a single file, writing output to 'out'. */
-static int process_file(const char *path, vector_t *macros, strbuf_t *out)
+typedef struct {
+    int parent_active;
+    int taking;
+    int taken;
+} cond_state_t;
+
+static int stack_active(vector_t *conds)
+{
+    for (size_t i = 0; i < conds->count; i++) {
+        cond_state_t *c = &((cond_state_t *)conds->data)[i];
+        if (!c->taking)
+            return 0;
+    }
+    return 1;
+}
+
+static int is_macro_defined(vector_t *macros, const char *name)
+{
+    for (size_t i = 0; i < macros->count; i++) {
+        macro_t *m = &((macro_t *)macros->data)[i];
+        if (strcmp(m->name, name) == 0)
+            return 1;
+    }
+    return 0;
+}
+
+typedef struct {
+    const char *s;
+    vector_t *macros;
+} expr_ctx_t;
+
+static void skip_ws(expr_ctx_t *ctx)
+{
+    while (*ctx->s == ' ' || *ctx->s == '\t')
+        ctx->s++;
+}
+
+static char *parse_ident(expr_ctx_t *ctx)
+{
+    skip_ws(ctx);
+    if (!isalpha((unsigned char)*ctx->s) && *ctx->s != '_')
+        return NULL;
+    const char *start = ctx->s;
+    size_t len = 1;
+    ctx->s++;
+    while (isalnum((unsigned char)*ctx->s) || *ctx->s == '_') {
+        ctx->s++;
+        len++;
+    }
+    return vc_strndup(start, len);
+}
+
+static int parse_expr(expr_ctx_t *ctx);
+
+static int parse_primary(expr_ctx_t *ctx)
+{
+    skip_ws(ctx);
+    if (strncmp(ctx->s, "defined", 7) == 0 &&
+        (ctx->s[7] == '(' || ctx->s[7] == ' ' || ctx->s[7] == '\t')) {
+        ctx->s += 7;
+        skip_ws(ctx);
+        if (*ctx->s == '(') {
+            ctx->s++;
+            char *id = parse_ident(ctx);
+            skip_ws(ctx);
+            if (*ctx->s == ')')
+                ctx->s++;
+            int val = id ? is_macro_defined(ctx->macros, id) : 0;
+            free(id);
+            return val;
+        } else {
+            char *id = parse_ident(ctx);
+            int val = id ? is_macro_defined(ctx->macros, id) : 0;
+            free(id);
+            return val;
+        }
+    } else if (*ctx->s == '(') {
+        ctx->s++;
+        int val = parse_expr(ctx);
+        skip_ws(ctx);
+        if (*ctx->s == ')')
+            ctx->s++;
+        return val;
+    } else if (isdigit((unsigned char)*ctx->s)) {
+        int val = 0;
+        while (isdigit((unsigned char)*ctx->s)) {
+            val = val * 10 + (*ctx->s - '0');
+            ctx->s++;
+        }
+        return val;
+    } else {
+        char *id = parse_ident(ctx);
+        free(id);
+        return 0;
+    }
+}
+
+static int parse_not(expr_ctx_t *ctx)
+{
+    skip_ws(ctx);
+    if (*ctx->s == '!') {
+        ctx->s++;
+        return !parse_not(ctx);
+    }
+    return parse_primary(ctx);
+}
+
+static int parse_and(expr_ctx_t *ctx)
+{
+    int val = parse_not(ctx);
+    skip_ws(ctx);
+    while (strncmp(ctx->s, "&&", 2) == 0) {
+        ctx->s += 2;
+        int rhs = parse_not(ctx);
+        val = val && rhs;
+        skip_ws(ctx);
+    }
+    return val;
+}
+
+static int parse_or(expr_ctx_t *ctx)
+{
+    int val = parse_and(ctx);
+    skip_ws(ctx);
+    while (strncmp(ctx->s, "||", 2) == 0) {
+        ctx->s += 2;
+        int rhs = parse_and(ctx);
+        val = val || rhs;
+        skip_ws(ctx);
+    }
+    return val;
+}
+
+static int parse_expr(expr_ctx_t *ctx)
+{
+    return parse_or(ctx) != 0;
+}
+
+static int eval_expr(const char *s, vector_t *macros)
+{
+    expr_ctx_t ctx = { s, macros };
+    return parse_expr(&ctx);
+}
+
+static int process_file(const char *path, vector_t *macros,
+                        vector_t *conds, strbuf_t *out)
 {
     char *text = vc_read_file(path);
     if (!text)
@@ -138,11 +284,17 @@ static int process_file(const char *path, vector_t *macros, strbuf_t *out)
                     snprintf(incpath, sizeof(incpath), "%s%.*s", dir, (int)len, quote + 1);
                 else
                     snprintf(incpath, sizeof(incpath), "%.*s", (int)len, quote + 1);
-                if (!process_file(incpath, macros, out)) {
-                    free(text);
-                    free(dir);
-                    return 0;
+                vector_t subconds;
+                vector_init(&subconds, sizeof(cond_state_t));
+                if (stack_active(conds)) {
+                    if (!process_file(incpath, macros, &subconds, out)) {
+                        vector_free(&subconds);
+                        free(text);
+                        free(dir);
+                        return 0;
+                    }
                 }
+                vector_free(&subconds);
             }
         } else if (strncmp(line, "#define", 7) == 0 && (line[7] == ' ' || line[7] == '\t')) {
             char *n = line + 7;
@@ -170,20 +322,103 @@ static int process_file(const char *path, vector_t *macros, strbuf_t *out)
             while (*n == ' ' || *n == '\t')
                 n++;
             char *val = *n ? n : "";
-            macro_t m = { vc_strdup(name), param, vc_strdup(val) };
-            if (!vector_push(macros, &m)) {
-                macro_free(&m);
-                free(text);
-                free(dir);
-                return 0;
+            if (stack_active(conds)) {
+                macro_t m = { vc_strdup(name), param, vc_strdup(val) };
+                if (!vector_push(macros, &m)) {
+                    macro_free(&m);
+                    free(text);
+                    free(dir);
+                    return 0;
+                }
+            } else {
+                free(param);
             }
+        } else if (strncmp(line, "#ifdef", 6) == 0 && isspace((unsigned char)line[6])) {
+            char *n = line + 6;
+            while (*n == ' ' || *n == '\t')
+                n++;
+            char *id = n;
+            while (isalnum((unsigned char)*n) || *n == '_')
+                n++;
+            *n = '\0';
+            cond_state_t st;
+            st.parent_active = stack_active(conds);
+            st.taken = 0;
+            if (st.parent_active && is_macro_defined(macros, id)) {
+                st.taking = 1;
+                st.taken = 1;
+            } else {
+                st.taking = 0;
+            }
+            vector_push(conds, &st);
+        } else if (strncmp(line, "#ifndef", 7) == 0 && isspace((unsigned char)line[7])) {
+            char *n = line + 7;
+            while (*n == ' ' || *n == '\t')
+                n++;
+            char *id = n;
+            while (isalnum((unsigned char)*n) || *n == '_')
+                n++;
+            *n = '\0';
+            cond_state_t st;
+            st.parent_active = stack_active(conds);
+            st.taken = 0;
+            if (st.parent_active && !is_macro_defined(macros, id)) {
+                st.taking = 1;
+                st.taken = 1;
+            } else {
+                st.taking = 0;
+            }
+            vector_push(conds, &st);
+        } else if (strncmp(line, "#if", 3) == 0 && isspace((unsigned char)line[3])) {
+            char *expr = line + 3;
+            cond_state_t st;
+            st.parent_active = stack_active(conds);
+            st.taken = 0;
+            if (st.parent_active && eval_expr(expr, macros)) {
+                st.taking = 1;
+                st.taken = 1;
+            } else {
+                st.taking = 0;
+            }
+            vector_push(conds, &st);
+        } else if (strncmp(line, "#elif", 5) == 0 && isspace((unsigned char)line[5])) {
+            if (conds->count) {
+                cond_state_t *st = &((cond_state_t *)conds->data)[conds->count - 1];
+                if (st->parent_active) {
+                    if (st->taken) {
+                        st->taking = 0;
+                    } else {
+                        char *expr = line + 5;
+                        st->taking = eval_expr(expr, macros);
+                        if (st->taking)
+                            st->taken = 1;
+                    }
+                } else {
+                    st->taking = 0;
+                }
+            }
+        } else if (strncmp(line, "#else", 5) == 0) {
+            if (conds->count) {
+                cond_state_t *st = &((cond_state_t *)conds->data)[conds->count - 1];
+                if (st->parent_active && !st->taken) {
+                    st->taking = 1;
+                    st->taken = 1;
+                } else {
+                    st->taking = 0;
+                }
+            }
+        } else if (strncmp(line, "#endif", 6) == 0) {
+            if (conds->count)
+                conds->count--;
         } else {
-            strbuf_t tmp;
-            strbuf_init(&tmp);
-            expand_line(line, macros, &tmp);
-            strbuf_append(&tmp, "\n");
-            strbuf_append(out, tmp.data);
-            strbuf_free(&tmp);
+            if (stack_active(conds)) {
+                strbuf_t tmp;
+                strbuf_init(&tmp);
+                expand_line(line, macros, &tmp);
+                strbuf_append(&tmp, "\n");
+                strbuf_append(out, tmp.data);
+                strbuf_free(&tmp);
+            }
         }
         line = strtok(NULL, "\n");
     }
@@ -197,9 +432,12 @@ char *preproc_run(const char *path)
 {
     vector_t macros;
     vector_init(&macros, sizeof(macro_t));
+    vector_t conds;
+    vector_init(&conds, sizeof(cond_state_t));
     strbuf_t out;
     strbuf_init(&out);
-    int ok = process_file(path, &macros, &out);
+    int ok = process_file(path, &macros, &conds, &out);
+    vector_free(&conds);
     for (size_t i = 0; i < macros.count; i++)
         macro_free(&((macro_t *)macros.data)[i]);
     vector_free(&macros);

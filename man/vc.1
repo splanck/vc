@@ -16,6 +16,9 @@ Supported constructs include arrays, pointer arithmetic (including pointer subtr
 .PP
 The built-in preprocessor expands \fB#include\fR directives, object-like
 macros and simple one-argument definitions such as \fB#define\fR NAME(x).
+It also handles basic conditional directives (\fB#if\fR, \fB#ifdef\fR,
+\fB#ifndef\fR, \fB#elif\fR, \fB#else\fR and \fB#endif\fR) using simple
+expression evaluation with the \fBdefined\fR operator.
 .SH OPTIONS
 .TP
 .BR -o "," \fB--output\fR \fIfile\fR
