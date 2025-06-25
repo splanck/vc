@@ -384,6 +384,23 @@ Compile with:
 vc -o switch.s switch_example.c
 ```
 
+### Enum declarations
+```c
+/* enum_example.c */
+enum Colors {
+    RED,
+    GREEN = 3,
+    BLUE
+};
+int main() {
+    return GREEN;
+}
+```
+Compile with:
+```sh
+vc -o enum_example.s enum_example.c
+```
+
 ### Labels and goto
 ```c
 /* goto_example.c */

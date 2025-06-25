@@ -13,8 +13,10 @@
 #include <stdlib.h>
 #include "parser.h"
 #include "vector.h"
+#include "util.h"
 
 static stmt_t *parse_block(parser_t *p);
+stmt_t *parser_parse_enum_decl(parser_t *p);
 stmt_t *parser_parse_stmt(parser_t *p);
 
 /* Parse a "{...}" block recursively collecting inner statements. */
@@ -51,6 +53,66 @@ static stmt_t *parse_block(parser_t *p)
     return ast_make_block(stmts, count, lb_tok->line, lb_tok->column);
 }
 
+/* Parse an enum declaration */
+stmt_t *parser_parse_enum_decl(parser_t *p)
+{
+    token_t *kw = &p->tokens[p->pos - 1];
+    token_t *tok = peek(p);
+    char *tag = NULL;
+    if (tok && tok->type == TOK_IDENT) {
+        p->pos++;
+        tag = tok->lexeme;
+    }
+    if (!match(p, TOK_LBRACE))
+        return NULL;
+
+    size_t cap = 4, count = 0;
+    enumerator_t *items = malloc(cap * sizeof(*items));
+    if (!items)
+        return NULL;
+    int ok = 0;
+    do {
+        tok = peek(p);
+        if (!tok || tok->type != TOK_IDENT)
+            goto fail;
+        p->pos++;
+        char *name = vc_strdup(tok->lexeme);
+        if (!name)
+            goto fail;
+        expr_t *val = NULL;
+        if (match(p, TOK_ASSIGN)) {
+            val = parser_parse_expr(p);
+            if (!val)
+                goto fail;
+        }
+        if (count >= cap) {
+            cap *= 2;
+            enumerator_t *tmp = realloc(items, cap * sizeof(*tmp));
+            if (!tmp)
+                goto fail;
+            items = tmp;
+        }
+        items[count].name = name;
+        items[count].value = val;
+        count++;
+    } while (match(p, TOK_COMMA));
+
+    if (!match(p, TOK_RBRACE) || !match(p, TOK_SEMI))
+        goto fail;
+
+    ok = 1;
+fail:
+    if (!ok) {
+        for (size_t i = 0; i < count; i++) {
+            free(items[i].name);
+            ast_free_expr(items[i].value);
+        }
+        free(items);
+        return NULL;
+    }
+    return ast_make_enum_decl(tag, items, count, kw->line, kw->column);
+}
+
 /*
  * Parse a single statement at the current position.  This function
  * delegates to the specific helpers for declarations, control flow
@@ -67,6 +129,9 @@ stmt_t *parser_parse_stmt(parser_t *p)
         token_t *lbl = &p->tokens[p->pos - 1];
         return ast_make_label(lbl->lexeme, lbl->line, lbl->column);
     }
+
+    if (match(p, TOK_KW_ENUM))
+        return parser_parse_enum_decl(p);
 
     if (match(p, TOK_KW_INT) || match(p, TOK_KW_CHAR)) {
         token_t *kw_tok = &p->tokens[p->pos - 1];

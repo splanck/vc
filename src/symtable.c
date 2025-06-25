@@ -76,6 +76,8 @@ int symtable_add(symtable_t *table, const char *name, type_kind_t type,
     }
     sym->type = type;
     sym->array_size = array_size;
+    sym->enum_value = 0;
+    sym->is_enum_const = 0;
     sym->param_index = -1;
     sym->param_types = NULL;
     sym->param_count = 0;
@@ -103,6 +105,8 @@ int symtable_add_param(symtable_t *table, const char *name, type_kind_t type,
     }
     sym->type = type;
     sym->array_size = 0;
+    sym->enum_value = 0;
+    sym->is_enum_const = 0;
     sym->param_index = index;
     sym->param_types = NULL;
     sym->param_count = 0;
@@ -129,6 +133,8 @@ int symtable_add_global(symtable_t *table, const char *name, type_kind_t type,
     }
     sym->type = type;
     sym->array_size = array_size;
+    sym->enum_value = 0;
+    sym->is_enum_const = 0;
     sym->param_index = -1;
     sym->param_types = NULL;
     sym->param_count = 0;
@@ -154,6 +160,8 @@ int symtable_add_func(symtable_t *table, const char *name, type_kind_t ret_type,
         return 0;
     }
     sym->type = ret_type;
+    sym->enum_value = 0;
+    sym->is_enum_const = 0;
     sym->param_index = -1;
     sym->param_count = param_count;
     sym->param_types = NULL;
@@ -169,6 +177,52 @@ int symtable_add_func(symtable_t *table, const char *name, type_kind_t ret_type,
     }
     sym->next = table->head;
     table->head = sym;
+    return 1;
+}
+
+/* Insert an enum constant in the current scope */
+int symtable_add_enum(symtable_t *table, const char *name, int value)
+{
+    if (symtable_lookup(table, name))
+        return 0;
+    symbol_t *sym = malloc(sizeof(*sym));
+    if (!sym)
+        return 0;
+    sym->name = vc_strdup(name ? name : "");
+    if (!sym->name) { free(sym); return 0; }
+    sym->type = TYPE_INT;
+    sym->array_size = 0;
+    sym->enum_value = value;
+    sym->is_enum_const = 1;
+    sym->param_index = -1;
+    sym->param_types = NULL;
+    sym->param_count = 0;
+    sym->next = table->head;
+    table->head = sym;
+    return 1;
+}
+
+/* Insert an enum constant in the global scope */
+int symtable_add_enum_global(symtable_t *table, const char *name, int value)
+{
+    for (symbol_t *sym = table->globals; sym; sym = sym->next) {
+        if (strcmp(sym->name, name) == 0)
+            return 0;
+    }
+    symbol_t *sym = malloc(sizeof(*sym));
+    if (!sym)
+        return 0;
+    sym->name = vc_strdup(name ? name : "");
+    if (!sym->name) { free(sym); return 0; }
+    sym->type = TYPE_INT;
+    sym->array_size = 0;
+    sym->enum_value = value;
+    sym->is_enum_const = 1;
+    sym->param_index = -1;
+    sym->param_types = NULL;
+    sym->param_count = 0;
+    sym->next = table->globals;
+    table->globals = sym;
     return 1;
 }
 

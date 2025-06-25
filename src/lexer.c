@@ -112,6 +112,8 @@ static void read_identifier(const char *src, size_t *i, size_t *col,
         type = TOK_KW_CHAR;
     else if (len == 4 && strncmp(src + start, "void", 4) == 0)
         type = TOK_KW_VOID;
+    else if (len == 4 && strncmp(src + start, "enum", 4) == 0)
+        type = TOK_KW_ENUM;
     else if (len == 6 && strncmp(src + start, "return", 6) == 0)
         type = TOK_KW_RETURN;
     append_token(tokens, type, src + start, len, line, *col);
