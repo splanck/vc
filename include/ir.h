@@ -72,7 +72,7 @@ typedef struct ir_instr {
     int dest;             /* destination value id (-1 if none) */
     int src1;             /* first operand */
     int src2;             /* second operand */
-    int imm;              /* immediate value for constants */
+    long long imm;        /* immediate value for constants and sizes */
     char *name;           /* identifier / label */
     char *data;           /* for string literals */
     struct ir_instr *next;
@@ -92,7 +92,7 @@ void ir_builder_init(ir_builder_t *b);
 void ir_builder_free(ir_builder_t *b);
 
 /* Append IR_CONST producing a new value holding an immediate. */
-ir_value_t ir_build_const(ir_builder_t *b, int value);
+ir_value_t ir_build_const(ir_builder_t *b, long long value);
 
 /* Append IR_LOAD for variable `name`. */
 ir_value_t ir_build_load(ir_builder_t *b, const char *name);
@@ -153,9 +153,10 @@ void ir_build_label(ir_builder_t *b, const char *label);
 
 /* Global data declarations. */
 ir_value_t ir_build_string(ir_builder_t *b, const char *data);
-void ir_build_glob_var(ir_builder_t *b, const char *name, int value, int is_static);
+void ir_build_glob_var(ir_builder_t *b, const char *name, long long value,
+                       int is_static);
 void ir_build_glob_array(ir_builder_t *b, const char *name,
-                         const int *values, size_t count, int is_static);
+                         const long long *values, size_t count, int is_static);
 void ir_build_glob_union(ir_builder_t *b, const char *name, int size,
                          int is_static);
 

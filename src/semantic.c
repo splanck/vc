@@ -13,6 +13,7 @@
 #include "util.h"
 #include "label.h"
 #include "error.h"
+#include <limits.h>
 
 typedef struct label_entry {
     char *name;
@@ -135,22 +136,22 @@ static void symtable_pop_scope(symtable_t *table, symbol_t *old_head)
 
 
 /* Evaluate a constant expression at compile time. Returns non-zero on success. */
-static int eval_const_expr(expr_t *expr, symtable_t *vars, int *out)
+static int eval_const_expr(expr_t *expr, symtable_t *vars, long long *out)
 {
     if (!expr)
         return 0;
     switch (expr->kind) {
     case EXPR_NUMBER:
         if (out)
-            *out = (int)strtol(expr->number.value, NULL, 10);
+            *out = strtoll(expr->number.value, NULL, 10);
         return 1;
     case EXPR_CHAR:
         if (out)
-            *out = (int)expr->ch.value;
+            *out = (long long)expr->ch.value;
         return 1;
     case EXPR_UNARY:
         if (expr->unary.op == UNOP_NEG) {
-            int val;
+            long long val;
             if (eval_const_expr(expr->unary.operand, vars, &val)) {
                 if (out)
                     *out = -val;
@@ -159,7 +160,7 @@ static int eval_const_expr(expr_t *expr, symtable_t *vars, int *out)
         }
         return 0;
     case EXPR_BINARY: {
-        int a, b;
+        long long a, b;
         if (!eval_const_expr(expr->binary.left, vars, &a) ||
             !eval_const_expr(expr->binary.right, vars, &b))
             return 0;
@@ -186,7 +187,7 @@ static int eval_const_expr(expr_t *expr, symtable_t *vars, int *out)
         return 1;
     }
     case EXPR_COND: {
-        int cval;
+        long long cval;
         if (!eval_const_expr(expr->cond.cond, vars, &cval))
             return 0;
         if (cval)
@@ -257,6 +258,9 @@ static type_kind_t check_binary(expr_t *left, expr_t *right, symtable_t *vars,
             ir_op_t ir_op = binop_to_ir[op];
             *out = ir_build_binop(ir, ir_op, lval, rval);
         }
+        if (lt == TYPE_LLONG || lt == TYPE_ULLONG ||
+            rt == TYPE_LLONG || rt == TYPE_ULLONG)
+            return TYPE_LLONG;
         return TYPE_INT;
     } else if ((lt == TYPE_PTR && is_intlike(rt) &&
                 (op == BINOP_ADD || op == BINOP_SUB)) ||
@@ -331,7 +335,7 @@ static type_kind_t check_unary_expr(expr_t *expr, symtable_t *vars,
                 ir_value_t zero = ir_build_const(ir, 0);
                 *out = ir_build_binop(ir, IR_SUB, zero, val);
             }
-            return TYPE_INT;
+            return vt == TYPE_LLONG || vt == TYPE_ULLONG ? TYPE_LLONG : TYPE_INT;
         } else if (is_floatlike(vt)) {
             if (out) {
                 ir_value_t zero = ir_build_const(ir, 0);
@@ -454,10 +458,14 @@ type_kind_t check_expr(expr_t *expr, symtable_t *vars, symtable_t *funcs,
     if (!expr)
         return TYPE_UNKNOWN;
     switch (expr->kind) {
-    case EXPR_NUMBER:
+    case EXPR_NUMBER: {
+        long long val = strtoll(expr->number.value, NULL, 10);
         if (out)
-            *out = ir_build_const(ir, (int)strtol(expr->number.value, NULL, 10));
+            *out = ir_build_const(ir, val);
+        if (val > INT_MAX || val < INT_MIN)
+            return TYPE_LLONG;
         return TYPE_INT;
+    }
     case EXPR_STRING:
         if (out)
             *out = ir_build_string(ir, expr->string.value);
@@ -522,6 +530,9 @@ type_kind_t check_expr(expr_t *expr, symtable_t *vars, symtable_t *funcs,
         }
         if (out)
             *out = ir_build_load(ir, tmp);
+        if (tt == TYPE_LLONG || tt == TYPE_ULLONG ||
+            ft == TYPE_LLONG || ft == TYPE_ULLONG)
+            return TYPE_LLONG;
         return TYPE_INT;
     }
     case EXPR_ASSIGN: {
@@ -565,7 +576,7 @@ type_kind_t check_expr(expr_t *expr, symtable_t *vars, symtable_t *funcs,
             error_set(expr->index.index->line, expr->index.index->column);
             return TYPE_UNKNOWN;
         }
-        int cval;
+        long long cval;
         if (sym->array_size && eval_const_expr(expr->index.index, vars, &cval)) {
             if (cval < 0 || (size_t)cval >= sym->array_size) {
                 error_set(expr->index.index->line, expr->index.index->column);
@@ -599,7 +610,7 @@ type_kind_t check_expr(expr_t *expr, symtable_t *vars, symtable_t *funcs,
             error_set(expr->assign_index.value->line, expr->assign_index.value->column);
             return TYPE_UNKNOWN;
         }
-        int cval;
+        long long cval;
         if (sym->array_size && eval_const_expr(expr->assign_index.index, vars, &cval)) {
             if (cval < 0 || (size_t)cval >= sym->array_size) {
                 error_set(expr->assign_index.index->line, expr->assign_index.index->column);
@@ -949,7 +960,7 @@ static int check_switch_stmt(stmt_t *stmt, symtable_t *vars, symtable_t *funcs,
         char lbl[32];
         snprintf(lbl, sizeof(lbl), "L%d_case%zu", id, i);
         case_labels[i] = vc_strdup(lbl);
-        int cval;
+        long long cval;
         if (!eval_const_expr(stmt->switch_stmt.cases[i].expr, vars, &cval)) {
             for (size_t j = 0; j <= i; j++) free(case_labels[j]);
             free(case_labels);
@@ -1078,18 +1089,18 @@ int check_stmt(stmt_t *stmt, symtable_t *vars, symtable_t *funcs,
         int next = 0;
         for (size_t i = 0; i < stmt->enum_decl.count; i++) {
             enumerator_t *e = &stmt->enum_decl.items[i];
-            int val = next;
+            long long val = next;
             if (e->value) {
                 if (!eval_const_expr(e->value, vars, &val)) {
                     error_set(e->value->line, e->value->column);
                     return 0;
                 }
             }
-            if (!symtable_add_enum(vars, e->name, val)) {
+            if (!symtable_add_enum(vars, e->name, (int)val)) {
                 error_set(stmt->line, stmt->column);
                 return 0;
             }
-            next = val + 1;
+            next = (int)val + 1;
         }
         return 1;
     }
@@ -1155,7 +1166,7 @@ int check_stmt(stmt_t *stmt, symtable_t *vars, symtable_t *funcs,
         }
         if (stmt->var_decl.init) {
             if (stmt->var_decl.is_static) {
-                int cval;
+                long long cval;
                 if (!eval_const_expr(stmt->var_decl.init, vars, &cval)) {
                     error_set(stmt->var_decl.init->line, stmt->var_decl.init->column);
                     return 0;
@@ -1182,7 +1193,7 @@ int check_stmt(stmt_t *stmt, symtable_t *vars, symtable_t *funcs,
                 error_set(stmt->line, stmt->column);
                 return 0;
             }
-            int *vals = calloc(stmt->var_decl.array_size, sizeof(int));
+            long long *vals = calloc(stmt->var_decl.array_size, sizeof(long long));
             if (!vals) return 0;
             for (size_t i = 0; i < stmt->var_decl.init_count; i++) {
                 if (!eval_const_expr(stmt->var_decl.init_list[i], vars, &vals[i])) {
@@ -1275,18 +1286,18 @@ int check_global(stmt_t *decl, symtable_t *globals, ir_builder_t *ir)
         int next = 0;
         for (size_t i = 0; i < decl->enum_decl.count; i++) {
             enumerator_t *e = &decl->enum_decl.items[i];
-            int val = next;
+            long long val = next;
             if (e->value) {
                 if (!eval_const_expr(e->value, globals, &val)) {
                     error_set(e->value->line, e->value->column);
                     return 0;
                 }
             }
-            if (!symtable_add_enum_global(globals, e->name, val)) {
+            if (!symtable_add_enum_global(globals, e->name, (int)val)) {
                 error_set(decl->line, decl->column);
                 return 0;
             }
-            next = val + 1;
+            next = (int)val + 1;
         }
         return 1;
     }
@@ -1346,7 +1357,7 @@ int check_global(stmt_t *decl, symtable_t *globals, ir_builder_t *ir)
     }
     if (decl->var_decl.type == TYPE_ARRAY) {
         size_t count = decl->var_decl.array_size;
-        int *vals = calloc(count, sizeof(int));
+        long long *vals = calloc(count, sizeof(long long));
         if (!vals)
             return 0;
         size_t init_count = decl->var_decl.init_count;
@@ -1367,7 +1378,7 @@ int check_global(stmt_t *decl, symtable_t *globals, ir_builder_t *ir)
                            decl->var_decl.is_static);
         free(vals);
     } else {
-        int value = 0;
+        long long value = 0;
         if (decl->var_decl.init) {
             if (!eval_const_expr(decl->var_decl.init, globals, &value)) {
                 error_set(decl->var_decl.init->line, decl->var_decl.init->column);

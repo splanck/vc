@@ -60,7 +60,7 @@ static ir_instr_t *append_instr(ir_builder_t *b)
  * Emit IR_CONST. dest gets a fresh id and imm stores the constant
  * value.
  */
-ir_value_t ir_build_const(ir_builder_t *b, int value)
+ir_value_t ir_build_const(ir_builder_t *b, long long value)
 {
     ir_instr_t *ins = append_instr(b);
     if (!ins)
@@ -315,7 +315,7 @@ ir_value_t ir_build_call(ir_builder_t *b, const char *name, size_t arg_count)
     ins->op = IR_CALL;
     ins->dest = b->next_value_id++;
     ins->name = vc_strdup(name ? name : "");
-    ins->imm = (int)arg_count;
+    ins->imm = (long long)arg_count;
     return (ir_value_t){ins->dest};
 }
 
@@ -376,7 +376,8 @@ void ir_build_label(ir_builder_t *b, const char *label)
  * Emit IR_GLOB_VAR declaring global variable `name` with constant
  * initializer `value`.
  */
-void ir_build_glob_var(ir_builder_t *b, const char *name, int value, int is_static)
+void ir_build_glob_var(ir_builder_t *b, const char *name, long long value,
+                       int is_static)
 {
     ir_instr_t *ins = append_instr(b);
     if (!ins)
@@ -388,7 +389,7 @@ void ir_build_glob_var(ir_builder_t *b, const char *name, int value, int is_stat
 }
 
 void ir_build_glob_array(ir_builder_t *b, const char *name,
-                         const int *values, size_t count, int is_static)
+                         const long long *values, size_t count, int is_static)
 {
     /* Emit IR_GLOB_ARRAY storing an array of constants. `data` points
      * to a copy of the initializer values. */
@@ -397,10 +398,10 @@ void ir_build_glob_array(ir_builder_t *b, const char *name,
         return;
     ins->op = IR_GLOB_ARRAY;
     ins->name = vc_strdup(name ? name : "");
-    ins->imm = (int)count;
+    ins->imm = (long long)count;
     ins->src1 = is_static;
     if (count) {
-        int *vals = malloc(count * sizeof(int));
+        long long *vals = malloc(count * sizeof(long long));
         if (!vals)
             return;
         for (size_t i = 0; i < count; i++)

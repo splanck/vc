@@ -47,7 +47,7 @@ static void emit_memory_instr(strbuf_t *sb, ir_instr_t *ins,
 
     switch (ins->op) {
     case IR_CONST:
-        strbuf_appendf(sb, "    mov%s $%d, %s\n", sfx, ins->imm,
+        strbuf_appendf(sb, "    mov%s $%lld, %s\n", sfx, ins->imm,
                        loc_str(buf1, ra, ins->dest, x64));
         break;
     case IR_LOAD:
@@ -499,15 +499,15 @@ void codegen_emit_x86(FILE *out, ir_builder_t *ir, int x64)
                 fprintf(out, ".local %s\n", ins->name);
             fprintf(out, "%s:\n", ins->name);
             if (ins->op == IR_GLOB_VAR) {
-                fprintf(out, "    %s %d\n", size_directive, ins->imm);
+                fprintf(out, "    %s %lld\n", size_directive, ins->imm);
             } else if (ins->op == IR_GLOB_STRING) {
                 fprintf(out, "    .asciz \"%s\"\n", ins->data);
             } else if (ins->op == IR_GLOB_ARRAY) {
-                int *vals = (int *)ins->data;
-                for (int i = 0; i < ins->imm; i++)
-                    fprintf(out, "    %s %d\n", size_directive, vals[i]);
+                long long *vals = (long long *)ins->data;
+                for (long long i = 0; i < ins->imm; i++)
+                    fprintf(out, "    %s %lld\n", size_directive, vals[i]);
             } else if (ins->op == IR_GLOB_UNION) {
-                fprintf(out, "    .zero %d\n", ins->imm);
+                fprintf(out, "    .zero %lld\n", ins->imm);
             }
         }
     }

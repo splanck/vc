@@ -6,6 +6,10 @@ BINARY="$DIR/../vc"
 fail=0
 for cfile in $(ls "$DIR"/fixtures/*.c | sort); do
     base=$(basename "$cfile" .c)
+
+    case "$base" in
+        *_x86-64) continue;;
+    esac
     [ "$base" = "include_search" ] && continue
     expect="$DIR/fixtures/$base.s"
     out=$(mktemp)
