@@ -344,13 +344,37 @@ static type_kind_t check_unary_expr(expr_t *expr, symtable_t *vars,
         }
         {
             symbol_t *sym = symtable_lookup(vars, opnd->ident.name);
-            if (!sym || !(is_intlike(sym->type) || is_floatlike(sym->type))) {
+            if (!sym ||
+                !(is_intlike(sym->type) || is_floatlike(sym->type) ||
+                  sym->type == TYPE_PTR)) {
                 error_set(opnd->line, opnd->column);
                 return TYPE_UNKNOWN;
             }
+
             ir_value_t cur = sym->param_index >= 0
                                  ? ir_build_load_param(ir, sym->param_index)
                                  : ir_build_load(ir, sym->ir_name);
+
+            if (sym->type == TYPE_PTR) {
+                int esz = sym->elem_size ? (int)sym->elem_size : 4;
+                int step = (expr->unary.op == UNOP_PREDEC ||
+                            expr->unary.op == UNOP_POSTDEC)
+                               ? -1
+                               : 1;
+                ir_value_t idx = ir_build_const(ir, step);
+                ir_value_t upd = ir_build_ptr_add(ir, cur, idx, esz);
+                if (sym->param_index >= 0)
+                    ir_build_store_param(ir, sym->param_index, upd);
+                else
+                    ir_build_store(ir, sym->ir_name, upd);
+                if (out)
+                    *out = (expr->unary.op == UNOP_PREINC ||
+                            expr->unary.op == UNOP_PREDEC)
+                               ? upd
+                               : cur;
+                return TYPE_PTR;
+            }
+
             ir_value_t one = ir_build_const(ir, 1);
             ir_op_t ir_op;
             if (is_floatlike(sym->type))

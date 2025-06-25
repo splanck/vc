@@ -427,6 +427,24 @@ element distance between them.
 Pointer offsets are scaled by the size of the pointed-to type rather
 than the machine word size.
 
+Pointer variables may also be incremented or decremented with `++` and
+`--`.  These operations are equivalent to adding or subtracting one
+element and use the same scaling rules.
+
+```c
+/* ptr_inc.c */
+int main() {
+    int nums[2] = {1, 2};
+    int *p = nums;
+    ++p;
+    return *p;
+}
+```
+Compile with:
+```sh
+vc -o ptr_inc.s ptr_inc.c
+```
+
 ### Arrays
 ```c
 /* array.c */

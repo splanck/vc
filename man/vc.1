@@ -10,7 +10,7 @@ is a lightweight ANSI C compiler with experimental C99 support.
 It processes input through lexical analysis, parsing, semantic analysis,
 optional optimizations, register allocation and code generation.
 The resulting assembly can be written to a file or printed to stdout.
-Supported constructs include arrays, pointer arithmetic (including pointer subtraction), loops (\fBfor\fR, \fBwhile\fR and \fBdo\fR\~\fBwhile\fR), global variable declarations, floating-point variables, the
+Supported constructs include arrays, pointer arithmetic (including pointer subtraction and pointer increments), loops (\fBfor\fR, \fBwhile\fR and \fBdo\fR\~\fBwhile\fR), global variable declarations, floating-point variables, the
 \fBchar\fR type, and the
 \fBbreak\fR and \fBcontinue\fR statements.
 .PP
@@ -65,5 +65,9 @@ Create an object file:
 Print the generated assembly:
 .PP
 .B vc --dump-asm source.c
+.PP
+Compile a program using pointer increments:
+.PP
+.B vc -o ptr_inc.s ptr_inc.c
 .SH SEE ALSO
 README.md, docs/vcdoc.md
