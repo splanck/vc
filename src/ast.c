@@ -104,6 +104,22 @@ expr_t *ast_make_unary(unop_t op, expr_t *operand,
     return expr;
 }
 
+/* Create a conditional expression node. */
+expr_t *ast_make_cond(expr_t *cond, expr_t *then_expr, expr_t *else_expr,
+                      size_t line, size_t column)
+{
+    expr_t *expr = malloc(sizeof(*expr));
+    if (!expr)
+        return NULL;
+    expr->kind = EXPR_COND;
+    expr->line = line;
+    expr->column = column;
+    expr->cond.cond = cond;
+    expr->cond.then_expr = then_expr;
+    expr->cond.else_expr = else_expr;
+    return expr;
+}
+
 /* Create an assignment expression node assigning to \p name. */
 expr_t *ast_make_assign(const char *name, expr_t *value,
                         size_t line, size_t column)
@@ -540,6 +556,11 @@ void ast_free_expr(expr_t *expr)
     case EXPR_BINARY:
         ast_free_expr(expr->binary.left);
         ast_free_expr(expr->binary.right);
+        break;
+    case EXPR_COND:
+        ast_free_expr(expr->cond.cond);
+        ast_free_expr(expr->cond.then_expr);
+        ast_free_expr(expr->cond.else_expr);
         break;
     case EXPR_ASSIGN:
         free(expr->assign.name);

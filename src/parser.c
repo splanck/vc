@@ -113,6 +113,7 @@ static const char *token_name(token_type_t type)
     case TOK_GE: return "'>='";
     case TOK_LBRACKET: return "'['";
     case TOK_RBRACKET: return "']'";
+    case TOK_QMARK: return "'?'";
     case TOK_COLON: return "':'";
     case TOK_LABEL: return "label";
     case TOK_UNKNOWN: return "unknown";

@@ -32,6 +32,7 @@ typedef enum {
     EXPR_CHAR,
     EXPR_UNARY,
     EXPR_BINARY,
+    EXPR_COND,
     EXPR_ASSIGN,
     EXPR_CALL,
     EXPR_INDEX,
@@ -111,6 +112,11 @@ struct expr {
             expr_t *left;
             expr_t *right;
         } binary;
+        struct {
+            expr_t *cond;
+            expr_t *then_expr;
+            expr_t *else_expr;
+        } cond;
         struct {
             char *name;
             expr_t *value;
@@ -258,6 +264,9 @@ expr_t *ast_make_binary(binop_t op, expr_t *left, expr_t *right,
 /* Create a unary operation node. */
 expr_t *ast_make_unary(unop_t op, expr_t *operand,
                        size_t line, size_t column);
+/* Create a conditional expression 'cond ? then : else'. */
+expr_t *ast_make_cond(expr_t *cond, expr_t *then_expr, expr_t *else_expr,
+                      size_t line, size_t column);
 /* Create an assignment expression to the variable \p name. */
 expr_t *ast_make_assign(const char *name, expr_t *value,
                         size_t line, size_t column);

@@ -81,6 +81,7 @@ typedef enum {
     TOK_GE,
     TOK_LBRACKET,
     TOK_RBRACKET,
+    TOK_QMARK,
     TOK_COLON,
     TOK_LABEL,
     TOK_UNKNOWN

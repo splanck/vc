@@ -243,6 +243,7 @@ RETURN v2
 - Compound assignment operators (`+=`, `-=`, `*=`, `/=`, `%=`)
 - Increment and decrement operators (`++`, `--`)
 - Logical operators `&&`, `||` and `!`
+- Conditional operator (`?:`)
 - Bitwise operators (`&`, `|`, `^`, `<<`, `>>` and compound forms)
 - Floating-point types (`float`, `double`)
 - `sizeof` operator
