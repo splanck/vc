@@ -58,6 +58,8 @@ typedef enum {
     TOK_STAREQ,
     TOK_SLASHEQ,
     TOK_PERCENTEQ,
+    TOK_INC,
+    TOK_DEC,
     TOK_ASSIGN,
     TOK_EQ,
     TOK_NEQ,

@@ -289,6 +289,12 @@ token_t *lexer_tokenize(const char *src, size_t *out_count)
         } else if (c == '-' && src[i + 1] == '>') {
             append_token(&vec, TOK_ARROW, "->", 2, line, col);
             i += 2; col += 2;
+        } else if (c == '+' && src[i + 1] == '+') {
+            append_token(&vec, TOK_INC, "++", 2, line, col);
+            i += 2; col += 2;
+        } else if (c == '-' && src[i + 1] == '-') {
+            append_token(&vec, TOK_DEC, "--", 2, line, col);
+            i += 2; col += 2;
         } else if (c == '+' && src[i + 1] == '=') {
             append_token(&vec, TOK_PLUSEQ, "+=", 2, line, col);
             i += 2; col += 2;

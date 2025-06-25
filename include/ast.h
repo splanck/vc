@@ -61,7 +61,11 @@ typedef enum {
     UNOP_ADDR,
     UNOP_DEREF,
     UNOP_NEG,
-    UNOP_NOT
+    UNOP_NOT,
+    UNOP_PREINC,
+    UNOP_PREDEC,
+    UNOP_POSTINC,
+    UNOP_POSTDEC
 } unop_t;
 
 struct expr;
