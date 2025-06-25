@@ -123,6 +123,8 @@ typedef enum {
     STMT_SWITCH,
     STMT_BREAK,
     STMT_CONTINUE,
+    STMT_LABEL,
+    STMT_GOTO,
     STMT_BLOCK
 } stmt_kind_t;
 
@@ -173,6 +175,12 @@ struct stmt {
             size_t case_count;
             stmt_t *default_body; /* may be NULL */
         } switch_stmt;
+        struct {
+            char *name;
+        } label;
+        struct {
+            char *name;
+        } goto_stmt;
         struct {
             stmt_t **stmts;
             size_t count;
@@ -240,6 +248,10 @@ stmt_t *ast_make_switch(expr_t *expr, switch_case_t *cases, size_t case_count,
 stmt_t *ast_make_break(size_t line, size_t column);
 /* Simple continue statement used inside loops. */
 stmt_t *ast_make_continue(size_t line, size_t column);
+/* Label definition statement */
+stmt_t *ast_make_label(const char *name, size_t line, size_t column);
+/* goto statement */
+stmt_t *ast_make_goto(const char *name, size_t line, size_t column);
 /* Create a block of statements containing \p count elements. */
 stmt_t *ast_make_block(stmt_t **stmts, size_t count,
                        size_t line, size_t column);

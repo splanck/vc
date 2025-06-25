@@ -60,6 +60,7 @@ static const char *token_name(token_type_t type)
     case TOK_KW_FOR: return "\"for\"";
     case TOK_KW_BREAK: return "\"break\"";
     case TOK_KW_CONTINUE: return "\"continue\"";
+    case TOK_KW_GOTO: return "\"goto\"";
     case TOK_KW_SWITCH: return "\"switch\"";
     case TOK_KW_CASE: return "\"case\"";
     case TOK_KW_DEFAULT: return "\"default\"";
@@ -84,6 +85,7 @@ static const char *token_name(token_type_t type)
     case TOK_LBRACKET: return "'['";
     case TOK_RBRACKET: return "']'";
     case TOK_COLON: return "':'";
+    case TOK_LABEL: return "label";
     case TOK_UNKNOWN: return "unknown";
     }
     return "unknown";

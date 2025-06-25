@@ -209,6 +209,7 @@ RETURN v2
 - Arrays
 - Global variables
 - `break` and `continue` statements
+- Labels and `goto`
 
 Examples below show how to compile each feature.
 
@@ -381,6 +382,25 @@ int main() {
 Compile with:
 ```sh
 vc -o switch.s switch_example.c
+```
+
+### Labels and goto
+```c
+/* goto_example.c */
+int main() {
+    int i = 0;
+start:
+    if (i == 3)
+        goto end;
+    i = i + 1;
+    goto start;
+end:
+    return i;
+}
+```
+Compile with:
+```sh
+vc -o goto.s goto_example.c
 ```
 
 ## Command-line Options
