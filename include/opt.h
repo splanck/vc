@@ -17,6 +17,9 @@ typedef struct {
     int const_prop;     /* enable store/load constant propagation */
 } opt_config_t;
 
+/* Print an optimization error message */
+void opt_error(const char *msg);
+
 /* Run optimization passes on the given IR builder */
 void opt_run(ir_builder_t *ir, const opt_config_t *cfg);
 

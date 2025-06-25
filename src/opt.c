@@ -6,8 +6,15 @@
  */
 
 #include <stdlib.h>
+#include <stdio.h>
 #include "opt.h"
 #include <string.h>
+
+/* Print an optimization error message */
+void opt_error(const char *msg)
+{
+    fprintf(stderr, "optimizer: %s\n", msg);
+}
 
 typedef struct var_const {
     const char *name;
@@ -58,6 +65,7 @@ static void propagate_load_consts(ir_builder_t *ir)
     int *is_const = calloc((size_t)max_id, sizeof(int));
     int *values = calloc((size_t)max_id, sizeof(int));
     if (!is_const || !values) {
+        opt_error("out of memory");
         free(is_const);
         free(values);
         return;
@@ -79,8 +87,10 @@ static void propagate_load_consts(ir_builder_t *ir)
                 v = v->next;
             if (!v) {
                 v = calloc(1, sizeof(*v));
-                if (!v)
+                if (!v) {
+                    opt_error("out of memory");
                     break;
+                }
                 v->name = ins->name;
                 v->next = vars;
                 vars = v;
@@ -166,6 +176,7 @@ static void fold_constants(ir_builder_t *ir)
     int *is_const = calloc((size_t)max_id, sizeof(int));
     int *values = calloc((size_t)max_id, sizeof(int));
     if (!is_const || !values) {
+        opt_error("out of memory");
         free(is_const);
         free(values);
         return;
@@ -280,8 +291,10 @@ static void dead_code_elim(ir_builder_t *ir)
         count++;
 
     ir_instr_t **list = malloc((size_t)count * sizeof(*list));
-    if (!list)
+    if (!list) {
+        opt_error("out of memory");
         return;
+    }
 
     int idx = 0;
     for (ir_instr_t *i = ir->head; i; i = i->next)
@@ -289,6 +302,7 @@ static void dead_code_elim(ir_builder_t *ir)
 
     int *used = calloc((size_t)max_id, sizeof(int));
     if (!used) {
+        opt_error("out of memory");
         free(list);
         return;
     }
