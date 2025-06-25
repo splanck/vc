@@ -74,7 +74,7 @@ int main(int argc, char **argv)
     while (ok && !parser_is_eof(&parser)) {
         func_t *fn = NULL;
         stmt_t *g = NULL;
-        if (!parser_parse_toplevel(&parser, &fn, &g)) {
+        if (!parser_parse_toplevel(&parser, &funcs, &fn, &g)) {
             token_type_t expected[] = { TOK_KW_INT, TOK_KW_VOID };
             parser_print_error(&parser, expected, 2);
             ok = 0;
@@ -100,11 +100,28 @@ int main(int argc, char **argv)
     stmt_t **glob_list = (stmt_t **)glob_list_v.data;
     size_t gcount = glob_list_v.count;
 
-    for (size_t i = 0; i < fcount; i++)
-        symtable_add_func(&funcs, func_list[i]->name,
-                          func_list[i]->return_type,
-                          func_list[i]->param_types,
-                          func_list[i]->param_count);
+    for (size_t i = 0; i < fcount; i++) {
+        symbol_t *existing = symtable_lookup(&funcs, func_list[i]->name);
+        if (existing) {
+            int mismatch = existing->type != func_list[i]->return_type ||
+                           existing->param_count != func_list[i]->param_count;
+            for (size_t j = 0; j < existing->param_count && !mismatch; j++)
+                if (existing->param_types[j] != func_list[i]->param_types[j])
+                    mismatch = 1;
+            if (mismatch) {
+                ok = 0;
+                error_set(0, 0);
+                break;
+            }
+            existing->is_prototype = 0;
+        } else {
+            symtable_add_func(&funcs, func_list[i]->name,
+                              func_list[i]->return_type,
+                              func_list[i]->param_types,
+                              func_list[i]->param_count,
+                              0);
+        }
+    }
     for (size_t i = 0; i < gcount; i++) {
         if (!check_global(glob_list[i], &globals, &ir)) {
             error_print("Semantic error");

@@ -83,6 +83,7 @@ int symtable_add(symtable_t *table, const char *name, type_kind_t type,
     sym->param_index = -1;
     sym->param_types = NULL;
     sym->param_count = 0;
+    sym->is_prototype = 0;
     sym->next = table->head;
     table->head = sym;
     return 1;
@@ -114,6 +115,7 @@ int symtable_add_param(symtable_t *table, const char *name, type_kind_t type,
     sym->param_index = index;
     sym->param_types = NULL;
     sym->param_count = 0;
+    sym->is_prototype = 0;
     sym->next = table->head;
     table->head = sym;
     return 1;
@@ -144,6 +146,7 @@ int symtable_add_global(symtable_t *table, const char *name, type_kind_t type,
     sym->param_index = -1;
     sym->param_types = NULL;
     sym->param_count = 0;
+    sym->is_prototype = 0;
     sym->next = table->globals;
     table->globals = sym;
     return 1;
@@ -153,7 +156,8 @@ int symtable_add_global(symtable_t *table, const char *name, type_kind_t type,
  * Insert a function symbol along with its return type and parameter types.
  */
 int symtable_add_func(symtable_t *table, const char *name, type_kind_t ret_type,
-                      type_kind_t *param_types, size_t param_count)
+                      type_kind_t *param_types, size_t param_count,
+                      int is_prototype)
 {
     if (symtable_lookup(table, name))
         return 0;
@@ -185,6 +189,7 @@ int symtable_add_func(symtable_t *table, const char *name, type_kind_t ret_type,
     }
     sym->next = table->head;
     table->head = sym;
+    sym->is_prototype = is_prototype;
     return 1;
 }
 
@@ -207,6 +212,7 @@ int symtable_add_enum(symtable_t *table, const char *name, int value)
     sym->param_index = -1;
     sym->param_types = NULL;
     sym->param_count = 0;
+    sym->is_prototype = 0;
     sym->next = table->head;
     table->head = sym;
     return 1;
@@ -233,6 +239,7 @@ int symtable_add_enum_global(symtable_t *table, const char *name, int value)
     sym->param_index = -1;
     sym->param_types = NULL;
     sym->param_count = 0;
+    sym->is_prototype = 0;
     sym->next = table->globals;
     table->globals = sym;
     return 1;
@@ -258,6 +265,7 @@ int symtable_add_typedef(symtable_t *table, const char *name, type_kind_t type,
     sym->param_index = -1;
     sym->param_types = NULL;
     sym->param_count = 0;
+    sym->is_prototype = 0;
     sym->next = table->head;
     table->head = sym;
     return 1;
@@ -285,6 +293,7 @@ int symtable_add_typedef_global(symtable_t *table, const char *name,
     sym->param_index = -1;
     sym->param_types = NULL;
     sym->param_count = 0;
+    sym->is_prototype = 0;
     sym->next = table->globals;
     table->globals = sym;
     return 1;

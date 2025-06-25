@@ -878,6 +878,21 @@ int check_func(func_t *func, symtable_t *funcs, symtable_t *globals,
     if (!func)
         return 0;
 
+    symbol_t *decl = symtable_lookup(funcs, func->name);
+    if (!decl) {
+        error_set(0, 0);
+        return 0;
+    }
+    int mismatch = decl->type != func->return_type ||
+                   decl->param_count != func->param_count;
+    for (size_t i = 0; i < decl->param_count && !mismatch; i++)
+        if (decl->param_types[i] != func->param_types[i])
+            mismatch = 1;
+    if (mismatch) {
+        error_set(0, 0);
+        return 0;
+    }
+
     symtable_t locals;
     symtable_init(&locals);
     locals.globals = globals ? globals->globals : NULL;

@@ -305,7 +305,8 @@ func_t *parser_parse_func(parser_t *p)
  * success.  The function returns 1 when a valid top-level construct was
  * consumed and 0 otherwise.
  */
-int parser_parse_toplevel(parser_t *p, func_t **out_func, stmt_t **out_global)
+int parser_parse_toplevel(parser_t *p, symtable_t *funcs,
+                          func_t **out_func, stmt_t **out_global)
 {
     if (out_func) *out_func = NULL;
     if (out_global) *out_global = NULL;
@@ -366,8 +367,59 @@ int parser_parse_toplevel(parser_t *p, func_t **out_func, stmt_t **out_global)
     p->pos++;
 
     size_t arr_size = 0;
-    token_t *next_tok;
-    if ((next_tok = peek(p)) && next_tok->type == TOK_LBRACKET) {
+    token_t *next_tok = peek(p);
+    if (next_tok && next_tok->type == TOK_LPAREN) {
+        /* lookahead for prototype or definition */
+        p->pos++; /* '(' */
+        vector_t param_types_v;
+        vector_init(&param_types_v, sizeof(type_kind_t));
+        if (!match(p, TOK_RPAREN)) {
+            do {
+                type_kind_t pt;
+                if (!parse_basic_type(p, &pt)) {
+                    vector_free(&param_types_v);
+                    p->pos = save;
+                    return 0;
+                }
+                if (match(p, TOK_STAR))
+                    pt = TYPE_PTR;
+                token_t *tmp = peek(p);
+                if (tmp && tmp->type == TOK_IDENT)
+                    p->pos++; /* optional name */
+                if (!vector_push(&param_types_v, &pt)) {
+                    vector_free(&param_types_v);
+                    p->pos = save;
+                    return 0;
+                }
+            } while (match(p, TOK_COMMA));
+            if (!match(p, TOK_RPAREN)) {
+                vector_free(&param_types_v);
+                p->pos = save;
+                return 0;
+            }
+        }
+        token_t *after = peek(p);
+        if (after && after->type == TOK_SEMI) {
+            p->pos++; /* ';' */
+            symtable_add_func(funcs, id->lexeme, t,
+                             (type_kind_t *)param_types_v.data,
+                             param_types_v.count, 1);
+            vector_free(&param_types_v);
+            return 1;
+        } else if (after && after->type == TOK_LBRACE) {
+            vector_free(&param_types_v);
+            p->pos = save;
+            if (out_func)
+                *out_func = parser_parse_func(p);
+            return *out_func != NULL;
+        } else {
+            vector_free(&param_types_v);
+            p->pos = save;
+            return 0;
+        }
+    }
+
+    if (next_tok && next_tok->type == TOK_LBRACKET) {
         p->pos++; /* '[' */
         token_t *num = peek(p);
         if (!num || num->type != TOK_NUMBER) {
@@ -381,10 +433,10 @@ int parser_parse_toplevel(parser_t *p, func_t **out_func, stmt_t **out_global)
             return 0;
         }
         t = TYPE_ARRAY;
+        next_tok = peek(p);
     }
 
-    token_t *next = peek(p);
-    if (next && next->type == TOK_SEMI) {
+    if (next_tok && next_tok->type == TOK_SEMI) {
         if (t == TYPE_VOID) {
             p->pos = save;
             return 0;
@@ -394,7 +446,7 @@ int parser_parse_toplevel(parser_t *p, func_t **out_func, stmt_t **out_global)
             *out_global = ast_make_var_decl(id->lexeme, t, arr_size, NULL,
                                            NULL, 0, tok->line, tok->column);
         return *out_global != NULL;
-    } else if (next && next->type == TOK_ASSIGN) {
+    } else if (next_tok && next_tok->type == TOK_ASSIGN) {
         if (t == TYPE_VOID) {
             p->pos = save;
             return 0;
