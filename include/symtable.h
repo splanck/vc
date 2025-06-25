@@ -26,6 +26,9 @@ typedef struct symbol {
     union_member_t *members; /* for union declarations */
     size_t member_count;
     size_t total_size;
+    struct_member_t *struct_members; /* for struct declarations */
+    size_t struct_member_count;
+    size_t struct_total_size;
     int is_static;
     int is_const;
     int is_volatile;
@@ -81,6 +84,11 @@ int symtable_add_union(symtable_t *table, const char *tag,
 int symtable_add_union_global(symtable_t *table, const char *tag,
                               union_member_t *members, size_t member_count);
 symbol_t *symtable_lookup_union(symtable_t *table, const char *tag);
+int symtable_add_struct(symtable_t *table, const char *tag,
+                        struct_member_t *members, size_t member_count);
+int symtable_add_struct_global(symtable_t *table, const char *tag,
+                               struct_member_t *members, size_t member_count);
+symbol_t *symtable_lookup_struct(symtable_t *table, const char *tag);
 
 /* Look up a symbol by name. Returns NULL if not found. */
 symbol_t *symtable_lookup(symtable_t *table, const char *name);

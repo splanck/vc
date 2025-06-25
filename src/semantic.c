@@ -100,6 +100,17 @@ static size_t layout_union_members(union_member_t *members, size_t count)
     return max;
 }
 
+/* Compute byte offsets for struct members sequentially and return total size. */
+static size_t layout_struct_members(struct_member_t *members, size_t count)
+{
+    size_t off = 0;
+    for (size_t i = 0; i < count; i++) {
+        members[i].offset = off;
+        off += members[i].elem_size;
+    }
+    return off;
+}
+
 /* Mapping from BINOP_* to corresponding IR op.  Logical ops are
  * handled separately and use IR_CMPEQ here just as a placeholder. */
 static const ir_op_t binop_to_ir[] = {
@@ -1119,6 +1130,18 @@ int check_stmt(stmt_t *stmt, symtable_t *vars, symtable_t *funcs,
         }
         return 1;
     }
+    case STMT_STRUCT_DECL: {
+        size_t total = layout_struct_members(stmt->struct_decl.members,
+                                             stmt->struct_decl.count);
+        (void)total;
+        if (!symtable_add_struct(vars, stmt->struct_decl.tag,
+                                 stmt->struct_decl.members,
+                                 stmt->struct_decl.count)) {
+            error_set(stmt->line, stmt->column);
+            return 0;
+        }
+        return 1;
+    }
     case STMT_UNION_DECL: {
         size_t max = layout_union_members(stmt->union_decl.members,
                                           stmt->union_decl.count);
@@ -1322,6 +1345,17 @@ int check_global(stmt_t *decl, symtable_t *globals, ir_builder_t *ir)
                 return 0;
             }
             next = (int)val + 1;
+        }
+        return 1;
+    }
+    if (decl->kind == STMT_STRUCT_DECL) {
+        layout_struct_members(decl->struct_decl.members,
+                             decl->struct_decl.count);
+        if (!symtable_add_struct_global(globals, decl->struct_decl.tag,
+                                        decl->struct_decl.members,
+                                        decl->struct_decl.count)) {
+            error_set(decl->line, decl->column);
+            return 0;
         }
         return 1;
     }
