@@ -1,9 +1,10 @@
 /*
  * Minimal source preprocessor.
  *
- * Supports only '#include "file"' and simple object-like '#define NAME value'.
- * Expansion is naive: macro names are replaced as plain identifiers without
- * parameter handling. Conditionals and other directives are not implemented.
+ * Supports '#include "file"', object-like '#define NAME value' and simple
+ * single-parameter macros of the form '#define NAME(arg) expr'. Expansion is
+ * purely textual and does not recognize strings or comments. Conditional
+ * directives remain unimplemented.
  */
 
 #ifndef VC_PREPROC_H
