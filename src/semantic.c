@@ -967,6 +967,9 @@ int check_stmt(stmt_t *stmt, symtable_t *vars, symtable_t *funcs,
         }
         return 1;
     }
+    case STMT_UNION_DECL:
+        /* union type declarations are currently ignored */
+        return 1;
     case STMT_TYPEDEF: {
         if (!symtable_add_typedef(vars, stmt->typedef_decl.name,
                                   stmt->typedef_decl.type,
@@ -1138,6 +1141,10 @@ int check_global(stmt_t *decl, symtable_t *globals, ir_builder_t *ir)
             }
             next = val + 1;
         }
+        return 1;
+    }
+    if (decl->kind == STMT_UNION_DECL) {
+        /* union type declarations have no semantic impact */
         return 1;
     }
     if (decl->kind == STMT_TYPEDEF) {
