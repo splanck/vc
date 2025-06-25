@@ -1,7 +1,8 @@
 # vc Documentation
 
 This document describes the compilation pipeline, the role of each module
-and the language features currently supported.
+and the language features currently supported. Recent updates add basic
+support for floating-point types and operations.
 
 ## Pipeline Overview
 
@@ -218,6 +219,7 @@ RETURN v2
 - `for`, `while` and `do`/`while` loops
 - Pointers
 - Arrays
+- Floating-point types (`float`, `double`)
 - `sizeof` operator
 - Global variables
 - `break` and `continue` statements
@@ -235,6 +237,20 @@ int main() {
 Compile with:
 ```sh
 vc -o add.s add.c
+```
+
+### Floating-point arithmetic
+```c
+/* float_add.c */
+float main() {
+    float a = 1.0f;
+    float b = 2.0f;
+    return a + b;
+}
+```
+Compile with:
+```sh
+vc -o float_add.s float_add.c
 ```
 
 ### Function calls

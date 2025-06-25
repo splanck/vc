@@ -133,9 +133,17 @@ stmt_t *parser_parse_stmt(parser_t *p)
     if (match(p, TOK_KW_ENUM))
         return parser_parse_enum_decl(p);
 
-    if (match(p, TOK_KW_INT) || match(p, TOK_KW_CHAR)) {
+    if (match(p, TOK_KW_INT) || match(p, TOK_KW_CHAR) ||
+        match(p, TOK_KW_FLOAT) || match(p, TOK_KW_DOUBLE)) {
         token_t *kw_tok = &p->tokens[p->pos - 1];
-        type_kind_t t = (kw_tok->type == TOK_KW_INT) ? TYPE_INT : TYPE_CHAR;
+        type_kind_t t;
+        switch (kw_tok->type) {
+        case TOK_KW_INT: t = TYPE_INT; break;
+        case TOK_KW_CHAR: t = TYPE_CHAR; break;
+        case TOK_KW_FLOAT: t = TYPE_FLOAT; break;
+        case TOK_KW_DOUBLE: t = TYPE_DOUBLE; break;
+        default: t = TYPE_INT; break;
+        }
         if (match(p, TOK_STAR))
             t = TYPE_PTR;
         token_t *tok = peek(p);

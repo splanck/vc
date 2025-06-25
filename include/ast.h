@@ -14,6 +14,8 @@
 typedef enum {
     TYPE_INT,
     TYPE_CHAR,
+    TYPE_FLOAT,
+    TYPE_DOUBLE,
     TYPE_PTR,
     TYPE_ARRAY,
     TYPE_VOID,
