@@ -111,7 +111,7 @@ symbol_t *symtable_lookup(symtable_t *table, const char *name)
  */
 int symtable_add(symtable_t *table, const char *name, const char *ir_name,
                  type_kind_t type, size_t array_size, size_t elem_size,
-                 int is_static, int is_const)
+                 int is_static, int is_const, int is_volatile)
 {
     if (symtable_lookup(table, name))
         return 0;
@@ -123,6 +123,7 @@ int symtable_add(symtable_t *table, const char *name, const char *ir_name,
     sym->elem_size = elem_size;
     sym->is_static = is_static;
     sym->is_const = is_const;
+    sym->is_volatile = is_volatile;
     sym->next = table->head;
     table->head = sym;
     return 1;
@@ -151,7 +152,7 @@ int symtable_add_param(symtable_t *table, const char *name, type_kind_t type,
 /* Insert a global variable into the table. */
 int symtable_add_global(symtable_t *table, const char *name, const char *ir_name,
                         type_kind_t type, size_t array_size, size_t elem_size,
-                        int is_static, int is_const)
+                        int is_static, int is_const, int is_volatile)
 {
     for (symbol_t *sym = table->globals; sym; sym = sym->next) {
         if (strcmp(sym->name, name) == 0)
@@ -165,6 +166,7 @@ int symtable_add_global(symtable_t *table, const char *name, const char *ir_name
     sym->elem_size = elem_size;
     sym->is_static = is_static;
     sym->is_const = is_const;
+    sym->is_volatile = is_volatile;
     sym->next = table->globals;
     table->globals = sym;
     return 1;

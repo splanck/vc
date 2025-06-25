@@ -88,6 +88,10 @@ constant initializers.
 The `const` qualifier marks a variable as read-only after initialization.
 Any attempt to assign to a `const` object results in a semantic error.
 
+The `volatile` qualifier tells the compiler that a variable's value may change
+unexpectedly.  Reads and writes to a `volatile` object are always emitted and
+are not subject to certain optimizations.
+
 Struct and union objects are declared using the `struct` and
 `union` keywords.  Members are accessed with `.` for objects or
 `->` when using pointers:
@@ -283,7 +287,7 @@ RETURN v2
 - `break` and `continue` statements
 - Labels and `goto`
 - `union` objects and member assignments
-- Object-like and single argument `#define` macros
+- Object-like and multi-parameter `#define` macros with recursive expansion
 - Conditional preprocessing directives (`#if`, `#ifdef`, `#ifndef`, `#elif`, `#else`, `#endif`)
 - 64-bit integer literals and arithmetic when using `long long`
 
@@ -700,26 +704,28 @@ The compiler supports the following options:
 - `--no-cprop` – disable constant propagation.
 - `--x86-64` – generate 64‑bit x86 assembly.
 - `-c`, `--compile` – assemble the output into an object file using `cc -c`.
+- `--link` – build an executable by assembling and linking with `cc`.
 - `--dump-asm` – print the generated assembly to stdout instead of creating a file.
 - `--dump-ir` – print the IR to stdout before code generation.
 - `-I`, `--include <dir>` – add directory to the `#include` search path.
 - `-O<N>` – set optimization level (0 disables all passes).
 
 Use `vc -o out.s source.c` to compile a file, `vc -c -o out.o source.c` to
-produce an object, or `vc --dump-asm source.c` to print the assembly to the
-terminal.
+produce an object, `vc --link -o prog source.c` to build an executable, or
+`vc --dump-asm source.c` to print the assembly to the terminal.
 
 ## Preprocessor Usage
 
 The preprocessor runs automatically before the lexer. It supports `#include "file"`
 to insert the contents of another file. Additional directories to search for
 included files can be provided with the `-I`/`--include` option. It also supports
-object-like `#define` macros and single
-argument macros of the form `#define NAME(arg)`:
+object-like `#define` macros and parameterized
+macros such as `#define NAME(a, b)`; macro bodies are expanded recursively:
 
 ```c
 #define VAL 3
-#define DOUBLE(x) x + x
+#define ADD(a, b) ((a) + (b))
+#define DOUBLE(x) ADD(x, x)
 #include "header.h"
 int main() { return DOUBLE(VAL); }
 ```

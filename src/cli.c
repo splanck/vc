@@ -24,6 +24,7 @@ static void print_usage(const char *prog)
     printf("  -h, --help           Display this help and exit\n");
     printf("  -v, --version        Print version information and exit\n");
     printf("  -c, --compile        Assemble to an object file\n");
+    printf("      --link           Compile and link to an executable\n");
     printf("      --no-fold        Disable constant folding\n");
     printf("      --no-dce         Disable dead code elimination\n");
     printf("      --no-cprop       Disable constant propagation\n");
@@ -46,6 +47,7 @@ int cli_parse_args(int argc, char **argv, cli_options_t *opts)
         {"dump-asm", no_argument,     0, 4},
         {"no-cprop", no_argument,     0, 5},
         {"dump-ir", no_argument,      0, 6},
+        {"link", no_argument,        0, 7},
         {0, 0, 0, 0}
     };
 
@@ -56,6 +58,7 @@ int cli_parse_args(int argc, char **argv, cli_options_t *opts)
     opts->opt_cfg.const_prop = 1;
     opts->use_x86_64 = 0;
     opts->compile = 0;
+    opts->link = 0;
     opts->dump_asm = 0;
     opts->dump_ir = 0;
     vector_init(&opts->include_dirs, sizeof(char *));
@@ -111,6 +114,9 @@ int cli_parse_args(int argc, char **argv, cli_options_t *opts)
             break;
         case 6:
             opts->dump_ir = 1;
+            break;
+        case 7:
+            opts->link = 1;
             break;
         default:
             print_usage(argv[0]);

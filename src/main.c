@@ -235,6 +235,7 @@ int main(int argc, char **argv)
     int use_x86_64 = cli.use_x86_64;
     int dump_asm = cli.dump_asm;
     int dump_ir = cli.dump_ir;
+    int link = cli.link;
 
     label_init();
 
@@ -255,8 +256,57 @@ int main(int argc, char **argv)
                             &funcs, &globals, &ir);
     if (ok)
         optimize_stage(&ir, &opt_cfg);
-    if (ok)
-        ok = output_stage(&ir, output, dump_ir, dump_asm, use_x86_64, cli.compile);
+    if (ok) {
+        if (link) {
+            char asmname[] = "/tmp/vcXXXXXX";
+            int asmfd = mkstemp(asmname);
+            if (asmfd < 0) {
+                perror("mkstemp");
+                ok = 0;
+            } else {
+                close(asmfd);
+                ok = output_stage(&ir, asmname, dump_ir, dump_asm, use_x86_64, 0);
+                if (ok) {
+                    FILE *stub = fopen(asmname, "a");
+                    if (!stub) {
+                        perror("fopen");
+                        ok = 0;
+                    } else {
+                        if (use_x86_64) {
+                            fputs(".globl _start\n_start:\n    call main\n    mov %rax, %rdi\n    mov $60, %rax\n    syscall\n", stub);
+                        } else {
+                            fputs(".globl _start\n_start:\n    call main\n    mov %eax, %ebx\n    mov $1, %eax\n    int $0x80\n", stub);
+                        }
+                        fclose(stub);
+                        char objtmp[] = "/tmp/vcobjXXXXXX";
+                        int objfd = mkstemp(objtmp);
+                        if (objfd < 0) {
+                            perror("mkstemp");
+                            ok = 0;
+                        } else {
+                            close(objfd);
+                            char cmd[512];
+                            const char *arch_flag = use_x86_64 ? "-m64" : "-m32";
+                            snprintf(cmd, sizeof(cmd), "cc -x assembler %s -c %s -o %s", arch_flag, asmname, objtmp);
+                            int ret = system(cmd);
+                            if (ret == 0) {
+                                snprintf(cmd, sizeof(cmd), "cc %s %s -nostdlib -o %s", arch_flag, objtmp, output);
+                                ret = system(cmd);
+                            }
+                            if (ret != 0) {
+                                fprintf(stderr, "cc failed\n");
+                                ok = 0;
+                            }
+                            unlink(objtmp);
+                        }
+                    }
+                }
+                unlink(asmname);
+            }
+        } else {
+            ok = output_stage(&ir, output, dump_ir, dump_asm, use_x86_64, cli.compile);
+        }
+    }
 
     for (size_t i = 0; i < func_list_v.count; i++)
         ast_free_func(((func_t **)func_list_v.data)[i]);
@@ -278,6 +328,8 @@ int main(int argc, char **argv)
             printf("Compiling %s (IR dumped to stdout)\n", source);
         else if (dump_asm)
             printf("Compiling %s (assembly dumped to stdout)\n", source);
+        else if (link)
+            printf("Compiling %s -> %s (executable)\n", source, output);
         else if (cli.compile)
             printf("Compiling %s -> %s (object)\n", source, output);
         else

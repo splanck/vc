@@ -12,10 +12,11 @@ optional optimizations, register allocation and code generation.
 The resulting assembly can be written to a file or printed to stdout.
 Supported constructs include arrays, pointer arithmetic (including pointer subtraction and pointer increments), loops (\fBfor\fR, \fBwhile\fR and \fBdo\fR\~\fBwhile\fR), global variable declarations, floating-point variables, the
 \fBchar\fR type, 64-bit integer literals and arithmetic, basic \fBstruct\fR and \fBunion\fR declarations, and the
-\fBbreak\fR and \fBcontinue\fR statements.
+\fBvolatile\fR qualifier, \fBbreak\fR and \fBcontinue\fR statements.
 .PP
 The built-in preprocessor expands \fB#include\fR directives, object-like
-and single-argument macros defined with \fB#define\fR. Conditional
+and parameterized macros defined with \fB#define\fR. Macro bodies may be
+expanded recursively. Conditional
 directives (\fB#if\fR, \fB#ifdef\fR, \fB#ifndef\fR, \fB#elif\fR, \fB#else\fR
 and \fB#endif\fR) are supported using expression evaluation with the
 \fBdefined\fR operator.
@@ -51,6 +52,9 @@ Generate x86-64 assembly instead of 32-bit.
 .BR -c "," \fB--compile\fR
 Assemble the output into an object file using \fBcc -c\fR.
 .TP
+.B --link
+Assemble and link the output to create an executable with \fBcc\fR.
+.TP
 .B --dump-asm
 Print generated assembly to stdout rather than creating a file.
 .TP
@@ -64,6 +68,10 @@ Compile a source file to \fIout.s\fR:
 Create an object file:
 .PP
 .B vc -c -o out.o source.c
+.PP
+Build an executable:
+.PP
+.B vc --link -o prog source.c
 .PP
 Print the generated assembly:
 .PP

@@ -61,6 +61,7 @@ static stmt_t *parse_var_decl(parser_t *p)
 {
     int is_static = match(p, TOK_KW_STATIC);
     int is_const = match(p, TOK_KW_CONST);
+    int is_volatile = match(p, TOK_KW_VOLATILE);
     token_t *kw_tok = peek(p);
     type_kind_t t;
     char *tag_name = NULL;
@@ -132,7 +133,7 @@ static stmt_t *parse_var_decl(parser_t *p)
             return NULL;
     }
     stmt_t *res = ast_make_var_decl(name, t, arr_size, elem_size, is_static,
-                                    is_const, init, init_list, init_count,
+                                    is_const, is_volatile, init, init_list, init_count,
                                     tag_name, NULL, 0, NULL, 0,
                                     kw_tok->line, kw_tok->column);
     if (!res)
@@ -204,6 +205,7 @@ stmt_t *parser_parse_union_var_decl(parser_t *p)
 {
     int is_static = match(p, TOK_KW_STATIC);
     int is_const = match(p, TOK_KW_CONST);
+    int is_volatile = match(p, TOK_KW_VOLATILE);
     if (!match(p, TOK_KW_UNION))
         return NULL;
     token_t *kw = &p->tokens[p->pos - 1];
@@ -266,7 +268,7 @@ fail:
     union_member_t *members = (union_member_t *)members_v.data;
     size_t count = members_v.count;
     stmt_t *res = ast_make_var_decl(name, TYPE_UNION, 0, 0, is_static, is_const,
-                                    NULL, NULL, 0, NULL, members, count,
+                                    is_volatile, NULL, NULL, 0, NULL, members, count,
                                     NULL, 0, kw->line, kw->column);
     if (!res) {
         for (size_t i = 0; i < count; i++)
@@ -466,6 +468,7 @@ stmt_t *parser_parse_stmt(parser_t *p)
     size_t save = p->pos;
     int has_static = match(p, TOK_KW_STATIC);
     int has_const = match(p, TOK_KW_CONST);
+    int has_vol = match(p, TOK_KW_VOLATILE);
     if (match(p, TOK_KW_UNION)) {
         token_t *next = peek(p);
         if (next && next->type == TOK_LBRACE) {
@@ -474,7 +477,7 @@ stmt_t *parser_parse_stmt(parser_t *p)
         } else if (next && next->type == TOK_IDENT) {
             p->pos++;
             token_t *after = peek(p);
-            if (!has_static && !has_const && after && after->type == TOK_LBRACE) {
+            if (!has_static && !has_const && !has_vol && after && after->type == TOK_LBRACE) {
                 p->pos = save;
                 return parser_parse_union_decl(p);
             }
@@ -506,6 +509,8 @@ stmt_t *parser_parse_stmt(parser_t *p)
     if (tok && tok->type == TOK_KW_STATIC)
         return parse_var_decl(p);
     if (tok && tok->type == TOK_KW_CONST)
+        return parse_var_decl(p);
+    if (tok && tok->type == TOK_KW_VOLATILE)
         return parse_var_decl(p);
     if (tok && (tok->type == TOK_KW_INT || tok->type == TOK_KW_CHAR ||
                 tok->type == TOK_KW_FLOAT || tok->type == TOK_KW_DOUBLE ||

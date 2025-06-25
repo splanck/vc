@@ -76,6 +76,7 @@ typedef struct ir_instr {
     long long imm;        /* immediate value for constants and sizes */
     char *name;           /* identifier / label */
     char *data;           /* for string literals */
+    int is_volatile;      /* volatile memory access */
     struct ir_instr *next;
 } ir_instr_t;
 
@@ -97,6 +98,7 @@ ir_value_t ir_build_const(ir_builder_t *b, long long value);
 
 /* Append IR_LOAD for variable `name`. */
 ir_value_t ir_build_load(ir_builder_t *b, const char *name);
+ir_value_t ir_build_load_vol(ir_builder_t *b, const char *name);
 
 /* Append a binary arithmetic or comparison op. */
 ir_value_t ir_build_binop(ir_builder_t *b, ir_op_t op, ir_value_t left, ir_value_t right);
@@ -105,6 +107,7 @@ ir_value_t ir_build_logor(ir_builder_t *b, ir_value_t left, ir_value_t right);
 
 /* Append IR_STORE assigning `val` to variable `name`. */
 void ir_build_store(ir_builder_t *b, const char *name, ir_value_t val);
+void ir_build_store_vol(ir_builder_t *b, const char *name, ir_value_t val);
 
 /* Append IR_LOAD_PARAM reading argument `index`. */
 ir_value_t ir_build_load_param(ir_builder_t *b, int index);
@@ -129,10 +132,13 @@ ir_value_t ir_build_ptr_diff(ir_builder_t *b, ir_value_t a, ir_value_t bptr,
 
 /* Append IR_LOAD_IDX fetching `name[idx]`. */
 ir_value_t ir_build_load_idx(ir_builder_t *b, const char *name, ir_value_t idx);
+ir_value_t ir_build_load_idx_vol(ir_builder_t *b, const char *name, ir_value_t idx);
 
 /* Append IR_STORE_IDX setting `name[idx] = val`. */
 void ir_build_store_idx(ir_builder_t *b, const char *name, ir_value_t idx,
                         ir_value_t val);
+void ir_build_store_idx_vol(ir_builder_t *b, const char *name, ir_value_t idx,
+                            ir_value_t val);
 
 /* Append IR_RETURN with return value `val`. */
 void ir_build_return(ir_builder_t *b, ir_value_t val);
