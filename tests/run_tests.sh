@@ -132,6 +132,15 @@ if ! od -An -t x1 "$obj_out" | head -n 1 | grep -q "7f 45 4c 46"; then
 fi
 rm -f "$obj_out"
 
+# test --link option
+exe_out=$(mktemp)
+"$BINARY" --x86-64 --link -o "$exe_out" "$DIR/fixtures/simple_add.c"
+if ! od -An -t x1 "$exe_out" | head -n 1 | grep -q "7f 45 4c 46"; then
+    echo "Test link_option failed"
+    fail=1
+fi
+rm -f "$exe_out"
+
 if [ $fail -eq 0 ]; then
     echo "All tests passed"
 else
