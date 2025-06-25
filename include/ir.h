@@ -72,29 +72,65 @@ typedef struct {
     int next_value_id;
 } ir_builder_t;
 
+/* Initialize an IR builder. */
 void ir_builder_init(ir_builder_t *b);
+
+/* Free all instructions accumulated in the builder. */
 void ir_builder_free(ir_builder_t *b);
 
+/* Append IR_CONST producing a new value holding an immediate. */
 ir_value_t ir_build_const(ir_builder_t *b, int value);
+
+/* Append IR_LOAD for variable `name`. */
 ir_value_t ir_build_load(ir_builder_t *b, const char *name);
+
+/* Append a binary arithmetic or comparison op. */
 ir_value_t ir_build_binop(ir_builder_t *b, ir_op_t op, ir_value_t left, ir_value_t right);
+
+/* Append IR_STORE assigning `val` to variable `name`. */
 void ir_build_store(ir_builder_t *b, const char *name, ir_value_t val);
+
+/* Append IR_LOAD_PARAM reading argument `index`. */
 ir_value_t ir_build_load_param(ir_builder_t *b, int index);
+
+/* Append IR_STORE_PARAM writing `val` to parameter `index`. */
 void ir_build_store_param(ir_builder_t *b, int index, ir_value_t val);
+
+/* Append IR_ADDR that yields the address of `name`. */
 ir_value_t ir_build_addr(ir_builder_t *b, const char *name);
+
+/* Append IR_LOAD_PTR that loads from pointer value `addr`. */
 ir_value_t ir_build_load_ptr(ir_builder_t *b, ir_value_t addr);
+
+/* Append IR_STORE_PTR that stores `val` through pointer `addr`. */
 void ir_build_store_ptr(ir_builder_t *b, ir_value_t addr, ir_value_t val);
+
+/* Append IR_LOAD_IDX fetching `name[idx]`. */
 ir_value_t ir_build_load_idx(ir_builder_t *b, const char *name, ir_value_t idx);
+
+/* Append IR_STORE_IDX setting `name[idx] = val`. */
 void ir_build_store_idx(ir_builder_t *b, const char *name, ir_value_t idx,
                         ir_value_t val);
+
+/* Append IR_RETURN with return value `val`. */
 void ir_build_return(ir_builder_t *b, ir_value_t val);
+
+/* Push an argument for the next IR_CALL. */
 void ir_build_arg(ir_builder_t *b, ir_value_t val);
+
+/* Append IR_CALL to `name` expecting `arg_count` preceding IR_ARGs. */
 ir_value_t ir_build_call(ir_builder_t *b, const char *name, size_t arg_count);
+
+/* Mark start and end of a function. */
 void ir_build_func_begin(ir_builder_t *b, const char *name);
 void ir_build_func_end(ir_builder_t *b);
+
+/* Unconditional/conditional branches and labels. */
 void ir_build_br(ir_builder_t *b, const char *label);
 void ir_build_bcond(ir_builder_t *b, ir_value_t cond, const char *label);
 void ir_build_label(ir_builder_t *b, const char *label);
+
+/* Global data declarations. */
 ir_value_t ir_build_string(ir_builder_t *b, const char *data);
 void ir_build_glob_var(ir_builder_t *b, const char *name, int value);
 void ir_build_glob_array(ir_builder_t *b, const char *name,
