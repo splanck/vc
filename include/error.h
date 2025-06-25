@@ -10,7 +10,17 @@
 
 #include <stddef.h>
 
+/*
+ * Save the given 1-based line and column so that the next call to
+ * error_print() can report where the error occurred.  Passing 0 for
+ * either value indicates an unknown position.
+ */
 void error_set(size_t line, size_t col);
+
+/*
+ * Print an error message to stderr using the position stored by
+ * error_set().
+ */
 void error_print(const char *msg);
 
 #endif /* VC_ERROR_H */
