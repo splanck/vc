@@ -32,8 +32,9 @@
 #include "preproc.h"
 
 /* Compilation stage helpers */
-static int tokenize_stage(const char *source, char **out_src,
-                          token_t **out_toks, size_t *out_count);
+static int tokenize_stage(const char *source, const vector_t *incdirs,
+                          char **out_src, token_t **out_toks,
+                          size_t *out_count);
 static int parse_stage(token_t *toks, size_t count,
                        vector_t *funcs_v, vector_t *globs_v,
                        symtable_t *funcs);
@@ -46,10 +47,11 @@ static int output_stage(ir_builder_t *ir, const char *output,
                         int dump_ir, int dump_asm, int use_x86_64, int compile);
 
 /* Tokenize the preprocessed source file */
-static int tokenize_stage(const char *source, char **out_src,
-                          token_t **out_toks, size_t *out_count)
+static int tokenize_stage(const char *source, const vector_t *incdirs,
+                          char **out_src, token_t **out_toks,
+                          size_t *out_count)
 {
-    char *text = preproc_run(source);
+    char *text = preproc_run(source, incdirs);
     if (!text) {
         perror("preproc_run");
         return 0;
@@ -243,7 +245,8 @@ int main(int argc, char **argv)
     symtable_t funcs, globals;
     ir_builder_t ir;
 
-    int ok = tokenize_stage(source, &src_text, &tokens, &tok_count);
+    int ok = tokenize_stage(source, &cli.include_dirs, &src_text,
+                            &tokens, &tok_count);
     if (ok)
         ok = parse_stage(tokens, tok_count, &func_list_v, &glob_list_v, &funcs);
     if (ok)

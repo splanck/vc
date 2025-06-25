@@ -648,6 +648,7 @@ The compiler supports the following options:
 - `-c`, `--compile` – assemble the output into an object file using `cc -c`.
 - `--dump-asm` – print the generated assembly to stdout instead of creating a file.
 - `--dump-ir` – print the IR to stdout before code generation.
+- `-I`, `--include <dir>` – add directory to the `#include` search path.
 - `-O<N>` – set optimization level (0 disables all passes).
 
 Use `vc -o out.s source.c` to compile a file, `vc -c -o out.o source.c` to
@@ -657,7 +658,9 @@ terminal.
 ## Preprocessor Usage
 
 The preprocessor runs automatically before the lexer. It supports `#include "file"`
-to insert the contents of another file, object-like `#define` macros and single
+to insert the contents of another file. Additional directories to search for
+included files can be provided with the `-I`/`--include` option. It also supports
+object-like `#define` macros and single
 argument macros of the form `#define NAME(arg)`:
 
 ```c

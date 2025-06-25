@@ -9,6 +9,7 @@
 #define VC_CLI_H
 
 #include "opt.h"
+#include "vector.h"
 
 /* Command line options parsed from argv */
 typedef struct {
@@ -18,6 +19,7 @@ typedef struct {
     int compile;        /* assemble to object */
     int dump_asm;       /* dump assembly to stdout */
     int dump_ir;        /* dump IR to stdout */
+    vector_t include_dirs; /* additional include directories */
     const char *source; /* input source file */
 } cli_options_t;
 

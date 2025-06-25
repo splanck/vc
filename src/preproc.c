@@ -1,3 +1,4 @@
+#define _POSIX_C_SOURCE 200809L
 /*
  * Minimal preprocessing implementation.
  *
@@ -13,6 +14,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include "preproc.h"
+#include <unistd.h>
 #include "util.h"
 #include "vector.h"
 #include "strbuf.h"
@@ -258,7 +260,8 @@ static int eval_expr(const char *s, vector_t *macros)
 }
 
 static int process_file(const char *path, vector_t *macros,
-                        vector_t *conds, strbuf_t *out)
+                        vector_t *conds, strbuf_t *out,
+                        const vector_t *incdirs)
 {
     char *text = vc_read_file(path);
     if (!text)
@@ -270,7 +273,8 @@ static int process_file(const char *path, vector_t *macros,
         dir = vc_strndup(path, len);
     }
 
-    char *line = strtok(text, "\n");
+    char *saveptr;
+    char *line = strtok_r(text, "\n", &saveptr);
     while (line) {
         while (*line == ' ' || *line == '\t')
             line++;
@@ -279,15 +283,34 @@ static int process_file(const char *path, vector_t *macros,
             char *end = quote ? strchr(quote + 1, '"') : NULL;
             if (quote && end) {
                 size_t len = (size_t)(end - quote - 1);
+                char fname[256];
+                snprintf(fname, sizeof(fname), "%.*s", (int)len, quote + 1);
                 char incpath[512];
-                if (dir)
-                    snprintf(incpath, sizeof(incpath), "%s%.*s", dir, (int)len, quote + 1);
-                else
-                    snprintf(incpath, sizeof(incpath), "%.*s", (int)len, quote + 1);
+                const char *chosen = NULL;
+                if (dir) {
+                    snprintf(incpath, sizeof(incpath), "%s%s", dir, fname);
+                    if (access(incpath, R_OK) == 0)
+                        chosen = incpath;
+                }
+                if (!chosen) {
+                    for (size_t i = 0; i < incdirs->count && !chosen; i++) {
+                        const char *base = ((const char **)incdirs->data)[i];
+                        snprintf(incpath, sizeof(incpath), "%s/%s", base, fname);
+                        if (access(incpath, R_OK) == 0)
+                            chosen = incpath;
+                    }
+                }
+                if (!chosen) {
+                    snprintf(incpath, sizeof(incpath), "%s", fname);
+                    if (access(incpath, R_OK) == 0)
+                        chosen = incpath;
+                }
                 vector_t subconds;
                 vector_init(&subconds, sizeof(cond_state_t));
                 if (stack_active(conds)) {
-                    if (!process_file(incpath, macros, &subconds, out)) {
+                    if (!chosen || !process_file(chosen, macros, &subconds, out, incdirs)) {
+                        if (!chosen)
+                            perror(fname);
                         vector_free(&subconds);
                         free(text);
                         free(dir);
@@ -420,7 +443,7 @@ static int process_file(const char *path, vector_t *macros,
                 strbuf_free(&tmp);
             }
         }
-        line = strtok(NULL, "\n");
+        line = strtok_r(NULL, "\n", &saveptr);
     }
     free(text);
     free(dir);
@@ -428,7 +451,7 @@ static int process_file(const char *path, vector_t *macros,
 }
 
 /* Entry point: preprocess the file and return a newly allocated buffer. */
-char *preproc_run(const char *path)
+char *preproc_run(const char *path, const vector_t *include_dirs)
 {
     vector_t macros;
     vector_init(&macros, sizeof(macro_t));
@@ -436,7 +459,7 @@ char *preproc_run(const char *path)
     vector_init(&conds, sizeof(cond_state_t));
     strbuf_t out;
     strbuf_init(&out);
-    int ok = process_file(path, &macros, &conds, &out);
+    int ok = process_file(path, &macros, &conds, &out, include_dirs);
     vector_free(&conds);
     for (size_t i = 0; i < macros.count; i++)
         macro_free(&((macro_t *)macros.data)[i]);
