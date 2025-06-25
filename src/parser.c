@@ -67,6 +67,7 @@ static const char *token_name(token_type_t type)
     case TOK_KW_SWITCH: return "\"switch\"";
     case TOK_KW_CASE: return "\"case\"";
     case TOK_KW_DEFAULT: return "\"default\"";
+    case TOK_KW_SIZEOF: return "\"sizeof\"";
     case TOK_LPAREN: return "'('";
     case TOK_RPAREN: return "')'";
     case TOK_LBRACE: return "'{'";

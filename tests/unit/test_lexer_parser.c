@@ -210,6 +210,29 @@ static void test_parser_unary_expr(void)
     lexer_free_tokens(toks, count);
 }
 
+static void test_lexer_sizeof(void)
+{
+    const char *src = "sizeof(int)";
+    size_t count = 0;
+    token_t *toks = lexer_tokenize(src, &count);
+    ASSERT(toks[0].type == TOK_KW_SIZEOF);
+    lexer_free_tokens(toks, count);
+}
+
+static void test_parser_sizeof(void)
+{
+    const char *src = "sizeof(int)";
+    size_t count = 0;
+    token_t *toks = lexer_tokenize(src, &count);
+    parser_t p; parser_init(&p, toks, count);
+    expr_t *expr = parser_parse_expr(&p);
+    ASSERT(expr && expr->kind == EXPR_SIZEOF);
+    ASSERT(expr->sizeof_expr.is_type);
+    ASSERT(expr->sizeof_expr.type == TYPE_INT);
+    ast_free_expr(expr);
+    lexer_free_tokens(toks, count);
+}
+
 static void test_parser_func(void)
 {
     const char *src = "int main() { return 0; }";
@@ -258,6 +281,8 @@ int main(void)
     test_parser_pointer_arith();
     test_parser_global_init();
     test_parser_unary_expr();
+    test_lexer_sizeof();
+    test_parser_sizeof();
     test_parser_func();
     test_parser_block();
     if (failures == 0) {

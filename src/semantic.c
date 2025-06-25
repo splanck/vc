@@ -136,6 +136,21 @@ static int eval_const_expr(expr_t *expr, symtable_t *vars, int *out)
         }
         return 0;
     }
+    case EXPR_SIZEOF:
+        if (!expr->sizeof_expr.is_type)
+            return 0;
+        if (out) {
+            int sz = 0;
+            switch (expr->sizeof_expr.type) {
+            case TYPE_INT:  sz = 4; break;
+            case TYPE_CHAR: sz = 1; break;
+            case TYPE_PTR:  sz = 4; break;
+            case TYPE_ARRAY: sz = (int)expr->sizeof_expr.array_size * 4; break;
+            default: sz = 0; break;
+            }
+            *out = sz;
+        }
+        return 1;
     default:
         return 0;
     }
@@ -354,6 +369,34 @@ type_kind_t check_expr(expr_t *expr, symtable_t *vars, symtable_t *funcs,
         /* struct member access not implemented */
         error_set(expr->line, expr->column);
         return TYPE_UNKNOWN;
+    case EXPR_SIZEOF: {
+        int sz = 0;
+        if (expr->sizeof_expr.is_type) {
+            switch (expr->sizeof_expr.type) {
+            case TYPE_INT:  sz = 4; break;
+            case TYPE_CHAR: sz = 1; break;
+            case TYPE_PTR:  sz = 4; break;
+            case TYPE_ARRAY: sz = (int)expr->sizeof_expr.array_size * 4; break;
+            default: sz = 0; break;
+            }
+        } else {
+            ir_builder_t tmp; ir_builder_init(&tmp);
+            type_kind_t t = check_expr(expr->sizeof_expr.expr, vars, funcs, &tmp, NULL);
+            ir_builder_free(&tmp);
+            if (t == TYPE_INT) sz = 4;
+            else if (t == TYPE_CHAR) sz = 1;
+            else if (t == TYPE_PTR) sz = 4;
+            else if (t == TYPE_ARRAY) {
+                symbol_t *sym = NULL;
+                if (expr->sizeof_expr.expr->kind == EXPR_IDENT)
+                    sym = symtable_lookup(vars, expr->sizeof_expr.expr->ident.name);
+                sz = sym ? (int)sym->array_size * 4 : 4;
+            }
+        }
+        if (out)
+            *out = ir_build_const(ir, sz);
+        return TYPE_INT;
+    }
     case EXPR_CALL: {
         symbol_t *fsym = symtable_lookup(funcs, expr->call.name);
         if (!fsym) {

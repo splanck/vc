@@ -34,7 +34,8 @@ typedef enum {
     EXPR_CALL,
     EXPR_INDEX,
     EXPR_ASSIGN_INDEX,
-    EXPR_MEMBER
+    EXPR_MEMBER,
+    EXPR_SIZEOF
 } expr_kind_t;
 
 /* Binary operator types */
@@ -118,6 +119,12 @@ struct expr {
             expr_t **args;
             size_t arg_count;
         } call;
+        struct {
+            int is_type;
+            type_kind_t type;
+            size_t array_size;
+            expr_t *expr;
+        } sizeof_expr;
     };
 };
 
@@ -241,6 +248,11 @@ expr_t *ast_make_assign_index(expr_t *array, expr_t *index, expr_t *value,
 /* Create a struct/union member access expression. */
 expr_t *ast_make_member(expr_t *object, const char *member, int via_ptr,
                         size_t line, size_t column);
+/* Create a sizeof expression of a type. */
+expr_t *ast_make_sizeof_type(type_kind_t type, size_t array_size,
+                             size_t line, size_t column);
+/* Create a sizeof expression of another expression. */
+expr_t *ast_make_sizeof_expr(expr_t *expr, size_t line, size_t column);
 /* Create a function call expression with \p arg_count arguments. */
 expr_t *ast_make_call(const char *name, expr_t **args, size_t arg_count,
                       size_t line, size_t column);
