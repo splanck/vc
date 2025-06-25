@@ -28,6 +28,9 @@ typedef enum {
     TOK_KW_FOR,
     TOK_KW_BREAK,
     TOK_KW_CONTINUE,
+    TOK_KW_SWITCH,
+    TOK_KW_CASE,
+    TOK_KW_DEFAULT,
     TOK_LPAREN,
     TOK_RPAREN,
     TOK_LBRACE,
@@ -48,6 +51,7 @@ typedef enum {
     TOK_GE,
     TOK_LBRACKET,
     TOK_RBRACKET,
+    TOK_COLON,
     TOK_UNKNOWN
 } token_type_t;
 

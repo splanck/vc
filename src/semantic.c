@@ -446,6 +446,65 @@ int check_stmt(stmt_t *stmt, symtable_t *vars, symtable_t *funcs,
         ir_build_label(ir, end_label);
         return 1;
     }
+    case STMT_SWITCH: {
+        ir_value_t expr_val;
+        if (check_expr(stmt->switch_stmt.expr, vars, funcs, ir, &expr_val) == TYPE_UNKNOWN)
+            return 0;
+        char end_label[32];
+        char default_label[32];
+        int id = label_next_id();
+        snprintf(end_label, sizeof(end_label), "L%d_end", id);
+        snprintf(default_label, sizeof(default_label), "L%d_default", id);
+        char **case_labels = calloc(stmt->switch_stmt.case_count, sizeof(char *));
+        if (!case_labels)
+            return 0;
+        for (size_t i = 0; i < stmt->switch_stmt.case_count; i++) {
+            char lbl[32];
+            snprintf(lbl, sizeof(lbl), "L%d_case%zu", id, i);
+            case_labels[i] = vc_strdup(lbl);
+            int cval;
+            if (!eval_const_expr(stmt->switch_stmt.cases[i].expr, &cval)) {
+                for (size_t j = 0; j <= i; j++) free(case_labels[j]);
+                free(case_labels);
+                error_set(stmt->switch_stmt.cases[i].expr->line,
+                          stmt->switch_stmt.cases[i].expr->column);
+                return 0;
+            }
+            ir_value_t const_val = ir_build_const(ir, cval);
+            ir_value_t cmp = ir_build_binop(ir, IR_CMPEQ, expr_val, const_val);
+            ir_build_bcond(ir, cmp, case_labels[i]);
+        }
+        if (stmt->switch_stmt.default_body)
+            ir_build_br(ir, default_label);
+        else
+            ir_build_br(ir, end_label);
+        for (size_t i = 0; i < stmt->switch_stmt.case_count; i++) {
+            ir_build_label(ir, case_labels[i]);
+            if (!check_stmt(stmt->switch_stmt.cases[i].body, vars, funcs, ir,
+                            func_ret_type, end_label, NULL)) {
+                for (size_t j = 0; j < stmt->switch_stmt.case_count; j++)
+                    free(case_labels[j]);
+                free(case_labels);
+                return 0;
+            }
+            ir_build_br(ir, end_label);
+        }
+        if (stmt->switch_stmt.default_body) {
+            ir_build_label(ir, default_label);
+            if (!check_stmt(stmt->switch_stmt.default_body, vars, funcs, ir,
+                            func_ret_type, end_label, NULL)) {
+                for (size_t j = 0; j < stmt->switch_stmt.case_count; j++)
+                    free(case_labels[j]);
+                free(case_labels);
+                return 0;
+            }
+        }
+        ir_build_label(ir, end_label);
+        for (size_t j = 0; j < stmt->switch_stmt.case_count; j++)
+            free(case_labels[j]);
+        free(case_labels);
+        return 1;
+    }
     case STMT_BREAK:
         if (!break_label) {
             error_set(stmt->line, stmt->column);

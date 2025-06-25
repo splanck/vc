@@ -56,10 +56,12 @@ typedef enum {
 
 struct expr;
 struct stmt;
+struct switch_case;
 struct func;
 
 typedef struct expr expr_t;
 typedef struct stmt stmt_t;
+typedef struct switch_case switch_case_t;
 typedef struct func func_t;
 
 struct expr {
@@ -118,6 +120,7 @@ typedef enum {
     STMT_WHILE,
     STMT_DO_WHILE,
     STMT_FOR,
+    STMT_SWITCH,
     STMT_BREAK,
     STMT_CONTINUE,
     STMT_BLOCK
@@ -165,10 +168,21 @@ struct stmt {
             stmt_t *body;
         } for_stmt;
         struct {
+            expr_t *expr;
+            switch_case_t *cases;
+            size_t case_count;
+            stmt_t *default_body; /* may be NULL */
+        } switch_stmt;
+        struct {
             stmt_t **stmts;
             size_t count;
         } block;
     };
+};
+
+struct switch_case {
+    expr_t *expr;
+    stmt_t *body;
 };
 
 /* Constructors */
@@ -219,6 +233,9 @@ stmt_t *ast_make_do_while(expr_t *cond, stmt_t *body,
 /* Construct a for loop statement with optional init/cond/incr expressions. */
 stmt_t *ast_make_for(expr_t *init, expr_t *cond, expr_t *incr, stmt_t *body,
                      size_t line, size_t column);
+/* Construct a switch statement with optional default block. */
+stmt_t *ast_make_switch(expr_t *expr, switch_case_t *cases, size_t case_count,
+                        stmt_t *default_body, size_t line, size_t column);
 /* Simple break statement used inside loops. */
 stmt_t *ast_make_break(size_t line, size_t column);
 /* Simple continue statement used inside loops. */
