@@ -82,6 +82,10 @@ static const char *token_name(token_type_t type)
     case TOK_DOT: return "'.'";
     case TOK_ARROW: return "'->'";
     case TOK_AMP: return "'&'";
+    case TOK_PIPE: return "'|'";
+    case TOK_CARET: return "'^'";
+    case TOK_SHL: return "'<<'";
+    case TOK_SHR: return "'>>'";
     case TOK_STAR: return "'*'";
     case TOK_SLASH: return "'/'";
     case TOK_PERCENT: return "'%'";
@@ -90,6 +94,11 @@ static const char *token_name(token_type_t type)
     case TOK_STAREQ: return "'*='";
     case TOK_SLASHEQ: return "'/='";
     case TOK_PERCENTEQ: return "'%='";
+    case TOK_AMPEQ: return "'&='";
+    case TOK_PIPEEQ: return "'|='";
+    case TOK_CARETEQ: return "'^='";
+    case TOK_SHLEQ: return "'<<='";
+    case TOK_SHREQ: return "'>>='";
     case TOK_INC: return "'++'";
     case TOK_DEC: return "'--'";
     case TOK_ASSIGN: return "'='";

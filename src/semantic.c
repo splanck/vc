@@ -118,6 +118,11 @@ static int eval_const_expr(expr_t *expr, symtable_t *vars, int *out)
         case BINOP_MUL: if (out) *out = a * b; break;
         case BINOP_DIV: if (out) *out = b != 0 ? a / b : 0; break;
         case BINOP_MOD: if (out) *out = b != 0 ? a % b : 0; break;
+        case BINOP_SHL: if (out) *out = a << b; break;
+        case BINOP_SHR: if (out) *out = a >> b; break;
+        case BINOP_BITAND: if (out) *out = a & b; break;
+        case BINOP_BITXOR: if (out) *out = a ^ b; break;
+        case BINOP_BITOR: if (out) *out = a | b; break;
         case BINOP_EQ:  if (out) *out = (a == b); break;
         case BINOP_NEQ: if (out) *out = (a != b); break;
         case BINOP_LT:  if (out) *out = (a < b); break;
@@ -174,6 +179,11 @@ static type_kind_t check_binary(expr_t *left, expr_t *right, symtable_t *vars,
             case BINOP_MUL: ir_op = IR_MUL; break;
             case BINOP_DIV: ir_op = IR_DIV; break;
             case BINOP_MOD: ir_op = IR_MOD; break;
+            case BINOP_SHL: ir_op = IR_SHL; break;
+            case BINOP_SHR: ir_op = IR_SHR; break;
+            case BINOP_BITAND: ir_op = IR_AND; break;
+            case BINOP_BITXOR: ir_op = IR_XOR; break;
+            case BINOP_BITOR: ir_op = IR_OR; break;
             case BINOP_EQ:  ir_op = IR_CMPEQ; break;
             case BINOP_NEQ: ir_op = IR_CMPNE; break;
             case BINOP_LT:  ir_op = IR_CMPLT; break;

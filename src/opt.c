@@ -108,7 +108,9 @@ static void propagate_load_consts(ir_builder_t *ir)
         case IR_BR:
         case IR_BCOND:
         case IR_LABEL:
-        case IR_ADD: case IR_SUB: case IR_MUL: case IR_DIV: case IR_MOD: case IR_PTR_ADD:
+        case IR_ADD: case IR_SUB: case IR_MUL: case IR_DIV: case IR_MOD:
+        case IR_SHL: case IR_SHR: case IR_AND: case IR_OR: case IR_XOR:
+        case IR_PTR_ADD:
         case IR_PTR_DIFF:
         case IR_CMPEQ: case IR_CMPNE: case IR_CMPLT:
         case IR_CMPGT: case IR_CMPLE: case IR_CMPGE:
@@ -152,6 +154,7 @@ static void fold_constants(ir_builder_t *ir)
             }
             break;
         case IR_ADD: case IR_SUB: case IR_MUL: case IR_DIV: case IR_MOD:
+        case IR_SHL: case IR_SHR: case IR_AND: case IR_OR: case IR_XOR:
         case IR_CMPEQ: case IR_CMPNE: case IR_CMPLT:
         case IR_CMPGT: case IR_CMPLE: case IR_CMPGE:
         case IR_LOGAND: case IR_LOGOR:
@@ -166,6 +169,11 @@ static void fold_constants(ir_builder_t *ir)
                 case IR_MUL: result = a * b; break;
                 case IR_DIV: result = b != 0 ? a / b : 0; break;
                 case IR_MOD: result = b != 0 ? a % b : 0; break;
+                case IR_SHL: result = a << b; break;
+                case IR_SHR: result = a >> b; break;
+                case IR_AND: result = a & b; break;
+                case IR_OR:  result = a | b; break;
+                case IR_XOR: result = a ^ b; break;
                 case IR_CMPEQ: result = a == b; break;
                 case IR_CMPNE: result = a != b; break;
                 case IR_CMPLT: result = a < b; break;

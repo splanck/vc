@@ -19,6 +19,10 @@ static expr_t *parse_assignment(parser_t *p);
 static expr_t *parse_equality(parser_t *p);
 static expr_t *parse_relational(parser_t *p);
 static expr_t *parse_additive(parser_t *p);
+static expr_t *parse_shift(parser_t *p);
+static expr_t *parse_bitand(parser_t *p);
+static expr_t *parse_bitxor(parser_t *p);
+static expr_t *parse_bitor(parser_t *p);
 static expr_t *parse_primary(parser_t *p);
 static int parse_type(parser_t *p, type_kind_t *out_type, size_t *out_size);
 static expr_t *parse_logical_and(parser_t *p);
@@ -369,9 +373,41 @@ static expr_t *parse_additive(parser_t *p)
 }
 
 /* Comparison operators <, >, <= and >=. */
-static expr_t *parse_relational(parser_t *p)
+static expr_t *parse_shift(parser_t *p)
 {
     expr_t *left = parse_additive(p);
+    if (!left)
+        return NULL;
+
+    while (1) {
+        if (match(p, TOK_SHL)) {
+            token_t *op_tok = &p->tokens[p->pos - 1];
+            expr_t *right = parse_additive(p);
+            if (!right) {
+                ast_free_expr(left);
+                return NULL;
+            }
+            left = ast_make_binary(BINOP_SHL, left, right,
+                                  op_tok->line, op_tok->column);
+        } else if (match(p, TOK_SHR)) {
+            token_t *op_tok = &p->tokens[p->pos - 1];
+            expr_t *right = parse_additive(p);
+            if (!right) {
+                ast_free_expr(left);
+                return NULL;
+            }
+            left = ast_make_binary(BINOP_SHR, left, right,
+                                  op_tok->line, op_tok->column);
+        } else {
+            break;
+        }
+    }
+    return left;
+}
+
+static expr_t *parse_relational(parser_t *p)
+{
+    expr_t *left = parse_shift(p);
     if (!left)
         return NULL;
 
@@ -452,16 +488,73 @@ static expr_t *parse_equality(parser_t *p)
     return left;
 }
 
-/* Parse logical AND expressions. */
-static expr_t *parse_logical_and(parser_t *p)
+static expr_t *parse_bitand(parser_t *p)
 {
     expr_t *left = parse_equality(p);
     if (!left)
         return NULL;
 
-    while (match(p, TOK_LOGAND)) {
+    while (match(p, TOK_AMP)) {
         token_t *op_tok = &p->tokens[p->pos - 1];
         expr_t *right = parse_equality(p);
+        if (!right) {
+            ast_free_expr(left);
+            return NULL;
+        }
+        left = ast_make_binary(BINOP_BITAND, left, right,
+                              op_tok->line, op_tok->column);
+    }
+    return left;
+}
+
+static expr_t *parse_bitxor(parser_t *p)
+{
+    expr_t *left = parse_bitand(p);
+    if (!left)
+        return NULL;
+
+    while (match(p, TOK_CARET)) {
+        token_t *op_tok = &p->tokens[p->pos - 1];
+        expr_t *right = parse_bitand(p);
+        if (!right) {
+            ast_free_expr(left);
+            return NULL;
+        }
+        left = ast_make_binary(BINOP_BITXOR, left, right,
+                              op_tok->line, op_tok->column);
+    }
+    return left;
+}
+
+static expr_t *parse_bitor(parser_t *p)
+{
+    expr_t *left = parse_bitxor(p);
+    if (!left)
+        return NULL;
+
+    while (match(p, TOK_PIPE)) {
+        token_t *op_tok = &p->tokens[p->pos - 1];
+        expr_t *right = parse_bitxor(p);
+        if (!right) {
+            ast_free_expr(left);
+            return NULL;
+        }
+        left = ast_make_binary(BINOP_BITOR, left, right,
+                              op_tok->line, op_tok->column);
+    }
+    return left;
+}
+
+/* Parse logical AND expressions. */
+static expr_t *parse_logical_and(parser_t *p)
+{
+    expr_t *left = parse_bitor(p);
+    if (!left)
+        return NULL;
+
+    while (match(p, TOK_LOGAND)) {
+        token_t *op_tok = &p->tokens[p->pos - 1];
+        expr_t *right = parse_bitor(p);
         if (!right) {
             ast_free_expr(left);
             return NULL;
@@ -502,7 +595,9 @@ static expr_t *parse_assignment(parser_t *p)
 
     if (match(p, TOK_ASSIGN) || match(p, TOK_PLUSEQ) || match(p, TOK_MINUSEQ) ||
         match(p, TOK_STAREQ) || match(p, TOK_SLASHEQ) ||
-        match(p, TOK_PERCENTEQ)) {
+        match(p, TOK_PERCENTEQ) || match(p, TOK_AMPEQ) ||
+        match(p, TOK_PIPEEQ) || match(p, TOK_CARETEQ) ||
+        match(p, TOK_SHLEQ) || match(p, TOK_SHREQ)) {
         token_t *op_tok = &p->tokens[p->pos - 1];
         if (left->kind != EXPR_IDENT && left->kind != EXPR_INDEX) {
             ast_free_expr(left);
@@ -524,6 +619,11 @@ static expr_t *parse_assignment(parser_t *p)
         case TOK_STAREQ: bop = BINOP_MUL; break;
         case TOK_SLASHEQ: bop = BINOP_DIV; break;
         case TOK_PERCENTEQ: bop = BINOP_MOD; break;
+        case TOK_AMPEQ: bop = BINOP_BITAND; break;
+        case TOK_PIPEEQ: bop = BINOP_BITOR; break;
+        case TOK_CARETEQ: bop = BINOP_BITXOR; break;
+        case TOK_SHLEQ: bop = BINOP_SHL; break;
+        case TOK_SHREQ: bop = BINOP_SHR; break;
         default: compound = 0; break;
         }
         if (compound) {

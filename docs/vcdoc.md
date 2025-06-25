@@ -243,6 +243,7 @@ RETURN v2
 - Compound assignment operators (`+=`, `-=`, `*=`, `/=`, `%=`)
 - Increment and decrement operators (`++`, `--`)
 - Logical operators `&&`, `||` and `!`
+- Bitwise operators (`&`, `|`, `^`, `<<`, `>>` and compound forms)
 - Floating-point types (`float`, `double`)
 - `sizeof` operator
 - Global variables
@@ -304,6 +305,21 @@ float main() {
 Compile with:
 ```sh
 vc -o float_add.s float_add.c
+```
+
+### Bitwise operations
+```c
+/* bitwise.c */
+int main() {
+    int x = 1;
+    x <<= 2;
+    x |= 3;
+    return x & 1;
+}
+```
+Compile with:
+```sh
+vc -o bitwise.s bitwise.c
 ```
 
 ### Function calls

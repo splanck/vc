@@ -223,6 +223,8 @@ static void read_punct(char c, vector_t *tokens, size_t line, size_t column)
     case '-': type = TOK_MINUS; break;
     case '.': type = TOK_DOT; break;
     case '&': type = TOK_AMP; break;
+    case '|': type = TOK_PIPE; break;
+    case '^': type = TOK_CARET; break;
     case '*': type = TOK_STAR; break;
     case '/': type = TOK_SLASH; break;
     case '%': type = TOK_PERCENT; break;
@@ -280,6 +282,18 @@ token_t *lexer_tokenize(const char *src, size_t *out_count)
         } else if (c == '!') {
             append_token(&vec, TOK_NOT, "!", 1, line, col);
             i++; col++;
+        } else if (c == '<' && src[i + 1] == '<' && src[i + 2] == '=') {
+            append_token(&vec, TOK_SHLEQ, "<<=", 3, line, col);
+            i += 3; col += 3;
+        } else if (c == '>' && src[i + 1] == '>' && src[i + 2] == '=') {
+            append_token(&vec, TOK_SHREQ, ">>=", 3, line, col);
+            i += 3; col += 3;
+        } else if (c == '<' && src[i + 1] == '<') {
+            append_token(&vec, TOK_SHL, "<<", 2, line, col);
+            i += 2; col += 2;
+        } else if (c == '>' && src[i + 1] == '>') {
+            append_token(&vec, TOK_SHR, ">>", 2, line, col);
+            i += 2; col += 2;
         } else if (c == '<' && src[i + 1] == '=') {
             append_token(&vec, TOK_LE, "<=", 2, line, col);
             i += 2; col += 2;
@@ -309,6 +323,15 @@ token_t *lexer_tokenize(const char *src, size_t *out_count)
             i += 2; col += 2;
         } else if (c == '%' && src[i + 1] == '=') {
             append_token(&vec, TOK_PERCENTEQ, "%=", 2, line, col);
+            i += 2; col += 2;
+        } else if (c == '&' && src[i + 1] == '=') {
+            append_token(&vec, TOK_AMPEQ, "&=", 2, line, col);
+            i += 2; col += 2;
+        } else if (c == '|' && src[i + 1] == '=') {
+            append_token(&vec, TOK_PIPEEQ, "|=", 2, line, col);
+            i += 2; col += 2;
+        } else if (c == '^' && src[i + 1] == '=') {
+            append_token(&vec, TOK_CARETEQ, "^=", 2, line, col);
             i += 2; col += 2;
         } else {
             read_punct(c, &vec, line, col);
