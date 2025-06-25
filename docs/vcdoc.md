@@ -283,7 +283,7 @@ RETURN v2
 - `break` and `continue` statements
 - Labels and `goto`
 - `union` objects and member assignments
-- Object-like and single argument `#define` macros
+- Object-like and multi-parameter `#define` macros with recursive expansion
 - Conditional preprocessing directives (`#if`, `#ifdef`, `#ifndef`, `#elif`, `#else`, `#endif`)
 - 64-bit integer literals and arithmetic when using `long long`
 
@@ -696,12 +696,13 @@ terminal.
 The preprocessor runs automatically before the lexer. It supports `#include "file"`
 to insert the contents of another file. Additional directories to search for
 included files can be provided with the `-I`/`--include` option. It also supports
-object-like `#define` macros and single
-argument macros of the form `#define NAME(arg)`:
+object-like `#define` macros and parameterized
+macros such as `#define NAME(a, b)`; macro bodies are expanded recursively:
 
 ```c
 #define VAL 3
-#define DOUBLE(x) x + x
+#define ADD(a, b) ((a) + (b))
+#define DOUBLE(x) ADD(x, x)
 #include "header.h"
 int main() { return DOUBLE(VAL); }
 ```
