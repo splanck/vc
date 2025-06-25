@@ -8,6 +8,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <getopt.h>
+#include <string.h>
 
 #include "cli.h"
 
@@ -19,6 +20,7 @@ static void print_usage(const char *prog)
     printf("Options:\n");
     printf("  -o, --output <file>  Output path\n");
     printf("  -O<N>               Optimization level (0-3)\n");
+    printf("  -I, --include <dir> Add directory to include search path\n");
     printf("  -h, --help           Display this help and exit\n");
     printf("  -v, --version        Print version information and exit\n");
     printf("  -c, --compile        Assemble to an object file\n");
@@ -36,6 +38,7 @@ int cli_parse_args(int argc, char **argv, cli_options_t *opts)
         {"help",    no_argument,       0, 'h'},
         {"version", no_argument,       0, 'v'},
         {"output",  required_argument, 0, 'o'},
+        {"include", required_argument, 0, 'I'},
         {"compile", no_argument,       0, 'c'},
         {"no-fold", no_argument,       0, 1},
         {"no-dce",  no_argument,       0, 2},
@@ -55,10 +58,11 @@ int cli_parse_args(int argc, char **argv, cli_options_t *opts)
     opts->compile = 0;
     opts->dump_asm = 0;
     opts->dump_ir = 0;
+    vector_init(&opts->include_dirs, sizeof(char *));
     opts->source = NULL;
 
     int opt;
-    while ((opt = getopt_long(argc, argv, "hvo:O:c", long_opts, NULL)) != -1) {
+    while ((opt = getopt_long(argc, argv, "hvo:O:cI:", long_opts, NULL)) != -1) {
         switch (opt) {
         case 'h':
             print_usage(argv[0]);
@@ -71,6 +75,12 @@ int cli_parse_args(int argc, char **argv, cli_options_t *opts)
             break;
         case 'c':
             opts->compile = 1;
+            break;
+        case 'I':
+            if (!vector_push(&opts->include_dirs, &optarg)) {
+                fprintf(stderr, "Out of memory\n");
+                return 1;
+            }
             break;
         case 'O':
             opts->opt_cfg.opt_level = atoi(optarg);
