@@ -17,9 +17,16 @@ typedef struct {
     size_t cap;
 } strbuf_t;
 
+/* Initialize a new string buffer */
 void strbuf_init(strbuf_t *sb);
+
+/* Append a plain string to the buffer */
 void strbuf_append(strbuf_t *sb, const char *text);
+
+/* Append formatted text using printf-style formatting */
 void strbuf_appendf(strbuf_t *sb, const char *fmt, ...);
+
+/* Release buffer memory */
 void strbuf_free(strbuf_t *sb);
 
 #endif /* VC_STRBUF_H */

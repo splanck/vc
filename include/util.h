@@ -8,7 +8,10 @@
 #ifndef VC_UTIL_H
 #define VC_UTIL_H
 
+/* Duplicate a string using malloc */
 char *vc_strdup(const char *s);
+
+/* Read entire file into a NUL-terminated buffer */
 char *vc_read_file(const char *path);
 
 #endif /* VC_UTIL_H */

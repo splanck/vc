@@ -10,6 +10,7 @@
 #include <string.h>
 #include "util.h"
 
+/* Duplicate a string using malloc */
 char *vc_strdup(const char *s)
 {
     size_t len = strlen(s);
@@ -20,6 +21,7 @@ char *vc_strdup(const char *s)
     return out;
 }
 
+/* Read the entire contents of a file into memory */
 char *vc_read_file(const char *path)
 {
     FILE *f = fopen(path, "rb");

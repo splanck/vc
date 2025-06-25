@@ -9,6 +9,7 @@
 #include <string.h>
 #include "vector.h"
 
+/* Initialize vector for elements of the given size */
 void vector_init(vector_t *vec, size_t elem_size)
 {
     if (!vec)
@@ -19,6 +20,7 @@ void vector_init(vector_t *vec, size_t elem_size)
     vec->elem_size = elem_size;
 }
 
+/* Append one element to the vector */
 int vector_push(vector_t *vec, const void *elem)
 {
     if (!vec || !elem)
@@ -36,6 +38,7 @@ int vector_push(vector_t *vec, const void *elem)
     return 1;
 }
 
+/* Release memory held by the vector */
 void vector_free(vector_t *vec)
 {
     if (!vec)

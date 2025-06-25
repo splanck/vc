@@ -16,13 +16,14 @@ typedef struct var_const {
     struct var_const *next;
 } var_const_t;
 
+/* Reset all entries in a variable constant list */
 static void clear_var_list(var_const_t *head)
 {
     for (var_const_t *v = head; v; v = v->next)
         v->known = 0;
 }
 
-/* Propagate constants through store/load pairs */
+/* Propagate constants from stores to subsequent loads */
 static void propagate_load_consts(ir_builder_t *ir)
 {
     if (!ir)
@@ -127,7 +128,7 @@ static void propagate_load_consts(ir_builder_t *ir)
     }
 }
 
-/* Simple constant folding optimization pass */
+/* Perform simple constant folding */
 static void fold_constants(ir_builder_t *ir)
 {
     if (!ir)
@@ -225,6 +226,7 @@ static void fold_constants(ir_builder_t *ir)
 
 
 /* Instructions that must be preserved even if their result is unused */
+/* Check whether an instruction produces a side effect */
 static int has_side_effect(ir_instr_t *ins)
 {
     switch (ins->op) {
@@ -248,7 +250,7 @@ static int has_side_effect(ir_instr_t *ins)
     }
 }
 
-/* Remove instructions whose results are never used */
+/* Remove instructions whose results are unused */
 static void dead_code_elim(ir_builder_t *ir)
 {
     if (!ir)
@@ -303,6 +305,7 @@ static void dead_code_elim(ir_builder_t *ir)
     free(list);
 }
 
+/* Run enabled optimization passes on the IR */
 void opt_run(ir_builder_t *ir, const opt_config_t *cfg)
 {
     opt_config_t def = {1, 1, 1, 1};
