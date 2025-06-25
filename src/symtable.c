@@ -10,6 +10,33 @@
 #include "symtable.h"
 #include "util.h"
 
+/* Allocate and initialise a new symbol entry */
+static symbol_t *make_symbol(const char *name, const char *ir_name)
+{
+    symbol_t *sym = calloc(1, sizeof(*sym));
+    if (!sym)
+        return NULL;
+    sym->name = vc_strdup(name ? name : "");
+    if (!sym->name) {
+        free(sym);
+        return NULL;
+    }
+    const char *in = ir_name ? ir_name : name;
+    if (in) {
+        sym->ir_name = vc_strdup(in);
+        if (!sym->ir_name) {
+            free(sym->name);
+            free(sym);
+            return NULL;
+        }
+    } else {
+        sym->ir_name = NULL;
+    }
+    sym->param_index = -1;
+    sym->alias_type = TYPE_UNKNOWN;
+    return sym;
+}
+
 /* Reset a symbol table so that both local and global lists are empty. */
 void symtable_init(symtable_t *table)
 {
@@ -67,33 +94,13 @@ int symtable_add(symtable_t *table, const char *name, const char *ir_name,
 {
     if (symtable_lookup(table, name))
         return 0;
-    symbol_t *sym = malloc(sizeof(*sym));
+    symbol_t *sym = make_symbol(name, ir_name ? ir_name : name);
     if (!sym)
         return 0;
-    sym->name = vc_strdup(name ? name : "");
-    if (!sym->name) {
-        free(sym);
-        return 0;
-    }
-    sym->ir_name = vc_strdup(name ? name : "");
-    if (!sym->ir_name) { free(sym->name); free(sym); return 0; }
-    sym->ir_name = vc_strdup(name ? name : "");
-    if (!sym->ir_name) { free(sym->name); free(sym); return 0; }
-    sym->ir_name = vc_strdup(ir_name ? ir_name : name);
-    if (!sym->ir_name) { free(sym->name); free(sym); return 0; }
     sym->type = type;
     sym->array_size = array_size;
-    sym->enum_value = 0;
-    sym->is_enum_const = 0;
-    sym->is_typedef = 0;
-    sym->alias_type = TYPE_UNKNOWN;
-    sym->is_static = 0;
     sym->is_static = is_static;
     sym->is_const = is_const;
-    sym->param_index = -1;
-    sym->param_types = NULL;
-    sym->param_count = 0;
-    sym->is_prototype = 0;
     sym->next = table->head;
     table->head = sym;
     return 1;
@@ -108,27 +115,11 @@ int symtable_add_param(symtable_t *table, const char *name, type_kind_t type,
 {
     if (symtable_lookup(table, name))
         return 0;
-    symbol_t *sym = malloc(sizeof(*sym));
+    symbol_t *sym = make_symbol(name, name);
     if (!sym)
         return 0;
-    sym->name = vc_strdup(name ? name : "");
-    if (!sym->name) {
-        free(sym);
-        return 0;
-    }
-    sym->ir_name = vc_strdup(name ? name : "");
-    if (!sym->ir_name) { free(sym->name); free(sym); return 0; }
     sym->type = type;
-    sym->array_size = 0;
-    sym->enum_value = 0;
-    sym->is_enum_const = 0;
-    sym->is_typedef = 0;
-    sym->alias_type = TYPE_UNKNOWN;
-    sym->is_static = 0;
     sym->param_index = index;
-    sym->param_types = NULL;
-    sym->param_count = 0;
-    sym->is_prototype = 0;
     sym->next = table->head;
     table->head = sym;
     return 1;
@@ -143,32 +134,13 @@ int symtable_add_global(symtable_t *table, const char *name, const char *ir_name
         if (strcmp(sym->name, name) == 0)
             return 0;
     }
-    symbol_t *sym = malloc(sizeof(*sym));
+    symbol_t *sym = make_symbol(name, ir_name ? ir_name : name);
     if (!sym)
         return 0;
-    sym->name = vc_strdup(name ? name : "");
-    if (!sym->name) { free(sym); return 0; }
-    sym->ir_name = vc_strdup(name ? name : "");
-    if (!sym->ir_name) { free(sym->name); free(sym); return 0; }
-    sym->ir_name = vc_strdup(name ? name : "");
-    if (!sym->ir_name) { free(sym->name); free(sym); return 0; }
-    sym->ir_name = vc_strdup(name ? name : "");
-    if (!sym->ir_name) { free(sym->name); free(sym); return 0; }
-    sym->ir_name = vc_strdup(ir_name ? ir_name : name);
-    if (!sym->ir_name) { free(sym->name); free(sym); return 0; }
     sym->type = type;
     sym->array_size = array_size;
-    sym->enum_value = 0;
-    sym->is_enum_const = 0;
-    sym->is_typedef = 0;
-    sym->alias_type = TYPE_UNKNOWN;
-    sym->is_static = 0;
     sym->is_static = is_static;
     sym->is_const = is_const;
-    sym->param_index = -1;
-    sym->param_types = NULL;
-    sym->param_count = 0;
-    sym->is_prototype = 0;
     sym->next = table->globals;
     table->globals = sym;
     return 1;
@@ -183,14 +155,9 @@ int symtable_add_func(symtable_t *table, const char *name, type_kind_t ret_type,
 {
     if (symtable_lookup(table, name))
         return 0;
-    symbol_t *sym = malloc(sizeof(*sym));
+    symbol_t *sym = make_symbol(name, name);
     if (!sym)
         return 0;
-    sym->name = vc_strdup(name ? name : "");
-    if (!sym->name) {
-        free(sym);
-        return 0;
-    }
     sym->type = ret_type;
     sym->enum_value = 0;
     sym->is_enum_const = 0;
@@ -198,16 +165,18 @@ int symtable_add_func(symtable_t *table, const char *name, type_kind_t ret_type,
     sym->alias_type = TYPE_UNKNOWN;
     sym->param_index = -1;
     sym->param_count = param_count;
-    sym->param_types = NULL;
     if (param_count) {
         sym->param_types = malloc(param_count * sizeof(*sym->param_types));
         if (!sym->param_types) {
             free(sym->name);
+            free(sym->ir_name);
             free(sym);
             return 0;
         }
         for (size_t i = 0; i < param_count; i++)
             sym->param_types[i] = param_types[i];
+    } else {
+        sym->param_types = NULL;
     }
     sym->next = table->head;
     table->head = sym;
@@ -220,11 +189,9 @@ int symtable_add_enum(symtable_t *table, const char *name, int value)
 {
     if (symtable_lookup(table, name))
         return 0;
-    symbol_t *sym = malloc(sizeof(*sym));
+    symbol_t *sym = make_symbol(name, name);
     if (!sym)
         return 0;
-    sym->name = vc_strdup(name ? name : "");
-    if (!sym->name) { free(sym); return 0; }
     sym->type = TYPE_INT;
     sym->array_size = 0;
     sym->enum_value = value;
@@ -247,11 +214,9 @@ int symtable_add_enum_global(symtable_t *table, const char *name, int value)
         if (strcmp(sym->name, name) == 0)
             return 0;
     }
-    symbol_t *sym = malloc(sizeof(*sym));
+    symbol_t *sym = make_symbol(name, name);
     if (!sym)
         return 0;
-    sym->name = vc_strdup(name ? name : "");
-    if (!sym->name) { free(sym); return 0; }
     sym->type = TYPE_INT;
     sym->array_size = 0;
     sym->enum_value = value;
@@ -273,11 +238,9 @@ int symtable_add_typedef(symtable_t *table, const char *name, type_kind_t type,
 {
     if (symtable_lookup(table, name))
         return 0;
-    symbol_t *sym = malloc(sizeof(*sym));
+    symbol_t *sym = make_symbol(name, name);
     if (!sym)
         return 0;
-    sym->name = vc_strdup(name ? name : "");
-    if (!sym->name) { free(sym); return 0; }
     sym->type = TYPE_VOID;
     sym->array_size = 0;
     sym->enum_value = 0;
@@ -302,13 +265,9 @@ int symtable_add_typedef_global(symtable_t *table, const char *name,
         if (strcmp(sym->name, name) == 0)
             return 0;
     }
-    symbol_t *sym = malloc(sizeof(*sym));
+    symbol_t *sym = make_symbol(name, name);
     if (!sym)
         return 0;
-    sym->name = vc_strdup(name ? name : "");
-    if (!sym->name) { free(sym); return 0; }
-    sym->ir_name = vc_strdup(name ? name : "");
-    if (!sym->ir_name) { free(sym->name); free(sym); return 0; }
     sym->type = TYPE_VOID;
     sym->array_size = 0;
     sym->enum_value = 0;
