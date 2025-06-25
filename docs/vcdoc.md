@@ -237,6 +237,7 @@ RETURN v2
 - Basic arithmetic expressions
 - Function definitions and calls
 - `for`, `while` and `do`/`while` loops
+- Loop initialization may declare a variable
 - Pointers
 - Arrays
 - Compound assignment operators (`+=`, `-=`, `*=`, `/=`, `%=`)
@@ -458,6 +459,21 @@ int main() {
 Compile with:
 ```sh
 vc -o loop_control.s loop_control.c
+```
+
+### For loop variable declarations
+```c
+/* for_decl.c */
+int main() {
+    int sum = 0;
+    for (int i = 0; i < 3; i = i + 1)
+        sum = sum + i;
+    return sum;
+}
+```
+Compile with:
+```sh
+vc -o for_decl.s for_decl.c
 ```
 
 ### Logical operators

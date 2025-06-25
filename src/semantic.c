@@ -602,22 +602,43 @@ int check_stmt(stmt_t *stmt, symtable_t *vars, symtable_t *funcs,
         int id = label_next_id();
         snprintf(start_label, sizeof(start_label), "L%d_start", id);
         snprintf(end_label, sizeof(end_label), "L%d_end", id);
-        if (check_expr(stmt->for_stmt.init, vars, funcs, ir, &cond_val) == TYPE_UNKNOWN)
-            return 0; /* reuse cond_val for init but ignore value */
+        symbol_t *old_head = vars->head;
+        if (stmt->for_stmt.init_decl) {
+            if (!check_stmt(stmt->for_stmt.init_decl, vars, funcs, labels, ir,
+                            func_ret_type, NULL, NULL)) {
+                symtable_pop_scope(vars, old_head);
+                return 0;
+            }
+        } else {
+            if (check_expr(stmt->for_stmt.init, vars, funcs, ir, &cond_val) == TYPE_UNKNOWN) {
+                symtable_pop_scope(vars, old_head);
+                return 0; /* reuse cond_val for init but ignore value */
+            }
+        }
         ir_build_label(ir, start_label);
         if (check_expr(stmt->for_stmt.cond, vars, funcs, ir, &cond_val) == TYPE_UNKNOWN)
+        {
+            symtable_pop_scope(vars, old_head);
             return 0;
+        }
         ir_build_bcond(ir, cond_val, end_label);
         char cont_label[32];
         snprintf(cont_label, sizeof(cont_label), "L%d_cont", id);
         if (!check_stmt(stmt->for_stmt.body, vars, funcs, labels, ir, func_ret_type,
                         end_label, cont_label))
+        {
+            symtable_pop_scope(vars, old_head);
             return 0;
+        }
         ir_build_label(ir, cont_label);
         if (check_expr(stmt->for_stmt.incr, vars, funcs, ir, &cond_val) == TYPE_UNKNOWN)
+        {
+            symtable_pop_scope(vars, old_head);
             return 0;
+        }
         ir_build_br(ir, start_label);
         ir_build_label(ir, end_label);
+        symtable_pop_scope(vars, old_head);
         return 1;
     }
     case STMT_SWITCH: {
