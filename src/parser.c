@@ -21,6 +21,7 @@
 #include "parser.h"
 #include "vector.h"
 #include "error.h"
+#include "parser_types.h"
 
 /*
  * Initialize parser state with the provided token array.  "p->pos" is
@@ -127,39 +128,7 @@ static const char *token_name(token_type_t type)
     return "unknown";
 }
 
-/* Parse a fundamental type specifier with optional 'unsigned'. */
-static int parse_basic_type(parser_t *p, type_kind_t *out)
-{
-    size_t save = p->pos;
-    int is_unsigned = match(p, TOK_KW_UNSIGNED);
-    type_kind_t t;
-    if (match(p, TOK_KW_SHORT))
-        t = is_unsigned ? TYPE_USHORT : TYPE_SHORT;
-    else if (match(p, TOK_KW_LONG)) {
-        if (match(p, TOK_KW_LONG))
-            t = is_unsigned ? TYPE_ULLONG : TYPE_LLONG;
-        else
-            t = is_unsigned ? TYPE_ULONG : TYPE_LONG;
-    } else if (match(p, TOK_KW_BOOL)) {
-        t = TYPE_BOOL;
-    } else if (match(p, TOK_KW_INT)) {
-        t = is_unsigned ? TYPE_UINT : TYPE_INT;
-    } else if (match(p, TOK_KW_CHAR)) {
-        t = TYPE_CHAR;
-    } else if (match(p, TOK_KW_FLOAT)) {
-        t = TYPE_FLOAT;
-    } else if (match(p, TOK_KW_DOUBLE)) {
-        t = TYPE_DOUBLE;
-    } else if (match(p, TOK_KW_VOID)) {
-        t = TYPE_VOID;
-    } else {
-        p->pos = save;
-        return 0;
-    }
-    if (out)
-        *out = t;
-    return 1;
-}
+
 
 /*
  * Emit an error at the current token.  "expected" is an optional list of
