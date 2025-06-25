@@ -416,6 +416,26 @@ stmt_t *ast_make_goto(const char *name, size_t line, size_t column)
     return stmt;
 }
 
+/* Create a typedef declaration */
+stmt_t *ast_make_typedef(const char *name, type_kind_t type, size_t array_size,
+                         size_t line, size_t column)
+{
+    stmt_t *stmt = malloc(sizeof(*stmt));
+    if (!stmt)
+        return NULL;
+    stmt->kind = STMT_TYPEDEF;
+    stmt->line = line;
+    stmt->column = column;
+    stmt->typedef_decl.name = vc_strdup(name ? name : "");
+    if (!stmt->typedef_decl.name) {
+        free(stmt);
+        return NULL;
+    }
+    stmt->typedef_decl.type = type;
+    stmt->typedef_decl.array_size = array_size;
+    return stmt;
+}
+
 /* Create an enum declaration statement */
 stmt_t *ast_make_enum_decl(const char *tag, enumerator_t *items, size_t count,
                            size_t line, size_t column)
@@ -602,6 +622,9 @@ void ast_free_stmt(stmt_t *stmt)
         break;
     case STMT_GOTO:
         free(stmt->goto_stmt.name);
+        break;
+    case STMT_TYPEDEF:
+        free(stmt->typedef_decl.name);
         break;
     case STMT_ENUM_DECL:
         free(stmt->enum_decl.tag);

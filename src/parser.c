@@ -57,6 +57,7 @@ static const char *token_name(token_type_t type)
     case TOK_KW_ENUM: return "\"enum\"";
     case TOK_KW_STRUCT: return "\"struct\"";
     case TOK_KW_UNION: return "\"union\"";
+    case TOK_KW_TYPEDEF: return "\"typedef\"";
     case TOK_KW_RETURN: return "\"return\"";
     case TOK_KW_IF: return "\"if\"";
     case TOK_KW_ELSE: return "\"else\"";
@@ -297,6 +298,38 @@ int parser_parse_toplevel(parser_t *p, func_t **out_func, stmt_t **out_global)
         if (out_global)
             *out_global = decl;
         return 1;
+    }
+
+    if (tok->type == TOK_KW_TYPEDEF) {
+        p->pos++;
+        token_t *ttok = peek(p);
+        type_kind_t tt;
+        if (ttok && ttok->type == TOK_KW_INT) tt = TYPE_INT;
+        else if (ttok && ttok->type == TOK_KW_CHAR) tt = TYPE_CHAR;
+        else if (ttok && ttok->type == TOK_KW_FLOAT) tt = TYPE_FLOAT;
+        else if (ttok && ttok->type == TOK_KW_DOUBLE) tt = TYPE_DOUBLE;
+        else if (ttok && ttok->type == TOK_KW_VOID) tt = TYPE_VOID;
+        else { p->pos = save; return 0; }
+        p->pos++;
+        if ((tt == TYPE_INT || tt == TYPE_CHAR || tt == TYPE_FLOAT || tt == TYPE_DOUBLE) && match(p, TOK_STAR))
+            tt = TYPE_PTR;
+        token_t *name_tok = peek(p);
+        if (!name_tok || name_tok->type != TOK_IDENT) { p->pos = save; return 0; }
+        p->pos++;
+        size_t arr_size = 0;
+        if (match(p, TOK_LBRACKET)) {
+            token_t *num = peek(p);
+            if (!num || num->type != TOK_NUMBER) { p->pos = save; return 0; }
+            p->pos++;
+            arr_size = strtoul(num->lexeme, NULL, 10);
+            if (!match(p, TOK_RBRACKET)) { p->pos = save; return 0; }
+            tt = TYPE_ARRAY;
+        }
+        if (!match(p, TOK_SEMI)) { p->pos = save; return 0; }
+        if (out_global)
+            *out_global = ast_make_typedef(name_tok->lexeme, tt, arr_size,
+                                          tok->line, tok->column);
+        return *out_global != NULL;
     }
 
     type_kind_t t;

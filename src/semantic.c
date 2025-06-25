@@ -707,6 +707,15 @@ int check_stmt(stmt_t *stmt, symtable_t *vars, symtable_t *funcs,
         }
         return 1;
     }
+    case STMT_TYPEDEF: {
+        if (!symtable_add_typedef(vars, stmt->typedef_decl.name,
+                                  stmt->typedef_decl.type,
+                                  stmt->typedef_decl.array_size)) {
+            error_set(stmt->line, stmt->column);
+            return 0;
+        }
+        return 1;
+    }
     case STMT_VAR_DECL: {
         if (!symtable_add(vars, stmt->var_decl.name, stmt->var_decl.type,
                           stmt->var_decl.array_size)) {
@@ -807,6 +816,15 @@ int check_global(stmt_t *decl, symtable_t *globals, ir_builder_t *ir)
                 return 0;
             }
             next = val + 1;
+        }
+        return 1;
+    }
+    if (decl->kind == STMT_TYPEDEF) {
+        if (!symtable_add_typedef_global(globals, decl->typedef_decl.name,
+                                         decl->typedef_decl.type,
+                                         decl->typedef_decl.array_size)) {
+            error_set(decl->line, decl->column);
+            return 0;
         }
         return 1;
     }
