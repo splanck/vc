@@ -95,7 +95,7 @@ static void propagate_load_consts(ir_builder_t *ir)
                 v->next = vars;
                 vars = v;
             }
-            if (ins->src1 < max_id && is_const[ins->src1]) {
+            if (!ins->is_volatile && ins->src1 < max_id && is_const[ins->src1]) {
                 v->known = 1;
                 v->value = values[ins->src1];
             } else {
@@ -107,7 +107,7 @@ static void propagate_load_consts(ir_builder_t *ir)
             var_const_t *v = vars;
             while (v && strcmp(v->name, ins->name) != 0)
                 v = v->next;
-            if (v && v->known) {
+            if (!ins->is_volatile && v && v->known) {
                 free(ins->name);
                 ins->name = NULL;
                 ins->op = IR_CONST;
@@ -277,6 +277,10 @@ static int has_side_effect(ir_instr_t *ins)
     case IR_GLOB_ARRAY:
     case IR_GLOB_UNION:
         return 1;
+    case IR_LOAD:
+    case IR_LOAD_IDX:
+    case IR_LOAD_PTR:
+        return ins->is_volatile || ins->op == IR_LOAD_PTR;
     default:
         return 0;
     }

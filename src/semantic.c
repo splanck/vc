@@ -375,7 +375,9 @@ static type_kind_t check_unary_expr(expr_t *expr, symtable_t *vars,
 
             ir_value_t cur = sym->param_index >= 0
                                  ? ir_build_load_param(ir, sym->param_index)
-                                 : ir_build_load(ir, sym->ir_name);
+                                 : (sym->is_volatile
+                                        ? ir_build_load_vol(ir, sym->ir_name)
+                                        : ir_build_load(ir, sym->ir_name));
 
             if (sym->type == TYPE_PTR) {
                 int esz = sym->elem_size ? (int)sym->elem_size : 4;
@@ -387,6 +389,8 @@ static type_kind_t check_unary_expr(expr_t *expr, symtable_t *vars,
                 ir_value_t upd = ir_build_ptr_add(ir, cur, idx, esz);
                 if (sym->param_index >= 0)
                     ir_build_store_param(ir, sym->param_index, upd);
+                else if (sym->is_volatile)
+                    ir_build_store_vol(ir, sym->ir_name, upd);
                 else
                     ir_build_store(ir, sym->ir_name, upd);
                 if (out)
@@ -408,6 +412,8 @@ static type_kind_t check_unary_expr(expr_t *expr, symtable_t *vars,
             ir_value_t upd = ir_build_binop(ir, ir_op, cur, one);
             if (sym->param_index >= 0)
                 ir_build_store_param(ir, sym->param_index, upd);
+            else if (sym->is_volatile)
+                ir_build_store_vol(ir, sym->ir_name, upd);
             else
                 ir_build_store(ir, sym->ir_name, upd);
             if (out)
@@ -495,6 +501,8 @@ type_kind_t check_expr(expr_t *expr, symtable_t *vars, symtable_t *funcs,
             if (out) {
                 if (sym->param_index >= 0)
                     *out = ir_build_load_param(ir, sym->param_index);
+                else if (sym->is_volatile)
+                    *out = ir_build_load_vol(ir, sym->ir_name);
                 else
                     *out = ir_build_load(ir, sym->ir_name);
             }
@@ -552,6 +560,8 @@ type_kind_t check_expr(expr_t *expr, symtable_t *vars, symtable_t *funcs,
             vt == sym->type) {
             if (sym->param_index >= 0)
                 ir_build_store_param(ir, sym->param_index, val);
+            else if (sym->is_volatile)
+                ir_build_store_vol(ir, expr->assign.name, val);
             else
                 ir_build_store(ir, expr->assign.name, val);
             if (out)
@@ -584,7 +594,9 @@ type_kind_t check_expr(expr_t *expr, symtable_t *vars, symtable_t *funcs,
             }
         }
         if (out)
-            *out = ir_build_load_idx(ir, sym->ir_name, idx_val);
+            *out = sym->is_volatile
+                     ? ir_build_load_idx_vol(ir, sym->ir_name, idx_val)
+                     : ir_build_load_idx(ir, sym->ir_name, idx_val);
         return TYPE_INT;
     }
     case EXPR_ASSIGN_INDEX: {
@@ -617,7 +629,10 @@ type_kind_t check_expr(expr_t *expr, symtable_t *vars, symtable_t *funcs,
                 return TYPE_UNKNOWN;
             }
         }
-        ir_build_store_idx(ir, sym->ir_name, idx_val, val);
+        if (sym->is_volatile)
+            ir_build_store_idx_vol(ir, sym->ir_name, idx_val, val);
+        else
+            ir_build_store_idx(ir, sym->ir_name, idx_val, val);
         if (out)
             *out = val;
         return TYPE_INT;
@@ -1142,7 +1157,8 @@ int check_stmt(stmt_t *stmt, symtable_t *vars, symtable_t *funcs,
                           stmt->var_decl.array_size,
                           stmt->var_decl.elem_size,
                           stmt->var_decl.is_static,
-                          stmt->var_decl.is_const)) {
+                          stmt->var_decl.is_const,
+                          stmt->var_decl.is_volatile)) {
             error_set(stmt->line, stmt->column);
             return 0;
         }
@@ -1185,7 +1201,10 @@ int check_stmt(stmt_t *stmt, symtable_t *vars, symtable_t *funcs,
                     error_set(stmt->var_decl.init->line, stmt->var_decl.init->column);
                     return 0;
                 }
-                ir_build_store(ir, sym->ir_name, val);
+                if (stmt->var_decl.is_volatile)
+                    ir_build_store_vol(ir, sym->ir_name, val);
+                else
+                    ir_build_store(ir, sym->ir_name, val);
             }
         } else if (stmt->var_decl.init_list) {
             if (stmt->var_decl.type != TYPE_ARRAY ||
@@ -1209,7 +1228,10 @@ int check_stmt(stmt_t *stmt, symtable_t *vars, symtable_t *funcs,
                 for (size_t i = 0; i < stmt->var_decl.array_size; i++) {
                     ir_value_t idx = ir_build_const(ir, (int)i);
                     ir_value_t val = ir_build_const(ir, vals[i]);
-                    ir_build_store_idx(ir, sym->ir_name, idx, val);
+                    if (stmt->var_decl.is_volatile)
+                        ir_build_store_idx_vol(ir, sym->ir_name, idx, val);
+                    else
+                        ir_build_store_idx(ir, sym->ir_name, idx, val);
                 }
             }
             free(vals);
@@ -1333,7 +1355,8 @@ int check_global(stmt_t *decl, symtable_t *globals, ir_builder_t *ir)
                              decl->var_decl.array_size,
                              decl->var_decl.elem_size,
                              decl->var_decl.is_static,
-                             decl->var_decl.is_const)) {
+                             decl->var_decl.is_const,
+                             decl->var_decl.is_volatile)) {
         error_set(decl->line, decl->column);
         return 0;
     }

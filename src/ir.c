@@ -48,6 +48,7 @@ static ir_instr_t *append_instr(ir_builder_t *b)
     ins->dest = -1;
     ins->name = NULL;
     ins->data = NULL;
+    ins->is_volatile = 0;
     if (!b->head)
         b->head = ins;
     else
@@ -103,6 +104,18 @@ ir_value_t ir_build_load(ir_builder_t *b, const char *name)
     return (ir_value_t){ins->dest};
 }
 
+ir_value_t ir_build_load_vol(ir_builder_t *b, const char *name)
+{
+    ir_instr_t *ins = append_instr(b);
+    if (!ins)
+        return (ir_value_t){0};
+    ins->op = IR_LOAD;
+    ins->dest = b->next_value_id++;
+    ins->name = vc_strdup(name ? name : "");
+    ins->is_volatile = 1;
+    return (ir_value_t){ins->dest};
+}
+
 /*
  * Emit IR_STORE to assign `val` to variable `name`. src1 holds the
  * value identifier.
@@ -115,6 +128,17 @@ void ir_build_store(ir_builder_t *b, const char *name, ir_value_t val)
     ins->op = IR_STORE;
     ins->src1 = val.id;
     ins->name = vc_strdup(name ? name : "");
+}
+
+void ir_build_store_vol(ir_builder_t *b, const char *name, ir_value_t val)
+{
+    ir_instr_t *ins = append_instr(b);
+    if (!ins)
+        return;
+    ins->op = IR_STORE;
+    ins->src1 = val.id;
+    ins->name = vc_strdup(name ? name : "");
+    ins->is_volatile = 1;
 }
 
 /*
@@ -228,6 +252,19 @@ ir_value_t ir_build_load_idx(ir_builder_t *b, const char *name, ir_value_t idx)
     return (ir_value_t){ins->dest};
 }
 
+ir_value_t ir_build_load_idx_vol(ir_builder_t *b, const char *name, ir_value_t idx)
+{
+    ir_instr_t *ins = append_instr(b);
+    if (!ins)
+        return (ir_value_t){0};
+    ins->op = IR_LOAD_IDX;
+    ins->dest = b->next_value_id++;
+    ins->src1 = idx.id;
+    ins->name = vc_strdup(name ? name : "");
+    ins->is_volatile = 1;
+    return (ir_value_t){ins->dest};
+}
+
 /*
  * Emit IR_STORE_IDX storing `val` into array element `name[idx]`.
  */
@@ -241,6 +278,19 @@ void ir_build_store_idx(ir_builder_t *b, const char *name, ir_value_t idx,
     ins->src1 = idx.id;
     ins->src2 = val.id;
     ins->name = vc_strdup(name ? name : "");
+}
+
+void ir_build_store_idx_vol(ir_builder_t *b, const char *name, ir_value_t idx,
+                            ir_value_t val)
+{
+    ir_instr_t *ins = append_instr(b);
+    if (!ins)
+        return;
+    ins->op = IR_STORE_IDX;
+    ins->src1 = idx.id;
+    ins->src2 = val.id;
+    ins->name = vc_strdup(name ? name : "");
+    ins->is_volatile = 1;
 }
 
 /*
