@@ -97,6 +97,11 @@ p.x = 3;
 return p.x;
 ```
 
+Union declarations follow the same pattern using the `union` keyword. Only
+basic member types are supported and the maximum member size determines the
+size of the union object. Member access syntax is parsed but not semantically
+checked yet.
+
 #### Typedef aliases
 
 Type aliases can be introduced using the `typedef` keyword.  Only

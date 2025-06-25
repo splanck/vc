@@ -42,6 +42,7 @@ static const char *op_name(ir_op_t op)
     case IR_GLOB_STRING: return "IR_GLOB_STRING";
     case IR_GLOB_VAR: return "IR_GLOB_VAR";
     case IR_GLOB_ARRAY: return "IR_GLOB_ARRAY";
+    case IR_GLOB_UNION: return "IR_GLOB_UNION";
     case IR_LOAD: return "IR_LOAD";
     case IR_STORE: return "IR_STORE";
     case IR_LOAD_PARAM: return "IR_LOAD_PARAM";
@@ -78,6 +79,9 @@ char *ir_to_string(ir_builder_t *ir)
     for (ir_instr_t *ins = ir->head; ins; ins = ins->next) {
         if (ins->op == IR_GLOB_ARRAY) {
             strbuf_appendf(&sb, "%s name=%s count=%d\n", op_name(ins->op),
+                           ins->name ? ins->name : "", ins->imm);
+        } else if (ins->op == IR_GLOB_UNION) {
+            strbuf_appendf(&sb, "%s name=%s size=%d\n", op_name(ins->op),
                            ins->name ? ins->name : "", ins->imm);
         } else {
             strbuf_appendf(&sb,

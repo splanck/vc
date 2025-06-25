@@ -111,6 +111,8 @@ static void emit_memory_instr(strbuf_t *sb, ir_instr_t *ins,
     case IR_GLOB_ARRAY:
         /* globals handled separately */
         break;
+    case IR_GLOB_UNION:
+        break;
     default:
         break;
     }
@@ -426,7 +428,7 @@ static void emit_instr(strbuf_t *sb, ir_instr_t *ins, regalloc_t *ra, int x64)
     case IR_ADDR: case IR_LOAD_PTR: case IR_STORE_PTR:
     case IR_LOAD_IDX: case IR_STORE_IDX:
     case IR_ARG: case IR_GLOB_STRING:
-    case IR_GLOB_VAR: case IR_GLOB_ARRAY:
+    case IR_GLOB_VAR: case IR_GLOB_ARRAY: case IR_GLOB_UNION:
         emit_memory_instr(sb, ins, ra, x64);
         break;
 
@@ -488,7 +490,7 @@ void codegen_emit_x86(FILE *out, ir_builder_t *ir, int x64)
     int has_data = 0;
     for (ir_instr_t *ins = ir->head; ins; ins = ins->next) {
         if (ins->op == IR_GLOB_VAR || ins->op == IR_GLOB_STRING ||
-            ins->op == IR_GLOB_ARRAY) {
+            ins->op == IR_GLOB_ARRAY || ins->op == IR_GLOB_UNION) {
             if (!has_data) {
                 fputs(".data\n", out);
                 has_data = 1;
@@ -504,6 +506,8 @@ void codegen_emit_x86(FILE *out, ir_builder_t *ir, int x64)
                 int *vals = (int *)ins->data;
                 for (int i = 0; i < ins->imm; i++)
                     fprintf(out, "    %s %d\n", size_directive, vals[i]);
+            } else if (ins->op == IR_GLOB_UNION) {
+                fprintf(out, "    .zero %d\n", ins->imm);
             }
         }
     }

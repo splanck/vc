@@ -19,6 +19,7 @@
 static stmt_t *parse_block(parser_t *p);
 static stmt_t *parse_var_decl(parser_t *p);
 stmt_t *parser_parse_enum_decl(parser_t *p);
+stmt_t *parser_parse_union_decl(parser_t *p);
 stmt_t *parser_parse_stmt(parser_t *p);
 
 /* Parse a "{...}" block recursively collecting inner statements. */
@@ -107,6 +108,7 @@ static stmt_t *parse_var_decl(parser_t *p)
     }
     return ast_make_var_decl(name, t, arr_size, elem_size, is_static, is_const,
                              init, init_list, init_count,
+                             NULL, 0,
                              kw_tok->line, kw_tok->column);
 }
 
@@ -169,6 +171,74 @@ fail:
     return ast_make_enum_decl(tag, items, count, kw->line, kw->column);
 }
 
+/* Parse a union declaration */
+stmt_t *parser_parse_union_decl(parser_t *p)
+{
+    int is_static = match(p, TOK_KW_STATIC);
+    int is_const = match(p, TOK_KW_CONST);
+    if (!match(p, TOK_KW_UNION))
+        return NULL;
+    token_t *kw = &p->tokens[p->pos - 1];
+    if (!match(p, TOK_LBRACE))
+        return NULL;
+
+    vector_t members_v;
+    vector_init(&members_v, sizeof(union_member_t));
+    int ok = 0;
+    while (!match(p, TOK_RBRACE)) {
+        type_kind_t mt;
+        if (!parse_basic_type(p, &mt))
+            goto fail;
+        size_t elem_size = basic_type_size(mt);
+        if (match(p, TOK_STAR))
+            mt = TYPE_PTR;
+        token_t *id = peek(p);
+        if (!id || id->type != TOK_IDENT)
+            goto fail;
+        p->pos++;
+        size_t arr_size = 0;
+        if (match(p, TOK_LBRACKET)) {
+            token_t *num = peek(p);
+            if (!num || num->type != TOK_NUMBER)
+                goto fail;
+            p->pos++;
+            arr_size = strtoul(num->lexeme, NULL, 10);
+            if (!match(p, TOK_RBRACKET))
+                goto fail;
+            mt = TYPE_ARRAY;
+        }
+        if (!match(p, TOK_SEMI))
+            goto fail;
+        union_member_t m = { vc_strdup(id->lexeme), mt, arr_size, elem_size };
+        if (!vector_push(&members_v, &m)) {
+            free(m.name);
+            goto fail;
+        }
+    }
+
+    token_t *name_tok = peek(p);
+    if (!name_tok || name_tok->type != TOK_IDENT)
+        goto fail;
+    p->pos++;
+    char *name = name_tok->lexeme;
+    if (!match(p, TOK_SEMI))
+        goto fail;
+
+    ok = 1;
+fail:
+    if (!ok) {
+        for (size_t i = 0; i < members_v.count; i++)
+            free(((union_member_t *)members_v.data)[i].name);
+        vector_free(&members_v);
+        return NULL;
+    }
+    union_member_t *members = (union_member_t *)members_v.data;
+    size_t count = members_v.count;
+    return ast_make_var_decl(name, TYPE_UNION, 0, 0, is_static, is_const,
+                             NULL, NULL, 0, members, count,
+                             kw->line, kw->column);
+}
+
 /*
  * Parse a single statement at the current position.  This function
  * delegates to the specific helpers for declarations, control flow
@@ -190,6 +260,15 @@ stmt_t *parser_parse_stmt(parser_t *p)
         return parser_parse_enum_decl(p);
 
     tok = peek(p);
+    size_t save = p->pos;
+    match(p, TOK_KW_STATIC);
+    match(p, TOK_KW_CONST);
+    token_t *t2 = peek(p);
+    if (t2 && t2->type == TOK_KW_UNION) {
+        p->pos = save;
+        return parser_parse_union_decl(p);
+    }
+    p->pos = save;
     if (tok && tok->type == TOK_KW_STATIC)
         return parse_var_decl(p);
     if (tok && tok->type == TOK_KW_CONST)
