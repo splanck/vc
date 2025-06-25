@@ -238,6 +238,124 @@ static type_kind_t check_binary(expr_t *left, expr_t *right, symtable_t *vars,
     return TYPE_UNKNOWN;
 }
 
+static type_kind_t check_unary_expr(expr_t *expr, symtable_t *vars,
+                                    symtable_t *funcs, ir_builder_t *ir,
+                                    ir_value_t *out)
+{
+    expr_t *opnd = expr->unary.operand;
+    switch (expr->unary.op) {
+    case UNOP_DEREF: {
+        ir_value_t addr;
+        if (check_expr(opnd, vars, funcs, ir, &addr) == TYPE_PTR) {
+            if (out)
+                *out = ir_build_load_ptr(ir, addr);
+            return TYPE_INT;
+        }
+        error_set(opnd->line, opnd->column);
+        return TYPE_UNKNOWN;
+    }
+    case UNOP_ADDR:
+        if (opnd->kind != EXPR_IDENT) {
+            error_set(opnd->line, opnd->column);
+            return TYPE_UNKNOWN;
+        }
+        {
+            symbol_t *sym = symtable_lookup(vars, opnd->ident.name);
+            if (!sym) {
+                error_set(opnd->line, opnd->column);
+                return TYPE_UNKNOWN;
+            }
+            if (out)
+                *out = ir_build_addr(ir, sym->ir_name);
+            return TYPE_PTR;
+        }
+    case UNOP_NEG: {
+        ir_value_t val;
+        if (is_intlike(check_expr(opnd, vars, funcs, ir, &val))) {
+            if (out) {
+                ir_value_t zero = ir_build_const(ir, 0);
+                *out = ir_build_binop(ir, IR_SUB, zero, val);
+            }
+            return TYPE_INT;
+        }
+        error_set(opnd->line, opnd->column);
+        return TYPE_UNKNOWN;
+    }
+    case UNOP_NOT: {
+        ir_value_t val;
+        if (is_intlike(check_expr(opnd, vars, funcs, ir, &val))) {
+            if (out) {
+                ir_value_t zero = ir_build_const(ir, 0);
+                *out = ir_build_binop(ir, IR_CMPEQ, val, zero);
+            }
+            return TYPE_INT;
+        }
+        error_set(opnd->line, opnd->column);
+        return TYPE_UNKNOWN;
+    }
+    case UNOP_PREINC: case UNOP_PREDEC:
+    case UNOP_POSTINC: case UNOP_POSTDEC:
+        if (opnd->kind != EXPR_IDENT) {
+            error_set(opnd->line, opnd->column);
+            return TYPE_UNKNOWN;
+        }
+        {
+            symbol_t *sym = symtable_lookup(vars, opnd->ident.name);
+            if (!sym || !is_intlike(sym->type)) {
+                error_set(opnd->line, opnd->column);
+                return TYPE_UNKNOWN;
+            }
+            ir_value_t cur = sym->param_index >= 0
+                                 ? ir_build_load_param(ir, sym->param_index)
+                                 : ir_build_load(ir, sym->ir_name);
+            ir_value_t one = ir_build_const(ir, 1);
+            ir_op_t ir_op = (expr->unary.op == UNOP_PREDEC ||
+                             expr->unary.op == UNOP_POSTDEC)
+                                ? IR_SUB
+                                : IR_ADD;
+            ir_value_t upd = ir_build_binop(ir, ir_op, cur, one);
+            if (sym->param_index >= 0)
+                ir_build_store_param(ir, sym->param_index, upd);
+            else
+                ir_build_store(ir, sym->ir_name, upd);
+            if (out)
+                *out = (expr->unary.op == UNOP_PREINC ||
+                        expr->unary.op == UNOP_PREDEC)
+                           ? upd
+                           : cur;
+            return sym->type;
+        }
+    default:
+        return TYPE_UNKNOWN;
+    }
+}
+
+static type_kind_t check_binary_expr(expr_t *expr, symtable_t *vars,
+                                     symtable_t *funcs, ir_builder_t *ir,
+                                     ir_value_t *out)
+{
+    if (expr->binary.op == BINOP_LOGAND || expr->binary.op == BINOP_LOGOR) {
+        ir_value_t lval, rval;
+        if (!is_intlike(check_expr(expr->binary.left, vars, funcs, ir, &lval))) {
+            error_set(expr->binary.left->line, expr->binary.left->column);
+            return TYPE_UNKNOWN;
+        }
+        if (!is_intlike(check_expr(expr->binary.right, vars, funcs, ir, &rval))) {
+            error_set(expr->binary.right->line, expr->binary.right->column);
+            return TYPE_UNKNOWN;
+        }
+        if (out) {
+            if (expr->binary.op == BINOP_LOGAND)
+                *out = ir_build_logand(ir, lval, rval);
+            else
+                *out = ir_build_logor(ir, lval, rval);
+        }
+        return TYPE_INT;
+    }
+    return check_binary(expr->binary.left, expr->binary.right, vars, funcs,
+                        ir, out, expr->binary.op);
+}
+
 /*
  * Perform semantic analysis on an expression and emit IR code.
  * The type of the expression is returned, or TYPE_UNKNOWN on error.
@@ -261,79 +379,7 @@ type_kind_t check_expr(expr_t *expr, symtable_t *vars, symtable_t *funcs,
             *out = ir_build_const(ir, (int)expr->ch.value);
         return TYPE_CHAR;
     case EXPR_UNARY:
-        if (expr->unary.op == UNOP_DEREF) {
-            ir_value_t addr;
-            if (check_expr(expr->unary.operand, vars, funcs, ir, &addr) == TYPE_PTR) {
-                if (out)
-                    *out = ir_build_load_ptr(ir, addr);
-                return TYPE_INT;
-            }
-            error_set(expr->unary.operand->line, expr->unary.operand->column);
-            return TYPE_UNKNOWN;
-        } else if (expr->unary.op == UNOP_ADDR) {
-            if (expr->unary.operand->kind != EXPR_IDENT) {
-                error_set(expr->unary.operand->line, expr->unary.operand->column);
-                return TYPE_UNKNOWN;
-            }
-            symbol_t *sym = symtable_lookup(vars, expr->unary.operand->ident.name);
-            if (!sym) {
-                error_set(expr->unary.operand->line, expr->unary.operand->column);
-                return TYPE_UNKNOWN;
-            }
-            if (out)
-                *out = ir_build_addr(ir, sym->ir_name);
-            return TYPE_PTR;
-        } else if (expr->unary.op == UNOP_NEG) {
-            ir_value_t val;
-            if (is_intlike(check_expr(expr->unary.operand, vars, funcs, ir, &val))) {
-                if (out) {
-                    ir_value_t zero = ir_build_const(ir, 0);
-                    *out = ir_build_binop(ir, IR_SUB, zero, val);
-                }
-                return TYPE_INT;
-            }
-            error_set(expr->unary.operand->line, expr->unary.operand->column);
-            return TYPE_UNKNOWN;
-        } else if (expr->unary.op == UNOP_NOT) {
-            ir_value_t val;
-            if (is_intlike(check_expr(expr->unary.operand, vars, funcs, ir, &val))) {
-                if (out) {
-                    ir_value_t zero = ir_build_const(ir, 0);
-                    *out = ir_build_binop(ir, IR_CMPEQ, val, zero);
-                }
-                return TYPE_INT;
-            }
-            error_set(expr->unary.operand->line, expr->unary.operand->column);
-            return TYPE_UNKNOWN;
-        } else if (expr->unary.op == UNOP_PREINC || expr->unary.op == UNOP_PREDEC ||
-                   expr->unary.op == UNOP_POSTINC || expr->unary.op == UNOP_POSTDEC) {
-            if (expr->unary.operand->kind != EXPR_IDENT) {
-                error_set(expr->unary.operand->line, expr->unary.operand->column);
-                return TYPE_UNKNOWN;
-            }
-            symbol_t *sym = symtable_lookup(vars, expr->unary.operand->ident.name);
-            if (!sym || !is_intlike(sym->type)) {
-                error_set(expr->unary.operand->line, expr->unary.operand->column);
-                return TYPE_UNKNOWN;
-            }
-            ir_value_t cur;
-            if (sym->param_index >= 0)
-                cur = ir_build_load_param(ir, sym->param_index);
-            else
-                cur = ir_build_load(ir, sym->ir_name);
-            ir_value_t one = ir_build_const(ir, 1);
-            ir_op_t op = (expr->unary.op == UNOP_PREDEC || expr->unary.op == UNOP_POSTDEC)
-                            ? IR_SUB : IR_ADD;
-            ir_value_t upd = ir_build_binop(ir, op, cur, one);
-            if (sym->param_index >= 0)
-                ir_build_store_param(ir, sym->param_index, upd);
-            else
-                ir_build_store(ir, sym->ir_name, upd);
-            if (out)
-                *out = (expr->unary.op == UNOP_PREINC || expr->unary.op == UNOP_PREDEC) ? upd : cur;
-            return sym->type;
-        }
-        return TYPE_UNKNOWN;
+        return check_unary_expr(expr, vars, funcs, ir, out);
     case EXPR_IDENT: {
         symbol_t *sym = symtable_lookup(vars, expr->ident.name);
         if (!sym) {
@@ -360,26 +406,7 @@ type_kind_t check_expr(expr_t *expr, symtable_t *vars, symtable_t *funcs,
         }
     }
     case EXPR_BINARY:
-        if (expr->binary.op == BINOP_LOGAND || expr->binary.op == BINOP_LOGOR) {
-            ir_value_t lval, rval;
-            if (!is_intlike(check_expr(expr->binary.left, vars, funcs, ir, &lval))) {
-                error_set(expr->binary.left->line, expr->binary.left->column);
-                return TYPE_UNKNOWN;
-            }
-            if (!is_intlike(check_expr(expr->binary.right, vars, funcs, ir, &rval))) {
-                error_set(expr->binary.right->line, expr->binary.right->column);
-                return TYPE_UNKNOWN;
-            }
-            if (out) {
-                if (expr->binary.op == BINOP_LOGAND)
-                    *out = ir_build_logand(ir, lval, rval);
-                else
-                    *out = ir_build_logor(ir, lval, rval);
-            }
-            return TYPE_INT;
-        }
-        return check_binary(expr->binary.left, expr->binary.right, vars, funcs,
-                           ir, out, expr->binary.op);
+        return check_binary_expr(expr, vars, funcs, ir, out);
     case EXPR_COND: {
         ir_value_t cond_val;
         if (!is_intlike(check_expr(expr->cond.cond, vars, funcs, ir, &cond_val))) {
@@ -570,6 +597,192 @@ type_kind_t check_expr(expr_t *expr, symtable_t *vars, symtable_t *funcs,
     return TYPE_UNKNOWN;
 }
 
+static int check_if_stmt(stmt_t *stmt, symtable_t *vars, symtable_t *funcs,
+                         label_table_t *labels, ir_builder_t *ir,
+                         type_kind_t func_ret_type,
+                         const char *break_label, const char *continue_label)
+{
+    ir_value_t cond_val;
+    if (check_expr(stmt->if_stmt.cond, vars, funcs, ir, &cond_val) == TYPE_UNKNOWN)
+        return 0;
+    char else_label[32];
+    char end_label[32];
+    int id = label_next_id();
+    snprintf(else_label, sizeof(else_label), "L%d_else", id);
+    snprintf(end_label, sizeof(end_label), "L%d_end", id);
+    const char *target = stmt->if_stmt.else_branch ? else_label : end_label;
+    ir_build_bcond(ir, cond_val, target);
+    if (!check_stmt(stmt->if_stmt.then_branch, vars, funcs, labels, ir,
+                    func_ret_type, break_label, continue_label))
+        return 0;
+    if (stmt->if_stmt.else_branch) {
+        ir_build_br(ir, end_label);
+        ir_build_label(ir, else_label);
+        if (!check_stmt(stmt->if_stmt.else_branch, vars, funcs, labels, ir,
+                        func_ret_type, break_label, continue_label))
+            return 0;
+    }
+    ir_build_label(ir, end_label);
+    return 1;
+}
+
+static int check_while_stmt(stmt_t *stmt, symtable_t *vars, symtable_t *funcs,
+                            label_table_t *labels, ir_builder_t *ir,
+                            type_kind_t func_ret_type)
+{
+    ir_value_t cond_val;
+    char start_label[32];
+    char end_label[32];
+    int id = label_next_id();
+    snprintf(start_label, sizeof(start_label), "L%d_start", id);
+    snprintf(end_label, sizeof(end_label), "L%d_end", id);
+    ir_build_label(ir, start_label);
+    if (check_expr(stmt->while_stmt.cond, vars, funcs, ir, &cond_val) == TYPE_UNKNOWN)
+        return 0;
+    ir_build_bcond(ir, cond_val, end_label);
+    if (!check_stmt(stmt->while_stmt.body, vars, funcs, labels, ir,
+                    func_ret_type, end_label, start_label))
+        return 0;
+    ir_build_br(ir, start_label);
+    ir_build_label(ir, end_label);
+    return 1;
+}
+
+static int check_do_while_stmt(stmt_t *stmt, symtable_t *vars, symtable_t *funcs,
+                               label_table_t *labels, ir_builder_t *ir,
+                               type_kind_t func_ret_type)
+{
+    ir_value_t cond_val;
+    char start_label[32];
+    char cond_label[32];
+    char end_label[32];
+    int id = label_next_id();
+    snprintf(start_label, sizeof(start_label), "L%d_start", id);
+    snprintf(cond_label, sizeof(cond_label), "L%d_cond", id);
+    snprintf(end_label, sizeof(end_label), "L%d_end", id);
+    ir_build_label(ir, start_label);
+    if (!check_stmt(stmt->do_while_stmt.body, vars, funcs, labels, ir,
+                    func_ret_type, end_label, cond_label))
+        return 0;
+    ir_build_label(ir, cond_label);
+    if (check_expr(stmt->do_while_stmt.cond, vars, funcs, ir, &cond_val) == TYPE_UNKNOWN)
+        return 0;
+    ir_build_bcond(ir, cond_val, end_label);
+    ir_build_br(ir, start_label);
+    ir_build_label(ir, end_label);
+    return 1;
+}
+
+static int check_for_stmt(stmt_t *stmt, symtable_t *vars, symtable_t *funcs,
+                          label_table_t *labels, ir_builder_t *ir,
+                          type_kind_t func_ret_type)
+{
+    ir_value_t cond_val;
+    char start_label[32];
+    char end_label[32];
+    int id = label_next_id();
+    snprintf(start_label, sizeof(start_label), "L%d_start", id);
+    snprintf(end_label, sizeof(end_label), "L%d_end", id);
+    symbol_t *old_head = vars->head;
+    if (stmt->for_stmt.init_decl) {
+        if (!check_stmt(stmt->for_stmt.init_decl, vars, funcs, labels, ir,
+                        func_ret_type, NULL, NULL)) {
+            symtable_pop_scope(vars, old_head);
+            return 0;
+        }
+    } else {
+        if (check_expr(stmt->for_stmt.init, vars, funcs, ir, &cond_val) == TYPE_UNKNOWN) {
+            symtable_pop_scope(vars, old_head);
+            return 0; /* reuse cond_val for init but ignore value */
+        }
+    }
+    ir_build_label(ir, start_label);
+    if (check_expr(stmt->for_stmt.cond, vars, funcs, ir, &cond_val) == TYPE_UNKNOWN) {
+        symtable_pop_scope(vars, old_head);
+        return 0;
+    }
+    ir_build_bcond(ir, cond_val, end_label);
+    char cont_label[32];
+    snprintf(cont_label, sizeof(cont_label), "L%d_cont", id);
+    if (!check_stmt(stmt->for_stmt.body, vars, funcs, labels, ir,
+                    func_ret_type, end_label, cont_label)) {
+        symtable_pop_scope(vars, old_head);
+        return 0;
+    }
+    ir_build_label(ir, cont_label);
+    if (check_expr(stmt->for_stmt.incr, vars, funcs, ir, &cond_val) == TYPE_UNKNOWN) {
+        symtable_pop_scope(vars, old_head);
+        return 0;
+    }
+    ir_build_br(ir, start_label);
+    ir_build_label(ir, end_label);
+    symtable_pop_scope(vars, old_head);
+    return 1;
+}
+
+static int check_switch_stmt(stmt_t *stmt, symtable_t *vars, symtable_t *funcs,
+                             label_table_t *labels, ir_builder_t *ir,
+                             type_kind_t func_ret_type)
+{
+    ir_value_t expr_val;
+    if (check_expr(stmt->switch_stmt.expr, vars, funcs, ir, &expr_val) == TYPE_UNKNOWN)
+        return 0;
+    char end_label[32];
+    char default_label[32];
+    int id = label_next_id();
+    snprintf(end_label, sizeof(end_label), "L%d_end", id);
+    snprintf(default_label, sizeof(default_label), "L%d_default", id);
+    char **case_labels = calloc(stmt->switch_stmt.case_count, sizeof(char *));
+    if (!case_labels)
+        return 0;
+    for (size_t i = 0; i < stmt->switch_stmt.case_count; i++) {
+        char lbl[32];
+        snprintf(lbl, sizeof(lbl), "L%d_case%zu", id, i);
+        case_labels[i] = vc_strdup(lbl);
+        int cval;
+        if (!eval_const_expr(stmt->switch_stmt.cases[i].expr, vars, &cval)) {
+            for (size_t j = 0; j <= i; j++) free(case_labels[j]);
+            free(case_labels);
+            error_set(stmt->switch_stmt.cases[i].expr->line,
+                      stmt->switch_stmt.cases[i].expr->column);
+            return 0;
+        }
+        ir_value_t const_val = ir_build_const(ir, cval);
+        ir_value_t cmp = ir_build_binop(ir, IR_CMPEQ, expr_val, const_val);
+        ir_build_bcond(ir, cmp, case_labels[i]);
+    }
+    if (stmt->switch_stmt.default_body)
+        ir_build_br(ir, default_label);
+    else
+        ir_build_br(ir, end_label);
+    for (size_t i = 0; i < stmt->switch_stmt.case_count; i++) {
+        ir_build_label(ir, case_labels[i]);
+        if (!check_stmt(stmt->switch_stmt.cases[i].body, vars, funcs, labels, ir,
+                        func_ret_type, end_label, NULL)) {
+            for (size_t j = 0; j < stmt->switch_stmt.case_count; j++)
+                free(case_labels[j]);
+            free(case_labels);
+            return 0;
+        }
+        ir_build_br(ir, end_label);
+    }
+    if (stmt->switch_stmt.default_body) {
+        ir_build_label(ir, default_label);
+        if (!check_stmt(stmt->switch_stmt.default_body, vars, funcs, labels, ir,
+                        func_ret_type, end_label, NULL)) {
+            for (size_t j = 0; j < stmt->switch_stmt.case_count; j++)
+                free(case_labels[j]);
+            free(case_labels);
+            return 0;
+        }
+    }
+    ir_build_label(ir, end_label);
+    for (size_t j = 0; j < stmt->switch_stmt.case_count; j++)
+        free(case_labels[j]);
+    free(case_labels);
+    return 1;
+}
+
 /*
  * Validate a single statement.  Loop labels are used for 'break' and
  * 'continue' targets.  Returns non-zero on success.
@@ -604,174 +817,17 @@ int check_stmt(stmt_t *stmt, symtable_t *vars, symtable_t *funcs,
         ir_build_return(ir, val);
         return 1;
     }
-    case STMT_IF: {
-        ir_value_t cond_val;
-        if (check_expr(stmt->if_stmt.cond, vars, funcs, ir, &cond_val) == TYPE_UNKNOWN)
-            return 0;
-        char else_label[32];
-        char end_label[32];
-        int id = label_next_id();
-        snprintf(else_label, sizeof(else_label), "L%d_else", id);
-        snprintf(end_label, sizeof(end_label), "L%d_end", id);
-        const char *target = stmt->if_stmt.else_branch ? else_label : end_label;
-        ir_build_bcond(ir, cond_val, target);
-        if (!check_stmt(stmt->if_stmt.then_branch, vars, funcs, labels, ir, func_ret_type,
-                        break_label, continue_label))
-            return 0;
-        if (stmt->if_stmt.else_branch) {
-            ir_build_br(ir, end_label);
-            ir_build_label(ir, else_label);
-            if (!check_stmt(stmt->if_stmt.else_branch, vars, funcs, labels, ir, func_ret_type,
-                            break_label, continue_label))
-                return 0;
-        }
-        ir_build_label(ir, end_label);
-        return 1;
-    }
-    case STMT_WHILE: {
-        ir_value_t cond_val;
-        char start_label[32];
-        char end_label[32];
-        int id = label_next_id();
-        snprintf(start_label, sizeof(start_label), "L%d_start", id);
-        snprintf(end_label, sizeof(end_label), "L%d_end", id);
-        ir_build_label(ir, start_label);
-        if (check_expr(stmt->while_stmt.cond, vars, funcs, ir, &cond_val) == TYPE_UNKNOWN)
-            return 0;
-        ir_build_bcond(ir, cond_val, end_label);
-        if (!check_stmt(stmt->while_stmt.body, vars, funcs, labels, ir, func_ret_type,
-                        end_label, start_label))
-            return 0;
-        ir_build_br(ir, start_label);
-        ir_build_label(ir, end_label);
-        return 1;
-    }
-    case STMT_DO_WHILE: {
-        ir_value_t cond_val;
-        char start_label[32];
-        char cond_label[32];
-        char end_label[32];
-        int id = label_next_id();
-        snprintf(start_label, sizeof(start_label), "L%d_start", id);
-        snprintf(cond_label, sizeof(cond_label), "L%d_cond", id);
-        snprintf(end_label, sizeof(end_label), "L%d_end", id);
-        ir_build_label(ir, start_label);
-        if (!check_stmt(stmt->do_while_stmt.body, vars, funcs, labels, ir, func_ret_type,
-                        end_label, cond_label))
-            return 0;
-        ir_build_label(ir, cond_label);
-        if (check_expr(stmt->do_while_stmt.cond, vars, funcs, ir, &cond_val) == TYPE_UNKNOWN)
-            return 0;
-        ir_build_bcond(ir, cond_val, end_label);
-        ir_build_br(ir, start_label);
-        ir_build_label(ir, end_label);
-        return 1;
-    }
-    case STMT_FOR: {
-        ir_value_t cond_val;
-        char start_label[32];
-        char end_label[32];
-        int id = label_next_id();
-        snprintf(start_label, sizeof(start_label), "L%d_start", id);
-        snprintf(end_label, sizeof(end_label), "L%d_end", id);
-        symbol_t *old_head = vars->head;
-        if (stmt->for_stmt.init_decl) {
-            if (!check_stmt(stmt->for_stmt.init_decl, vars, funcs, labels, ir,
-                            func_ret_type, NULL, NULL)) {
-                symtable_pop_scope(vars, old_head);
-                return 0;
-            }
-        } else {
-            if (check_expr(stmt->for_stmt.init, vars, funcs, ir, &cond_val) == TYPE_UNKNOWN) {
-                symtable_pop_scope(vars, old_head);
-                return 0; /* reuse cond_val for init but ignore value */
-            }
-        }
-        ir_build_label(ir, start_label);
-        if (check_expr(stmt->for_stmt.cond, vars, funcs, ir, &cond_val) == TYPE_UNKNOWN)
-        {
-            symtable_pop_scope(vars, old_head);
-            return 0;
-        }
-        ir_build_bcond(ir, cond_val, end_label);
-        char cont_label[32];
-        snprintf(cont_label, sizeof(cont_label), "L%d_cont", id);
-        if (!check_stmt(stmt->for_stmt.body, vars, funcs, labels, ir, func_ret_type,
-                        end_label, cont_label))
-        {
-            symtable_pop_scope(vars, old_head);
-            return 0;
-        }
-        ir_build_label(ir, cont_label);
-        if (check_expr(stmt->for_stmt.incr, vars, funcs, ir, &cond_val) == TYPE_UNKNOWN)
-        {
-            symtable_pop_scope(vars, old_head);
-            return 0;
-        }
-        ir_build_br(ir, start_label);
-        ir_build_label(ir, end_label);
-        symtable_pop_scope(vars, old_head);
-        return 1;
-    }
-    case STMT_SWITCH: {
-        ir_value_t expr_val;
-        if (check_expr(stmt->switch_stmt.expr, vars, funcs, ir, &expr_val) == TYPE_UNKNOWN)
-            return 0;
-        char end_label[32];
-        char default_label[32];
-        int id = label_next_id();
-        snprintf(end_label, sizeof(end_label), "L%d_end", id);
-        snprintf(default_label, sizeof(default_label), "L%d_default", id);
-        char **case_labels = calloc(stmt->switch_stmt.case_count, sizeof(char *));
-        if (!case_labels)
-            return 0;
-        for (size_t i = 0; i < stmt->switch_stmt.case_count; i++) {
-            char lbl[32];
-            snprintf(lbl, sizeof(lbl), "L%d_case%zu", id, i);
-            case_labels[i] = vc_strdup(lbl);
-            int cval;
-            if (!eval_const_expr(stmt->switch_stmt.cases[i].expr, vars, &cval)) {
-                for (size_t j = 0; j <= i; j++) free(case_labels[j]);
-                free(case_labels);
-                error_set(stmt->switch_stmt.cases[i].expr->line,
-                          stmt->switch_stmt.cases[i].expr->column);
-                return 0;
-            }
-            ir_value_t const_val = ir_build_const(ir, cval);
-            ir_value_t cmp = ir_build_binop(ir, IR_CMPEQ, expr_val, const_val);
-            ir_build_bcond(ir, cmp, case_labels[i]);
-        }
-        if (stmt->switch_stmt.default_body)
-            ir_build_br(ir, default_label);
-        else
-            ir_build_br(ir, end_label);
-        for (size_t i = 0; i < stmt->switch_stmt.case_count; i++) {
-            ir_build_label(ir, case_labels[i]);
-            if (!check_stmt(stmt->switch_stmt.cases[i].body, vars, funcs, labels, ir,
-                            func_ret_type, end_label, NULL)) {
-                for (size_t j = 0; j < stmt->switch_stmt.case_count; j++)
-                    free(case_labels[j]);
-                free(case_labels);
-                return 0;
-            }
-            ir_build_br(ir, end_label);
-        }
-        if (stmt->switch_stmt.default_body) {
-            ir_build_label(ir, default_label);
-            if (!check_stmt(stmt->switch_stmt.default_body, vars, funcs, labels, ir,
-                            func_ret_type, end_label, NULL)) {
-                for (size_t j = 0; j < stmt->switch_stmt.case_count; j++)
-                    free(case_labels[j]);
-                free(case_labels);
-                return 0;
-            }
-        }
-        ir_build_label(ir, end_label);
-        for (size_t j = 0; j < stmt->switch_stmt.case_count; j++)
-            free(case_labels[j]);
-        free(case_labels);
-        return 1;
-    }
+    case STMT_IF:
+        return check_if_stmt(stmt, vars, funcs, labels, ir, func_ret_type,
+                             break_label, continue_label);
+    case STMT_WHILE:
+        return check_while_stmt(stmt, vars, funcs, labels, ir, func_ret_type);
+    case STMT_DO_WHILE:
+        return check_do_while_stmt(stmt, vars, funcs, labels, ir, func_ret_type);
+    case STMT_FOR:
+        return check_for_stmt(stmt, vars, funcs, labels, ir, func_ret_type);
+    case STMT_SWITCH:
+        return check_switch_stmt(stmt, vars, funcs, labels, ir, func_ret_type);
     case STMT_LABEL: {
         const char *ir_name = label_table_get_or_add(labels, stmt->label.name);
         ir_build_label(ir, ir_name);
