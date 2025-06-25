@@ -11,6 +11,7 @@
 
 #include "token.h"
 #include "vector.h"
+#include "util.h"
 
 typedef struct {
     const char *kw;
@@ -62,9 +63,7 @@ static token_type_t lookup_keyword(const char *str, size_t len)
 static void append_token(vector_t *vec, token_type_t type, const char *lexeme,
                          size_t len, size_t line, size_t column)
 {
-    char *text = malloc(len + 1);
-    if (!text)
-        exit(1);
+    char *text = vc_alloc_or_exit(len + 1);
     memcpy(text, lexeme, len);
     text[len] = '\0';
     token_t tok = { type, text, line, column };

@@ -69,11 +69,7 @@ static int process_file(const char *path, vector_t *macros, strbuf_t *out)
     const char *slash = strrchr(path, '/');
     if (slash) {
         size_t len = (size_t)(slash - path) + 1;
-        dir = malloc(len + 1);
-        if (!dir) {
-            free(text);
-            return 0;
-        }
+        dir = vc_alloc_or_exit(len + 1);
         memcpy(dir, path, len);
         dir[len] = '\0';
     }

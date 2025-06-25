@@ -8,6 +8,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include "vector.h"
+#include "util.h"
 
 /* Initialize vector for elements of the given size */
 void vector_init(vector_t *vec, size_t elem_size)
@@ -27,9 +28,7 @@ int vector_push(vector_t *vec, const void *elem)
         return 0;
     if (vec->count >= vec->cap) {
         size_t new_cap = vec->cap ? vec->cap * 2 : 16;
-        void *tmp = realloc(vec->data, new_cap * vec->elem_size);
-        if (!tmp)
-            return 0;
+        void *tmp = vc_realloc_or_exit(vec->data, new_cap * vec->elem_size);
         vec->data = tmp;
         vec->cap = new_cap;
     }
