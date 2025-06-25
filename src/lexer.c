@@ -287,6 +287,21 @@ token_t *lexer_tokenize(const char *src, size_t *out_count)
         } else if (c == '-' && src[i + 1] == '>') {
             append_token(&vec, TOK_ARROW, "->", 2, line, col);
             i += 2; col += 2;
+        } else if (c == '+' && src[i + 1] == '=') {
+            append_token(&vec, TOK_PLUSEQ, "+=", 2, line, col);
+            i += 2; col += 2;
+        } else if (c == '-' && src[i + 1] == '=') {
+            append_token(&vec, TOK_MINUSEQ, "-=", 2, line, col);
+            i += 2; col += 2;
+        } else if (c == '*' && src[i + 1] == '=') {
+            append_token(&vec, TOK_STAREQ, "*=", 2, line, col);
+            i += 2; col += 2;
+        } else if (c == '/' && src[i + 1] == '=') {
+            append_token(&vec, TOK_SLASHEQ, "/=", 2, line, col);
+            i += 2; col += 2;
+        } else if (c == '%' && src[i + 1] == '=') {
+            append_token(&vec, TOK_PERCENTEQ, "%=", 2, line, col);
+            i += 2; col += 2;
         } else {
             read_punct(c, &vec, line, col);
             i++; col++;

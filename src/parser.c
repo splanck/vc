@@ -84,6 +84,11 @@ static const char *token_name(token_type_t type)
     case TOK_STAR: return "'*'";
     case TOK_SLASH: return "'/'";
     case TOK_PERCENT: return "'%'";
+    case TOK_PLUSEQ: return "'+='";
+    case TOK_MINUSEQ: return "'-='";
+    case TOK_STAREQ: return "'*='";
+    case TOK_SLASHEQ: return "'/='";
+    case TOK_PERCENTEQ: return "'%='";
     case TOK_ASSIGN: return "'='";
     case TOK_EQ: return "'=='";
     case TOK_NEQ: return "'!='";
