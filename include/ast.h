@@ -177,6 +177,7 @@ typedef enum {
     STMT_GOTO,
     STMT_TYPEDEF,
     STMT_ENUM_DECL,
+    STMT_UNION_DECL,
     STMT_BLOCK
 } stmt_kind_t;
 
@@ -197,6 +198,7 @@ struct stmt {
             type_kind_t type;
             size_t array_size;
             size_t elem_size;
+            char *tag; /* NULL for basic types */
             int is_static;
             int is_const;
             /* optional initializer expression */
@@ -251,6 +253,11 @@ struct stmt {
             size_t count;
         } enum_decl;
         struct {
+            char *tag;
+            union_member_t *members;
+            size_t count;
+        } union_decl;
+        struct {
             stmt_t **stmts;
             size_t count;
         } block;
@@ -270,8 +277,8 @@ struct enumerator {
 struct union_member {
     char *name;
     type_kind_t type;
-    size_t array_size;
     size_t elem_size;
+    size_t offset;
 };
 
 /* Constructors */
@@ -353,6 +360,9 @@ stmt_t *ast_make_typedef(const char *name, type_kind_t type, size_t array_size,
 /* Declare an enum with \p count enumerators. */
 stmt_t *ast_make_enum_decl(const char *tag, enumerator_t *items, size_t count,
                            size_t line, size_t column);
+/* Declare a union with \p count members. */
+stmt_t *ast_make_union_decl(const char *tag, union_member_t *members,
+                           size_t count, size_t line, size_t column);
 /* Create a block of statements containing \p count elements. */
 stmt_t *ast_make_block(stmt_t **stmts, size_t count,
                        size_t line, size_t column);

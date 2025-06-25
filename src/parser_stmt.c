@@ -209,7 +209,10 @@ stmt_t *parser_parse_union_decl(parser_t *p)
         }
         if (!match(p, TOK_SEMI))
             goto fail;
-        union_member_t m = { vc_strdup(id->lexeme), mt, arr_size, elem_size };
+        size_t mem_sz = elem_size;
+        if (mt == TYPE_ARRAY)
+            mem_sz *= arr_size;
+        union_member_t m = { vc_strdup(id->lexeme), mt, mem_sz, 0 };
         if (!vector_push(&members_v, &m)) {
             free(m.name);
             goto fail;

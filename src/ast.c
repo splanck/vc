@@ -293,6 +293,7 @@ stmt_t *ast_make_var_decl(const char *name, type_kind_t type, size_t array_size,
     stmt->var_decl.type = type;
     stmt->var_decl.array_size = array_size;
     stmt->var_decl.elem_size = elem_size;
+    stmt->var_decl.tag = NULL;
     stmt->var_decl.is_static = is_static;
     stmt->var_decl.is_const = is_const;
     stmt->var_decl.init = init;
@@ -484,6 +485,26 @@ stmt_t *ast_make_enum_decl(const char *tag, enumerator_t *items, size_t count,
     return stmt;
 }
 
+/* Create a union declaration statement */
+stmt_t *ast_make_union_decl(const char *tag, union_member_t *members,
+                            size_t count, size_t line, size_t column)
+{
+    stmt_t *stmt = malloc(sizeof(*stmt));
+    if (!stmt)
+        return NULL;
+    stmt->kind = STMT_UNION_DECL;
+    stmt->line = line;
+    stmt->column = column;
+    stmt->union_decl.tag = vc_strdup(tag ? tag : "");
+    if (!stmt->union_decl.tag) {
+        free(stmt);
+        return NULL;
+    }
+    stmt->union_decl.members = members;
+    stmt->union_decl.count = count;
+    return stmt;
+}
+
 /* Create a block statement containing \p count child statements. */
 stmt_t *ast_make_block(stmt_t **stmts, size_t count,
                        size_t line, size_t column)
@@ -625,6 +646,7 @@ void ast_free_stmt(stmt_t *stmt)
         for (size_t i = 0; i < stmt->var_decl.init_count; i++)
             ast_free_expr(stmt->var_decl.init_list[i]);
         free(stmt->var_decl.init_list);
+        free(stmt->var_decl.tag);
         for (size_t i = 0; i < stmt->var_decl.member_count; i++)
             free(stmt->var_decl.members[i].name);
         free(stmt->var_decl.members);
@@ -674,6 +696,12 @@ void ast_free_stmt(stmt_t *stmt)
             ast_free_expr(stmt->enum_decl.items[i].value);
         }
         free(stmt->enum_decl.items);
+        break;
+    case STMT_UNION_DECL:
+        free(stmt->union_decl.tag);
+        for (size_t i = 0; i < stmt->union_decl.count; i++)
+            free(stmt->union_decl.members[i].name);
+        free(stmt->union_decl.members);
         break;
     case STMT_BREAK:
     case STMT_CONTINUE:
