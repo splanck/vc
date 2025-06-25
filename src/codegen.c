@@ -149,6 +149,54 @@ static void emit_arith_instr(strbuf_t *sb, ir_instr_t *ins,
                        loc_str(buf2, ra, ins->dest, x64));
         break;
     }
+    case IR_FADD: {
+        const char *reg0 = "%xmm0";
+        const char *reg1 = "%xmm1";
+        strbuf_appendf(sb, "    movd %s, %s\n", loc_str(buf1, ra, ins->src1, x64), reg0);
+        strbuf_appendf(sb, "    movd %s, %s\n", loc_str(buf1, ra, ins->src2, x64), reg1);
+        strbuf_appendf(sb, "    addss %s, %s\n", reg1, reg0);
+        if (ra && ra->loc[ins->dest] >= 0)
+            strbuf_appendf(sb, "    movd %s, %s\n", reg0, loc_str(buf2, ra, ins->dest, x64));
+        else
+            strbuf_appendf(sb, "    movss %s, %s\n", reg0, loc_str(buf2, ra, ins->dest, x64));
+        break;
+    }
+    case IR_FSUB: {
+        const char *reg0 = "%xmm0";
+        const char *reg1 = "%xmm1";
+        strbuf_appendf(sb, "    movd %s, %s\n", loc_str(buf1, ra, ins->src1, x64), reg0);
+        strbuf_appendf(sb, "    movd %s, %s\n", loc_str(buf1, ra, ins->src2, x64), reg1);
+        strbuf_appendf(sb, "    subss %s, %s\n", reg1, reg0);
+        if (ra && ra->loc[ins->dest] >= 0)
+            strbuf_appendf(sb, "    movd %s, %s\n", reg0, loc_str(buf2, ra, ins->dest, x64));
+        else
+            strbuf_appendf(sb, "    movss %s, %s\n", reg0, loc_str(buf2, ra, ins->dest, x64));
+        break;
+    }
+    case IR_FMUL: {
+        const char *reg0 = "%xmm0";
+        const char *reg1 = "%xmm1";
+        strbuf_appendf(sb, "    movd %s, %s\n", loc_str(buf1, ra, ins->src1, x64), reg0);
+        strbuf_appendf(sb, "    movd %s, %s\n", loc_str(buf1, ra, ins->src2, x64), reg1);
+        strbuf_appendf(sb, "    mulss %s, %s\n", reg1, reg0);
+        if (ra && ra->loc[ins->dest] >= 0)
+            strbuf_appendf(sb, "    movd %s, %s\n", reg0, loc_str(buf2, ra, ins->dest, x64));
+        else
+            strbuf_appendf(sb, "    movss %s, %s\n", reg0, loc_str(buf2, ra, ins->dest, x64));
+        break;
+    }
+    case IR_FDIV: {
+        const char *reg0 = "%xmm0";
+        const char *reg1 = "%xmm1";
+        strbuf_appendf(sb, "    movd %s, %s\n", loc_str(buf1, ra, ins->src1, x64), reg0);
+        strbuf_appendf(sb, "    movd %s, %s\n", loc_str(buf1, ra, ins->src2, x64), reg1);
+        strbuf_appendf(sb, "    divss %s, %s\n", reg1, reg0);
+        if (ra && ra->loc[ins->dest] >= 0)
+            strbuf_appendf(sb, "    movd %s, %s\n", reg0, loc_str(buf2, ra, ins->dest, x64));
+        else
+            strbuf_appendf(sb, "    movss %s, %s\n", reg0, loc_str(buf2, ra, ins->dest, x64));
+        break;
+    }
     case IR_ADD:
         strbuf_appendf(sb, "    mov%s %s, %s\n", sfx,
                        loc_str(buf1, ra, ins->src1, x64),
@@ -381,6 +429,7 @@ static void emit_instr(strbuf_t *sb, ir_instr_t *ins, regalloc_t *ra, int x64)
         break;
 
     case IR_PTR_ADD: case IR_PTR_DIFF:
+    case IR_FADD: case IR_FSUB: case IR_FMUL: case IR_FDIV:
     case IR_ADD: case IR_SUB: case IR_MUL:
     case IR_DIV: case IR_MOD: case IR_SHL:
     case IR_SHR: case IR_AND: case IR_OR:
