@@ -29,6 +29,167 @@
 #include "label.h"
 #include "preproc.h"
 
+/* Compilation stage helpers */
+static int tokenize_stage(const char *source, char **out_src,
+                          token_t **out_toks, size_t *out_count);
+static int parse_stage(token_t *toks, size_t count,
+                       vector_t *funcs_v, vector_t *globs_v,
+                       symtable_t *funcs);
+static int semantic_stage(func_t **func_list, size_t fcount,
+                          stmt_t **glob_list, size_t gcount,
+                          symtable_t *funcs, symtable_t *globals,
+                          ir_builder_t *ir);
+static void optimize_stage(ir_builder_t *ir, const opt_config_t *cfg);
+static int output_stage(ir_builder_t *ir, const char *output,
+                        int dump_ir, int dump_asm, int use_x86_64);
+
+/* Tokenize the preprocessed source file */
+static int tokenize_stage(const char *source, char **out_src,
+                          token_t **out_toks, size_t *out_count)
+{
+    char *text = preproc_run(source);
+    if (!text) {
+        perror("preproc_run");
+        return 0;
+    }
+    size_t count = 0;
+    token_t *toks = lexer_tokenize(text, &count);
+    if (!toks) {
+        fprintf(stderr, "Tokenization failed\n");
+        free(text);
+        return 0;
+    }
+    *out_src = text;
+    *out_toks = toks;
+    if (out_count)
+        *out_count = count;
+    return 1;
+}
+
+/* Parse tokens into AST lists */
+static int parse_stage(token_t *toks, size_t count,
+                       vector_t *funcs_v, vector_t *globs_v,
+                       symtable_t *funcs)
+{
+    parser_t parser;
+    parser_init(&parser, toks, count);
+    symtable_init(funcs);
+    vector_init(funcs_v, sizeof(func_t *));
+    vector_init(globs_v, sizeof(stmt_t *));
+
+    int ok = 1;
+    while (ok && !parser_is_eof(&parser)) {
+        func_t *fn = NULL;
+        stmt_t *g = NULL;
+        if (!parser_parse_toplevel(&parser, funcs, &fn, &g)) {
+            token_type_t expected[] = { TOK_KW_INT, TOK_KW_VOID };
+            parser_print_error(&parser, expected, 2);
+            ok = 0;
+            break;
+        }
+        if (fn) {
+            if (!vector_push(funcs_v, &fn)) {
+                ok = 0;
+                ast_free_func(fn);
+            }
+        } else if (g) {
+            if (!vector_push(globs_v, &g)) {
+                ok = 0;
+                ast_free_stmt(g);
+            }
+        }
+    }
+    return ok;
+}
+
+/* Perform semantic analysis and IR generation */
+static int semantic_stage(func_t **func_list, size_t fcount,
+                          stmt_t **glob_list, size_t gcount,
+                          symtable_t *funcs, symtable_t *globals,
+                          ir_builder_t *ir)
+{
+    symtable_init(globals);
+    ir_builder_init(ir);
+    int ok = 1;
+
+    for (size_t i = 0; i < fcount; i++) {
+        symbol_t *existing = symtable_lookup(funcs, func_list[i]->name);
+        if (existing) {
+            int mismatch = existing->type != func_list[i]->return_type ||
+                           existing->param_count != func_list[i]->param_count;
+            for (size_t j = 0; j < existing->param_count && !mismatch; j++)
+                if (existing->param_types[j] != func_list[i]->param_types[j])
+                    mismatch = 1;
+            if (mismatch) {
+                ok = 0;
+                error_set(0, 0);
+                break;
+            }
+            existing->is_prototype = 0;
+        } else {
+            symtable_add_func(funcs, func_list[i]->name,
+                              func_list[i]->return_type,
+                              func_list[i]->param_types,
+                              func_list[i]->param_count,
+                              0);
+        }
+    }
+
+    for (size_t i = 0; i < gcount && ok; i++) {
+        if (!check_global(glob_list[i], globals, ir)) {
+            error_print("Semantic error");
+            ok = 0;
+        }
+    }
+
+    for (size_t i = 0; i < fcount && ok; i++) {
+        if (!check_func(func_list[i], funcs, globals, ir)) {
+            error_print("Semantic error");
+            ok = 0;
+        }
+    }
+
+    return ok;
+}
+
+/* Run IR optimizations */
+static void optimize_stage(ir_builder_t *ir, const opt_config_t *cfg)
+{
+    if (cfg)
+        opt_run(ir, cfg);
+}
+
+/* Emit the requested output */
+static int output_stage(ir_builder_t *ir, const char *output,
+                        int dump_ir, int dump_asm, int use_x86_64)
+{
+    if (dump_ir) {
+        char *text = ir_to_string(ir);
+        if (text) {
+            printf("%s", text);
+            free(text);
+        }
+        return 1;
+    }
+    if (dump_asm) {
+        char *text = codegen_ir_to_string(ir, use_x86_64);
+        if (text) {
+            printf("%s", text);
+            free(text);
+        }
+        return 1;
+    }
+
+    FILE *outf = fopen(output, "w");
+    if (!outf) {
+        perror("fopen");
+        return 0;
+    }
+    codegen_emit_x86(outf, ir, use_x86_64);
+    fclose(outf);
+    return 1;
+}
+
 int main(int argc, char **argv)
 {
     cli_options_t cli;
@@ -44,135 +205,33 @@ int main(int argc, char **argv)
 
     label_init();
 
-    char *src_text = preproc_run(source);
-    if (!src_text) {
-        perror("preproc_run");
-        return 1;
-    }
-
+    char *src_text = NULL;
+    token_t *tokens = NULL;
     size_t tok_count = 0;
-    token_t *tokens = lexer_tokenize(src_text, &tok_count);
-    if (!tokens) {
-        fprintf(stderr, "Tokenization failed\n");
-        free(src_text);
-        return 1;
-    }
-
-    parser_t parser;
-    parser_init(&parser, tokens, tok_count);
-    symtable_t funcs;
-    symtable_t globals;
-    symtable_init(&funcs);
-    symtable_init(&globals);
-    ir_builder_t ir;
-    ir_builder_init(&ir);
-
-    int ok = 1;
     vector_t func_list_v, glob_list_v;
-    vector_init(&func_list_v, sizeof(func_t *));
-    vector_init(&glob_list_v, sizeof(stmt_t *));
-    while (ok && !parser_is_eof(&parser)) {
-        func_t *fn = NULL;
-        stmt_t *g = NULL;
-        if (!parser_parse_toplevel(&parser, &funcs, &fn, &g)) {
-            token_type_t expected[] = { TOK_KW_INT, TOK_KW_VOID };
-            parser_print_error(&parser, expected, 2);
-            ok = 0;
-            break;
-        }
-        if (fn) {
-            if (!vector_push(&func_list_v, &fn)) {
-                ok = 0;
-                ast_free_func(fn);
-                break;
-            }
-        } else if (g) {
-            if (!vector_push(&glob_list_v, &g)) {
-                ok = 0;
-                ast_free_stmt(g);
-                break;
-            }
-        }
-    }
+    symtable_t funcs, globals;
+    ir_builder_t ir;
 
-    func_t **func_list = (func_t **)func_list_v.data;
-    size_t fcount = func_list_v.count;
-    stmt_t **glob_list = (stmt_t **)glob_list_v.data;
-    size_t gcount = glob_list_v.count;
-
-    for (size_t i = 0; i < fcount; i++) {
-        symbol_t *existing = symtable_lookup(&funcs, func_list[i]->name);
-        if (existing) {
-            int mismatch = existing->type != func_list[i]->return_type ||
-                           existing->param_count != func_list[i]->param_count;
-            for (size_t j = 0; j < existing->param_count && !mismatch; j++)
-                if (existing->param_types[j] != func_list[i]->param_types[j])
-                    mismatch = 1;
-            if (mismatch) {
-                ok = 0;
-                error_set(0, 0);
-                break;
-            }
-            existing->is_prototype = 0;
-        } else {
-            symtable_add_func(&funcs, func_list[i]->name,
-                              func_list[i]->return_type,
-                              func_list[i]->param_types,
-                              func_list[i]->param_count,
-                              0);
-        }
-    }
-    for (size_t i = 0; i < gcount; i++) {
-        if (!check_global(glob_list[i], &globals, &ir)) {
-            error_print("Semantic error");
-            ok = 0;
-        }
-    }
-
-    for (size_t i = 0; i < fcount && ok; i++) {
-        if (!check_func(func_list[i], &funcs, &globals, &ir)) {
-            error_print("Semantic error");
-            ok = 0;
-        }
-    }
-
-    /* Run optimizations on the generated IR */
+    int ok = tokenize_stage(source, &src_text, &tokens, &tok_count);
     if (ok)
-        opt_run(&ir, &opt_cfg);
+        ok = parse_stage(tokens, tok_count, &func_list_v, &glob_list_v, &funcs);
+    if (ok)
+        ok = semantic_stage((func_t **)func_list_v.data, func_list_v.count,
+                            (stmt_t **)glob_list_v.data, glob_list_v.count,
+                            &funcs, &globals, &ir);
+    if (ok)
+        optimize_stage(&ir, &opt_cfg);
+    if (ok)
+        ok = output_stage(&ir, output, dump_ir, dump_asm, use_x86_64);
 
-    /* Generate output */
-    if (ok && dump_ir) {
-        char *text = ir_to_string(&ir);
-        if (text) {
-            printf("%s", text);
-            free(text);
-        }
-    } else if (ok && dump_asm) {
-        char *text = codegen_ir_to_string(&ir, use_x86_64);
-        if (text) {
-            printf("%s", text);
-            free(text);
-        }
-    } else if (ok) {
-        FILE *outf = fopen(output, "w");
-        if (!outf) {
-            perror("fopen");
-            ok = 0;
-        } else {
-            codegen_emit_x86(outf, &ir, use_x86_64);
-            fclose(outf);
-        }
-    }
+    for (size_t i = 0; i < func_list_v.count; i++)
+        ast_free_func(((func_t **)func_list_v.data)[i]);
+    for (size_t i = 0; i < glob_list_v.count; i++)
+        ast_free_stmt(((stmt_t **)glob_list_v.data)[i]);
+    free(func_list_v.data);
+    free(glob_list_v.data);
 
     ir_builder_free(&ir);
-
-    for (size_t i = 0; i < fcount; i++)
-        ast_free_func(func_list[i]);
-    for (size_t i = 0; i < gcount; i++)
-        ast_free_stmt(glob_list[i]);
-    free(func_list);
-    free(glob_list);
-
     symtable_free(&funcs);
     symtable_free(&globals);
     lexer_free_tokens(tokens, tok_count);
