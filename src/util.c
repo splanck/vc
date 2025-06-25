@@ -41,6 +41,15 @@ char *vc_strdup(const char *s)
     return out;
 }
 
+/* Duplicate at most 'n' characters of a string */
+char *vc_strndup(const char *s, size_t n)
+{
+    char *out = vc_alloc_or_exit(n + 1);
+    memcpy(out, s, n);
+    out[n] = '\0';
+    return out;
+}
+
 /* Read the entire contents of a file into memory */
 char *vc_read_file(const char *path)
 {

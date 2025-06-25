@@ -69,9 +69,7 @@ static int process_file(const char *path, vector_t *macros, strbuf_t *out)
     const char *slash = strrchr(path, '/');
     if (slash) {
         size_t len = (size_t)(slash - path) + 1;
-        dir = vc_alloc_or_exit(len + 1);
-        memcpy(dir, path, len);
-        dir[len] = '\0';
+        dir = vc_strndup(path, len);
     }
 
     char *line = strtok(text, "\n");
@@ -109,7 +107,7 @@ static int process_file(const char *path, vector_t *macros, strbuf_t *out)
                 val = "";
             }
             macro_t m = { vc_strdup(n), vc_strdup(val) };
-            if (!m.name || !m.value || !vector_push(macros, &m)) {
+            if (!vector_push(macros, &m)) {
                 macro_free(&m);
                 free(text);
                 free(dir);

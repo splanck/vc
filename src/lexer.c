@@ -63,9 +63,7 @@ static token_type_t lookup_keyword(const char *str, size_t len)
 static void append_token(vector_t *vec, token_type_t type, const char *lexeme,
                          size_t len, size_t line, size_t column)
 {
-    char *text = vc_alloc_or_exit(len + 1);
-    memcpy(text, lexeme, len);
-    text[len] = '\0';
+    char *text = vc_strndup(lexeme, len);
     token_t tok = { type, text, line, column };
     if (!vector_push(vec, &tok))
         exit(1);
