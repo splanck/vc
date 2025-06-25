@@ -23,6 +23,9 @@ typedef struct symbol {
     int is_enum_const;
     int is_typedef;
     type_kind_t alias_type;
+    union_member_t *members; /* for union declarations */
+    size_t member_count;
+    size_t total_size;
     int is_static;
     int is_const;
     type_kind_t *param_types; /* for functions */
@@ -69,6 +72,11 @@ int symtable_add_typedef(symtable_t *table, const char *name, type_kind_t type,
 int symtable_add_typedef_global(symtable_t *table, const char *name,
                                 type_kind_t type, size_t array_size,
                                 size_t elem_size);
+int symtable_add_union(symtable_t *table, const char *tag,
+                       union_member_t *members, size_t member_count);
+int symtable_add_union_global(symtable_t *table, const char *tag,
+                              union_member_t *members, size_t member_count);
+symbol_t *symtable_lookup_union(symtable_t *table, const char *tag);
 
 /* Look up a symbol by name. Returns NULL if not found. */
 symbol_t *symtable_lookup(symtable_t *table, const char *name);
