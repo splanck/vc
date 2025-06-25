@@ -1,6 +1,17 @@
 /*
  * Parser utilities and driver.
  *
+ * The parser consumes the token stream using a simple recursive
+ * descent approach.  "parser_parse_toplevel" is the entry point that
+ * recognizes either a function definition or a global variable
+ * declaration.  Expressions and statements are handled in the helper
+ * modules parser_expr.c and parser_stmt.c respectively.
+ *
+ * Each function advances "p->pos" on success and returns a newly
+ * allocated AST node (or 1 for boolean functions).  A NULL return value
+ * indicates a syntax error and the caller is responsible for error
+ * reporting.
+ *
  * Part of vc under the BSD 2-Clause license.
  * See LICENSE for details.
  */
@@ -11,6 +22,10 @@
 #include "vector.h"
 #include "error.h"
 
+/*
+ * Initialize parser state with the provided token array.  "p->pos" is
+ * reset to the beginning of the stream.
+ */
 void parser_init(parser_t *p, token_t *tokens, size_t count)
 {
     p->tokens = tokens;
@@ -18,12 +33,14 @@ void parser_init(parser_t *p, token_t *tokens, size_t count)
     p->pos = 0;
 }
 
+/* Return non-zero once the parser has consumed all tokens. */
 int parser_is_eof(parser_t *p)
 {
     token_t *tok = peek(p);
     return !tok || tok->type == TOK_EOF;
 }
 
+/* Map a token type to a human readable name used in error messages. */
 static const char *token_name(token_type_t type)
 {
     switch (type) {
@@ -68,6 +85,10 @@ static const char *token_name(token_type_t type)
     return "unknown";
 }
 
+/*
+ * Emit an error at the current token.  "expected" is an optional list of
+ * token kinds that would have been valid in this context.
+ */
 void parser_print_error(parser_t *p, const token_type_t *expected,
                         size_t expected_count)
 {
@@ -95,7 +116,12 @@ void parser_print_error(parser_t *p, const token_type_t *expected,
     error_print(msg);
 }
 
-
+/*
+ * Parse a full function definition of the form:
+ *     <type> <name>(<params>) { <body> }
+ * On success a new func_t is returned and the parser position is
+ * updated to the token following the closing brace.
+ */
 func_t *parser_parse_func(parser_t *p)
 {
     type_kind_t ret_type;
@@ -210,6 +236,12 @@ func_t *parser_parse_func(parser_t *p)
     return fn;
 }
 
+/*
+ * Parse either a global variable declaration or a full function
+ * definition.  Exactly one of "out_func" or "out_global" is set on
+ * success.  The function returns 1 when a valid top-level construct was
+ * consumed and 0 otherwise.
+ */
 int parser_parse_toplevel(parser_t *p, func_t **out_func, stmt_t **out_global)
 {
     if (out_func) *out_func = NULL;

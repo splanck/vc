@@ -1,6 +1,11 @@
 /*
  * Statement parser for the language.
  *
+ * Functions in this file build AST nodes for the various statement
+ * forms (blocks, loops, if/else, declarations, etc.).  Each routine
+ * consumes the tokens belonging to the construct and returns the newly
+ * created stmt_t on success.
+ *
  * Part of vc under the BSD 2-Clause license.
  * See LICENSE for details.
  */
@@ -11,6 +16,7 @@
 static stmt_t *parse_block(parser_t *p);
 stmt_t *parser_parse_stmt(parser_t *p);
 
+/* Parse a "{...}" block recursively collecting inner statements. */
 static stmt_t *parse_block(parser_t *p)
 {
     if (!match(p, TOK_LBRACE))
@@ -44,6 +50,12 @@ static stmt_t *parse_block(parser_t *p)
     return ast_make_block(stmts, count, lb_tok->line, lb_tok->column);
 }
 
+/*
+ * Parse a single statement at the current position.  This function
+ * delegates to the specific helpers for declarations, control flow
+ * constructs and expression statements.  It returns the constructed
+ * stmt_t or NULL on failure.
+ */
 stmt_t *parser_parse_stmt(parser_t *p)
 {
     token_t *tok = peek(p);
