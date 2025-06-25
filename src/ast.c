@@ -518,6 +518,26 @@ stmt_t *ast_make_enum_decl(const char *tag, enumerator_t *items, size_t count,
     return stmt;
 }
 
+/* Create a struct declaration statement */
+stmt_t *ast_make_struct_decl(const char *tag, struct_member_t *members,
+                             size_t count, size_t line, size_t column)
+{
+    stmt_t *stmt = malloc(sizeof(*stmt));
+    if (!stmt)
+        return NULL;
+    stmt->kind = STMT_STRUCT_DECL;
+    stmt->line = line;
+    stmt->column = column;
+    stmt->struct_decl.tag = vc_strdup(tag ? tag : "");
+    if (!stmt->struct_decl.tag) {
+        free(stmt);
+        return NULL;
+    }
+    stmt->struct_decl.members = members;
+    stmt->struct_decl.count = count;
+    return stmt;
+}
+
 /* Create a union declaration statement */
 stmt_t *ast_make_union_decl(const char *tag, union_member_t *members,
                             size_t count, size_t line, size_t column)
@@ -739,6 +759,12 @@ void ast_free_stmt(stmt_t *stmt)
             ast_free_expr(stmt->enum_decl.items[i].value);
         }
         free(stmt->enum_decl.items);
+        break;
+    case STMT_STRUCT_DECL:
+        free(stmt->struct_decl.tag);
+        for (size_t i = 0; i < stmt->struct_decl.count; i++)
+            free(stmt->struct_decl.members[i].name);
+        free(stmt->struct_decl.members);
         break;
     case STMT_UNION_DECL:
         free(stmt->union_decl.tag);

@@ -33,7 +33,7 @@ typedef enum {
     TYPE_UNKNOWN
 } type_kind_t;
 
-/* Expression AST node types */
+/* Expression AST node types including struct/union member operations */
 typedef enum {
     EXPR_NUMBER,
     EXPR_IDENT,
@@ -89,6 +89,7 @@ struct stmt;
 struct switch_case;
 struct enumerator;
 struct union_member;
+struct struct_member;
 struct func;
 
 typedef struct expr expr_t;
@@ -96,6 +97,7 @@ typedef struct stmt stmt_t;
 typedef struct switch_case switch_case_t;
 typedef struct enumerator enumerator_t;
 typedef struct union_member union_member_t;
+typedef struct struct_member struct_member_t;
 typedef struct func func_t;
 
 struct expr {
@@ -168,7 +170,7 @@ struct expr {
     };
 };
 
-/* Statement AST node types */
+/* Statement AST node types including struct/union declarations */
 typedef enum {
     STMT_EXPR,
     STMT_RETURN,
@@ -184,6 +186,7 @@ typedef enum {
     STMT_GOTO,
     STMT_TYPEDEF,
     STMT_ENUM_DECL,
+    STMT_STRUCT_DECL,
     STMT_UNION_DECL,
     STMT_BLOCK
 } stmt_kind_t;
@@ -263,6 +266,11 @@ struct stmt {
         } enum_decl;
         struct {
             char *tag;
+            struct_member_t *members;
+            size_t count;
+        } struct_decl;
+        struct {
+            char *tag;
             union_member_t *members;
             size_t count;
         } union_decl;
@@ -284,6 +292,13 @@ struct enumerator {
 };
 
 struct union_member {
+    char *name;
+    type_kind_t type;
+    size_t elem_size;
+    size_t offset;
+};
+
+struct struct_member {
     char *name;
     type_kind_t type;
     size_t elem_size;
@@ -373,6 +388,9 @@ stmt_t *ast_make_typedef(const char *name, type_kind_t type, size_t array_size,
 /* Declare an enum with \p count enumerators. */
 stmt_t *ast_make_enum_decl(const char *tag, enumerator_t *items, size_t count,
                            size_t line, size_t column);
+/* Declare a struct with \p count members. */
+stmt_t *ast_make_struct_decl(const char *tag, struct_member_t *members,
+                             size_t count, size_t line, size_t column);
 /* Declare a union with \p count members. */
 stmt_t *ast_make_union_decl(const char *tag, union_member_t *members,
                            size_t count, size_t line, size_t column);

@@ -41,6 +41,9 @@ static symbol_t *symtable_create_symbol(const char *name, const char *ir_name)
     sym->members = NULL;
     sym->member_count = 0;
     sym->total_size = 0;
+    sym->struct_members = NULL;
+    sym->struct_member_count = 0;
+    sym->struct_total_size = 0;
     sym->is_restrict = 0;
     return sym;
 }
@@ -62,6 +65,9 @@ void symtable_free(symtable_t *table)
         for (size_t i = 0; i < sym->member_count; i++)
             free(sym->members[i].name);
         free(sym->members);
+        for (size_t i = 0; i < sym->struct_member_count; i++)
+            free(sym->struct_members[i].name);
+        free(sym->struct_members);
         free(sym->param_types);
         free(sym);
         sym = next;
@@ -73,6 +79,9 @@ void symtable_free(symtable_t *table)
         for (size_t i = 0; i < sym->member_count; i++)
             free(sym->members[i].name);
         free(sym->members);
+        for (size_t i = 0; i < sym->struct_member_count; i++)
+            free(sym->struct_members[i].name);
+        free(sym->struct_members);
         free(sym->param_types);
         free(sym);
         sym = next;
@@ -370,6 +379,98 @@ symbol_t *symtable_lookup_union(symtable_t *table, const char *tag)
     }
     for (symbol_t *sym = table->globals; sym; sym = sym->next) {
         if (sym->type == TYPE_UNION && sym->member_count > 0 &&
+            strcmp(sym->name, tag) == 0)
+            return sym;
+    }
+    return NULL;
+}
+
+/* Insert a struct type definition in the current scope */
+int symtable_add_struct(symtable_t *table, const char *tag,
+                        struct_member_t *members, size_t member_count)
+{
+    if (symtable_lookup(table, tag))
+        return 0;
+    symbol_t *sym = symtable_create_symbol(tag, tag);
+    if (!sym)
+        return 0;
+    sym->type = TYPE_STRUCT;
+    if (member_count) {
+        sym->struct_members = malloc(member_count * sizeof(*sym->struct_members));
+        if (!sym->struct_members) {
+            free(sym->name);
+            free(sym->ir_name);
+            free(sym);
+            return 0;
+        }
+        for (size_t i = 0; i < member_count; i++) {
+            sym->struct_members[i].name = vc_strdup(members[i].name);
+            sym->struct_members[i].type = members[i].type;
+            sym->struct_members[i].elem_size = members[i].elem_size;
+            sym->struct_members[i].offset = members[i].offset;
+        }
+    }
+    sym->struct_member_count = member_count;
+    size_t total = 0;
+    for (size_t i = 0; i < member_count; i++) {
+        sym->struct_members[i].offset = total;
+        total += members[i].elem_size;
+    }
+    sym->struct_total_size = total;
+    sym->next = table->head;
+    table->head = sym;
+    return 1;
+}
+
+/* Insert a struct type definition in the global scope */
+int symtable_add_struct_global(symtable_t *table, const char *tag,
+                               struct_member_t *members, size_t member_count)
+{
+    for (symbol_t *sym = table->globals; sym; sym = sym->next) {
+        if (strcmp(sym->name, tag) == 0)
+            return 0;
+    }
+    symbol_t *sym = symtable_create_symbol(tag, tag);
+    if (!sym)
+        return 0;
+    sym->type = TYPE_STRUCT;
+    if (member_count) {
+        sym->struct_members = malloc(member_count * sizeof(*sym->struct_members));
+        if (!sym->struct_members) {
+            free(sym->name);
+            free(sym->ir_name);
+            free(sym);
+            return 0;
+        }
+        for (size_t i = 0; i < member_count; i++) {
+            sym->struct_members[i].name = vc_strdup(members[i].name);
+            sym->struct_members[i].type = members[i].type;
+            sym->struct_members[i].elem_size = members[i].elem_size;
+            sym->struct_members[i].offset = members[i].offset;
+        }
+    }
+    sym->struct_member_count = member_count;
+    size_t total = 0;
+    for (size_t i = 0; i < member_count; i++) {
+        sym->struct_members[i].offset = total;
+        total += members[i].elem_size;
+    }
+    sym->struct_total_size = total;
+    sym->next = table->globals;
+    table->globals = sym;
+    return 1;
+}
+
+/* Look up a struct type definition by tag */
+symbol_t *symtable_lookup_struct(symtable_t *table, const char *tag)
+{
+    for (symbol_t *sym = table->head; sym; sym = sym->next) {
+        if (sym->type == TYPE_STRUCT && sym->struct_member_count > 0 &&
+            strcmp(sym->name, tag) == 0)
+            return sym;
+    }
+    for (symbol_t *sym = table->globals; sym; sym = sym->next) {
+        if (sym->type == TYPE_STRUCT && sym->struct_member_count > 0 &&
             strcmp(sym->name, tag) == 0)
             return sym;
     }
