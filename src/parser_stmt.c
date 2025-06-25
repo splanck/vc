@@ -22,6 +22,8 @@ stmt_t *parser_parse_enum_decl(parser_t *p);
 stmt_t *parser_parse_union_decl(parser_t *p);
 stmt_t *parser_parse_union_var_decl(parser_t *p);
 stmt_t *parser_parse_stmt(parser_t *p);
+stmt_t *parser_parse_struct_decl(parser_t *p);
+stmt_t *parser_parse_struct_var_decl(parser_t *p);
 
 /* Parse a "{...}" block recursively collecting inner statements. */
 static stmt_t *parse_block(parser_t *p)
@@ -339,6 +341,152 @@ fail:
     return ast_make_union_decl(tag, members, count, kw->line, kw->column);
 }
 
+/* Parse a struct variable with inline member specification */
+stmt_t *parser_parse_struct_var_decl(parser_t *p)
+{
+    int is_static = match(p, TOK_KW_STATIC);
+    int is_const = match(p, TOK_KW_CONST);
+    int is_volatile = match(p, TOK_KW_VOLATILE);
+    if (!match(p, TOK_KW_STRUCT))
+        return NULL;
+    token_t *kw = &p->tokens[p->pos - 1];
+    if (!match(p, TOK_LBRACE))
+        return NULL;
+
+    vector_t members_v;
+    vector_init(&members_v, sizeof(struct_member_t));
+    int ok = 0;
+    while (!match(p, TOK_RBRACE)) {
+        type_kind_t mt;
+        if (!parse_basic_type(p, &mt))
+            goto fail;
+        size_t elem_size = basic_type_size(mt);
+        if (match(p, TOK_STAR))
+            mt = TYPE_PTR;
+        token_t *id = peek(p);
+        if (!id || id->type != TOK_IDENT)
+            goto fail;
+        p->pos++;
+        size_t arr_size = 0;
+        if (match(p, TOK_LBRACKET)) {
+            token_t *num = peek(p);
+            if (!num || num->type != TOK_NUMBER)
+                goto fail;
+            p->pos++;
+            arr_size = strtoul(num->lexeme, NULL, 10);
+            if (!match(p, TOK_RBRACKET))
+                goto fail;
+            mt = TYPE_ARRAY;
+        }
+        if (!match(p, TOK_SEMI))
+            goto fail;
+        size_t mem_sz = elem_size;
+        if (mt == TYPE_ARRAY)
+            mem_sz *= arr_size;
+        struct_member_t m = { vc_strdup(id->lexeme), mt, mem_sz, 0 };
+        if (!vector_push(&members_v, &m)) {
+            free(m.name);
+            goto fail;
+        }
+    }
+
+    token_t *name_tok = peek(p);
+    if (!name_tok || name_tok->type != TOK_IDENT)
+        goto fail;
+    p->pos++;
+    char *name = name_tok->lexeme;
+    if (!match(p, TOK_SEMI))
+        goto fail;
+
+    ok = 1;
+fail:
+    if (!ok) {
+        for (size_t i = 0; i < members_v.count; i++)
+            free(((struct_member_t *)members_v.data)[i].name);
+        vector_free(&members_v);
+        return NULL;
+    }
+    struct_member_t *members = (struct_member_t *)members_v.data;
+    size_t count = members_v.count;
+    stmt_t *res = ast_make_var_decl(name, TYPE_STRUCT, 0, 0, is_static, is_const,
+                                    is_volatile, 0, NULL, NULL, 0, NULL,
+                                    (union_member_t *)members, count,
+                                    kw->line, kw->column);
+    if (!res) {
+        for (size_t i = 0; i < count; i++)
+            free(members[i].name);
+        free(members);
+    }
+    return res;
+}
+
+/* Parse a named struct type declaration */
+stmt_t *parser_parse_struct_decl(parser_t *p)
+{
+    if (!match(p, TOK_KW_STRUCT))
+        return NULL;
+    token_t *kw = &p->tokens[p->pos - 1];
+    token_t *tok = peek(p);
+    if (!tok || tok->type != TOK_IDENT)
+        return NULL;
+    p->pos++;
+    char *tag = tok->lexeme;
+    if (!match(p, TOK_LBRACE))
+        return NULL;
+
+    vector_t members_v;
+    vector_init(&members_v, sizeof(struct_member_t));
+    int ok = 0;
+    while (!match(p, TOK_RBRACE)) {
+        type_kind_t mt;
+        if (!parse_basic_type(p, &mt))
+            goto fail;
+        size_t elem_size = basic_type_size(mt);
+        if (match(p, TOK_STAR))
+            mt = TYPE_PTR;
+        token_t *id = peek(p);
+        if (!id || id->type != TOK_IDENT)
+            goto fail;
+        p->pos++;
+        size_t arr_size = 0;
+        if (match(p, TOK_LBRACKET)) {
+            token_t *num = peek(p);
+            if (!num || num->type != TOK_NUMBER)
+                goto fail;
+            p->pos++;
+            arr_size = strtoul(num->lexeme, NULL, 10);
+            if (!match(p, TOK_RBRACKET))
+                goto fail;
+            mt = TYPE_ARRAY;
+        }
+        if (!match(p, TOK_SEMI))
+            goto fail;
+        size_t mem_sz = elem_size;
+        if (mt == TYPE_ARRAY)
+            mem_sz *= arr_size;
+        struct_member_t m = { vc_strdup(id->lexeme), mt, mem_sz, 0 };
+        if (!vector_push(&members_v, &m)) {
+            free(m.name);
+            goto fail;
+        }
+    }
+
+    if (!match(p, TOK_SEMI))
+        goto fail;
+
+    ok = 1;
+fail:
+    if (!ok) {
+        for (size_t i = 0; i < members_v.count; i++)
+            free(((struct_member_t *)members_v.data)[i].name);
+        vector_free(&members_v);
+        return NULL;
+    }
+    struct_member_t *members = (struct_member_t *)members_v.data;
+    size_t count = members_v.count;
+    return ast_make_struct_decl(tag, members, count, kw->line, kw->column);
+}
+
 /*
  * Parse a single statement at the current position.  This function
  * delegates to the specific helpers for declarations, control flow
@@ -364,7 +512,24 @@ stmt_t *parser_parse_stmt(parser_t *p)
     int has_static = match(p, TOK_KW_STATIC);
     int has_const = match(p, TOK_KW_CONST);
     int has_vol = match(p, TOK_KW_VOLATILE);
-    if (match(p, TOK_KW_UNION)) {
+    if (match(p, TOK_KW_STRUCT)) {
+        token_t *next = peek(p);
+        if (next && next->type == TOK_LBRACE) {
+            p->pos = save;
+            return parser_parse_struct_var_decl(p);
+        } else if (next && next->type == TOK_IDENT) {
+            p->pos++;
+            token_t *after = peek(p);
+            if (!has_static && !has_const && !has_vol && after && after->type == TOK_LBRACE) {
+                p->pos = save;
+                return parser_parse_struct_decl(p);
+            }
+            p->pos = save;
+            return parse_var_decl(p);
+        } else {
+            p->pos = save;
+        }
+    } else if (match(p, TOK_KW_UNION)) {
         token_t *next = peek(p);
         if (next && next->type == TOK_LBRACE) {
             p->pos = save;

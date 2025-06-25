@@ -318,6 +318,25 @@ int parser_parse_toplevel(parser_t *p, symtable_t *funcs,
     if (!tok)
         return 0;
 
+    if (tok->type == TOK_KW_STRUCT) {
+        token_t *next = &p->tokens[p->pos + 1];
+        if (next && next->type == TOK_IDENT &&
+            p->pos + 2 < p->count && p->tokens[p->pos + 2].type == TOK_LBRACE) {
+            p->pos = save;
+            if (out_global)
+                *out_global = parser_parse_struct_decl(p);
+            else
+                parser_parse_struct_decl(p);
+            return out_global ? *out_global != NULL : 1;
+        }
+        p->pos = save;
+        if (out_global)
+            *out_global = parser_parse_struct_var_decl(p);
+        else
+            parser_parse_struct_var_decl(p);
+        return out_global ? *out_global != NULL : 1;
+    }
+
     if (tok->type == TOK_KW_UNION) {
         token_t *next = &p->tokens[p->pos + 1];
         if (next && next->type == TOK_IDENT &&
