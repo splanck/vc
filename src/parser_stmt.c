@@ -27,31 +27,26 @@ static stmt_t *parse_block(parser_t *p)
     if (!match(p, TOK_LBRACE))
         return NULL;
     token_t *lb_tok = &p->tokens[p->pos - 1];
-    size_t cap = 4, count = 0;
-    stmt_t **stmts = malloc(cap * sizeof(*stmts));
-    if (!stmts)
-        return NULL;
+    vector_t stmts_v;
+    vector_init(&stmts_v, sizeof(stmt_t *));
     while (!match(p, TOK_RBRACE)) {
         stmt_t *s = parser_parse_stmt(p);
         if (!s) {
-            for (size_t i = 0; i < count; i++)
-                ast_free_stmt(stmts[i]);
-            free(stmts);
+            for (size_t i = 0; i < stmts_v.count; i++)
+                ast_free_stmt(((stmt_t **)stmts_v.data)[i]);
+            vector_free(&stmts_v);
             return NULL;
         }
-        if (count >= cap) {
-            cap *= 2;
-            stmt_t **tmp = realloc(stmts, cap * sizeof(*tmp));
-            if (!tmp) {
-                for (size_t i = 0; i < count; i++)
-                    ast_free_stmt(stmts[i]);
-                free(stmts);
-                return NULL;
-            }
-            stmts = tmp;
+        if (!vector_push(&stmts_v, &s)) {
+            ast_free_stmt(s);
+            for (size_t i = 0; i < stmts_v.count; i++)
+                ast_free_stmt(((stmt_t **)stmts_v.data)[i]);
+            vector_free(&stmts_v);
+            return NULL;
         }
-        stmts[count++] = s;
     }
+    stmt_t **stmts = (stmt_t **)stmts_v.data;
+    size_t count = stmts_v.count;
     return ast_make_block(stmts, count, lb_tok->line, lb_tok->column);
 }
 
@@ -127,10 +122,8 @@ stmt_t *parser_parse_enum_decl(parser_t *p)
     if (!match(p, TOK_LBRACE))
         return NULL;
 
-    size_t cap = 4, count = 0;
-    enumerator_t *items = malloc(cap * sizeof(*items));
-    if (!items)
-        return NULL;
+    vector_t items_v;
+    vector_init(&items_v, sizeof(enumerator_t));
     int ok = 0;
     do {
         tok = peek(p);
@@ -143,19 +136,17 @@ stmt_t *parser_parse_enum_decl(parser_t *p)
         expr_t *val = NULL;
         if (match(p, TOK_ASSIGN)) {
             val = parser_parse_expr(p);
-            if (!val)
+            if (!val) {
+                free(name);
                 goto fail;
+            }
         }
-        if (count >= cap) {
-            cap *= 2;
-            enumerator_t *tmp = realloc(items, cap * sizeof(*tmp));
-            if (!tmp)
-                goto fail;
-            items = tmp;
+        enumerator_t tmp = { name, val };
+        if (!vector_push(&items_v, &tmp)) {
+            free(name);
+            ast_free_expr(val);
+            goto fail;
         }
-        items[count].name = name;
-        items[count].value = val;
-        count++;
     } while (match(p, TOK_COMMA));
 
     if (!match(p, TOK_RBRACE) || !match(p, TOK_SEMI))
@@ -164,13 +155,16 @@ stmt_t *parser_parse_enum_decl(parser_t *p)
     ok = 1;
 fail:
     if (!ok) {
-        for (size_t i = 0; i < count; i++) {
-            free(items[i].name);
-            ast_free_expr(items[i].value);
+        for (size_t i = 0; i < items_v.count; i++) {
+            enumerator_t *it = &((enumerator_t *)items_v.data)[i];
+            free(it->name);
+            ast_free_expr(it->value);
         }
-        free(items);
+        free(items_v.data);
         return NULL;
     }
+    enumerator_t *items = (enumerator_t *)items_v.data;
+    size_t count = items_v.count;
     return ast_make_enum_decl(tag, items, count, kw->line, kw->column);
 }
 
