@@ -11,6 +11,12 @@
 /* Duplicate a string using malloc */
 char *vc_strdup(const char *s);
 
+/* Allocate memory or exit on failure */
+void *vc_alloc_or_exit(size_t size);
+
+/* Reallocate memory or exit on failure */
+void *vc_realloc_or_exit(void *ptr, size_t size);
+
 /* Read entire file into a NUL-terminated buffer */
 char *vc_read_file(const char *path);
 

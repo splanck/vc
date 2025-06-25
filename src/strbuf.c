@@ -10,6 +10,7 @@
 #include <stdio.h>
 #include <stdarg.h>
 #include "strbuf.h"
+#include "util.h"
 
 /* Initialize a string buffer */
 void strbuf_init(strbuf_t *sb)
@@ -18,9 +19,8 @@ void strbuf_init(strbuf_t *sb)
         return;
     sb->cap = 128;
     sb->len = 0;
-    sb->data = malloc(sb->cap);
-    if (sb->data)
-        sb->data[0] = '\0';
+    sb->data = vc_alloc_or_exit(sb->cap);
+    sb->data[0] = '\0';
 }
 
 /* Ensure the buffer can hold at least extra bytes */
@@ -30,9 +30,7 @@ static void sb_ensure(strbuf_t *sb, size_t extra)
         size_t new_cap = sb->cap ? sb->cap * 2 : 128;
         while (sb->len + extra >= new_cap)
             new_cap *= 2;
-        char *n = realloc(sb->data, new_cap);
-        if (!n)
-            return;
+        char *n = vc_realloc_or_exit(sb->data, new_cap);
         sb->data = n;
         sb->cap = new_cap;
     }
@@ -64,9 +62,7 @@ void strbuf_appendf(strbuf_t *sb, const char *fmt, ...)
     if (n < 0)
         return;
     if ((size_t)n >= sizeof(buf)) {
-        char *tmp = malloc((size_t)n + 1);
-        if (!tmp)
-            return;
+        char *tmp = vc_alloc_or_exit((size_t)n + 1);
         va_start(ap, fmt);
         vsnprintf(tmp, (size_t)n + 1, fmt, ap);
         va_end(ap);
