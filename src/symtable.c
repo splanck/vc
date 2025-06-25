@@ -10,12 +10,14 @@
 #include "symtable.h"
 #include "util.h"
 
+/* Reset a symbol table so that both local and global lists are empty. */
 void symtable_init(symtable_t *table)
 {
     table->head = NULL;
     table->globals = NULL;
 }
 
+/* Free all symbols stored in the table and reset it to an empty state. */
 void symtable_free(symtable_t *table)
 {
     symbol_t *sym = table->head;
@@ -38,6 +40,10 @@ void symtable_free(symtable_t *table)
     table->globals = NULL;
 }
 
+/*
+ * Search the table for a symbol by name.  Local symbols take precedence
+ * over globals.  Returns NULL if the name is not present.
+ */
 symbol_t *symtable_lookup(symtable_t *table, const char *name)
 {
     for (symbol_t *sym = table->head; sym; sym = sym->next) {
@@ -51,6 +57,10 @@ symbol_t *symtable_lookup(symtable_t *table, const char *name)
     return NULL;
 }
 
+/*
+ * Insert a new local variable symbol.  The function fails if a symbol with the
+ * same name already exists in either the local or global list.
+ */
 int symtable_add(symtable_t *table, const char *name, type_kind_t type,
                  size_t array_size)
 {
@@ -74,6 +84,10 @@ int symtable_add(symtable_t *table, const char *name, type_kind_t type,
     return 1;
 }
 
+/*
+ * Insert a function parameter.  Parameters are stored in the local list with
+ * the index field recording the argument position.
+ */
 int symtable_add_param(symtable_t *table, const char *name, type_kind_t type,
                        int index)
 {
@@ -97,6 +111,7 @@ int symtable_add_param(symtable_t *table, const char *name, type_kind_t type,
     return 1;
 }
 
+/* Insert a global variable into the table. */
 int symtable_add_global(symtable_t *table, const char *name, type_kind_t type,
                         size_t array_size)
 {
@@ -122,6 +137,9 @@ int symtable_add_global(symtable_t *table, const char *name, type_kind_t type,
     return 1;
 }
 
+/*
+ * Insert a function symbol along with its return type and parameter types.
+ */
 int symtable_add_func(symtable_t *table, const char *name, type_kind_t ret_type,
                       type_kind_t *param_types, size_t param_count)
 {
@@ -154,6 +172,7 @@ int symtable_add_func(symtable_t *table, const char *name, type_kind_t ret_type,
     return 1;
 }
 
+/* Look up a name only in the global list. */
 symbol_t *symtable_lookup_global(symtable_t *table, const char *name)
 {
     for (symbol_t *sym = table->globals; sym; sym = sym->next) {

@@ -127,6 +127,10 @@ static type_kind_t check_binary(expr_t *left, expr_t *right, symtable_t *vars,
     return TYPE_UNKNOWN;
 }
 
+/*
+ * Perform semantic analysis on an expression and emit IR code.
+ * The type of the expression is returned, or TYPE_UNKNOWN on error.
+ */
 type_kind_t check_expr(expr_t *expr, symtable_t *vars, symtable_t *funcs,
                        ir_builder_t *ir, ir_value_t *out)
 {
@@ -321,6 +325,10 @@ type_kind_t check_expr(expr_t *expr, symtable_t *vars, symtable_t *funcs,
     return TYPE_UNKNOWN;
 }
 
+/*
+ * Validate a single statement.  Loop labels are used for 'break' and
+ * 'continue' targets.  Returns non-zero on success.
+ */
 int check_stmt(stmt_t *stmt, symtable_t *vars, symtable_t *funcs,
                ir_builder_t *ir, type_kind_t func_ret_type,
                const char *break_label, const char *continue_label)
@@ -503,6 +511,11 @@ int check_stmt(stmt_t *stmt, symtable_t *vars, symtable_t *funcs,
     return 0;
 }
 
+/*
+ * Check a full function definition.  Parameters are placed in a local symbol
+ * table chained to the list of globals.  IR for the body is generated while
+ * validating statements.
+ */
 int check_func(func_t *func, symtable_t *funcs, symtable_t *globals,
                ir_builder_t *ir)
 {
@@ -531,6 +544,10 @@ int check_func(func_t *func, symtable_t *funcs, symtable_t *globals,
     return ok;
 }
 
+/*
+ * Validate a global variable declaration and emit the IR needed to
+ * initialize it.  Only constant expressions are permitted for globals.
+ */
 int check_global(stmt_t *decl, symtable_t *globals, ir_builder_t *ir)
 {
     if (!decl || decl->kind != STMT_VAR_DECL)
