@@ -610,12 +610,14 @@ print the assembly to the terminal.
 ## Preprocessor Usage
 
 The preprocessor runs automatically before the lexer. It supports `#include "file"`
-to insert the contents of another file and simple object-like `#define` macros:
+to insert the contents of another file, object-like `#define` macros and single
+argument macros of the form `#define NAME(arg)`:
 
 ```c
 #define VAL 3
+#define DOUBLE(x) x + x
 #include "header.h"
-int main() { return VAL; }
+int main() { return DOUBLE(VAL); }
 ```
 
 Macro expansion is purely textual; macros inside strings or comments are not

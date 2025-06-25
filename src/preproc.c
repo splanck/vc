@@ -1,10 +1,10 @@
 /*
  * Minimal preprocessing implementation.
  *
- * Only handles '#include "file"' and object-like '#define'.
- * Macros are expanded with simple text substitution and no awareness of
- * string literals or comments. Nested includes are supported but no
- * include guards are provided.
+ * Handles '#include "file"', object-like '#define' and simple single argument
+ * macros '#define NAME(arg)'. Expansion performs naive text substitution with
+ * no awareness of strings or comments. Nested includes are supported but there
+ * are no include guards.
  */
 
 #include <ctype.h>
@@ -19,6 +19,7 @@
 /* Stored macro definition */
 typedef struct {
     char *name;
+    char *param; /* NULL for object-like macros */
     char *value;
 } macro_t;
 
@@ -27,12 +28,40 @@ static void macro_free(macro_t *m)
 {
     if (!m) return;
     free(m->name);
+    free(m->param);
     free(m->value);
 }
 
 /* Replace identifiers in 'line' with macro values into 'out'.
  * This does no tokenization and simply matches whole identifiers.
  */
+/* Expand a parameterized macro value by substituting 'arg' for 'param'. */
+static char *expand_param_value(const char *value, const char *param, const char *arg)
+{
+    strbuf_t sb;
+    strbuf_init(&sb);
+    for (size_t i = 0; value[i];) {
+        if (isalpha((unsigned char)value[i]) || value[i] == '_') {
+            size_t j = i + 1;
+            while (isalnum((unsigned char)value[j]) || value[j] == '_')
+                j++;
+            size_t len = j - i;
+            if (strlen(param) == len && strncmp(param, value + i, len) == 0) {
+                strbuf_append(&sb, arg);
+            } else {
+                strbuf_appendf(&sb, "%.*s", (int)len, value + i);
+            }
+            i = j;
+        } else {
+            strbuf_appendf(&sb, "%c", value[i]);
+            i++;
+        }
+    }
+    char *out = vc_strdup(sb.data ? sb.data : "");
+    strbuf_free(&sb);
+    return out;
+}
+
 static void expand_line(const char *line, vector_t *macros, strbuf_t *out)
 {
     for (size_t i = 0; line[i];) {
@@ -45,10 +74,33 @@ static void expand_line(const char *line, vector_t *macros, strbuf_t *out)
             for (size_t k = 0; k < macros->count; k++) {
                 macro_t *m = &((macro_t *)macros->data)[k];
                 if (strlen(m->name) == len && strncmp(m->name, line + i, len) == 0) {
-                    strbuf_append(out, m->value);
-                    i = j;
-                    replaced = 1;
-                    break;
+                    if (m->param) {
+                        size_t p = j;
+                        while (line[p] == ' ' || line[p] == '\t')
+                            p++;
+                        if (line[p] == '(') {
+                            p++;
+                            size_t start = p;
+                            while (line[p] && line[p] != ')')
+                                p++;
+                            if (line[p] == ')') {
+                                char *arg = vc_strndup(line + start, p - start);
+                                char *exp = expand_param_value(m->value, m->param, arg);
+                                strbuf_append(out, exp);
+                                free(arg);
+                                free(exp);
+                                i = p + 1;
+                                replaced = 1;
+                                break;
+                            }
+                        }
+                        /* fallthrough if no parentheses */
+                    } else {
+                        strbuf_append(out, m->value);
+                        i = j;
+                        replaced = 1;
+                        break;
+                    }
                 }
             }
         }
@@ -96,17 +148,29 @@ static int process_file(const char *path, vector_t *macros, strbuf_t *out)
             char *n = line + 7;
             while (*n == ' ' || *n == '\t')
                 n++;
-            char *val = n;
-            while (*val && !isspace((unsigned char)*val))
-                val++;
-            if (*val) {
-                *val++ = '\0';
-                while (*val == ' ' || *val == '\t')
-                    val++;
-            } else {
-                val = "";
+            char *name = n;
+            while (*n && !isspace((unsigned char)*n) && *n != '(')
+                n++;
+            char *param = NULL;
+            if (*n == '(') {
+                *n++ = '\0';
+                char *pstart = n;
+                while (*n && *n != ')')
+                    n++;
+                if (*n == ')') {
+                    param = vc_strndup(pstart, (size_t)(n - pstart));
+                    n++; /* skip ')' */
+                } else {
+                    /* malformed macro, treat as object-like */
+                    n = pstart - 1; /* restore '(' position */
+                }
+            } else if (*n) {
+                *n++ = '\0';
             }
-            macro_t m = { vc_strdup(n), vc_strdup(val) };
+            while (*n == ' ' || *n == '\t')
+                n++;
+            char *val = *n ? n : "";
+            macro_t m = { vc_strdup(name), param, vc_strdup(val) };
             if (!vector_push(macros, &m)) {
                 macro_free(&m);
                 free(text);
