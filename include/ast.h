@@ -149,6 +149,7 @@ typedef enum {
     STMT_LABEL,
     STMT_GOTO,
     STMT_ENUM_DECL,
+    STMT_UNION_DECL,
     STMT_BLOCK
 } stmt_kind_t;
 
@@ -211,6 +212,11 @@ struct stmt {
             size_t count;
         } enum_decl;
         struct {
+            char *tag;
+            struct union_field *fields;
+            size_t count;
+        } union_decl;
+        struct {
             stmt_t **stmts;
             size_t count;
         } block;
@@ -226,6 +232,13 @@ struct enumerator {
     char *name;
     expr_t *value; /* may be NULL */
 };
+
+struct union_field {
+    char *name;
+    type_kind_t type;
+    size_t array_size;
+};
+typedef struct union_field union_field_t;
 
 /* Constructors */
 /* Create a numeric literal expression from the given string representation. */
@@ -297,6 +310,9 @@ stmt_t *ast_make_goto(const char *name, size_t line, size_t column);
 /* Declare an enum with \p count enumerators. */
 stmt_t *ast_make_enum_decl(const char *tag, enumerator_t *items, size_t count,
                            size_t line, size_t column);
+/* Declare a union with \p count fields. */
+stmt_t *ast_make_union_decl(const char *tag, struct union_field *fields,
+                            size_t count, size_t line, size_t column);
 /* Create a block of statements containing \p count elements. */
 stmt_t *ast_make_block(stmt_t **stmts, size_t count,
                        size_t line, size_t column);

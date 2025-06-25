@@ -298,6 +298,17 @@ int parser_parse_toplevel(parser_t *p, func_t **out_func, stmt_t **out_global)
             *out_global = decl;
         return 1;
     }
+    if (tok->type == TOK_KW_UNION) {
+        p->pos++;
+        stmt_t *decl = parser_parse_union_decl(p);
+        if (!decl) {
+            p->pos = save;
+            return 0;
+        }
+        if (out_global)
+            *out_global = decl;
+        return 1;
+    }
 
     type_kind_t t;
     if (tok->type == TOK_KW_INT) {

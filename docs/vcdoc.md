@@ -219,6 +219,7 @@ RETURN v2
 - `for`, `while` and `do`/`while` loops
 - Pointers
 - Arrays
+- Structs and unions
 - Compound assignment operators (`+=`, `-=`, `*=`, `/=`, `%=`)
 - Logical operators `&&`, `||` and `!`
 - Floating-point types (`float`, `double`)

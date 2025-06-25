@@ -17,6 +17,7 @@
 
 static stmt_t *parse_block(parser_t *p);
 stmt_t *parser_parse_enum_decl(parser_t *p);
+stmt_t *parser_parse_union_decl(parser_t *p);
 stmt_t *parser_parse_stmt(parser_t *p);
 
 /* Parse a "{...}" block recursively collecting inner statements. */
@@ -113,6 +114,94 @@ fail:
     return ast_make_enum_decl(tag, items, count, kw->line, kw->column);
 }
 
+/* Parse a union declaration */
+stmt_t *parser_parse_union_decl(parser_t *p)
+{
+    token_t *kw = &p->tokens[p->pos - 1];
+    token_t *tok = peek(p);
+    char *tag = NULL;
+    if (tok && tok->type == TOK_IDENT) {
+        p->pos++;
+        tag = tok->lexeme;
+    }
+    if (!match(p, TOK_LBRACE))
+        return NULL;
+
+    size_t cap = 4, count = 0;
+    union_field_t *fields = malloc(cap * sizeof(*fields));
+    if (!fields)
+        return NULL;
+    int ok = 0;
+    while (!match(p, TOK_RBRACE)) {
+        type_kind_t t;
+        size_t arr = 0;
+        if (match(p, TOK_KW_INT)) {
+            t = TYPE_INT;
+        } else if (match(p, TOK_KW_CHAR)) {
+            t = TYPE_CHAR;
+        } else if (match(p, TOK_KW_FLOAT)) {
+            t = TYPE_FLOAT;
+        } else if (match(p, TOK_KW_DOUBLE)) {
+            t = TYPE_DOUBLE;
+        } else if (match(p, TOK_KW_VOID)) {
+            t = TYPE_VOID;
+        } else {
+            goto fail;
+        }
+        if ((t == TYPE_INT || t == TYPE_CHAR || t == TYPE_FLOAT || t == TYPE_DOUBLE) && match(p, TOK_STAR))
+            t = TYPE_PTR;
+        tok = peek(p);
+        if (!tok || tok->type != TOK_IDENT)
+            goto fail;
+        p->pos++;
+        char *name = vc_strdup(tok->lexeme);
+        if (!name)
+            goto fail;
+        if (match(p, TOK_LBRACKET)) {
+            token_t *num = peek(p);
+            if (!num || num->type != TOK_NUMBER) {
+                free(name);
+                goto fail;
+            }
+            p->pos++;
+            arr = strtoul(num->lexeme, NULL, 10);
+            if (!match(p, TOK_RBRACKET)) {
+                free(name);
+                goto fail;
+            }
+            t = TYPE_ARRAY;
+        }
+        if (!match(p, TOK_SEMI)) {
+            free(name);
+            goto fail;
+        }
+        if (count >= cap) {
+            cap *= 2;
+            union_field_t *tmp = realloc(fields, cap * sizeof(*tmp));
+            if (!tmp) {
+                free(name);
+                goto fail;
+            }
+            fields = tmp;
+        }
+        fields[count].name = name;
+        fields[count].type = t;
+        fields[count].array_size = arr;
+        count++;
+    }
+    if (!match(p, TOK_SEMI))
+        goto fail;
+    ok = 1;
+fail:
+    if (!ok) {
+        for (size_t i = 0; i < count; i++)
+            free(fields[i].name);
+        free(fields);
+        return NULL;
+    }
+    return ast_make_union_decl(tag, fields, count, kw->line, kw->column);
+}
+
 /*
  * Parse a single statement at the current position.  This function
  * delegates to the specific helpers for declarations, control flow
@@ -132,6 +221,9 @@ stmt_t *parser_parse_stmt(parser_t *p)
 
     if (match(p, TOK_KW_ENUM))
         return parser_parse_enum_decl(p);
+
+    if (match(p, TOK_KW_UNION))
+        return parser_parse_union_decl(p);
 
     if (match(p, TOK_KW_INT) || match(p, TOK_KW_CHAR) ||
         match(p, TOK_KW_FLOAT) || match(p, TOK_KW_DOUBLE)) {

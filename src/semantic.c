@@ -707,6 +707,9 @@ int check_stmt(stmt_t *stmt, symtable_t *vars, symtable_t *funcs,
         }
         return 1;
     }
+    case STMT_UNION_DECL:
+        /* union declarations do not generate IR for now */
+        return 1;
     case STMT_VAR_DECL: {
         if (!symtable_add(vars, stmt->var_decl.name, stmt->var_decl.type,
                           stmt->var_decl.array_size)) {
@@ -810,6 +813,8 @@ int check_global(stmt_t *decl, symtable_t *globals, ir_builder_t *ir)
         }
         return 1;
     }
+    if (decl->kind == STMT_UNION_DECL)
+        return 1;
     if (decl->kind != STMT_VAR_DECL)
         return 0;
     if (!symtable_add_global(globals, decl->var_decl.name,
