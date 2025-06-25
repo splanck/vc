@@ -114,6 +114,10 @@ static void read_identifier(const char *src, size_t *i, size_t *col,
         type = TOK_KW_VOID;
     else if (len == 4 && strncmp(src + start, "enum", 4) == 0)
         type = TOK_KW_ENUM;
+    else if (len == 6 && strncmp(src + start, "struct", 6) == 0)
+        type = TOK_KW_STRUCT;
+    else if (len == 5 && strncmp(src + start, "union", 5) == 0)
+        type = TOK_KW_UNION;
     else if (len == 6 && strncmp(src + start, "return", 6) == 0)
         type = TOK_KW_RETURN;
     append_token(tokens, type, src + start, len, line, *col);
@@ -209,6 +213,7 @@ static void read_punct(char c, vector_t *tokens, size_t line, size_t column)
     switch (c) {
     case '+': type = TOK_PLUS; break;
     case '-': type = TOK_MINUS; break;
+    case '.': type = TOK_DOT; break;
     case '&': type = TOK_AMP; break;
     case '*': type = TOK_STAR; break;
     case '/': type = TOK_SLASH; break;
@@ -262,6 +267,9 @@ token_t *lexer_tokenize(const char *src, size_t *out_count)
             i += 2; col += 2;
         } else if (c == '>' && src[i + 1] == '=') {
             append_token(&vec, TOK_GE, ">=", 2, line, col);
+            i += 2; col += 2;
+        } else if (c == '-' && src[i + 1] == '>') {
+            append_token(&vec, TOK_ARROW, "->", 2, line, col);
             i += 2; col += 2;
         } else {
             read_punct(c, &vec, line, col);

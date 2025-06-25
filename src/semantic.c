@@ -350,6 +350,10 @@ type_kind_t check_expr(expr_t *expr, symtable_t *vars, symtable_t *funcs,
             *out = val;
         return TYPE_INT;
     }
+    case EXPR_MEMBER:
+        /* struct member access not implemented */
+        error_set(expr->line, expr->column);
+        return TYPE_UNKNOWN;
     case EXPR_CALL: {
         symbol_t *fsym = symtable_lookup(funcs, expr->call.name);
         if (!fsym) {
