@@ -8,16 +8,21 @@ support for floating-point types and operations.
 
 `vc` processes source code through several stages:
 
-1. **Lexer** – converts the input into a stream of tokens.
-2. **Parser** – builds an abstract syntax tree from the tokens.
-3. **Semantic analyzer** – checks the AST and produces an intermediate representation (IR).
-4. **Optimizer** – performs optional transformations on the IR.
-5. **Register allocator** – assigns machine registers.
-6. **Code generator** – emits target assembly.
+1. **Preprocessor** – handles `#include` directives and expands simple `#define` macros.
+2. **Lexer** – converts the input into a stream of tokens.
+3. **Parser** – builds an abstract syntax tree from the tokens.
+4. **Semantic analyzer** – checks the AST and produces an intermediate representation (IR).
+5. **Optimizer** – performs optional transformations on the IR.
+6. **Register allocator** – assigns machine registers.
+7. **Code generator** – emits target assembly.
 
 The modules described below implement these steps.
 
 ## Modules
+
+### preprocessor
+Expands `#include` directives and simple object-like `#define` macros before lexing.
+Only textual substitution is performed; conditional directives are not supported.
 
 ### lexer
 Translates raw characters into tokens for the parser.
@@ -545,6 +550,20 @@ The compiler supports the following options:
 
 Use `vc -o out.s source.c` to compile a file, or `vc --dump-asm source.c` to
 print the assembly to the terminal.
+
+## Preprocessor Usage
+
+The preprocessor runs automatically before the lexer. It supports `#include "file"`
+to insert the contents of another file and simple object-like `#define` macros:
+
+```c
+#define VAL 3
+#include "header.h"
+int main() { return VAL; }
+```
+
+Macro expansion is purely textual; macros inside strings or comments are not
+recognized and conditional directives are ignored.
 
 ## Compiling a Simple Program
 

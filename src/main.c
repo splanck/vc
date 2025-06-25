@@ -27,6 +27,7 @@
 #include "opt.h"
 #include "codegen.h"
 #include "label.h"
+#include "preproc.h"
 
 int main(int argc, char **argv)
 {
@@ -43,9 +44,9 @@ int main(int argc, char **argv)
 
     label_init();
 
-    char *src_text = vc_read_file(source);
+    char *src_text = preproc_run(source);
     if (!src_text) {
-        perror("vc_read_file");
+        perror("preproc_run");
         return 1;
     }
 
