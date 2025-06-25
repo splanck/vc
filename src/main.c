@@ -237,6 +237,17 @@ int main(int argc, char **argv)
     int dump_ir = cli.dump_ir;
     int link = cli.link;
 
+    if (cli.preprocess) {
+        char *text = preproc_run(source, &cli.include_dirs);
+        if (!text) {
+            perror("preproc_run");
+            return 1;
+        }
+        printf("%s", text);
+        free(text);
+        return 0;
+    }
+
     label_init();
 
     char *src_text = NULL;

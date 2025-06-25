@@ -20,6 +20,7 @@ typedef struct {
     int link;           /* build executable */
     int dump_asm;       /* dump assembly to stdout */
     int dump_ir;        /* dump IR to stdout */
+    int preprocess;     /* print preprocessed source */
     vector_t include_dirs; /* additional include directories */
     const char *source; /* input source file */
 } cli_options_t;

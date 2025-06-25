@@ -31,6 +31,7 @@ static void print_usage(const char *prog)
     printf("      --x86-64         Generate 64-bit x86 assembly\n");
     printf("      --dump-asm       Print assembly to stdout and exit\n");
     printf("      --dump-ir        Print IR to stdout and exit\n");
+    printf("  -E, --preprocess     Print preprocessed source and exit\n");
 }
 
 int cli_parse_args(int argc, char **argv, cli_options_t *opts)
@@ -47,6 +48,7 @@ int cli_parse_args(int argc, char **argv, cli_options_t *opts)
         {"dump-asm", no_argument,     0, 4},
         {"no-cprop", no_argument,     0, 5},
         {"dump-ir", no_argument,      0, 6},
+        {"preprocess", no_argument,  0, 'E'},
         {"link", no_argument,        0, 7},
         {0, 0, 0, 0}
     };
@@ -61,11 +63,12 @@ int cli_parse_args(int argc, char **argv, cli_options_t *opts)
     opts->link = 0;
     opts->dump_asm = 0;
     opts->dump_ir = 0;
+    opts->preprocess = 0;
     vector_init(&opts->include_dirs, sizeof(char *));
     opts->source = NULL;
 
     int opt;
-    while ((opt = getopt_long(argc, argv, "hvo:O:cI:", long_opts, NULL)) != -1) {
+    while ((opt = getopt_long(argc, argv, "hvo:O:cEI:", long_opts, NULL)) != -1) {
         switch (opt) {
         case 'h':
             print_usage(argv[0]);
@@ -115,6 +118,9 @@ int cli_parse_args(int argc, char **argv, cli_options_t *opts)
         case 6:
             opts->dump_ir = 1;
             break;
+        case 'E':
+            opts->preprocess = 1;
+            break;
         case 7:
             opts->link = 1;
             break;
@@ -130,7 +136,7 @@ int cli_parse_args(int argc, char **argv, cli_options_t *opts)
         return 1;
     }
 
-    if (!opts->output && !opts->dump_asm && !opts->dump_ir) {
+    if (!opts->output && !opts->dump_asm && !opts->dump_ir && !opts->preprocess) {
         fprintf(stderr, "Error: no output path specified.\n");
         print_usage(argv[0]);
         return 1;
