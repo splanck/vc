@@ -139,7 +139,19 @@ static expr_t *parse_primary(parser_t *p)
     if (!tok)
         return NULL;
 
-    if (match(p, TOK_STAR)) {
+    if (match(p, TOK_INC)) {
+        token_t *op_tok = &p->tokens[p->pos - 1];
+        expr_t *op = parse_primary(p);
+        if (!op)
+            return NULL;
+        return ast_make_unary(UNOP_PREINC, op, op_tok->line, op_tok->column);
+    } else if (match(p, TOK_DEC)) {
+        token_t *op_tok = &p->tokens[p->pos - 1];
+        expr_t *op = parse_primary(p);
+        if (!op)
+            return NULL;
+        return ast_make_unary(UNOP_PREDEC, op, op_tok->line, op_tok->column);
+    } else if (match(p, TOK_STAR)) {
         token_t *op_tok = &p->tokens[p->pos - 1];
         expr_t *op = parse_primary(p);
         if (!op)
@@ -262,6 +274,14 @@ static expr_t *parse_primary(parser_t *p)
             p->pos++;
             base = ast_make_member(base, id->lexeme, via_ptr,
                                    id->line, id->column);
+        } else if (match(p, TOK_INC)) {
+            token_t *op_tok = &p->tokens[p->pos - 1];
+            base = ast_make_unary(UNOP_POSTINC, base,
+                                  op_tok->line, op_tok->column);
+        } else if (match(p, TOK_DEC)) {
+            token_t *op_tok = &p->tokens[p->pos - 1];
+            base = ast_make_unary(UNOP_POSTDEC, base,
+                                  op_tok->line, op_tok->column);
         } else {
             break;
         }

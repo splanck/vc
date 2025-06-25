@@ -274,6 +274,33 @@ type_kind_t check_expr(expr_t *expr, symtable_t *vars, symtable_t *funcs,
             }
             error_set(expr->unary.operand->line, expr->unary.operand->column);
             return TYPE_UNKNOWN;
+        } else if (expr->unary.op == UNOP_PREINC || expr->unary.op == UNOP_PREDEC ||
+                   expr->unary.op == UNOP_POSTINC || expr->unary.op == UNOP_POSTDEC) {
+            if (expr->unary.operand->kind != EXPR_IDENT) {
+                error_set(expr->unary.operand->line, expr->unary.operand->column);
+                return TYPE_UNKNOWN;
+            }
+            symbol_t *sym = symtable_lookup(vars, expr->unary.operand->ident.name);
+            if (!sym || !is_intlike(sym->type)) {
+                error_set(expr->unary.operand->line, expr->unary.operand->column);
+                return TYPE_UNKNOWN;
+            }
+            ir_value_t cur;
+            if (sym->param_index >= 0)
+                cur = ir_build_load_param(ir, sym->param_index);
+            else
+                cur = ir_build_load(ir, sym->name);
+            ir_value_t one = ir_build_const(ir, 1);
+            ir_op_t op = (expr->unary.op == UNOP_PREDEC || expr->unary.op == UNOP_POSTDEC)
+                            ? IR_SUB : IR_ADD;
+            ir_value_t upd = ir_build_binop(ir, op, cur, one);
+            if (sym->param_index >= 0)
+                ir_build_store_param(ir, sym->param_index, upd);
+            else
+                ir_build_store(ir, sym->name, upd);
+            if (out)
+                *out = (expr->unary.op == UNOP_PREINC || expr->unary.op == UNOP_PREDEC) ? upd : cur;
+            return sym->type;
         }
         return TYPE_UNKNOWN;
     case EXPR_IDENT: {

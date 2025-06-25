@@ -235,6 +235,7 @@ RETURN v2
 - Pointers
 - Arrays
 - Compound assignment operators (`+=`, `-=`, `*=`, `/=`, `%=`)
+- Increment and decrement operators (`++`, `--`)
 - Logical operators `&&`, `||` and `!`
 - Floating-point types (`float`, `double`)
 - `sizeof` operator
@@ -268,6 +269,21 @@ int main() {
 Compile with:
 ```sh
 vc -o compound.s compound.c
+```
+
+### Increment and decrement
+```c
+/* incdec.c */
+int main() {
+    int i = 0;
+    ++i;
+    i--;
+    return i;
+}
+```
+Compile with:
+```sh
+vc -o incdec.s incdec.c
 ```
 
 ### Floating-point arithmetic
