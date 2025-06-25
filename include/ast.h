@@ -209,6 +209,7 @@ struct stmt {
             int is_static;
             int is_const;
             int is_volatile;
+            int is_restrict;
             /* optional initializer expression */
             expr_t *init;
             /* optional initializer list for arrays */
@@ -338,7 +339,7 @@ stmt_t *ast_make_return(expr_t *expr, size_t line, size_t column);
 /* Declare a variable optionally initialized by \p init or \p init_list. */
 stmt_t *ast_make_var_decl(const char *name, type_kind_t type, size_t array_size,
                           size_t elem_size, int is_static, int is_const,
-                          int is_volatile,
+                          int is_volatile, int is_restrict,
                           expr_t *init, expr_t **init_list, size_t init_count,
                           const char *tag, union_member_t *members,
                           size_t member_count, size_t line, size_t column);
@@ -392,6 +393,7 @@ struct func {
     char **param_names;
     type_kind_t *param_types;
     size_t *param_elem_sizes;
+    int *param_is_restrict;
     size_t param_count;
     stmt_t **body;
     size_t body_count;
@@ -400,7 +402,8 @@ struct func {
 /* Create a function definition node with the provided signature and body. */
 func_t *ast_make_func(const char *name, type_kind_t ret_type,
                       char **param_names, type_kind_t *param_types,
-                      size_t *param_elem_sizes, size_t param_count,
+                      size_t *param_elem_sizes, int *param_is_restrict,
+                      size_t param_count,
                       stmt_t **body, size_t body_count);
 /* Free a function and all statements contained in its body. */
 void ast_free_func(func_t *func);
