@@ -46,6 +46,7 @@ static const keyword_t keyword_table[] = {
     { "typedef",  TOK_KW_TYPEDEF },
     { "static",   TOK_KW_STATIC },
     { "const",    TOK_KW_CONST },
+    { "volatile", TOK_KW_VOLATILE },
     { "return",   TOK_KW_RETURN }
 };
 

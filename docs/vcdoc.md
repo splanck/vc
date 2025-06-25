@@ -88,6 +88,10 @@ constant initializers.
 The `const` qualifier marks a variable as read-only after initialization.
 Any attempt to assign to a `const` object results in a semantic error.
 
+The `volatile` qualifier tells the compiler that a variable's value may change
+unexpectedly.  Reads and writes to a `volatile` object are always emitted and
+are not subject to certain optimizations.
+
 Struct and union objects are declared using the `struct` and
 `union` keywords.  Members are accessed with `.` for objects or
 `->` when using pointers:
