@@ -14,10 +14,10 @@
 #include "parser.h"
 #include "vector.h"
 #include "util.h"
+#include "parser_types.h"
 
 static stmt_t *parse_block(parser_t *p);
 static stmt_t *parse_var_decl(parser_t *p);
-static int parse_basic_type(parser_t *p, type_kind_t *out);
 stmt_t *parser_parse_enum_decl(parser_t *p);
 stmt_t *parser_parse_stmt(parser_t *p);
 
@@ -55,39 +55,7 @@ static stmt_t *parse_block(parser_t *p)
     return ast_make_block(stmts, count, lb_tok->line, lb_tok->column);
 }
 
-/* Parse a fundamental type specifier possibly prefixed with 'unsigned'. */
-static int parse_basic_type(parser_t *p, type_kind_t *out)
-{
-    size_t save = p->pos;
-    int is_unsigned = match(p, TOK_KW_UNSIGNED);
-    type_kind_t t;
-    if (match(p, TOK_KW_SHORT))
-        t = is_unsigned ? TYPE_USHORT : TYPE_SHORT;
-    else if (match(p, TOK_KW_LONG)) {
-        if (match(p, TOK_KW_LONG))
-            t = is_unsigned ? TYPE_ULLONG : TYPE_LLONG;
-        else
-            t = is_unsigned ? TYPE_ULONG : TYPE_LONG;
-    } else if (match(p, TOK_KW_BOOL)) {
-        t = TYPE_BOOL;
-    } else if (match(p, TOK_KW_INT)) {
-        t = is_unsigned ? TYPE_UINT : TYPE_INT;
-    } else if (match(p, TOK_KW_CHAR)) {
-        t = TYPE_CHAR;
-    } else if (match(p, TOK_KW_FLOAT)) {
-        t = TYPE_FLOAT;
-    } else if (match(p, TOK_KW_DOUBLE)) {
-        t = TYPE_DOUBLE;
-    } else if (match(p, TOK_KW_VOID)) {
-        t = TYPE_VOID;
-    } else {
-        p->pos = save;
-        return 0;
-    }
-    if (out)
-        *out = t;
-    return 1;
-}
+
 
 /* Parse a variable declaration starting after a type keyword already matched */
 static stmt_t *parse_var_decl(parser_t *p)
