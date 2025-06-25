@@ -12,6 +12,7 @@
 
 /* Parse a fundamental type specifier possibly prefixed with 'unsigned'. */
 int parse_basic_type(parser_t *p, type_kind_t *out);
+size_t basic_type_size(type_kind_t t);
 
 #endif /* VC_PARSER_TYPES_H */
 

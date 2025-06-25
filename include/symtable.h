@@ -18,6 +18,7 @@ typedef struct symbol {
     type_kind_t type;
     int param_index; /* -1 for locals */
     size_t array_size;
+    size_t elem_size;
     int enum_value;
     int is_enum_const;
     int is_typedef;
@@ -48,25 +49,26 @@ void symtable_free(symtable_t *table);
 /* Add a symbol to the table. Returns non-zero on success. */
 /* Locals */
 int symtable_add(symtable_t *table, const char *name, const char *ir_name,
-                 type_kind_t type, size_t array_size,
+                 type_kind_t type, size_t array_size, size_t elem_size,
                  int is_static, int is_const);
 /* Parameters are stored as locals with an index */
 int symtable_add_param(symtable_t *table, const char *name, type_kind_t type,
-                       int index);
+                       size_t elem_size, int index);
 /* Functions record return and parameter types */
 int symtable_add_func(symtable_t *table, const char *name, type_kind_t ret_type,
                       type_kind_t *param_types, size_t param_count,
                       int is_prototype);
 /* Globals live in a separate list */
 int symtable_add_global(symtable_t *table, const char *name, const char *ir_name,
-                        type_kind_t type, size_t array_size,
+                        type_kind_t type, size_t array_size, size_t elem_size,
                         int is_static, int is_const);
 int symtable_add_enum(symtable_t *table, const char *name, int value);
 int symtable_add_enum_global(symtable_t *table, const char *name, int value);
 int symtable_add_typedef(symtable_t *table, const char *name, type_kind_t type,
-                         size_t array_size);
+                         size_t array_size, size_t elem_size);
 int symtable_add_typedef_global(symtable_t *table, const char *name,
-                                type_kind_t type, size_t array_size);
+                                type_kind_t type, size_t array_size,
+                                size_t elem_size);
 
 /* Look up a symbol by name. Returns NULL if not found. */
 symbol_t *symtable_lookup(symtable_t *table, const char *name);

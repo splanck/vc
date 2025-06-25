@@ -115,6 +115,12 @@ ir_value_t ir_build_load_ptr(ir_builder_t *b, ir_value_t addr);
 /* Append IR_STORE_PTR that stores `val` through pointer `addr`. */
 void ir_build_store_ptr(ir_builder_t *b, ir_value_t addr, ir_value_t val);
 
+/* Pointer arithmetic helpers */
+ir_value_t ir_build_ptr_add(ir_builder_t *b, ir_value_t ptr, ir_value_t idx,
+                            int elem_size);
+ir_value_t ir_build_ptr_diff(ir_builder_t *b, ir_value_t a, ir_value_t bptr,
+                             int elem_size);
+
 /* Append IR_LOAD_IDX fetching `name[idx]`. */
 ir_value_t ir_build_load_idx(ir_builder_t *b, const char *name, ir_value_t idx);
 

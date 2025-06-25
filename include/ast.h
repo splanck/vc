@@ -153,6 +153,7 @@ struct expr {
             int is_type;
             type_kind_t type;
             size_t array_size;
+            size_t elem_size;
             expr_t *expr;
         } sizeof_expr;
     };
@@ -193,6 +194,7 @@ struct stmt {
             char *name;
             type_kind_t type;
             size_t array_size;
+            size_t elem_size;
             int is_static;
             int is_const;
             /* optional initializer expression */
@@ -237,6 +239,7 @@ struct stmt {
             char *name;
             type_kind_t type;
             size_t array_size;
+            size_t elem_size;
         } typedef_decl;
         struct {
             char *tag;
@@ -292,7 +295,7 @@ expr_t *ast_make_member(expr_t *object, const char *member, int via_ptr,
                         size_t line, size_t column);
 /* Create a sizeof expression of a type. */
 expr_t *ast_make_sizeof_type(type_kind_t type, size_t array_size,
-                             size_t line, size_t column);
+                             size_t elem_size, size_t line, size_t column);
 /* Create a sizeof expression of another expression. */
 expr_t *ast_make_sizeof_expr(expr_t *expr, size_t line, size_t column);
 /* Create a function call expression with \p arg_count arguments. */
@@ -305,7 +308,7 @@ stmt_t *ast_make_expr_stmt(expr_t *expr, size_t line, size_t column);
 stmt_t *ast_make_return(expr_t *expr, size_t line, size_t column);
 /* Declare a variable optionally initialized by \p init or \p init_list. */
 stmt_t *ast_make_var_decl(const char *name, type_kind_t type, size_t array_size,
-                          int is_static, int is_const,
+                          size_t elem_size, int is_static, int is_const,
                           expr_t *init, expr_t **init_list, size_t init_count,
                           size_t line, size_t column);
 /* Create an if/else statement. \p else_branch may be NULL. */
@@ -334,7 +337,7 @@ stmt_t *ast_make_label(const char *name, size_t line, size_t column);
 stmt_t *ast_make_goto(const char *name, size_t line, size_t column);
 /* Create a typedef declaration */
 stmt_t *ast_make_typedef(const char *name, type_kind_t type, size_t array_size,
-                         size_t line, size_t column);
+                         size_t elem_size, size_t line, size_t column);
 /* Declare an enum with \p count enumerators. */
 stmt_t *ast_make_enum_decl(const char *tag, enumerator_t *items, size_t count,
                            size_t line, size_t column);
@@ -354,6 +357,7 @@ struct func {
     type_kind_t return_type;
     char **param_names;
     type_kind_t *param_types;
+    size_t *param_elem_sizes;
     size_t param_count;
     stmt_t **body;
     size_t body_count;
@@ -362,7 +366,7 @@ struct func {
 /* Create a function definition node with the provided signature and body. */
 func_t *ast_make_func(const char *name, type_kind_t ret_type,
                       char **param_names, type_kind_t *param_types,
-                      size_t param_count,
+                      size_t *param_elem_sizes, size_t param_count,
                       stmt_t **body, size_t body_count);
 /* Free a function and all statements contained in its body. */
 void ast_free_func(func_t *func);

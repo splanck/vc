@@ -41,3 +41,19 @@ int parse_basic_type(parser_t *p, type_kind_t *out)
     return 1;
 }
 
+size_t basic_type_size(type_kind_t t)
+{
+    switch (t) {
+    case TYPE_CHAR: case TYPE_UCHAR: case TYPE_BOOL:
+        return 1;
+    case TYPE_SHORT: case TYPE_USHORT:
+        return 2;
+    case TYPE_INT: case TYPE_UINT: case TYPE_LONG: case TYPE_ULONG:
+        return 4;
+    case TYPE_LLONG: case TYPE_ULLONG:
+        return 8;
+    default:
+        return 4;
+    }
+}
+

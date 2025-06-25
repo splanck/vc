@@ -26,7 +26,8 @@ static expr_t *parse_bitand(parser_t *p);
 static expr_t *parse_bitxor(parser_t *p);
 static expr_t *parse_bitor(parser_t *p);
 static expr_t *parse_primary(parser_t *p);
-static int parse_type(parser_t *p, type_kind_t *out_type, size_t *out_size);
+static int parse_type(parser_t *p, type_kind_t *out_type, size_t *out_size,
+                      size_t *elem_size);
 static expr_t *parse_logical_and(parser_t *p);
 static expr_t *parse_logical_or(parser_t *p);
 static expr_t *parse_conditional(parser_t *p);
@@ -116,6 +117,7 @@ static expr_t *clone_expr(const expr_t *expr)
         if (expr->sizeof_expr.is_type)
             return ast_make_sizeof_type(expr->sizeof_expr.type,
                                         expr->sizeof_expr.array_size,
+                                        expr->sizeof_expr.elem_size,
                                         expr->line, expr->column);
         else {
             expr_t *e = clone_expr(expr->sizeof_expr.expr);
@@ -199,9 +201,9 @@ static expr_t *parse_primary(parser_t *p)
         if (!match(p, TOK_LPAREN))
             return NULL;
         size_t save = p->pos;
-        type_kind_t t; size_t sz;
-        if (parse_type(p, &t, &sz) && match(p, TOK_RPAREN))
-            return ast_make_sizeof_type(t, sz, kw->line, kw->column);
+        type_kind_t t; size_t sz; size_t esz;
+        if (parse_type(p, &t, &sz, &esz) && match(p, TOK_RPAREN))
+            return ast_make_sizeof_type(t, sz, esz, kw->line, kw->column);
         p->pos = save;
         expr_t *e = parse_expression(p);
         if (!e || !match(p, TOK_RPAREN)) {
@@ -742,12 +744,14 @@ expr_t *parser_parse_expr(parser_t *p)
 }
 
 /* Parse a basic type specification used by sizeof. */
-static int parse_type(parser_t *p, type_kind_t *out_type, size_t *out_size)
+static int parse_type(parser_t *p, type_kind_t *out_type, size_t *out_size,
+                      size_t *elem_size)
 {
     size_t save = p->pos;
     type_kind_t t;
     if (!parse_basic_type(p, &t))
         return 0;
+    size_t esz = basic_type_size(t);
     if (match(p, TOK_STAR))
         t = TYPE_PTR;
     size_t arr = 0;
@@ -769,6 +773,8 @@ static int parse_type(parser_t *p, type_kind_t *out_type, size_t *out_size)
         *out_type = t;
     if (out_size)
         *out_size = arr;
+    if (elem_size)
+        *elem_size = esz;
     return 1;
 }
 

@@ -184,9 +184,10 @@ func_t *parser_parse_func(parser_t *p)
     if (!match(p, TOK_LPAREN))
         return NULL;
 
-    vector_t param_names_v, param_types_v;
+    vector_t param_names_v, param_types_v, param_sizes_v;
     vector_init(&param_names_v, sizeof(char *));
     vector_init(&param_types_v, sizeof(type_kind_t));
+    vector_init(&param_sizes_v, sizeof(size_t));
 
     if (!match(p, TOK_RPAREN)) {
         do {
@@ -194,28 +195,34 @@ func_t *parser_parse_func(parser_t *p)
             if (!parse_basic_type(p, &pt)) {
                 vector_free(&param_names_v);
                 vector_free(&param_types_v);
+                vector_free(&param_sizes_v);
                 return NULL;
             }
+            size_t ps = basic_type_size(pt);
             if (match(p, TOK_STAR))
                 pt = TYPE_PTR;
             token_t *ptok = peek(p);
             if (!ptok || ptok->type != TOK_IDENT) {
                 vector_free(&param_names_v);
                 vector_free(&param_types_v);
+                vector_free(&param_sizes_v);
                 return NULL;
             }
             p->pos++;
             char *tmp_name = ptok->lexeme;
             if (!vector_push(&param_names_v, &tmp_name) ||
-                !vector_push(&param_types_v, &pt)) {
+                !vector_push(&param_types_v, &pt) ||
+                !vector_push(&param_sizes_v, &ps)) {
                 vector_free(&param_names_v);
                 vector_free(&param_types_v);
+                vector_free(&param_sizes_v);
                 return NULL;
             }
         } while (match(p, TOK_COMMA));
         if (!match(p, TOK_RPAREN)) {
             vector_free(&param_names_v);
             vector_free(&param_types_v);
+            vector_free(&param_sizes_v);
             return NULL;
         }
     }
@@ -223,6 +230,7 @@ func_t *parser_parse_func(parser_t *p)
     if (!match(p, TOK_LBRACE)) {
         vector_free(&param_names_v);
         vector_free(&param_types_v);
+        vector_free(&param_sizes_v);
         return NULL;
     }
 
@@ -237,6 +245,7 @@ func_t *parser_parse_func(parser_t *p)
             vector_free(&body_v);
             vector_free(&param_names_v);
             vector_free(&param_types_v);
+            vector_free(&param_sizes_v);
             return NULL;
         }
         if (!vector_push(&body_v, &stmt)) {
@@ -246,18 +255,21 @@ func_t *parser_parse_func(parser_t *p)
             vector_free(&body_v);
             vector_free(&param_names_v);
             vector_free(&param_types_v);
+            vector_free(&param_sizes_v);
             return NULL;
         }
     }
 
     char **param_names = (char **)param_names_v.data;
     type_kind_t *param_types = (type_kind_t *)param_types_v.data;
+    size_t *param_sizes = (size_t *)param_sizes_v.data;
     size_t pcount = param_names_v.count;
     stmt_t **body = (stmt_t **)body_v.data;
     size_t count = body_v.count;
 
     func_t *fn = ast_make_func(name, ret_type,
-                               param_names, param_types, pcount,
+                               param_names, param_types,
+                               param_sizes, pcount,
                                body, count);
     if (!fn) {
         for (size_t i = 0; i < count; i++)
@@ -265,6 +277,7 @@ func_t *parser_parse_func(parser_t *p)
         free(body);
         free(param_names);
         free(param_types);
+        free(param_sizes);
         return NULL;
     }
     return fn;
@@ -305,6 +318,7 @@ int parser_parse_toplevel(parser_t *p, symtable_t *funcs,
         p->pos++;
         type_kind_t tt;
         if (!parse_basic_type(p, &tt)) { p->pos = save; return 0; }
+        size_t elem_sz = basic_type_size(tt);
         if (match(p, TOK_STAR))
             tt = TYPE_PTR;
         token_t *name_tok = peek(p);
@@ -322,13 +336,14 @@ int parser_parse_toplevel(parser_t *p, symtable_t *funcs,
         if (!match(p, TOK_SEMI)) { p->pos = save; return 0; }
         if (out_global)
             *out_global = ast_make_typedef(name_tok->lexeme, tt, arr_size,
-                                          tok->line, tok->column);
+                                          elem_sz, tok->line, tok->column);
         return *out_global != NULL;
     }
 
     type_kind_t t;
     if (!parse_basic_type(p, &t))
         return 0;
+    size_t elem_size = basic_type_size(t);
     if (match(p, TOK_STAR))
         t = TYPE_PTR;
 
@@ -417,7 +432,7 @@ int parser_parse_toplevel(parser_t *p, symtable_t *funcs,
         p->pos++; /* consume ';' */
         if (out_global)
             *out_global = ast_make_var_decl(id->lexeme, t, arr_size,
-                                           is_static, is_const,
+                                           elem_size, is_static, is_const,
                                            NULL, NULL, 0,
                                            tok->line, tok->column);
         return *out_global != NULL;
@@ -451,7 +466,7 @@ int parser_parse_toplevel(parser_t *p, symtable_t *funcs,
         }
         if (out_global)
             *out_global = ast_make_var_decl(id->lexeme, t, arr_size,
-                                           is_static, is_const,
+                                           elem_size, is_static, is_const,
                                            init, init_list, init_count,
                                            tok->line, tok->column);
         return *out_global != NULL;
