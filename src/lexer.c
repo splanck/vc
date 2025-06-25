@@ -12,6 +12,52 @@
 #include "token.h"
 #include "vector.h"
 
+typedef struct {
+    const char *kw;
+    token_type_t tok;
+} keyword_t;
+
+static const keyword_t keyword_table[] = {
+    { "if",       TOK_KW_IF },
+    { "else",     TOK_KW_ELSE },
+    { "do",       TOK_KW_DO },
+    { "while",    TOK_KW_WHILE },
+    { "for",      TOK_KW_FOR },
+    { "break",    TOK_KW_BREAK },
+    { "continue", TOK_KW_CONTINUE },
+    { "goto",     TOK_KW_GOTO },
+    { "switch",   TOK_KW_SWITCH },
+    { "case",     TOK_KW_CASE },
+    { "default",  TOK_KW_DEFAULT },
+    { "sizeof",   TOK_KW_SIZEOF },
+    { "int",      TOK_KW_INT },
+    { "char",     TOK_KW_CHAR },
+    { "float",    TOK_KW_FLOAT },
+    { "double",   TOK_KW_DOUBLE },
+    { "short",    TOK_KW_SHORT },
+    { "long",     TOK_KW_LONG },
+    { "bool",     TOK_KW_BOOL },
+    { "unsigned", TOK_KW_UNSIGNED },
+    { "void",     TOK_KW_VOID },
+    { "enum",     TOK_KW_ENUM },
+    { "struct",   TOK_KW_STRUCT },
+    { "union",    TOK_KW_UNION },
+    { "typedef",  TOK_KW_TYPEDEF },
+    { "static",   TOK_KW_STATIC },
+    { "const",    TOK_KW_CONST },
+    { "return",   TOK_KW_RETURN }
+};
+
+static token_type_t lookup_keyword(const char *str, size_t len)
+{
+    for (size_t i = 0; i < sizeof(keyword_table) / sizeof(keyword_table[0]); i++) {
+        const keyword_t *kw = &keyword_table[i];
+        if (strlen(kw->kw) == len && strncmp(kw->kw, str, len) == 0)
+            return kw->tok;
+    }
+    return TOK_IDENT;
+}
+
 /* Helper to create and append a token to the vector */
 static void append_token(vector_t *vec, token_type_t type, const char *lexeme,
                          size_t len, size_t line, size_t column)
@@ -84,62 +130,7 @@ static void read_identifier(const char *src, size_t *i, size_t *col,
         *col += len + 1;
         return;
     }
-    if (len == 2 && strncmp(src + start, "if", 2) == 0)
-        type = TOK_KW_IF;
-    else if (len == 4 && strncmp(src + start, "else", 4) == 0)
-        type = TOK_KW_ELSE;
-    else if (len == 2 && strncmp(src + start, "do", 2) == 0)
-        type = TOK_KW_DO;
-    else if (len == 5 && strncmp(src + start, "while", 5) == 0)
-        type = TOK_KW_WHILE;
-    else if (len == 3 && strncmp(src + start, "for", 3) == 0)
-        type = TOK_KW_FOR;
-    else if (len == 5 && strncmp(src + start, "break", 5) == 0)
-        type = TOK_KW_BREAK;
-    else if (len == 8 && strncmp(src + start, "continue", 8) == 0)
-        type = TOK_KW_CONTINUE;
-    else if (len == 4 && strncmp(src + start, "goto", 4) == 0)
-        type = TOK_KW_GOTO;
-    else if (len == 6 && strncmp(src + start, "switch", 6) == 0)
-        type = TOK_KW_SWITCH;
-    else if (len == 4 && strncmp(src + start, "case", 4) == 0)
-        type = TOK_KW_CASE;
-    else if (len == 7 && strncmp(src + start, "default", 7) == 0)
-        type = TOK_KW_DEFAULT;
-    else if (len == 6 && strncmp(src + start, "sizeof", 6) == 0)
-        type = TOK_KW_SIZEOF;
-    else if (len == 3 && strncmp(src + start, "int", 3) == 0)
-        type = TOK_KW_INT;
-    else if (len == 4 && strncmp(src + start, "char", 4) == 0)
-        type = TOK_KW_CHAR;
-    else if (len == 5 && strncmp(src + start, "float", 5) == 0)
-        type = TOK_KW_FLOAT;
-    else if (len == 6 && strncmp(src + start, "double", 6) == 0)
-        type = TOK_KW_DOUBLE;
-    else if (len == 5 && strncmp(src + start, "short", 5) == 0)
-        type = TOK_KW_SHORT;
-    else if (len == 4 && strncmp(src + start, "long", 4) == 0)
-        type = TOK_KW_LONG;
-    else if (len == 4 && strncmp(src + start, "bool", 4) == 0)
-        type = TOK_KW_BOOL;
-    else if (len == 8 && strncmp(src + start, "unsigned", 8) == 0)
-        type = TOK_KW_UNSIGNED;
-    else if (len == 4 && strncmp(src + start, "void", 4) == 0)
-        type = TOK_KW_VOID;
-    else if (len == 4 && strncmp(src + start, "enum", 4) == 0)
-        type = TOK_KW_ENUM;
-    else if (len == 6 && strncmp(src + start, "struct", 6) == 0)
-        type = TOK_KW_STRUCT;
-    else if (len == 5 && strncmp(src + start, "union", 5) == 0)
-        type = TOK_KW_UNION;
-    else if (len == 7 && strncmp(src + start, "typedef", 7) == 0)
-        type = TOK_KW_TYPEDEF;
-    else if (len == 6 && strncmp(src + start, "static", 6) == 0)
-        type = TOK_KW_STATIC;
-    else if (len == 5 && strncmp(src + start, "const", 5) == 0)
-        type = TOK_KW_CONST;
-    else if (len == 6 && strncmp(src + start, "return", 6) == 0)
-        type = TOK_KW_RETURN;
+    type = lookup_keyword(src + start, len);
     append_token(tokens, type, src + start, len, line, *col);
     *col += len;
 }
