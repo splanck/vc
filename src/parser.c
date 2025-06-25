@@ -160,6 +160,28 @@ static int parse_basic_type(parser_t *p, type_kind_t *out)
     return 1;
 }
 
+static int parse_param_type_list(parser_t *p, type_kind_t **out_types, size_t *out_count)
+{
+    vector_t types_v;
+    vector_init(&types_v, sizeof(type_kind_t));
+    if (!match(p, TOK_LPAREN))
+        return 0;
+    if (!match(p, TOK_RPAREN)) {
+        do {
+            type_kind_t pt;
+            if (!parse_basic_type(p, &pt)) { vector_free(&types_v); return 0; }
+            if (match(p, TOK_STAR)) pt = TYPE_PTR;
+            token_t *tmp = peek(p);
+            if (tmp && tmp->type == TOK_IDENT) p->pos++;
+            if (!vector_push(&types_v, &pt)) { vector_free(&types_v); return 0; }
+        } while (match(p, TOK_COMMA));
+        if (!match(p, TOK_RPAREN)) { vector_free(&types_v); return 0; }
+    }
+    *out_types = (type_kind_t *)types_v.data;
+    *out_count = types_v.count;
+    return 1;
+}
+
 /*
  * Emit an error at the current token.  "expected" is an optional list of
  * token kinds that would have been valid in this context.
@@ -358,19 +380,42 @@ int parser_parse_toplevel(parser_t *p, symtable_t *funcs,
     type_kind_t t;
     if (!parse_basic_type(p, &t))
         return 0;
-    if (match(p, TOK_STAR))
-        t = TYPE_PTR;
-
-    token_t *id = peek(p);
-    if (!id || id->type != TOK_IDENT) {
-        p->pos = save;
-        return 0;
+    type_kind_t ret_type = t;
+    type_kind_t *fp_params = NULL;
+    size_t fp_count = 0;
+    int is_func_ptr = 0;
+    char *id_name = NULL;
+    size_t pos_save = p->pos;
+    if (match(p, TOK_LPAREN)) {
+        if (match(p, TOK_STAR)) {
+            token_t *it = peek(p);
+            if (it && it->type == TOK_IDENT) {
+                p->pos++;
+                id_name = it->lexeme;
+                if (match(p, TOK_RPAREN) &&
+                    parse_param_type_list(p, &fp_params, &fp_count)) {
+                    t = TYPE_FUNC_PTR;
+                    is_func_ptr = 1;
+                }
+            }
+        }
     }
-    p->pos++;
+    if (!is_func_ptr) {
+        p->pos = pos_save;
+        if (match(p, TOK_STAR))
+            t = TYPE_PTR;
+        token_t *id = peek(p);
+        if (!id || id->type != TOK_IDENT) {
+            p->pos = save;
+            return 0;
+        }
+        p->pos++;
+        id_name = id->lexeme;
+    }
 
     size_t arr_size = 0;
     token_t *next_tok = peek(p);
-    if (next_tok && next_tok->type == TOK_LPAREN) {
+    if (!is_func_ptr && next_tok && next_tok->type == TOK_LPAREN) {
         /* lookahead for prototype or definition */
         p->pos++; /* '(' */
         vector_t param_types_v;
@@ -403,7 +448,7 @@ int parser_parse_toplevel(parser_t *p, symtable_t *funcs,
         token_t *after = peek(p);
         if (after && after->type == TOK_SEMI) {
             p->pos++; /* ';' */
-            symtable_add_func(funcs, id->lexeme, t,
+            symtable_add_func(funcs, id_name, t,
                              (type_kind_t *)param_types_v.data,
                              param_types_v.count, 1);
             vector_free(&param_types_v);
@@ -421,7 +466,7 @@ int parser_parse_toplevel(parser_t *p, symtable_t *funcs,
         }
     }
 
-    if (next_tok && next_tok->type == TOK_LBRACKET) {
+    if (!is_func_ptr && next_tok && next_tok->type == TOK_LBRACKET) {
         p->pos++; /* '[' */
         token_t *num = peek(p);
         if (!num || num->type != TOK_NUMBER) {
@@ -445,9 +490,10 @@ int parser_parse_toplevel(parser_t *p, symtable_t *funcs,
         }
         p->pos++; /* consume ';' */
         if (out_global)
-            *out_global = ast_make_var_decl(id->lexeme, t, arr_size,
+            *out_global = ast_make_var_decl(id_name, t, arr_size,
                                            is_static,
                                            NULL, NULL, 0,
+                                           ret_type, fp_params, fp_count,
                                            tok->line, tok->column);
         return *out_global != NULL;
     } else if (next_tok && next_tok->type == TOK_ASSIGN) {
@@ -479,9 +525,10 @@ int parser_parse_toplevel(parser_t *p, symtable_t *funcs,
             }
         }
         if (out_global)
-            *out_global = ast_make_var_decl(id->lexeme, t, arr_size,
+            *out_global = ast_make_var_decl(id_name, t, arr_size,
                                            is_static,
                                            init, init_list, init_count,
+                                           ret_type, fp_params, fp_count,
                                            tok->line, tok->column);
         return *out_global != NULL;
     }

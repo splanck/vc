@@ -18,6 +18,7 @@
 static stmt_t *parse_block(parser_t *p);
 static stmt_t *parse_var_decl(parser_t *p);
 static int parse_basic_type(parser_t *p, type_kind_t *out);
+static int parse_param_type_list(parser_t *p, type_kind_t **out_types, size_t *out_count);
 stmt_t *parser_parse_enum_decl(parser_t *p);
 stmt_t *parser_parse_stmt(parser_t *p);
 
@@ -89,6 +90,29 @@ static int parse_basic_type(parser_t *p, type_kind_t *out)
     return 1;
 }
 
+/* Parse a parameter type list "(type, type, ...)" */
+static int parse_param_type_list(parser_t *p, type_kind_t **out_types, size_t *out_count)
+{
+    vector_t types_v;
+    vector_init(&types_v, sizeof(type_kind_t));
+    if (!match(p, TOK_LPAREN))
+        return 0;
+    if (!match(p, TOK_RPAREN)) {
+        do {
+            type_kind_t pt;
+            if (!parse_basic_type(p, &pt)) { vector_free(&types_v); return 0; }
+            if (match(p, TOK_STAR)) pt = TYPE_PTR;
+            token_t *tmp = peek(p);
+            if (tmp && tmp->type == TOK_IDENT) p->pos++; /* optional name */
+            if (!vector_push(&types_v, &pt)) { vector_free(&types_v); return 0; }
+        } while (match(p, TOK_COMMA));
+        if (!match(p, TOK_RPAREN)) { vector_free(&types_v); return 0; }
+    }
+    *out_types = (type_kind_t *)types_v.data;
+    *out_count = types_v.count;
+    return 1;
+}
+
 /* Parse a variable declaration starting after a type keyword already matched */
 static stmt_t *parse_var_decl(parser_t *p)
 {
@@ -97,15 +121,38 @@ static stmt_t *parse_var_decl(parser_t *p)
     type_kind_t t;
     if (!parse_basic_type(p, &t))
         return NULL;
-    if (match(p, TOK_STAR))
-        t = TYPE_PTR;
-    token_t *tok = peek(p);
-    if (!tok || tok->type != TOK_IDENT)
-        return NULL;
-    p->pos++;
-    char *name = tok->lexeme;
+    type_kind_t ret_type = t;
+    type_kind_t *fp_params = NULL;
+    size_t fp_count = 0;
+    size_t save = p->pos;
+    char *name = NULL;
+    int is_func_ptr = 0;
+    if (match(p, TOK_LPAREN)) {
+        if (match(p, TOK_STAR)) {
+            token_t *idtok = peek(p);
+            if (idtok && idtok->type == TOK_IDENT) {
+                p->pos++;
+                name = idtok->lexeme;
+                if (match(p, TOK_RPAREN) &&
+                    parse_param_type_list(p, &fp_params, &fp_count)) {
+                    t = TYPE_FUNC_PTR;
+                    is_func_ptr = 1;
+                }
+            }
+        }
+    }
+    if (!is_func_ptr) {
+        p->pos = save;
+        if (match(p, TOK_STAR))
+            t = TYPE_PTR;
+        token_t *tok = peek(p);
+        if (!tok || tok->type != TOK_IDENT)
+            return NULL;
+        p->pos++;
+        name = tok->lexeme;
+    }
     size_t arr_size = 0;
-    if (match(p, TOK_LBRACKET)) {
+    if (!is_func_ptr && match(p, TOK_LBRACKET)) {
         token_t *num = peek(p);
         if (!num || num->type != TOK_NUMBER)
             return NULL;
@@ -142,6 +189,7 @@ static stmt_t *parse_var_decl(parser_t *p)
     }
     return ast_make_var_decl(name, t, arr_size, is_static,
                              init, init_list, init_count,
+                             ret_type, fp_params, fp_count,
                              kw_tok->line, kw_tok->column);
 }
 

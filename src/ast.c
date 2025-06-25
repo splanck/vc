@@ -224,7 +224,7 @@ expr_t *ast_make_sizeof_expr(expr_t *e, size_t line, size_t column)
 }
 
 /* Create a function call expression node. */
-expr_t *ast_make_call(const char *name, expr_t **args, size_t arg_count,
+expr_t *ast_make_call(expr_t *func, expr_t **args, size_t arg_count,
                       size_t line, size_t column)
 {
     expr_t *expr = malloc(sizeof(*expr));
@@ -233,11 +233,7 @@ expr_t *ast_make_call(const char *name, expr_t **args, size_t arg_count,
     expr->kind = EXPR_CALL;
     expr->line = line;
     expr->column = column;
-    expr->call.name = vc_strdup(name ? name : "");
-    if (!expr->call.name) {
-        free(expr);
-        return NULL;
-    }
+    expr->call.func = func;
     expr->call.args = args;
     expr->call.arg_count = arg_count;
     return expr;
@@ -274,6 +270,8 @@ stmt_t *ast_make_return(expr_t *expr, size_t line, size_t column)
 stmt_t *ast_make_var_decl(const char *name, type_kind_t type, size_t array_size,
                           int is_static,
                           expr_t *init, expr_t **init_list, size_t init_count,
+                          type_kind_t func_ret_type,
+                          type_kind_t *func_param_types, size_t func_param_count,
                           size_t line, size_t column)
 {
     stmt_t *stmt = malloc(sizeof(*stmt));
@@ -293,6 +291,9 @@ stmt_t *ast_make_var_decl(const char *name, type_kind_t type, size_t array_size,
     stmt->var_decl.init = init;
     stmt->var_decl.init_list = init_list;
     stmt->var_decl.init_count = init_count;
+    stmt->var_decl.func_ret_type = func_ret_type;
+    stmt->var_decl.func_param_types = func_param_types;
+    stmt->var_decl.func_param_count = func_param_count;
     return stmt;
 }
 
@@ -586,10 +587,10 @@ void ast_free_expr(expr_t *expr)
             ast_free_expr(expr->sizeof_expr.expr);
         break;
     case EXPR_CALL:
+        ast_free_expr(expr->call.func);
         for (size_t i = 0; i < expr->call.arg_count; i++)
             ast_free_expr(expr->call.args[i]);
         free(expr->call.args);
-        free(expr->call.name);
         break;
     }
     free(expr);
@@ -613,6 +614,7 @@ void ast_free_stmt(stmt_t *stmt)
         for (size_t i = 0; i < stmt->var_decl.init_count; i++)
             ast_free_expr(stmt->var_decl.init_list[i]);
         free(stmt->var_decl.init_list);
+        free(stmt->var_decl.func_param_types);
         break;
     case STMT_IF:
         ast_free_expr(stmt->if_stmt.cond);

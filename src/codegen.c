@@ -304,6 +304,14 @@ static void emit_instr(strbuf_t *sb, ir_instr_t *ins, regalloc_t *ra, int x64)
         strbuf_appendf(sb, "    mov%s %s, %s\n", sfx, ax,
                    loc_str(buf1, ra, ins->dest, x64));
         break;
+    case IR_CALL_IND:
+        strbuf_appendf(sb, "    call *%s\n", loc_str(buf1, ra, ins->src1, x64));
+        if (ins->imm > 0)
+            strbuf_appendf(sb, "    add%s $%d, %s\n", sfx,
+                       ins->imm * (x64 ? 8 : 4), sp);
+        strbuf_appendf(sb, "    mov%s %s, %s\n", sfx, ax,
+                   loc_str(buf1, ra, ins->dest, x64));
+        break;
     case IR_FUNC_BEGIN:
         strbuf_appendf(sb, "%s:\n", ins->name);
         strbuf_appendf(sb, "    push%s %s\n", sfx, bp);

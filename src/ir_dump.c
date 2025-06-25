@@ -50,6 +50,7 @@ static const char *op_name(ir_op_t op)
     case IR_ARG: return "IR_ARG";
     case IR_RETURN: return "IR_RETURN";
     case IR_CALL: return "IR_CALL";
+    case IR_CALL_IND: return "IR_CALL_IND";
     case IR_FUNC_BEGIN: return "IR_FUNC_BEGIN";
     case IR_FUNC_END: return "IR_FUNC_END";
     case IR_BR: return "IR_BR";

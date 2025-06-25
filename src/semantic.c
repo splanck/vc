@@ -276,13 +276,15 @@ type_kind_t check_expr(expr_t *expr, symtable_t *vars, symtable_t *funcs,
                 return TYPE_UNKNOWN;
             }
             symbol_t *sym = symtable_lookup(vars, expr->unary.operand->ident.name);
+            if (!sym)
+                sym = symtable_lookup(funcs, expr->unary.operand->ident.name);
             if (!sym) {
                 error_set(expr->unary.operand->line, expr->unary.operand->column);
                 return TYPE_UNKNOWN;
             }
             if (out)
-                *out = ir_build_addr(ir, sym->ir_name);
-            return TYPE_PTR;
+                *out = ir_build_addr(ir, sym->ir_name ? sym->ir_name : sym->name);
+            return sym->param_types ? TYPE_FUNC_PTR : TYPE_PTR;
         } else if (expr->unary.op == UNOP_NEG) {
             ir_value_t val;
             if (is_intlike(check_expr(expr->unary.operand, vars, funcs, ir, &val))) {
@@ -336,6 +338,8 @@ type_kind_t check_expr(expr_t *expr, symtable_t *vars, symtable_t *funcs,
         return TYPE_UNKNOWN;
     case EXPR_IDENT: {
         symbol_t *sym = symtable_lookup(vars, expr->ident.name);
+        if (!sym)
+            sym = symtable_lookup(funcs, expr->ident.name);
         if (!sym) {
             error_set(expr->line, expr->column);
             return TYPE_UNKNOWN;
@@ -349,15 +353,20 @@ type_kind_t check_expr(expr_t *expr, symtable_t *vars, symtable_t *funcs,
             if (out)
                 *out = ir_build_addr(ir, sym->ir_name);
             return TYPE_PTR;
-        } else {
-            if (out) {
-                if (sym->param_index >= 0)
-                    *out = ir_build_load_param(ir, sym->param_index);
-                else
-                    *out = ir_build_load(ir, sym->ir_name);
-            }
-            return sym->type;
         }
+        if (sym->param_types && sym->param_count >= 0 && sym->param_index == -1 && sym->type != TYPE_ARRAY && sym->ir_name == NULL) {
+            /* function symbol as value */
+            if (out)
+                *out = ir_build_addr(ir, sym->name);
+            return TYPE_FUNC_PTR;
+        }
+        if (out) {
+            if (sym->param_index >= 0)
+                *out = ir_build_load_param(ir, sym->param_index);
+            else
+                *out = ir_build_load(ir, sym->ir_name);
+        }
+        return sym->type;
     }
     case EXPR_BINARY:
         if (expr->binary.op == BINOP_LOGAND || expr->binary.op == BINOP_LOGOR) {
@@ -523,15 +532,25 @@ type_kind_t check_expr(expr_t *expr, symtable_t *vars, symtable_t *funcs,
         return TYPE_INT;
     }
     case EXPR_CALL: {
-        symbol_t *fsym = symtable_lookup(funcs, expr->call.name);
-        if (!fsym) {
+        symbol_t *fsym = NULL;
+        if (expr->call.func->kind == EXPR_IDENT)
+            fsym = symtable_lookup(funcs, expr->call.func->ident.name);
+        ir_value_t func_val;
+        type_kind_t ftype = TYPE_UNKNOWN;
+        if (!fsym)
+            ftype = check_expr(expr->call.func, vars, funcs, ir, &func_val);
+        else
+            func_val.id = -1; /* unused */
+        if (!fsym && ftype != TYPE_FUNC_PTR) {
             error_set(expr->line, expr->column);
             return TYPE_UNKNOWN;
         }
-        if (fsym->param_count != expr->call.arg_count) {
+        if (fsym && fsym->param_count != expr->call.arg_count) {
             error_set(expr->line, expr->column);
             return TYPE_UNKNOWN;
         }
+        size_t param_count = fsym ? fsym->param_count : 0;
+        type_kind_t *param_types = fsym ? fsym->param_types : NULL;
         ir_value_t *vals = NULL;
         if (expr->call.arg_count) {
             vals = malloc(expr->call.arg_count * sizeof(*vals));
@@ -541,21 +560,27 @@ type_kind_t check_expr(expr_t *expr, symtable_t *vars, symtable_t *funcs,
         for (size_t i = 0; i < expr->call.arg_count; i++) {
             type_kind_t at = check_expr(expr->call.args[i], vars, funcs, ir,
                                         &vals[i]);
-            type_kind_t pt = fsym->param_types[i];
-            if (!((is_intlike(pt) && is_intlike(at)) || at == pt)) {
-                error_set(expr->call.args[i]->line, expr->call.args[i]->column);
-                free(vals);
-                return TYPE_UNKNOWN;
+            if (param_types && i < param_count) {
+                type_kind_t pt = param_types[i];
+                if (!((is_intlike(pt) && is_intlike(at)) || at == pt)) {
+                    error_set(expr->call.args[i]->line, expr->call.args[i]->column);
+                    free(vals);
+                    return TYPE_UNKNOWN;
+                }
             }
         }
         for (size_t i = expr->call.arg_count; i > 0; i--)
             ir_build_arg(ir, vals[i - 1]);
         free(vals);
-        ir_value_t call_val = ir_build_call(ir, expr->call.name,
-                                           expr->call.arg_count);
+        ir_value_t call_val;
+        if (fsym) {
+            call_val = ir_build_call(ir, fsym->name, expr->call.arg_count);
+        } else {
+            call_val = ir_build_call_ind(ir, func_val, expr->call.arg_count);
+        }
         if (out)
             *out = call_val;
-        return fsym->type;
+        return fsym ? fsym->type : TYPE_INT;
     }
     }
     error_set(expr->line, expr->column);
@@ -843,6 +868,16 @@ int check_stmt(stmt_t *stmt, symtable_t *vars, symtable_t *funcs,
             return 0;
         }
         symbol_t *sym = symtable_lookup(vars, stmt->var_decl.name);
+        if (stmt->var_decl.type == TYPE_FUNC_PTR) {
+            sym->alias_type = stmt->var_decl.func_ret_type;
+            sym->param_count = stmt->var_decl.func_param_count;
+            if (stmt->var_decl.func_param_count) {
+                sym->param_types = malloc(sym->param_count * sizeof(type_kind_t));
+                if (!sym->param_types) return 0;
+                for (size_t i=0;i<sym->param_count;i++)
+                    sym->param_types[i] = stmt->var_decl.func_param_types[i];
+            }
+        }
         if (stmt->var_decl.init) {
             if (stmt->var_decl.is_static) {
                 int cval;
@@ -855,7 +890,8 @@ int check_stmt(stmt_t *stmt, symtable_t *vars, symtable_t *funcs,
                 ir_value_t val;
                 type_kind_t vt = check_expr(stmt->var_decl.init, vars, funcs, ir, &val);
                 if (!((is_intlike(stmt->var_decl.type) && is_intlike(vt)) ||
-                      vt == stmt->var_decl.type)) {
+                      vt == stmt->var_decl.type ||
+                      (stmt->var_decl.type == TYPE_FUNC_PTR && vt == TYPE_FUNC_PTR))) {
                     error_set(stmt->var_decl.init->line, stmt->var_decl.init->column);
                     return 0;
                 }

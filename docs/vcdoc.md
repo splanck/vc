@@ -77,6 +77,12 @@ Pointers work the same way and may be dereferenced using
 int *p = &x;
 return *p;
 ```
+Function pointers can be declared with a parenthesized `*` declarator:
+
+```c
+int (*fp)(int, int);
+fp = &some_func;
+```
 
 Variables may be declared with the `static` qualifier.  Static globals
 behave like normal globals but are emitted as private symbols.  Static
@@ -356,6 +362,21 @@ int main() {
 Compile with:
 ```sh
 vc -o call.s call.c
+```
+
+Function pointers are also supported:
+
+```c
+int add(int a, int b) { return a + b; }
+int (*fp)(int, int);
+int main() {
+    fp = add;
+    return fp(2, 3);
+}
+```
+Compile with:
+```sh
+vc -o func_ptr.s func_ptr.c
 ```
 
 ### Loops

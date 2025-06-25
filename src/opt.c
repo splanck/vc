@@ -88,6 +88,7 @@ static void propagate_load_consts(ir_builder_t *ir)
         case IR_STORE_PTR:
         case IR_STORE_IDX:
         case IR_CALL:
+        case IR_CALL_IND:
         case IR_ARG:
             clear_var_list(vars);
             if (ins->dest >= 0 && ins->dest < max_id)
@@ -224,7 +225,7 @@ static void fold_constants(ir_builder_t *ir)
             if (ins->dest >= 0 && ins->dest < max_id)
                 is_const[ins->dest] = 0;
             break;
-        case IR_CALL: case IR_FUNC_BEGIN: case IR_FUNC_END: case IR_ARG:
+        case IR_CALL: case IR_CALL_IND: case IR_FUNC_BEGIN: case IR_FUNC_END: case IR_ARG:
             if (ins->dest >= 0 && ins->dest < max_id)
                 is_const[ins->dest] = 0;
             break;
@@ -248,6 +249,7 @@ static int has_side_effect(ir_instr_t *ins)
     case IR_STORE_IDX:
     case IR_STORE_PARAM:
     case IR_CALL:
+    case IR_CALL_IND:
     case IR_ARG:
     case IR_RETURN:
     case IR_BR:

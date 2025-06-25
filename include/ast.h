@@ -26,6 +26,7 @@ typedef enum {
     TYPE_FLOAT,
     TYPE_DOUBLE,
     TYPE_PTR,
+    TYPE_FUNC_PTR,
     TYPE_ARRAY,
     TYPE_VOID,
     TYPE_STRUCT,
@@ -145,7 +146,7 @@ struct expr {
             int via_ptr;
         } member;
         struct {
-            char *name;
+            expr_t *func;
             expr_t **args;
             size_t arg_count;
         } call;
@@ -199,6 +200,10 @@ struct stmt {
             /* optional initializer list for arrays */
             expr_t **init_list;
             size_t init_count;
+            /* function pointer signature */
+            type_kind_t func_ret_type;
+            type_kind_t *func_param_types;
+            size_t func_param_count;
         } var_decl;
         struct {
             expr_t *cond;
@@ -295,7 +300,7 @@ expr_t *ast_make_sizeof_type(type_kind_t type, size_t array_size,
 /* Create a sizeof expression of another expression. */
 expr_t *ast_make_sizeof_expr(expr_t *expr, size_t line, size_t column);
 /* Create a function call expression with \p arg_count arguments. */
-expr_t *ast_make_call(const char *name, expr_t **args, size_t arg_count,
+expr_t *ast_make_call(expr_t *func, expr_t **args, size_t arg_count,
                       size_t line, size_t column);
 
 /* Create an expression statement node. */
@@ -306,6 +311,8 @@ stmt_t *ast_make_return(expr_t *expr, size_t line, size_t column);
 stmt_t *ast_make_var_decl(const char *name, type_kind_t type, size_t array_size,
                           int is_static,
                           expr_t *init, expr_t **init_list, size_t init_count,
+                          type_kind_t func_ret_type,
+                          type_kind_t *func_param_types, size_t func_param_count,
                           size_t line, size_t column);
 /* Create an if/else statement. \p else_branch may be NULL. */
 stmt_t *ast_make_if(expr_t *cond, stmt_t *then_branch, stmt_t *else_branch,
