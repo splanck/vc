@@ -223,6 +223,7 @@ static void read_punct(char c, vector_t *tokens, size_t line, size_t column)
     case '&': type = TOK_AMP; break;
     case '*': type = TOK_STAR; break;
     case '/': type = TOK_SLASH; break;
+    case '%': type = TOK_PERCENT; break;
     case '=': type = TOK_ASSIGN; break;
     case '<': type = TOK_LT; break;
     case '>': type = TOK_GT; break;

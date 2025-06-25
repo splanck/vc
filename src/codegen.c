@@ -153,6 +153,17 @@ static void emit_instr(strbuf_t *sb, ir_instr_t *ins, regalloc_t *ra, int x64)
             strbuf_appendf(sb, "    mov%s %s, %s\n", sfx, ax,
                        loc_str(buf2, ra, ins->dest, x64));
         break;
+    case IR_MOD:
+        strbuf_appendf(sb, "    mov%s %s, %s\n", sfx,
+                   loc_str(buf1, ra, ins->src1, x64), ax);
+        strbuf_appendf(sb, "    %s\n", x64 ? "cqto" : "cltd");
+        strbuf_appendf(sb, "    idiv%s %s\n", sfx,
+                   loc_str(buf1, ra, ins->src2, x64));
+        if (ra && ra->loc[ins->dest] >= 0 &&
+            strcmp(regalloc_reg_name(ra->loc[ins->dest]), x64 ? "%rdx" : "%edx") != 0)
+            strbuf_appendf(sb, "    mov%s %s, %s\n", sfx, x64 ? "%rdx" : "%edx",
+                       loc_str(buf2, ra, ins->dest, x64));
+        break;
     case IR_CMPEQ: case IR_CMPNE: case IR_CMPLT: case IR_CMPGT:
     case IR_CMPLE: case IR_CMPGE: {
         const char *cc = "";

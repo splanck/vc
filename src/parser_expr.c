@@ -195,6 +195,15 @@ static expr_t *parse_term(parser_t *p)
             }
             left = ast_make_binary(BINOP_DIV, left, right,
                                   op_tok->line, op_tok->column);
+        } else if (match(p, TOK_PERCENT)) {
+            token_t *op_tok = &p->tokens[p->pos - 1];
+            expr_t *right = parse_primary(p);
+            if (!right) {
+                ast_free_expr(left);
+                return NULL;
+            }
+            left = ast_make_binary(BINOP_MOD, left, right,
+                                  op_tok->line, op_tok->column);
         } else {
             break;
         }

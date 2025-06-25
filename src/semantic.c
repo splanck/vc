@@ -117,6 +117,7 @@ static int eval_const_expr(expr_t *expr, symtable_t *vars, int *out)
         case BINOP_SUB: if (out) *out = a - b; break;
         case BINOP_MUL: if (out) *out = a * b; break;
         case BINOP_DIV: if (out) *out = b != 0 ? a / b : 0; break;
+        case BINOP_MOD: if (out) *out = b != 0 ? a % b : 0; break;
         case BINOP_EQ:  if (out) *out = (a == b); break;
         case BINOP_NEQ: if (out) *out = (a != b); break;
         case BINOP_LT:  if (out) *out = (a < b); break;
@@ -172,6 +173,7 @@ static type_kind_t check_binary(expr_t *left, expr_t *right, symtable_t *vars,
             case BINOP_SUB: ir_op = IR_SUB; break;
             case BINOP_MUL: ir_op = IR_MUL; break;
             case BINOP_DIV: ir_op = IR_DIV; break;
+            case BINOP_MOD: ir_op = IR_MOD; break;
             case BINOP_EQ:  ir_op = IR_CMPEQ; break;
             case BINOP_NEQ: ir_op = IR_CMPNE; break;
             case BINOP_LT:  ir_op = IR_CMPLT; break;

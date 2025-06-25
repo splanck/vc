@@ -49,6 +49,15 @@ static void test_lexer_comments(void)
     lexer_free_tokens(toks, count);
 }
 
+static void test_lexer_percent(void)
+{
+    const char *src = "a % b;";
+    size_t count = 0;
+    token_t *toks = lexer_tokenize(src, &count);
+    ASSERT(toks[1].type == TOK_PERCENT);
+    lexer_free_tokens(toks, count);
+}
+
 static void test_parser_expr(void)
 {
     const char *src = "1 + 2 * 3";
@@ -180,6 +189,19 @@ static void test_parser_pointer_arith(void)
     lexer_free_tokens(toks, count);
 }
 
+static void test_parser_mod(void)
+{
+    const char *src = "5 % 2";
+    size_t count = 0;
+    token_t *toks = lexer_tokenize(src, &count);
+    parser_t p; parser_init(&p, toks, count);
+    expr_t *expr = parser_parse_expr(&p);
+    ASSERT(expr && expr->kind == EXPR_BINARY);
+    ASSERT(expr->binary.op == BINOP_MOD);
+    ast_free_expr(expr);
+    lexer_free_tokens(toks, count);
+}
+
 static void test_parser_global_init(void)
 {
     const char *src = "int y = 1 + 2;";
@@ -288,6 +310,7 @@ int main(void)
 {
     test_lexer_basic();
     test_lexer_comments();
+    test_lexer_percent();
     test_parser_expr();
     test_parser_stmt_return();
     test_parser_stmt_return_void();
@@ -296,6 +319,7 @@ int main(void)
     test_parser_index_expr();
     test_parser_unary_neg();
     test_parser_pointer_arith();
+    test_parser_mod();
     test_parser_global_init();
     test_parser_unary_expr();
     test_parser_logical();
