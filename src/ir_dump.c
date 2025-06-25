@@ -20,6 +20,11 @@ static const char *op_name(ir_op_t op)
     case IR_MUL: return "IR_MUL";
     case IR_DIV: return "IR_DIV";
     case IR_MOD: return "IR_MOD";
+    case IR_SHL: return "IR_SHL";
+    case IR_SHR: return "IR_SHR";
+    case IR_AND: return "IR_AND";
+    case IR_OR: return "IR_OR";
+    case IR_XOR: return "IR_XOR";
     case IR_PTR_ADD: return "IR_PTR_ADD";
     case IR_PTR_DIFF: return "IR_PTR_DIFF";
     case IR_CMPEQ: return "IR_CMPEQ";

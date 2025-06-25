@@ -164,6 +164,48 @@ static void emit_instr(strbuf_t *sb, ir_instr_t *ins, regalloc_t *ra, int x64)
             strbuf_appendf(sb, "    mov%s %s, %s\n", sfx, x64 ? "%rdx" : "%edx",
                        loc_str(buf2, ra, ins->dest, x64));
         break;
+    case IR_SHL:
+        strbuf_appendf(sb, "    mov%s %s, %s\n", sfx,
+                   loc_str(buf1, ra, ins->src1, x64),
+                   loc_str(buf2, ra, ins->dest, x64));
+        strbuf_appendf(sb, "    mov%s %s, %s\n", sfx,
+                   loc_str(buf1, ra, ins->src2, x64), x64 ? "%rcx" : "%ecx");
+        strbuf_appendf(sb, "    sal%s %s, %s\n", sfx, "%cl",
+                   loc_str(buf2, ra, ins->dest, x64));
+        break;
+    case IR_SHR:
+        strbuf_appendf(sb, "    mov%s %s, %s\n", sfx,
+                   loc_str(buf1, ra, ins->src1, x64),
+                   loc_str(buf2, ra, ins->dest, x64));
+        strbuf_appendf(sb, "    mov%s %s, %s\n", sfx,
+                   loc_str(buf1, ra, ins->src2, x64), x64 ? "%rcx" : "%ecx");
+        strbuf_appendf(sb, "    sar%s %s, %s\n", sfx, "%cl",
+                   loc_str(buf2, ra, ins->dest, x64));
+        break;
+    case IR_AND:
+        strbuf_appendf(sb, "    mov%s %s, %s\n", sfx,
+                   loc_str(buf1, ra, ins->src1, x64),
+                   loc_str(buf2, ra, ins->dest, x64));
+        strbuf_appendf(sb, "    and%s %s, %s\n", sfx,
+                   loc_str(buf1, ra, ins->src2, x64),
+                   loc_str(buf2, ra, ins->dest, x64));
+        break;
+    case IR_OR:
+        strbuf_appendf(sb, "    mov%s %s, %s\n", sfx,
+                   loc_str(buf1, ra, ins->src1, x64),
+                   loc_str(buf2, ra, ins->dest, x64));
+        strbuf_appendf(sb, "    or%s %s, %s\n", sfx,
+                   loc_str(buf1, ra, ins->src2, x64),
+                   loc_str(buf2, ra, ins->dest, x64));
+        break;
+    case IR_XOR:
+        strbuf_appendf(sb, "    mov%s %s, %s\n", sfx,
+                   loc_str(buf1, ra, ins->src1, x64),
+                   loc_str(buf2, ra, ins->dest, x64));
+        strbuf_appendf(sb, "    xor%s %s, %s\n", sfx,
+                   loc_str(buf1, ra, ins->src2, x64),
+                   loc_str(buf2, ra, ins->dest, x64));
+        break;
     case IR_CMPEQ: case IR_CMPNE: case IR_CMPLT: case IR_CMPGT:
     case IR_CMPLE: case IR_CMPGE: {
         const char *cc = "";
