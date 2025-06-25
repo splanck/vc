@@ -288,6 +288,23 @@ stmt_t *ast_make_for(expr_t *init, expr_t *cond, expr_t *incr, stmt_t *body,
     return stmt;
 }
 
+/* Create a switch statement node. */
+stmt_t *ast_make_switch(expr_t *expr, switch_case_t *cases, size_t case_count,
+                        stmt_t *default_body, size_t line, size_t column)
+{
+    stmt_t *stmt = malloc(sizeof(*stmt));
+    if (!stmt)
+        return NULL;
+    stmt->kind = STMT_SWITCH;
+    stmt->line = line;
+    stmt->column = column;
+    stmt->switch_stmt.expr = expr;
+    stmt->switch_stmt.cases = cases;
+    stmt->switch_stmt.case_count = case_count;
+    stmt->switch_stmt.default_body = default_body;
+    return stmt;
+}
+
 /* Create a break statement node. */
 stmt_t *ast_make_break(size_t line, size_t column)
 {
@@ -455,6 +472,15 @@ void ast_free_stmt(stmt_t *stmt)
         ast_free_expr(stmt->for_stmt.cond);
         ast_free_expr(stmt->for_stmt.incr);
         ast_free_stmt(stmt->for_stmt.body);
+        break;
+    case STMT_SWITCH:
+        ast_free_expr(stmt->switch_stmt.expr);
+        for (size_t i = 0; i < stmt->switch_stmt.case_count; i++) {
+            ast_free_expr(stmt->switch_stmt.cases[i].expr);
+            ast_free_stmt(stmt->switch_stmt.cases[i].body);
+        }
+        free(stmt->switch_stmt.cases);
+        ast_free_stmt(stmt->switch_stmt.default_body);
         break;
     case STMT_BREAK:
     case STMT_CONTINUE:

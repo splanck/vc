@@ -363,6 +363,26 @@ Compile with:
 vc -o loop_control.s loop_control.c
 ```
 
+### Switch statements
+```c
+/* switch_example.c */
+int main() {
+    int x = 2;
+    switch (x) {
+    case 1:
+        return 10;
+    case 2:
+        return 20;
+    default:
+        return 0;
+    }
+}
+```
+Compile with:
+```sh
+vc -o switch.s switch_example.c
+```
+
 ## Command-line Options
 
 The compiler supports the following options:

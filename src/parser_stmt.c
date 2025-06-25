@@ -12,6 +12,7 @@
 
 #include <stdlib.h>
 #include "parser.h"
+#include "vector.h"
 
 static stmt_t *parse_block(parser_t *p);
 stmt_t *parser_parse_stmt(parser_t *p);
@@ -242,6 +243,74 @@ stmt_t *parser_parse_stmt(parser_t *p)
         }
         return ast_make_for(init, cond, incr, body,
                             kw_tok->line, kw_tok->column);
+    }
+
+    if (match(p, TOK_KW_SWITCH)) {
+        token_t *kw_tok = &p->tokens[p->pos - 1];
+        if (!match(p, TOK_LPAREN))
+            return NULL;
+        expr_t *expr = parser_parse_expr(p);
+        if (!expr || !match(p, TOK_RPAREN)) {
+            ast_free_expr(expr);
+            return NULL;
+        }
+        if (!match(p, TOK_LBRACE)) {
+            ast_free_expr(expr);
+            return NULL;
+        }
+        vector_t cases_v; vector_init(&cases_v, sizeof(switch_case_t));
+        stmt_t *default_body = NULL;
+        while (!match(p, TOK_RBRACE)) {
+            if (match(p, TOK_KW_CASE)) {
+                expr_t *val = parser_parse_expr(p);
+                if (!val || !match(p, TOK_COLON)) {
+                    ast_free_expr(val);
+                    goto error_switch;
+                }
+                stmt_t *body = parser_parse_stmt(p);
+                if (!body) {
+                    ast_free_expr(val);
+                    goto error_switch;
+                }
+                switch_case_t tmp = { val, body };
+                if (!vector_push(&cases_v, &tmp)) {
+                    ast_free_expr(val);
+                    ast_free_stmt(body);
+                    goto error_switch;
+                }
+            } else if (match(p, TOK_KW_DEFAULT)) {
+                if (default_body) {
+                    goto error_switch;
+                }
+                if (!match(p, TOK_COLON))
+                    goto error_switch;
+                default_body = parser_parse_stmt(p);
+                if (!default_body)
+                    goto error_switch;
+            } else {
+                goto error_switch;
+            }
+        }
+        {
+            size_t count = cases_v.count;
+            switch_case_t *cases = (switch_case_t *)cases_v.data;
+            stmt_t *stmt = ast_make_switch(expr, cases, count, default_body,
+                                          kw_tok->line, kw_tok->column);
+            if (!stmt) {
+                goto error_switch;
+            }
+            return stmt;
+        }
+error_switch:
+        for (size_t i = 0; i < cases_v.count; i++) {
+            switch_case_t *c = &((switch_case_t *)cases_v.data)[i];
+            ast_free_expr(c->expr);
+            ast_free_stmt(c->body);
+        }
+        free(cases_v.data);
+        ast_free_expr(expr);
+        ast_free_stmt(default_body);
+        return NULL;
     }
 
     expr_t *expr = parser_parse_expr(p);

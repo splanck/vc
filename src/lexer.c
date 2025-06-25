@@ -92,6 +92,12 @@ static void read_identifier(const char *src, size_t *i, size_t *col,
         type = TOK_KW_BREAK;
     else if (len == 8 && strncmp(src + start, "continue", 8) == 0)
         type = TOK_KW_CONTINUE;
+    else if (len == 6 && strncmp(src + start, "switch", 6) == 0)
+        type = TOK_KW_SWITCH;
+    else if (len == 4 && strncmp(src + start, "case", 4) == 0)
+        type = TOK_KW_CASE;
+    else if (len == 7 && strncmp(src + start, "default", 7) == 0)
+        type = TOK_KW_DEFAULT;
     else if (len == 3 && strncmp(src + start, "int", 3) == 0)
         type = TOK_KW_INT;
     else if (len == 4 && strncmp(src + start, "char", 4) == 0)
@@ -207,6 +213,7 @@ static void read_punct(char c, vector_t *tokens, size_t line, size_t column)
     case '}': type = TOK_RBRACE; break;
     case '[': type = TOK_LBRACKET; break;
     case ']': type = TOK_RBRACKET; break;
+    case ':': type = TOK_COLON; break;
     default: type = TOK_UNKNOWN; break;
     }
     append_token(tokens, type, &c, 1, line, column);
