@@ -214,7 +214,7 @@ static int eval_const_expr(expr_t *expr, symtable_t *vars, long long *out)
             case TYPE_SHORT: case TYPE_USHORT: sz = 2; break;
             case TYPE_INT: case TYPE_UINT: case TYPE_LONG: case TYPE_ULONG: sz = 4; break;
             case TYPE_LLONG: case TYPE_ULLONG: sz = 8; break;
-            case TYPE_PTR:  sz = 4; break;
+            case TYPE_PTR: case TYPE_FUNC_PTR: sz = 4; break;
             case TYPE_ARRAY:
                 sz = (int)expr->sizeof_expr.array_size *
                      (int)expr->sizeof_expr.elem_size;
@@ -262,26 +262,27 @@ static type_kind_t check_binary(expr_t *left, expr_t *right, symtable_t *vars,
             rt == TYPE_LLONG || rt == TYPE_ULLONG)
             return TYPE_LLONG;
         return TYPE_INT;
-    } else if ((lt == TYPE_PTR && is_intlike(rt) &&
+    } else if (((lt == TYPE_PTR || lt == TYPE_FUNC_PTR) && is_intlike(rt) &&
                 (op == BINOP_ADD || op == BINOP_SUB)) ||
-               (is_intlike(lt) && rt == TYPE_PTR && op == BINOP_ADD)) {
-        ir_value_t ptr = (lt == TYPE_PTR) ? lval : rval;
-        ir_value_t idx = (lt == TYPE_PTR) ? rval : lval;
+               (is_intlike(lt) && (rt == TYPE_PTR || rt == TYPE_FUNC_PTR) && op == BINOP_ADD)) {
+        ir_value_t ptr = ((lt == TYPE_PTR || lt == TYPE_FUNC_PTR) ? lval : rval);
+        ir_value_t idx = ((lt == TYPE_PTR || lt == TYPE_FUNC_PTR) ? rval : lval);
         size_t esz = 4;
-        expr_t *ptexpr = (lt == TYPE_PTR) ? left : right;
+        expr_t *ptexpr = ((lt == TYPE_PTR || lt == TYPE_FUNC_PTR) ? left : right);
         if (ptexpr->kind == EXPR_IDENT) {
             symbol_t *s = symtable_lookup(vars, ptexpr->ident.name);
             if (s && s->elem_size)
                 esz = s->elem_size;
         }
-        if (op == BINOP_SUB && lt == TYPE_PTR) {
+        if (op == BINOP_SUB && (lt == TYPE_PTR || lt == TYPE_FUNC_PTR)) {
             ir_value_t zero = ir_build_const(ir, 0);
             idx = ir_build_binop(ir, IR_SUB, zero, idx);
         }
         if (out)
             *out = ir_build_ptr_add(ir, ptr, idx, (int)esz);
         return TYPE_PTR;
-    } else if (lt == TYPE_PTR && rt == TYPE_PTR && op == BINOP_SUB) {
+    } else if ((lt == TYPE_PTR || lt == TYPE_FUNC_PTR) &&
+               (rt == TYPE_PTR || rt == TYPE_FUNC_PTR) && op == BINOP_SUB) {
         size_t esz = 4;
         if (left->kind == EXPR_IDENT) {
             symbol_t *s = symtable_lookup(vars, left->ident.name);
@@ -304,7 +305,8 @@ static type_kind_t check_unary_expr(expr_t *expr, symtable_t *vars,
     switch (expr->unary.op) {
     case UNOP_DEREF: {
         ir_value_t addr;
-        if (check_expr(opnd, vars, funcs, ir, &addr) == TYPE_PTR) {
+        type_kind_t at = check_expr(opnd, vars, funcs, ir, &addr);
+        if (at == TYPE_PTR || at == TYPE_FUNC_PTR) {
             if (out)
                 *out = ir_build_load_ptr(ir, addr);
             return TYPE_INT;
@@ -368,7 +370,7 @@ static type_kind_t check_unary_expr(expr_t *expr, symtable_t *vars,
             symbol_t *sym = symtable_lookup(vars, opnd->ident.name);
             if (!sym ||
                 !(is_intlike(sym->type) || is_floatlike(sym->type) ||
-                  sym->type == TYPE_PTR)) {
+                  sym->type == TYPE_PTR || sym->type == TYPE_FUNC_PTR)) {
                 error_set(opnd->line, opnd->column);
                 return TYPE_UNKNOWN;
             }
@@ -379,7 +381,7 @@ static type_kind_t check_unary_expr(expr_t *expr, symtable_t *vars,
                                         ? ir_build_load_vol(ir, sym->ir_name)
                                         : ir_build_load(ir, sym->ir_name));
 
-            if (sym->type == TYPE_PTR) {
+            if (sym->type == TYPE_PTR || sym->type == TYPE_FUNC_PTR) {
                 int esz = sym->elem_size ? (int)sym->elem_size : 4;
                 int step = (expr->unary.op == UNOP_PREDEC ||
                             expr->unary.op == UNOP_POSTDEC)
@@ -793,15 +795,16 @@ type_kind_t check_expr(expr_t *expr, symtable_t *vars, symtable_t *funcs,
         return TYPE_INT;
     }
     case EXPR_CALL: {
-        symbol_t *fsym = symtable_lookup(funcs, expr->call.name);
-        if (!fsym) {
-            error_set(expr->line, expr->column);
-            return TYPE_UNKNOWN;
-        }
-        if (fsym->param_count != expr->call.arg_count) {
-            error_set(expr->line, expr->column);
-            return TYPE_UNKNOWN;
-        }
+        if (expr->call.name) {
+            symbol_t *fsym = symtable_lookup(funcs, expr->call.name);
+            if (!fsym) {
+                error_set(expr->line, expr->column);
+                return TYPE_UNKNOWN;
+            }
+            if (fsym->param_count != expr->call.arg_count) {
+                error_set(expr->line, expr->column);
+                return TYPE_UNKNOWN;
+            }
         ir_value_t *vals = NULL;
         if (expr->call.arg_count) {
             vals = malloc(expr->call.arg_count * sizeof(*vals));
@@ -827,6 +830,28 @@ type_kind_t check_expr(expr_t *expr, symtable_t *vars, symtable_t *funcs,
         if (out)
             *out = call_val;
         return fsym->type;
+        } else {
+            ir_value_t fn_val;
+            if (check_expr(expr->call.func, vars, funcs, ir, &fn_val) == TYPE_UNKNOWN)
+                return TYPE_UNKNOWN;
+            ir_value_t *vals = NULL;
+            if (expr->call.arg_count) {
+                vals = malloc(expr->call.arg_count * sizeof(*vals));
+                if (!vals)
+                    return TYPE_UNKNOWN;
+            }
+            for (size_t i = 0; i < expr->call.arg_count; i++) {
+                check_expr(expr->call.args[i], vars, funcs, ir, &vals[i]);
+            }
+            for (size_t i = expr->call.arg_count; i > 0; i--)
+                ir_build_arg(ir, vals[i - 1]);
+            free(vals);
+            ir_value_t call_val = ir_build_call_ptr(ir, fn_val,
+                                                   expr->call.arg_count);
+            if (out)
+                *out = call_val;
+            return TYPE_INT;
+        }
     }
     }
     error_set(expr->line, expr->column);

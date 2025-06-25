@@ -154,7 +154,17 @@ static expr_t *clone_expr(const expr_t *expr)
                 }
             }
         }
-        return ast_make_call(expr->call.name, args, n,
+        expr_t *fn = NULL;
+        if (expr->call.func) {
+            fn = clone_expr(expr->call.func);
+            if (!fn) {
+                for (size_t j = 0; j < n; j++)
+                    ast_free_expr(args[j]);
+                free(args);
+                return NULL;
+            }
+        }
+        return ast_make_call(expr->call.name, fn, args, n,
                              expr->line, expr->column);
     }
     }
@@ -232,12 +242,30 @@ static expr_t *parse_primary(parser_t *p)
         base = ast_make_string(tok->lexeme, tok->line, tok->column);
     } else if (match(p, TOK_CHAR)) {
         base = ast_make_char(tok->lexeme[0], tok->line, tok->column);
-    } else if (tok->type == TOK_IDENT) {
-        token_t *next = p->pos + 1 < p->count ? &p->tokens[p->pos + 1] : NULL;
-        if (next && next->type == TOK_LPAREN) {
-            p->pos++; /* consume ident */
-            char *name = tok->lexeme;
-            match(p, TOK_LPAREN);
+    } else if (tok->type == TOK_IDENT && match(p, TOK_IDENT)) {
+        base = ast_make_ident(tok->lexeme, tok->line, tok->column);
+    } else if (match(p, TOK_LPAREN)) {
+        expr_t *expr = parse_expression(p);
+        if (!match(p, TOK_RPAREN)) {
+            ast_free_expr(expr);
+            return NULL;
+        }
+        base = expr;
+    }
+    if (!base)
+        return NULL;
+    while (1) {
+        if (match(p, TOK_LBRACKET)) {
+            token_t *lb = &p->tokens[p->pos - 1];
+            expr_t *idx = parse_expression(p);
+            if (!idx || !match(p, TOK_RBRACKET)) {
+                ast_free_expr(base);
+                ast_free_expr(idx);
+                return NULL;
+            }
+            base = ast_make_index(base, idx, lb->line, lb->column);
+        } else if (match(p, TOK_LPAREN)) {
+            token_t *lp = &p->tokens[p->pos - 1];
             vector_t args_v;
             vector_init(&args_v, sizeof(expr_t *));
             if (!match(p, TOK_RPAREN)) {
@@ -266,32 +294,9 @@ static expr_t *parse_primary(parser_t *p)
             }
             expr_t **args = (expr_t **)args_v.data;
             size_t count = args_v.count;
-            expr_t *call = ast_make_call(name, args, count,
-                                         tok->line, tok->column);
+            expr_t *call = ast_make_call(NULL, base, args, count,
+                                         lp->line, lp->column);
             base = call;
-        } else if (match(p, TOK_IDENT)) {
-            base = ast_make_ident(tok->lexeme, tok->line, tok->column);
-        }
-    } else if (match(p, TOK_LPAREN)) {
-        expr_t *expr = parse_expression(p);
-        if (!match(p, TOK_RPAREN)) {
-            ast_free_expr(expr);
-            return NULL;
-        }
-        base = expr;
-    }
-    if (!base)
-        return NULL;
-    while (1) {
-        if (match(p, TOK_LBRACKET)) {
-            token_t *lb = &p->tokens[p->pos - 1];
-            expr_t *idx = parse_expression(p);
-            if (!idx || !match(p, TOK_RBRACKET)) {
-                ast_free_expr(base);
-                ast_free_expr(idx);
-                return NULL;
-            }
-            base = ast_make_index(base, idx, lb->line, lb->column);
         } else if (match(p, TOK_DOT) || match(p, TOK_ARROW)) {
             int via_ptr = (p->tokens[p->pos - 1].type == TOK_ARROW);
             token_t *id = peek(p);

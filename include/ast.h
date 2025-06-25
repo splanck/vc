@@ -26,6 +26,7 @@ typedef enum {
     TYPE_FLOAT,
     TYPE_DOUBLE,
     TYPE_PTR,
+    TYPE_FUNC_PTR,
     TYPE_ARRAY,
     TYPE_VOID,
     TYPE_STRUCT,
@@ -154,7 +155,8 @@ struct expr {
             int via_ptr;
         } member;
         struct {
-            char *name;
+            char *name;      /* direct call target or NULL */
+            expr_t *func;    /* expression for function pointer */
             expr_t **args;
             size_t arg_count;
         } call;
@@ -217,6 +219,9 @@ struct stmt {
             size_t init_count;
             union_member_t *members;
             size_t member_count;
+            type_kind_t func_ret_type; /* for function pointers */
+            type_kind_t *func_param_types;
+            size_t func_param_count;
         } var_decl;
         struct {
             expr_t *cond;
@@ -329,7 +334,8 @@ expr_t *ast_make_sizeof_type(type_kind_t type, size_t array_size,
 /* Create a sizeof expression of another expression. */
 expr_t *ast_make_sizeof_expr(expr_t *expr, size_t line, size_t column);
 /* Create a function call expression with \p arg_count arguments. */
-expr_t *ast_make_call(const char *name, expr_t **args, size_t arg_count,
+expr_t *ast_make_call(const char *name, expr_t *func,
+                      expr_t **args, size_t arg_count,
                       size_t line, size_t column);
 
 /* Create an expression statement node. */

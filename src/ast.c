@@ -247,7 +247,8 @@ expr_t *ast_make_sizeof_expr(expr_t *e, size_t line, size_t column)
 }
 
 /* Create a function call expression node. */
-expr_t *ast_make_call(const char *name, expr_t **args, size_t arg_count,
+expr_t *ast_make_call(const char *name, expr_t *func,
+                      expr_t **args, size_t arg_count,
                       size_t line, size_t column)
 {
     expr_t *expr = malloc(sizeof(*expr));
@@ -256,11 +257,15 @@ expr_t *ast_make_call(const char *name, expr_t **args, size_t arg_count,
     expr->kind = EXPR_CALL;
     expr->line = line;
     expr->column = column;
-    expr->call.name = vc_strdup(name ? name : "");
-    if (!expr->call.name) {
-        free(expr);
-        return NULL;
+    expr->call.name = NULL;
+    if (name) {
+        expr->call.name = vc_strdup(name);
+        if (!expr->call.name) {
+            free(expr);
+            return NULL;
+        }
     }
+    expr->call.func = func;
     expr->call.args = args;
     expr->call.arg_count = arg_count;
     return expr;
@@ -334,6 +339,9 @@ stmt_t *ast_make_var_decl(const char *name, type_kind_t type, size_t array_size,
     stmt->var_decl.init_count = init_count;
     stmt->var_decl.members = members;
     stmt->var_decl.member_count = member_count;
+    stmt->var_decl.func_ret_type = TYPE_UNKNOWN;
+    stmt->var_decl.func_param_types = NULL;
+    stmt->var_decl.func_param_count = 0;
     return stmt;
 }
 
@@ -666,6 +674,7 @@ void ast_free_expr(expr_t *expr)
             ast_free_expr(expr->call.args[i]);
         free(expr->call.args);
         free(expr->call.name);
+        ast_free_expr(expr->call.func);
         break;
     }
     free(expr);

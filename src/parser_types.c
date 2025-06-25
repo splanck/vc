@@ -52,6 +52,8 @@ size_t basic_type_size(type_kind_t t)
         return 4;
     case TYPE_LLONG: case TYPE_ULLONG:
         return 8;
+    case TYPE_FUNC_PTR: case TYPE_PTR:
+        return 4;
     default:
         return 4;
     }

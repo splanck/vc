@@ -280,6 +280,7 @@ RETURN v2
 - `for`, `while` and `do`/`while` loops
 - Loop initialization may declare a variable
 - Pointers
+- Function pointers and calls through them
 - Arrays
 - Compound assignment operators (`+=`, `-=`, `*=`, `/=`, `%=`)
 - Increment and decrement operators (`++`, `--`)
