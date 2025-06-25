@@ -47,7 +47,7 @@ static int output_stage(ir_builder_t *ir, const char *output,
 static int tokenize_stage(const char *source, char **out_src,
                           token_t **out_toks, size_t *out_count)
 {
-    char *text = preproc_run(source);
+    char *text = preproc_run(source, NULL, 0);
     if (!text) {
         perror("preproc_run");
         return 0;
