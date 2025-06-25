@@ -17,6 +17,7 @@ typedef struct {
     opt_config_t opt_cfg; /* optimization configuration */
     int use_x86_64;     /* enable 64-bit codegen */
     int compile;        /* assemble to object */
+    int link;           /* build executable */
     int dump_asm;       /* dump assembly to stdout */
     int dump_ir;        /* dump IR to stdout */
     vector_t include_dirs; /* additional include directories */
