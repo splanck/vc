@@ -199,7 +199,10 @@ static int eval_const_expr(expr_t *expr, symtable_t *vars, int *out)
             case TYPE_INT: case TYPE_UINT: case TYPE_LONG: case TYPE_ULONG: sz = 4; break;
             case TYPE_LLONG: case TYPE_ULLONG: sz = 8; break;
             case TYPE_PTR:  sz = 4; break;
-            case TYPE_ARRAY: sz = (int)expr->sizeof_expr.array_size * 4; break;
+            case TYPE_ARRAY:
+                sz = (int)expr->sizeof_expr.array_size *
+                     (int)expr->sizeof_expr.elem_size;
+                break;
             default: sz = 0; break;
             }
             *out = sz;
@@ -242,16 +245,29 @@ static type_kind_t check_binary(expr_t *left, expr_t *right, symtable_t *vars,
                (is_intlike(lt) && rt == TYPE_PTR && op == BINOP_ADD)) {
         ir_value_t ptr = (lt == TYPE_PTR) ? lval : rval;
         ir_value_t idx = (lt == TYPE_PTR) ? rval : lval;
+        size_t esz = 4;
+        expr_t *ptexpr = (lt == TYPE_PTR) ? left : right;
+        if (ptexpr->kind == EXPR_IDENT) {
+            symbol_t *s = symtable_lookup(vars, ptexpr->ident.name);
+            if (s && s->elem_size)
+                esz = s->elem_size;
+        }
         if (op == BINOP_SUB && lt == TYPE_PTR) {
             ir_value_t zero = ir_build_const(ir, 0);
             idx = ir_build_binop(ir, IR_SUB, zero, idx);
         }
         if (out)
-            *out = ir_build_binop(ir, IR_PTR_ADD, ptr, idx);
+            *out = ir_build_ptr_add(ir, ptr, idx, (int)esz);
         return TYPE_PTR;
     } else if (lt == TYPE_PTR && rt == TYPE_PTR && op == BINOP_SUB) {
+        size_t esz = 4;
+        if (left->kind == EXPR_IDENT) {
+            symbol_t *s = symtable_lookup(vars, left->ident.name);
+            if (s && s->elem_size)
+                esz = s->elem_size;
+        }
         if (out)
-            *out = ir_build_binop(ir, IR_PTR_DIFF, lval, rval);
+            *out = ir_build_ptr_diff(ir, lval, rval, (int)esz);
         return TYPE_INT;
     }
     error_set(left->line, left->column);
@@ -566,7 +582,10 @@ type_kind_t check_expr(expr_t *expr, symtable_t *vars, symtable_t *funcs,
             case TYPE_INT: case TYPE_UINT: case TYPE_LONG: case TYPE_ULONG: sz = 4; break;
             case TYPE_LLONG: case TYPE_ULLONG: sz = 8; break;
             case TYPE_PTR:  sz = 4; break;
-            case TYPE_ARRAY: sz = (int)expr->sizeof_expr.array_size * 4; break;
+            case TYPE_ARRAY:
+                sz = (int)expr->sizeof_expr.array_size *
+                     (int)expr->sizeof_expr.elem_size;
+                break;
             default: sz = 0; break;
             }
         } else {
@@ -582,7 +601,7 @@ type_kind_t check_expr(expr_t *expr, symtable_t *vars, symtable_t *funcs,
                 symbol_t *sym = NULL;
                 if (expr->sizeof_expr.expr->kind == EXPR_IDENT)
                     sym = symtable_lookup(vars, expr->sizeof_expr.expr->ident.name);
-                sz = sym ? (int)sym->array_size * 4 : 4;
+                sz = sym ? (int)sym->array_size * (int)sym->elem_size : 4;
             }
         }
         if (out)
@@ -919,7 +938,8 @@ int check_stmt(stmt_t *stmt, symtable_t *vars, symtable_t *funcs,
     case STMT_TYPEDEF: {
         if (!symtable_add_typedef(vars, stmt->typedef_decl.name,
                                   stmt->typedef_decl.type,
-                                  stmt->typedef_decl.array_size)) {
+                                  stmt->typedef_decl.array_size,
+                                  stmt->typedef_decl.elem_size)) {
             error_set(stmt->line, stmt->column);
             return 0;
         }
@@ -934,6 +954,7 @@ int check_stmt(stmt_t *stmt, symtable_t *vars, symtable_t *funcs,
         if (!symtable_add(vars, stmt->var_decl.name, ir_name,
                           stmt->var_decl.type,
                           stmt->var_decl.array_size,
+                          stmt->var_decl.elem_size,
                           stmt->var_decl.is_static,
                           stmt->var_decl.is_const)) {
             error_set(stmt->line, stmt->column);
@@ -1025,7 +1046,9 @@ int check_func(func_t *func, symtable_t *funcs, symtable_t *globals,
 
     for (size_t i = 0; i < func->param_count; i++)
         symtable_add_param(&locals, func->param_names[i],
-                           func->param_types[i], (int)i);
+                           func->param_types[i],
+                           func->param_elem_sizes ? func->param_elem_sizes[i] : 4,
+                           (int)i);
 
     ir_build_func_begin(ir, func->name);
 
@@ -1075,7 +1098,8 @@ int check_global(stmt_t *decl, symtable_t *globals, ir_builder_t *ir)
     if (decl->kind == STMT_TYPEDEF) {
         if (!symtable_add_typedef_global(globals, decl->typedef_decl.name,
                                          decl->typedef_decl.type,
-                                         decl->typedef_decl.array_size)) {
+                                         decl->typedef_decl.array_size,
+                                         decl->typedef_decl.elem_size)) {
             error_set(decl->line, decl->column);
             return 0;
         }
@@ -1086,6 +1110,7 @@ int check_global(stmt_t *decl, symtable_t *globals, ir_builder_t *ir)
     if (!symtable_add_global(globals, decl->var_decl.name, decl->var_decl.name,
                              decl->var_decl.type,
                              decl->var_decl.array_size,
+                             decl->var_decl.elem_size,
                              decl->var_decl.is_static,
                              decl->var_decl.is_const)) {
         error_set(decl->line, decl->column);

@@ -192,7 +192,7 @@ expr_t *ast_make_member(expr_t *object, const char *member, int via_ptr,
 
 /* Create a sizeof expression for a type. */
 expr_t *ast_make_sizeof_type(type_kind_t type, size_t array_size,
-                             size_t line, size_t column)
+                             size_t elem_size, size_t line, size_t column)
 {
     expr_t *expr = malloc(sizeof(*expr));
     if (!expr)
@@ -203,6 +203,7 @@ expr_t *ast_make_sizeof_type(type_kind_t type, size_t array_size,
     expr->sizeof_expr.is_type = 1;
     expr->sizeof_expr.type = type;
     expr->sizeof_expr.array_size = array_size;
+    expr->sizeof_expr.elem_size = elem_size;
     expr->sizeof_expr.expr = NULL;
     return expr;
 }
@@ -219,6 +220,7 @@ expr_t *ast_make_sizeof_expr(expr_t *e, size_t line, size_t column)
     expr->sizeof_expr.is_type = 0;
     expr->sizeof_expr.type = TYPE_UNKNOWN;
     expr->sizeof_expr.array_size = 0;
+    expr->sizeof_expr.elem_size = 0;
     expr->sizeof_expr.expr = e;
     return expr;
 }
@@ -272,7 +274,7 @@ stmt_t *ast_make_return(expr_t *expr, size_t line, size_t column)
 
 /* Create a variable declaration statement. */
 stmt_t *ast_make_var_decl(const char *name, type_kind_t type, size_t array_size,
-                          int is_static, int is_const,
+                          size_t elem_size, int is_static, int is_const,
                           expr_t *init, expr_t **init_list, size_t init_count,
                           size_t line, size_t column)
 {
@@ -289,6 +291,7 @@ stmt_t *ast_make_var_decl(const char *name, type_kind_t type, size_t array_size,
     }
     stmt->var_decl.type = type;
     stmt->var_decl.array_size = array_size;
+    stmt->var_decl.elem_size = elem_size;
     stmt->var_decl.is_static = is_static;
     stmt->var_decl.is_const = is_const;
     stmt->var_decl.init = init;
@@ -439,7 +442,7 @@ stmt_t *ast_make_goto(const char *name, size_t line, size_t column)
 
 /* Create a typedef declaration */
 stmt_t *ast_make_typedef(const char *name, type_kind_t type, size_t array_size,
-                         size_t line, size_t column)
+                         size_t elem_size, size_t line, size_t column)
 {
     stmt_t *stmt = malloc(sizeof(*stmt));
     if (!stmt)
@@ -454,6 +457,7 @@ stmt_t *ast_make_typedef(const char *name, type_kind_t type, size_t array_size,
     }
     stmt->typedef_decl.type = type;
     stmt->typedef_decl.array_size = array_size;
+    stmt->typedef_decl.elem_size = elem_size;
     return stmt;
 }
 
@@ -495,7 +499,7 @@ stmt_t *ast_make_block(stmt_t **stmts, size_t count,
 /* Create a function definition node with parameters and body. */
 func_t *ast_make_func(const char *name, type_kind_t ret_type,
                       char **param_names, type_kind_t *param_types,
-                      size_t param_count,
+                      size_t *param_elem_sizes, size_t param_count,
                       stmt_t **body, size_t body_count)
 {
     func_t *fn = malloc(sizeof(*fn));
@@ -510,21 +514,25 @@ func_t *ast_make_func(const char *name, type_kind_t ret_type,
     fn->param_count = param_count;
     fn->param_names = malloc(param_count * sizeof(*fn->param_names));
     fn->param_types = malloc(param_count * sizeof(*fn->param_types));
-    if ((param_count && (!fn->param_names || !fn->param_types))) {
+    fn->param_elem_sizes = malloc(param_count * sizeof(*fn->param_elem_sizes));
+    if ((param_count && (!fn->param_names || !fn->param_types || !fn->param_elem_sizes))) {
         free(fn->name);
         free(fn->param_names);
         free(fn->param_types);
+        free(fn->param_elem_sizes);
         free(fn);
         return NULL;
     }
     for (size_t i = 0; i < param_count; i++) {
         fn->param_names[i] = vc_strdup(param_names[i] ? param_names[i] : "");
         fn->param_types[i] = param_types[i];
+        fn->param_elem_sizes[i] = param_elem_sizes ? param_elem_sizes[i] : 4;
         if (!fn->param_names[i]) {
             for (size_t j = 0; j < i; j++)
                 free(fn->param_names[j]);
             free(fn->param_names);
             free(fn->param_types);
+            free(fn->param_elem_sizes);
             free(fn->name);
             free(fn);
             return NULL;
@@ -685,6 +693,7 @@ void ast_free_func(func_t *func)
         free(func->param_names[i]);
     free(func->param_names);
     free(func->param_types);
+    free(func->param_elem_sizes);
     free(func->name);
     free(func);
 }

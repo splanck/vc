@@ -424,6 +424,8 @@ vc -o ptr_arith.s ptr_arith.c
 ```
 Pointer subtraction of two pointers is also supported and returns the
 element distance between them.
+Pointer offsets are scaled by the size of the pointed-to type rather
+than the machine word size.
 
 ### Arrays
 ```c

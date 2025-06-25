@@ -61,6 +61,7 @@ static stmt_t *parse_var_decl(parser_t *p)
     type_kind_t t;
     if (!parse_basic_type(p, &t))
         return NULL;
+    size_t elem_size = basic_type_size(t);
     if (match(p, TOK_STAR))
         t = TYPE_PTR;
     token_t *tok = peek(p);
@@ -104,7 +105,7 @@ static stmt_t *parse_var_decl(parser_t *p)
         if (!match(p, TOK_SEMI))
             return NULL;
     }
-    return ast_make_var_decl(name, t, arr_size, is_static, is_const,
+    return ast_make_var_decl(name, t, arr_size, elem_size, is_static, is_const,
                              init, init_list, init_count,
                              kw_tok->line, kw_tok->column);
 }

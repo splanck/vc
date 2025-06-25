@@ -126,7 +126,7 @@ static void emit_arith_instr(strbuf_t *sb, ir_instr_t *ins,
 
     switch (ins->op) {
     case IR_PTR_ADD: {
-        int scale = x64 ? 8 : 4;
+        int scale = ins->imm;
         strbuf_appendf(sb, "    mov%s %s, %s\n", sfx,
                        loc_str(buf1, ra, ins->src2, x64),
                        loc_str(buf2, ra, ins->dest, x64));
@@ -138,7 +138,9 @@ static void emit_arith_instr(strbuf_t *sb, ir_instr_t *ins,
         break;
     }
     case IR_PTR_DIFF: {
-        int shift = x64 ? 3 : 2;
+        int esz = ins->imm;
+        int shift = 0;
+        while ((esz >>= 1) > 0) shift++;
         strbuf_appendf(sb, "    mov%s %s, %s\n", sfx,
                        loc_str(buf1, ra, ins->src1, x64),
                        loc_str(buf2, ra, ins->dest, x64));

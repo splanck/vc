@@ -185,6 +185,34 @@ void ir_build_store_ptr(ir_builder_t *b, ir_value_t addr, ir_value_t val)
     ins->src2 = val.id;
 }
 
+ir_value_t ir_build_ptr_add(ir_builder_t *b, ir_value_t ptr, ir_value_t idx,
+                            int elem_size)
+{
+    ir_instr_t *ins = append_instr(b);
+    if (!ins)
+        return (ir_value_t){0};
+    ins->op = IR_PTR_ADD;
+    ins->dest = b->next_value_id++;
+    ins->src1 = ptr.id;
+    ins->src2 = idx.id;
+    ins->imm = elem_size;
+    return (ir_value_t){ins->dest};
+}
+
+ir_value_t ir_build_ptr_diff(ir_builder_t *b, ir_value_t a, ir_value_t bptr,
+                             int elem_size)
+{
+    ir_instr_t *ins = append_instr(b);
+    if (!ins)
+        return (ir_value_t){0};
+    ins->op = IR_PTR_DIFF;
+    ins->dest = b->next_value_id++;
+    ins->src1 = a.id;
+    ins->src2 = bptr.id;
+    ins->imm = elem_size;
+    return (ir_value_t){ins->dest};
+}
+
 /*
  * Emit IR_LOAD_IDX loading from array element `name[idx]`.
  */
