@@ -296,7 +296,7 @@ stmt_t *ast_make_return(expr_t *expr, size_t line, size_t column)
 /* Create a variable declaration statement. */
 stmt_t *ast_make_var_decl(const char *name, type_kind_t type, size_t array_size,
                           size_t elem_size, int is_static, int is_const,
-                          int is_volatile,
+                          int is_volatile, int is_restrict,
                           expr_t *init, expr_t **init_list, size_t init_count,
                           const char *tag, union_member_t *members,
                           size_t member_count, size_t line, size_t column)
@@ -328,6 +328,7 @@ stmt_t *ast_make_var_decl(const char *name, type_kind_t type, size_t array_size,
     stmt->var_decl.is_static = is_static;
     stmt->var_decl.is_const = is_const;
     stmt->var_decl.is_volatile = is_volatile;
+    stmt->var_decl.is_restrict = is_restrict;
     stmt->var_decl.init = init;
     stmt->var_decl.init_list = init_list;
     stmt->var_decl.init_count = init_count;
@@ -555,7 +556,8 @@ stmt_t *ast_make_block(stmt_t **stmts, size_t count,
 /* Create a function definition node with parameters and body. */
 func_t *ast_make_func(const char *name, type_kind_t ret_type,
                       char **param_names, type_kind_t *param_types,
-                      size_t *param_elem_sizes, size_t param_count,
+                      size_t *param_elem_sizes, int *param_is_restrict,
+                      size_t param_count,
                       stmt_t **body, size_t body_count)
 {
     func_t *fn = malloc(sizeof(*fn));
@@ -571,11 +573,13 @@ func_t *ast_make_func(const char *name, type_kind_t ret_type,
     fn->param_names = malloc(param_count * sizeof(*fn->param_names));
     fn->param_types = malloc(param_count * sizeof(*fn->param_types));
     fn->param_elem_sizes = malloc(param_count * sizeof(*fn->param_elem_sizes));
-    if ((param_count && (!fn->param_names || !fn->param_types || !fn->param_elem_sizes))) {
+    fn->param_is_restrict = malloc(param_count * sizeof(*fn->param_is_restrict));
+    if ((param_count && (!fn->param_names || !fn->param_types || !fn->param_elem_sizes || !fn->param_is_restrict))) {
         free(fn->name);
         free(fn->param_names);
         free(fn->param_types);
         free(fn->param_elem_sizes);
+        free(fn->param_is_restrict);
         free(fn);
         return NULL;
     }
@@ -583,12 +587,14 @@ func_t *ast_make_func(const char *name, type_kind_t ret_type,
         fn->param_names[i] = vc_strdup(param_names[i] ? param_names[i] : "");
         fn->param_types[i] = param_types[i];
         fn->param_elem_sizes[i] = param_elem_sizes ? param_elem_sizes[i] : 4;
+        fn->param_is_restrict[i] = param_is_restrict ? param_is_restrict[i] : 0;
         if (!fn->param_names[i]) {
             for (size_t j = 0; j < i; j++)
                 free(fn->param_names[j]);
             free(fn->param_names);
             free(fn->param_types);
             free(fn->param_elem_sizes);
+            free(fn->param_is_restrict);
             free(fn->name);
             free(fn);
             return NULL;
@@ -765,6 +771,7 @@ void ast_free_func(func_t *func)
     free(func->param_names);
     free(func->param_types);
     free(func->param_elem_sizes);
+    free(func->param_is_restrict);
     free(func->name);
     free(func);
 }

@@ -1158,7 +1158,8 @@ int check_stmt(stmt_t *stmt, symtable_t *vars, symtable_t *funcs,
                           stmt->var_decl.elem_size,
                           stmt->var_decl.is_static,
                           stmt->var_decl.is_const,
-                          stmt->var_decl.is_volatile)) {
+                          stmt->var_decl.is_volatile,
+                          stmt->var_decl.is_restrict)) {
             error_set(stmt->line, stmt->column);
             return 0;
         }
@@ -1276,7 +1277,8 @@ int check_func(func_t *func, symtable_t *funcs, symtable_t *globals,
         symtable_add_param(&locals, func->param_names[i],
                            func->param_types[i],
                            func->param_elem_sizes ? func->param_elem_sizes[i] : 4,
-                           (int)i);
+                           (int)i,
+                           func->param_is_restrict ? func->param_is_restrict[i] : 0);
 
     ir_build_func_begin(ir, func->name);
 
@@ -1356,7 +1358,8 @@ int check_global(stmt_t *decl, symtable_t *globals, ir_builder_t *ir)
                              decl->var_decl.elem_size,
                              decl->var_decl.is_static,
                              decl->var_decl.is_const,
-                             decl->var_decl.is_volatile)) {
+                             decl->var_decl.is_volatile,
+                             decl->var_decl.is_restrict)) {
         error_set(decl->line, decl->column);
         return 0;
     }

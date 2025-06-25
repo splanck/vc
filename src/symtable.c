@@ -41,6 +41,7 @@ static symbol_t *symtable_create_symbol(const char *name, const char *ir_name)
     sym->members = NULL;
     sym->member_count = 0;
     sym->total_size = 0;
+    sym->is_restrict = 0;
     return sym;
 }
 
@@ -103,7 +104,8 @@ symbol_t *symtable_lookup(symtable_t *table, const char *name)
  */
 int symtable_add(symtable_t *table, const char *name, const char *ir_name,
                  type_kind_t type, size_t array_size, size_t elem_size,
-                 int is_static, int is_const, int is_volatile)
+                 int is_static, int is_const, int is_volatile,
+                 int is_restrict)
 {
     if (symtable_lookup(table, name))
         return 0;
@@ -116,6 +118,7 @@ int symtable_add(symtable_t *table, const char *name, const char *ir_name,
     sym->is_static = is_static;
     sym->is_const = is_const;
     sym->is_volatile = is_volatile;
+    sym->is_restrict = is_restrict;
     sym->next = table->head;
     table->head = sym;
     return 1;
@@ -126,7 +129,7 @@ int symtable_add(symtable_t *table, const char *name, const char *ir_name,
  * the index field recording the argument position.
  */
 int symtable_add_param(symtable_t *table, const char *name, type_kind_t type,
-                       size_t elem_size, int index)
+                       size_t elem_size, int index, int is_restrict)
 {
     if (symtable_lookup(table, name))
         return 0;
@@ -136,6 +139,7 @@ int symtable_add_param(symtable_t *table, const char *name, type_kind_t type,
     sym->type = type;
     sym->elem_size = elem_size;
     sym->param_index = index;
+    sym->is_restrict = is_restrict;
     sym->next = table->head;
     table->head = sym;
     return 1;
@@ -144,7 +148,8 @@ int symtable_add_param(symtable_t *table, const char *name, type_kind_t type,
 /* Insert a global variable into the table. */
 int symtable_add_global(symtable_t *table, const char *name, const char *ir_name,
                         type_kind_t type, size_t array_size, size_t elem_size,
-                        int is_static, int is_const, int is_volatile)
+                        int is_static, int is_const, int is_volatile,
+                        int is_restrict)
 {
     for (symbol_t *sym = table->globals; sym; sym = sym->next) {
         if (strcmp(sym->name, name) == 0)
@@ -159,6 +164,7 @@ int symtable_add_global(symtable_t *table, const char *name, const char *ir_name
     sym->is_static = is_static;
     sym->is_const = is_const;
     sym->is_volatile = is_volatile;
+    sym->is_restrict = is_restrict;
     sym->next = table->globals;
     table->globals = sym;
     return 1;

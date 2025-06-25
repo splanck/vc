@@ -92,6 +92,11 @@ The `volatile` qualifier tells the compiler that a variable's value may change
 unexpectedly.  Reads and writes to a `volatile` object are always emitted and
 are not subject to certain optimizations.
 
+The `restrict` qualifier may follow a `*` in pointer declarations.  It
+promises that the pointer is the sole reference to its pointed-to object
+for the lifetime of the pointer.  This lets the optimizer assume no aliasing
+between `restrict` qualified pointers.
+
 Struct and union objects are declared using the `struct` and
 `union` keywords.  Members are accessed with `.` for objects or
 `->` when using pointers:

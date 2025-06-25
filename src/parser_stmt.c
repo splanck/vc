@@ -78,8 +78,11 @@ static stmt_t *parse_var_decl(parser_t *p)
             return NULL;
         elem_size = basic_type_size(t);
     }
-    if (match(p, TOK_STAR))
+    int is_restrict = 0;
+    if (match(p, TOK_STAR)) {
         t = TYPE_PTR;
+        is_restrict = match(p, TOK_KW_RESTRICT);
+    }
     token_t *tok = peek(p);
     if (!tok || tok->type != TOK_IDENT)
         return NULL;
@@ -122,7 +125,7 @@ static stmt_t *parse_var_decl(parser_t *p)
             return NULL;
     }
     stmt_t *res = ast_make_var_decl(name, t, arr_size, elem_size, is_static,
-                                    is_const, is_volatile, init, init_list,
+                                    is_const, is_volatile, is_restrict, init, init_list,
                                     init_count,
                                     tag_name, NULL, 0,
                                     kw_tok->line, kw_tok->column);
@@ -258,7 +261,7 @@ fail:
     union_member_t *members = (union_member_t *)members_v.data;
     size_t count = members_v.count;
     stmt_t *res = ast_make_var_decl(name, TYPE_UNION, 0, 0, is_static, is_const,
-                                    is_volatile, NULL, NULL, 0, NULL, members,
+                                    is_volatile, 0, NULL, NULL, 0, NULL, members,
                                     count,
                                     kw->line, kw->column);
     if (!res) {
