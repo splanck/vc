@@ -30,6 +30,19 @@ for o0asm in "$DIR"/fixtures/*_O0.s; do
     rm -f "$out"
 done
 
+# verify 64-bit code generation for selected fixtures
+for asm64 in "$DIR"/fixtures/*_x86-64.s; do
+    base=$(basename "$asm64" _x86-64.s)
+    cfile="$DIR/fixtures/$base.c"
+    out=$(mktemp)
+    "$BINARY" --x86-64 -o "$out" "$cfile"
+    if ! diff -u "$asm64" "$out"; then
+        echo "Test x86_64_$base failed"
+        fail=1
+    fi
+    rm -f "$out"
+done
+
 # negative test for parse error message
 err=$(mktemp)
 out=$(mktemp)
