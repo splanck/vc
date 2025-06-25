@@ -281,7 +281,7 @@ type_kind_t check_expr(expr_t *expr, symtable_t *vars, symtable_t *funcs,
                 return TYPE_UNKNOWN;
             }
             if (out)
-                *out = ir_build_addr(ir, sym->name);
+                *out = ir_build_addr(ir, sym->ir_name);
             return TYPE_PTR;
         } else if (expr->unary.op == UNOP_NEG) {
             ir_value_t val;
@@ -320,7 +320,7 @@ type_kind_t check_expr(expr_t *expr, symtable_t *vars, symtable_t *funcs,
             if (sym->param_index >= 0)
                 cur = ir_build_load_param(ir, sym->param_index);
             else
-                cur = ir_build_load(ir, sym->name);
+                cur = ir_build_load(ir, sym->ir_name);
             ir_value_t one = ir_build_const(ir, 1);
             ir_op_t op = (expr->unary.op == UNOP_PREDEC || expr->unary.op == UNOP_POSTDEC)
                             ? IR_SUB : IR_ADD;
@@ -328,7 +328,7 @@ type_kind_t check_expr(expr_t *expr, symtable_t *vars, symtable_t *funcs,
             if (sym->param_index >= 0)
                 ir_build_store_param(ir, sym->param_index, upd);
             else
-                ir_build_store(ir, sym->name, upd);
+                ir_build_store(ir, sym->ir_name, upd);
             if (out)
                 *out = (expr->unary.op == UNOP_PREINC || expr->unary.op == UNOP_PREDEC) ? upd : cur;
             return sym->type;
@@ -347,14 +347,14 @@ type_kind_t check_expr(expr_t *expr, symtable_t *vars, symtable_t *funcs,
         }
         if (sym->type == TYPE_ARRAY) {
             if (out)
-                *out = ir_build_addr(ir, sym->name);
+                *out = ir_build_addr(ir, sym->ir_name);
             return TYPE_PTR;
         } else {
             if (out) {
                 if (sym->param_index >= 0)
                     *out = ir_build_load_param(ir, sym->param_index);
                 else
-                    *out = ir_build_load(ir, expr->ident.name);
+                    *out = ir_build_load(ir, sym->ir_name);
             }
             return sym->type;
         }
@@ -452,7 +452,7 @@ type_kind_t check_expr(expr_t *expr, symtable_t *vars, symtable_t *funcs,
             }
         }
         if (out)
-            *out = ir_build_load_idx(ir, sym->name, idx_val);
+            *out = ir_build_load_idx(ir, sym->ir_name, idx_val);
         return TYPE_INT;
     }
     case EXPR_ASSIGN_INDEX: {
@@ -481,7 +481,7 @@ type_kind_t check_expr(expr_t *expr, symtable_t *vars, symtable_t *funcs,
                 return TYPE_UNKNOWN;
             }
         }
-        ir_build_store_idx(ir, sym->name, idx_val, val);
+        ir_build_store_idx(ir, sym->ir_name, idx_val, val);
         if (out)
             *out = val;
         return TYPE_INT;
@@ -829,37 +829,64 @@ int check_stmt(stmt_t *stmt, symtable_t *vars, symtable_t *funcs,
         return 1;
     }
     case STMT_VAR_DECL: {
-        if (!symtable_add(vars, stmt->var_decl.name, stmt->var_decl.type,
-                          stmt->var_decl.array_size)) {
+        char ir_name_buf[32];
+        const char *ir_name = stmt->var_decl.name;
+        if (stmt->var_decl.is_static) {
+            snprintf(ir_name_buf, sizeof(ir_name_buf), "__static%d", label_next_id());
+            ir_name = ir_name_buf;
+        }
+        if (!symtable_add(vars, stmt->var_decl.name, ir_name,
+                          stmt->var_decl.type,
+                          stmt->var_decl.array_size,
+                          stmt->var_decl.is_static)) {
             error_set(stmt->line, stmt->column);
             return 0;
         }
+        symbol_t *sym = symtable_lookup(vars, stmt->var_decl.name);
         if (stmt->var_decl.init) {
-            ir_value_t val;
-            type_kind_t vt = check_expr(stmt->var_decl.init, vars, funcs, ir, &val);
-            if (!((is_intlike(stmt->var_decl.type) && is_intlike(vt)) ||
-                  vt == stmt->var_decl.type)) {
-                error_set(stmt->var_decl.init->line, stmt->var_decl.init->column);
-                return 0;
+            if (stmt->var_decl.is_static) {
+                int cval;
+                if (!eval_const_expr(stmt->var_decl.init, vars, &cval)) {
+                    error_set(stmt->var_decl.init->line, stmt->var_decl.init->column);
+                    return 0;
+                }
+                ir_build_glob_var(ir, sym->ir_name, cval, 1);
+            } else {
+                ir_value_t val;
+                type_kind_t vt = check_expr(stmt->var_decl.init, vars, funcs, ir, &val);
+                if (!((is_intlike(stmt->var_decl.type) && is_intlike(vt)) ||
+                      vt == stmt->var_decl.type)) {
+                    error_set(stmt->var_decl.init->line, stmt->var_decl.init->column);
+                    return 0;
+                }
+                ir_build_store(ir, sym->ir_name, val);
             }
-            ir_build_store(ir, stmt->var_decl.name, val);
         } else if (stmt->var_decl.init_list) {
             if (stmt->var_decl.type != TYPE_ARRAY ||
                 stmt->var_decl.array_size < stmt->var_decl.init_count) {
                 error_set(stmt->line, stmt->column);
                 return 0;
             }
+            int *vals = calloc(stmt->var_decl.array_size, sizeof(int));
+            if (!vals) return 0;
             for (size_t i = 0; i < stmt->var_decl.init_count; i++) {
-                int v;
-                if (!eval_const_expr(stmt->var_decl.init_list[i], vars, &v)) {
+                if (!eval_const_expr(stmt->var_decl.init_list[i], vars, &vals[i])) {
+                    free(vals);
                     error_set(stmt->var_decl.init_list[i]->line,
                               stmt->var_decl.init_list[i]->column);
                     return 0;
                 }
-                ir_value_t idx = ir_build_const(ir, (int)i);
-                ir_value_t val = ir_build_const(ir, v);
-                ir_build_store_idx(ir, stmt->var_decl.name, idx, val);
             }
+            if (stmt->var_decl.is_static) {
+                ir_build_glob_array(ir, sym->ir_name, vals, stmt->var_decl.array_size, 1);
+            } else {
+                for (size_t i = 0; i < stmt->var_decl.array_size; i++) {
+                    ir_value_t idx = ir_build_const(ir, (int)i);
+                    ir_value_t val = ir_build_const(ir, vals[i]);
+                    ir_build_store_idx(ir, sym->ir_name, idx, val);
+                }
+            }
+            free(vals);
         }
         return 1;
     }
@@ -957,9 +984,9 @@ int check_global(stmt_t *decl, symtable_t *globals, ir_builder_t *ir)
     }
     if (decl->kind != STMT_VAR_DECL)
         return 0;
-    if (!symtable_add_global(globals, decl->var_decl.name,
+    if (!symtable_add_global(globals, decl->var_decl.name, decl->var_decl.name,
                              decl->var_decl.type,
-                             decl->var_decl.array_size)) {
+                             decl->var_decl.array_size, decl->var_decl.is_static)) {
         error_set(decl->line, decl->column);
         return 0;
     }
@@ -982,7 +1009,8 @@ int check_global(stmt_t *decl, symtable_t *globals, ir_builder_t *ir)
                 return 0;
             }
         }
-        ir_build_glob_array(ir, decl->var_decl.name, vals, count);
+        ir_build_glob_array(ir, decl->var_decl.name, vals, count,
+                           decl->var_decl.is_static);
         free(vals);
     } else {
         int value = 0;
@@ -992,7 +1020,8 @@ int check_global(stmt_t *decl, symtable_t *globals, ir_builder_t *ir)
                 return 0;
             }
         }
-        ir_build_glob_var(ir, decl->var_decl.name, value);
+        ir_build_glob_var(ir, decl->var_decl.name, value,
+                          decl->var_decl.is_static);
     }
     return 1;
 }

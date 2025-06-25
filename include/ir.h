@@ -142,8 +142,8 @@ void ir_build_label(ir_builder_t *b, const char *label);
 
 /* Global data declarations. */
 ir_value_t ir_build_string(ir_builder_t *b, const char *data);
-void ir_build_glob_var(ir_builder_t *b, const char *name, int value);
+void ir_build_glob_var(ir_builder_t *b, const char *name, int value, int is_static);
 void ir_build_glob_array(ir_builder_t *b, const char *name,
-                         const int *values, size_t count);
+                         const int *values, size_t count, int is_static);
 
 #endif /* VC_IR_H */

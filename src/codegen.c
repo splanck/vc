@@ -371,6 +371,8 @@ void codegen_emit_x86(FILE *out, ir_builder_t *ir, int x64)
                 fputs(".data\n", out);
                 has_data = 1;
             }
+            if (ins->src1)
+                fprintf(out, ".local %s\n", ins->name);
             fprintf(out, "%s:\n", ins->name);
             if (ins->op == IR_GLOB_VAR) {
                 fprintf(out, "    %s %d\n", size_directive, ins->imm);

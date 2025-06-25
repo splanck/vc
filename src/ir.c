@@ -348,7 +348,7 @@ void ir_build_label(ir_builder_t *b, const char *label)
  * Emit IR_GLOB_VAR declaring global variable `name` with constant
  * initializer `value`.
  */
-void ir_build_glob_var(ir_builder_t *b, const char *name, int value)
+void ir_build_glob_var(ir_builder_t *b, const char *name, int value, int is_static)
 {
     ir_instr_t *ins = append_instr(b);
     if (!ins)
@@ -356,10 +356,11 @@ void ir_build_glob_var(ir_builder_t *b, const char *name, int value)
     ins->op = IR_GLOB_VAR;
     ins->name = vc_strdup(name ? name : "");
     ins->imm = value;
+    ins->src1 = is_static;
 }
 
 void ir_build_glob_array(ir_builder_t *b, const char *name,
-                         const int *values, size_t count)
+                         const int *values, size_t count, int is_static)
 {
     /* Emit IR_GLOB_ARRAY storing an array of constants. `data` points
      * to a copy of the initializer values. */
@@ -369,6 +370,7 @@ void ir_build_glob_array(ir_builder_t *b, const char *name,
     ins->op = IR_GLOB_ARRAY;
     ins->name = vc_strdup(name ? name : "");
     ins->imm = (int)count;
+    ins->src1 = is_static;
     if (count) {
         int *vals = malloc(count * sizeof(int));
         if (!vals)

@@ -78,6 +78,11 @@ int *p = &x;
 return *p;
 ```
 
+Variables may be declared with the `static` qualifier.  Static globals
+behave like normal globals but are emitted as private symbols.  Static
+locals are stored in the data section with unique names and require
+constant initializers.
+
 Struct and union objects are declared similarly using the new
 `struct` and `union` keywords. Member access is parsed with `.` or
 `->`:

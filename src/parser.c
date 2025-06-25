@@ -62,6 +62,7 @@ static const char *token_name(token_type_t type)
     case TOK_KW_STRUCT: return "\"struct\"";
     case TOK_KW_UNION: return "\"union\"";
     case TOK_KW_TYPEDEF: return "\"typedef\"";
+    case TOK_KW_STATIC: return "\"static\"";
     case TOK_KW_RETURN: return "\"return\"";
     case TOK_KW_IF: return "\"if\"";
     case TOK_KW_ELSE: return "\"else\"";
@@ -312,6 +313,7 @@ int parser_parse_toplevel(parser_t *p, symtable_t *funcs,
     if (out_global) *out_global = NULL;
 
     size_t save = p->pos;
+    int is_static = match(p, TOK_KW_STATIC);
     token_t *tok = peek(p);
     if (!tok)
         return 0;
@@ -443,8 +445,10 @@ int parser_parse_toplevel(parser_t *p, symtable_t *funcs,
         }
         p->pos++; /* consume ';' */
         if (out_global)
-            *out_global = ast_make_var_decl(id->lexeme, t, arr_size, NULL,
-                                           NULL, 0, tok->line, tok->column);
+            *out_global = ast_make_var_decl(id->lexeme, t, arr_size,
+                                           is_static,
+                                           NULL, NULL, 0,
+                                           tok->line, tok->column);
         return *out_global != NULL;
     } else if (next_tok && next_tok->type == TOK_ASSIGN) {
         if (t == TYPE_VOID) {
@@ -475,8 +479,9 @@ int parser_parse_toplevel(parser_t *p, symtable_t *funcs,
             }
         }
         if (out_global)
-            *out_global = ast_make_var_decl(id->lexeme, t, arr_size, init,
-                                           init_list, init_count,
+            *out_global = ast_make_var_decl(id->lexeme, t, arr_size,
+                                           is_static,
+                                           init, init_list, init_count,
                                            tok->line, tok->column);
         return *out_global != NULL;
     }
