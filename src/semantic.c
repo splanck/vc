@@ -73,11 +73,15 @@ static int is_intlike(type_kind_t t)
     case TYPE_LONG: case TYPE_ULONG:
     case TYPE_LLONG: case TYPE_ULLONG:
     case TYPE_BOOL:
-    case TYPE_FLOAT: case TYPE_DOUBLE:
         return 1;
     default:
         return 0;
     }
+}
+
+static int is_floatlike(type_kind_t t)
+{
+    return t == TYPE_FLOAT || t == TYPE_DOUBLE;
 }
 
 /* Mapping from BINOP_* to corresponding IR op.  Logical ops are
@@ -213,7 +217,21 @@ static type_kind_t check_binary(expr_t *left, expr_t *right, symtable_t *vars,
     ir_value_t lval, rval;
     type_kind_t lt = check_expr(left, vars, funcs, ir, &lval);
     type_kind_t rt = check_expr(right, vars, funcs, ir, &rval);
-    if (is_intlike(lt) && is_intlike(rt)) {
+    if (is_floatlike(lt) && lt == rt &&
+        (op == BINOP_ADD || op == BINOP_SUB || op == BINOP_MUL || op == BINOP_DIV)) {
+        if (out) {
+            ir_op_t fop = IR_FADD;
+            switch (op) {
+            case BINOP_ADD: fop = IR_FADD; break;
+            case BINOP_SUB: fop = IR_FSUB; break;
+            case BINOP_MUL: fop = IR_FMUL; break;
+            case BINOP_DIV: fop = IR_FDIV; break;
+            default: break;
+            }
+            *out = ir_build_binop(ir, fop, lval, rval);
+        }
+        return lt;
+    } else if (is_intlike(lt) && is_intlike(rt)) {
         if (out) {
             ir_op_t ir_op = binop_to_ir[op];
             *out = ir_build_binop(ir, ir_op, lval, rval);
@@ -273,12 +291,19 @@ static type_kind_t check_unary_expr(expr_t *expr, symtable_t *vars,
         }
     case UNOP_NEG: {
         ir_value_t val;
-        if (is_intlike(check_expr(opnd, vars, funcs, ir, &val))) {
+        type_kind_t vt = check_expr(opnd, vars, funcs, ir, &val);
+        if (is_intlike(vt)) {
             if (out) {
                 ir_value_t zero = ir_build_const(ir, 0);
                 *out = ir_build_binop(ir, IR_SUB, zero, val);
             }
             return TYPE_INT;
+        } else if (is_floatlike(vt)) {
+            if (out) {
+                ir_value_t zero = ir_build_const(ir, 0);
+                *out = ir_build_binop(ir, IR_FSUB, zero, val);
+            }
+            return vt;
         }
         error_set(opnd->line, opnd->column);
         return TYPE_UNKNOWN;
@@ -303,7 +328,7 @@ static type_kind_t check_unary_expr(expr_t *expr, symtable_t *vars,
         }
         {
             symbol_t *sym = symtable_lookup(vars, opnd->ident.name);
-            if (!sym || !is_intlike(sym->type)) {
+            if (!sym || !(is_intlike(sym->type) || is_floatlike(sym->type))) {
                 error_set(opnd->line, opnd->column);
                 return TYPE_UNKNOWN;
             }
@@ -311,10 +336,13 @@ static type_kind_t check_unary_expr(expr_t *expr, symtable_t *vars,
                                  ? ir_build_load_param(ir, sym->param_index)
                                  : ir_build_load(ir, sym->ir_name);
             ir_value_t one = ir_build_const(ir, 1);
-            ir_op_t ir_op = (expr->unary.op == UNOP_PREDEC ||
-                             expr->unary.op == UNOP_POSTDEC)
-                                ? IR_SUB
-                                : IR_ADD;
+            ir_op_t ir_op;
+            if (is_floatlike(sym->type))
+                ir_op = (expr->unary.op == UNOP_PREDEC ||
+                         expr->unary.op == UNOP_POSTDEC) ? IR_FSUB : IR_FADD;
+            else
+                ir_op = (expr->unary.op == UNOP_PREDEC ||
+                         expr->unary.op == UNOP_POSTDEC) ? IR_SUB : IR_ADD;
             ir_value_t upd = ir_build_binop(ir, ir_op, cur, one);
             if (sym->param_index >= 0)
                 ir_build_store_param(ir, sym->param_index, upd);
@@ -450,7 +478,9 @@ type_kind_t check_expr(expr_t *expr, symtable_t *vars, symtable_t *funcs,
             return TYPE_UNKNOWN;
         }
         type_kind_t vt = check_expr(expr->assign.value, vars, funcs, ir, &val);
-        if ((is_intlike(sym->type) && is_intlike(vt)) || vt == sym->type) {
+        if (((is_intlike(sym->type) && is_intlike(vt)) ||
+             (is_floatlike(sym->type) && (is_floatlike(vt) || is_intlike(vt)))) ||
+            vt == sym->type) {
             if (sym->param_index >= 0)
                 ir_build_store_param(ir, sym->param_index, val);
             else
@@ -579,7 +609,8 @@ type_kind_t check_expr(expr_t *expr, symtable_t *vars, symtable_t *funcs,
             type_kind_t at = check_expr(expr->call.args[i], vars, funcs, ir,
                                         &vals[i]);
             type_kind_t pt = fsym->param_types[i];
-            if (!((is_intlike(pt) && is_intlike(at)) || at == pt)) {
+            if (!(((is_intlike(pt) && is_intlike(at)) ||
+                   (is_floatlike(pt) && is_floatlike(at))) || at == pt)) {
                 error_set(expr->call.args[i]->line, expr->call.args[i]->column);
                 free(vals);
                 return TYPE_UNKNOWN;
@@ -920,7 +951,9 @@ int check_stmt(stmt_t *stmt, symtable_t *vars, symtable_t *funcs,
             } else {
                 ir_value_t val;
                 type_kind_t vt = check_expr(stmt->var_decl.init, vars, funcs, ir, &val);
-                if (!((is_intlike(stmt->var_decl.type) && is_intlike(vt)) ||
+                if (!(((is_intlike(stmt->var_decl.type) && is_intlike(vt)) ||
+                       (is_floatlike(stmt->var_decl.type) &&
+                        (is_floatlike(vt) || is_intlike(vt)))) ||
                       vt == stmt->var_decl.type)) {
                     error_set(stmt->var_decl.init->line, stmt->var_decl.init->column);
                     return 0;
