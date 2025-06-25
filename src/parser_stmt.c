@@ -16,6 +16,7 @@
 #include "util.h"
 
 static stmt_t *parse_block(parser_t *p);
+static stmt_t *parse_var_decl(parser_t *p, token_type_t kw_type);
 stmt_t *parser_parse_enum_decl(parser_t *p);
 stmt_t *parser_parse_stmt(parser_t *p);
 
@@ -51,6 +52,65 @@ static stmt_t *parse_block(parser_t *p)
         stmts[count++] = s;
     }
     return ast_make_block(stmts, count, lb_tok->line, lb_tok->column);
+}
+
+/* Parse a variable declaration starting after a type keyword already matched */
+static stmt_t *parse_var_decl(parser_t *p, token_type_t kw_type)
+{
+    token_t *kw_tok = &p->tokens[p->pos - 1];
+    type_kind_t t;
+    switch (kw_type) {
+    case TOK_KW_INT: t = TYPE_INT; break;
+    case TOK_KW_CHAR: t = TYPE_CHAR; break;
+    case TOK_KW_FLOAT: t = TYPE_FLOAT; break;
+    case TOK_KW_DOUBLE: t = TYPE_DOUBLE; break;
+    default: t = TYPE_INT; break;
+    }
+    if (match(p, TOK_STAR))
+        t = TYPE_PTR;
+    token_t *tok = peek(p);
+    if (!tok || tok->type != TOK_IDENT)
+        return NULL;
+    p->pos++;
+    char *name = tok->lexeme;
+    size_t arr_size = 0;
+    if (match(p, TOK_LBRACKET)) {
+        token_t *num = peek(p);
+        if (!num || num->type != TOK_NUMBER)
+            return NULL;
+        p->pos++;
+        arr_size = strtoul(num->lexeme, NULL, 10);
+        if (!match(p, TOK_RBRACKET))
+            return NULL;
+        t = TYPE_ARRAY;
+    }
+    expr_t *init = NULL;
+    expr_t **init_list = NULL;
+    size_t init_count = 0;
+    if (match(p, TOK_ASSIGN)) {
+        if (t == TYPE_ARRAY && peek(p) && peek(p)->type == TOK_LBRACE) {
+            init_list = parser_parse_init_list(p, &init_count);
+            if (!init_list || !match(p, TOK_SEMI)) {
+                if (init_list) {
+                    for (size_t i = 0; i < init_count; i++)
+                        ast_free_expr(init_list[i]);
+                    free(init_list);
+                }
+                return NULL;
+            }
+        } else {
+            init = parser_parse_expr(p);
+            if (!init || !match(p, TOK_SEMI)) {
+                ast_free_expr(init);
+                return NULL;
+            }
+        }
+    } else {
+        if (!match(p, TOK_SEMI))
+            return NULL;
+    }
+    return ast_make_var_decl(name, t, arr_size, init, init_list, init_count,
+                             kw_tok->line, kw_tok->column);
 }
 
 /* Parse an enum declaration */
@@ -136,60 +196,7 @@ stmt_t *parser_parse_stmt(parser_t *p)
     if (match(p, TOK_KW_INT) || match(p, TOK_KW_CHAR) ||
         match(p, TOK_KW_FLOAT) || match(p, TOK_KW_DOUBLE)) {
         token_t *kw_tok = &p->tokens[p->pos - 1];
-        type_kind_t t;
-        switch (kw_tok->type) {
-        case TOK_KW_INT: t = TYPE_INT; break;
-        case TOK_KW_CHAR: t = TYPE_CHAR; break;
-        case TOK_KW_FLOAT: t = TYPE_FLOAT; break;
-        case TOK_KW_DOUBLE: t = TYPE_DOUBLE; break;
-        default: t = TYPE_INT; break;
-        }
-        if (match(p, TOK_STAR))
-            t = TYPE_PTR;
-        token_t *tok = peek(p);
-        if (!tok || tok->type != TOK_IDENT)
-            return NULL;
-        p->pos++;
-        char *name = tok->lexeme;
-        size_t arr_size = 0;
-        if (match(p, TOK_LBRACKET)) {
-            token_t *num = peek(p);
-            if (!num || num->type != TOK_NUMBER)
-                return NULL;
-            p->pos++;
-            arr_size = strtoul(num->lexeme, NULL, 10);
-            if (!match(p, TOK_RBRACKET))
-                return NULL;
-            t = TYPE_ARRAY;
-        }
-        expr_t *init = NULL;
-        expr_t **init_list = NULL;
-        size_t init_count = 0;
-        if (match(p, TOK_ASSIGN)) {
-            if (t == TYPE_ARRAY && peek(p) && peek(p)->type == TOK_LBRACE) {
-                init_list = parser_parse_init_list(p, &init_count);
-                if (!init_list || !match(p, TOK_SEMI)) {
-                    if (init_list) {
-                        for (size_t i = 0; i < init_count; i++)
-                            ast_free_expr(init_list[i]);
-                        free(init_list);
-                    }
-                    return NULL;
-                }
-            } else {
-                init = parser_parse_expr(p);
-                if (!init || !match(p, TOK_SEMI)) {
-                    ast_free_expr(init);
-                    return NULL;
-                }
-            }
-        } else {
-            if (!match(p, TOK_SEMI))
-                return NULL;
-        }
-        return ast_make_var_decl(name, t, arr_size, init,
-                                 init_list, init_count,
-                                 kw_tok->line, kw_tok->column);
+        return parse_var_decl(p, kw_tok->type);
     }
 
     if (match(p, TOK_KW_RETURN)) {
@@ -306,19 +313,31 @@ stmt_t *parser_parse_stmt(parser_t *p)
         token_t *kw_tok = &p->tokens[p->pos - 1];
         if (!match(p, TOK_LPAREN))
             return NULL;
-        expr_t *init = parser_parse_expr(p);
-        if (!init || !match(p, TOK_SEMI)) {
-            ast_free_expr(init);
-            return NULL;
+        stmt_t *init_decl = NULL;
+        expr_t *init = NULL;
+        if (match(p, TOK_KW_INT) || match(p, TOK_KW_CHAR) ||
+            match(p, TOK_KW_FLOAT) || match(p, TOK_KW_DOUBLE)) {
+            token_t *kw = &p->tokens[p->pos - 1];
+            init_decl = parse_var_decl(p, kw->type);
+            if (!init_decl)
+                return NULL;
+        } else {
+            init = parser_parse_expr(p);
+            if (!init || !match(p, TOK_SEMI)) {
+                ast_free_expr(init);
+                return NULL;
+            }
         }
         expr_t *cond = parser_parse_expr(p);
         if (!cond || !match(p, TOK_SEMI)) {
+            ast_free_stmt(init_decl);
             ast_free_expr(init);
             ast_free_expr(cond);
             return NULL;
         }
         expr_t *incr = parser_parse_expr(p);
         if (!incr || !match(p, TOK_RPAREN)) {
+            ast_free_stmt(init_decl);
             ast_free_expr(init);
             ast_free_expr(cond);
             ast_free_expr(incr);
@@ -326,12 +345,13 @@ stmt_t *parser_parse_stmt(parser_t *p)
         }
         stmt_t *body = parser_parse_stmt(p);
         if (!body) {
+            ast_free_stmt(init_decl);
             ast_free_expr(init);
             ast_free_expr(cond);
             ast_free_expr(incr);
             return NULL;
         }
-        return ast_make_for(init, cond, incr, body,
+        return ast_make_for(init_decl, init, cond, incr, body,
                             kw_tok->line, kw_tok->column);
     }
 

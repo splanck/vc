@@ -193,7 +193,8 @@ struct stmt {
             stmt_t *body;
         } do_while_stmt;
         struct {
-            expr_t *init;
+            stmt_t *init_decl; /* optional variable declaration */
+            expr_t *init;       /* optional init expression */
             expr_t *cond;
             expr_t *incr;
             stmt_t *body;
@@ -291,7 +292,8 @@ stmt_t *ast_make_while(expr_t *cond, stmt_t *body,
 stmt_t *ast_make_do_while(expr_t *cond, stmt_t *body,
                          size_t line, size_t column);
 /* Construct a for loop statement with optional init/cond/incr expressions. */
-stmt_t *ast_make_for(expr_t *init, expr_t *cond, expr_t *incr, stmt_t *body,
+stmt_t *ast_make_for(stmt_t *init_decl, expr_t *init, expr_t *cond,
+                     expr_t *incr, stmt_t *body,
                      size_t line, size_t column);
 /* Construct a switch statement with optional default block. */
 stmt_t *ast_make_switch(expr_t *expr, switch_case_t *cases, size_t case_count,

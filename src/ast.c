@@ -325,7 +325,8 @@ stmt_t *ast_make_do_while(expr_t *cond, stmt_t *body,
 }
 
 /* Create a for loop statement node. */
-stmt_t *ast_make_for(expr_t *init, expr_t *cond, expr_t *incr, stmt_t *body,
+stmt_t *ast_make_for(stmt_t *init_decl, expr_t *init, expr_t *cond,
+                     expr_t *incr, stmt_t *body,
                      size_t line, size_t column)
 {
     stmt_t *stmt = malloc(sizeof(*stmt));
@@ -334,6 +335,7 @@ stmt_t *ast_make_for(expr_t *init, expr_t *cond, expr_t *incr, stmt_t *body,
     stmt->kind = STMT_FOR;
     stmt->line = line;
     stmt->column = column;
+    stmt->for_stmt.init_decl = init_decl;
     stmt->for_stmt.init = init;
     stmt->for_stmt.cond = cond;
     stmt->for_stmt.incr = incr;
@@ -603,6 +605,7 @@ void ast_free_stmt(stmt_t *stmt)
         ast_free_stmt(stmt->do_while_stmt.body);
         break;
     case STMT_FOR:
+        ast_free_stmt(stmt->for_stmt.init_decl);
         ast_free_expr(stmt->for_stmt.init);
         ast_free_expr(stmt->for_stmt.cond);
         ast_free_expr(stmt->for_stmt.incr);
