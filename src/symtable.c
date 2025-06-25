@@ -38,6 +38,9 @@ static symbol_t *symtable_create_symbol(const char *name, const char *ir_name)
     sym->param_index = -1;
     sym->alias_type = TYPE_UNKNOWN;
     sym->elem_size = 0;
+    sym->members = NULL;
+    sym->member_count = 0;
+    sym->total_size = 0;
     return sym;
 }
 
@@ -55,6 +58,9 @@ void symtable_free(symtable_t *table)
     while (sym) {
         symbol_t *next = sym->next;
         free(sym->name);
+        for (size_t i = 0; i < sym->member_count; i++)
+            free(sym->members[i].name);
+        free(sym->members);
         free(sym->param_types);
         free(sym);
         sym = next;
@@ -63,6 +69,9 @@ void symtable_free(symtable_t *table)
     while (sym) {
         symbol_t *next = sym->next;
         free(sym->name);
+        for (size_t i = 0; i < sym->member_count; i++)
+            free(sym->members[i].name);
+        free(sym->members);
         free(sym->param_types);
         free(sym);
         sym = next;
@@ -264,6 +273,96 @@ symbol_t *symtable_lookup_global(symtable_t *table, const char *name)
 {
     for (symbol_t *sym = table->globals; sym; sym = sym->next) {
         if (strcmp(sym->name, name) == 0)
+            return sym;
+    }
+    return NULL;
+}
+
+/* Insert a union type definition in the current scope */
+int symtable_add_union(symtable_t *table, const char *tag,
+                       union_member_t *members, size_t member_count)
+{
+    if (symtable_lookup(table, tag))
+        return 0;
+    symbol_t *sym = symtable_create_symbol(tag, tag);
+    if (!sym)
+        return 0;
+    sym->type = TYPE_UNION;
+    if (member_count) {
+        sym->members = malloc(member_count * sizeof(*sym->members));
+        if (!sym->members) {
+            free(sym->name);
+            free(sym->ir_name);
+            free(sym);
+            return 0;
+        }
+        for (size_t i = 0; i < member_count; i++) {
+            sym->members[i].name = vc_strdup(members[i].name);
+            sym->members[i].type = members[i].type;
+            sym->members[i].elem_size = members[i].elem_size;
+            sym->members[i].offset = members[i].offset;
+        }
+    }
+    sym->member_count = member_count;
+    size_t max = 0;
+    for (size_t i = 0; i < member_count; i++)
+        if (members[i].elem_size > max)
+            max = members[i].elem_size;
+    sym->total_size = max;
+    sym->next = table->head;
+    table->head = sym;
+    return 1;
+}
+
+/* Insert a union type definition in the global scope */
+int symtable_add_union_global(symtable_t *table, const char *tag,
+                              union_member_t *members, size_t member_count)
+{
+    for (symbol_t *sym = table->globals; sym; sym = sym->next) {
+        if (strcmp(sym->name, tag) == 0)
+            return 0;
+    }
+    symbol_t *sym = symtable_create_symbol(tag, tag);
+    if (!sym)
+        return 0;
+    sym->type = TYPE_UNION;
+    if (member_count) {
+        sym->members = malloc(member_count * sizeof(*sym->members));
+        if (!sym->members) {
+            free(sym->name);
+            free(sym->ir_name);
+            free(sym);
+            return 0;
+        }
+        for (size_t i = 0; i < member_count; i++) {
+            sym->members[i].name = vc_strdup(members[i].name);
+            sym->members[i].type = members[i].type;
+            sym->members[i].elem_size = members[i].elem_size;
+            sym->members[i].offset = members[i].offset;
+        }
+    }
+    sym->member_count = member_count;
+    size_t max = 0;
+    for (size_t i = 0; i < member_count; i++)
+        if (members[i].elem_size > max)
+            max = members[i].elem_size;
+    sym->total_size = max;
+    sym->next = table->globals;
+    table->globals = sym;
+    return 1;
+}
+
+/* Look up a union type definition by tag */
+symbol_t *symtable_lookup_union(symtable_t *table, const char *tag)
+{
+    for (symbol_t *sym = table->head; sym; sym = sym->next) {
+        if (sym->type == TYPE_UNION && sym->member_count > 0 &&
+            strcmp(sym->name, tag) == 0)
+            return sym;
+    }
+    for (symbol_t *sym = table->globals; sym; sym = sym->next) {
+        if (sym->type == TYPE_UNION && sym->member_count > 0 &&
+            strcmp(sym->name, tag) == 0)
             return sym;
     }
     return NULL;
