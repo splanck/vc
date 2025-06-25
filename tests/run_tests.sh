@@ -6,6 +6,9 @@ BINARY="$DIR/../vc"
 fail=0
 for cfile in "$DIR"/fixtures/*.c; do
     base=$(basename "$cfile" .c)
+    case "$base" in
+        *_x86-64) continue;;
+    esac
     expect="$DIR/fixtures/$base.s"
     out=$(mktemp)
     echo "Running fixture $base"

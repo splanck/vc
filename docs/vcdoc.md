@@ -68,7 +68,9 @@ int y = 5;      /* evaluates 5 and stores to 'y' */
 
 Additional built-in types such as `short`, `long`, `long long` and
 `bool` are recognized.  Each integer type also has an unsigned variant
-using the `unsigned` keyword.
+using the `unsigned` keyword.  The IR now stores immediates in a
+64-bit field so `long long` literals and arithmetic are handled without
+truncation when generating x86-64 code.
 
 Pointers work the same way and may be dereferenced using
 `UNOP_DEREF`:

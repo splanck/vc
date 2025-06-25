@@ -78,14 +78,14 @@ char *ir_to_string(ir_builder_t *ir)
     strbuf_init(&sb);
     for (ir_instr_t *ins = ir->head; ins; ins = ins->next) {
         if (ins->op == IR_GLOB_ARRAY) {
-            strbuf_appendf(&sb, "%s name=%s count=%d\n", op_name(ins->op),
+            strbuf_appendf(&sb, "%s name=%s count=%lld\n", op_name(ins->op),
                            ins->name ? ins->name : "", ins->imm);
         } else if (ins->op == IR_GLOB_UNION) {
-            strbuf_appendf(&sb, "%s name=%s size=%d\n", op_name(ins->op),
+            strbuf_appendf(&sb, "%s name=%s size=%lld\n", op_name(ins->op),
                            ins->name ? ins->name : "", ins->imm);
         } else {
             strbuf_appendf(&sb,
-                           "%s dest=%d src1=%d src2=%d imm=%d name=%s data=%s\n",
+                           "%s dest=%d src1=%d src2=%d imm=%lld name=%s data=%s\n",
                            op_name(ins->op), ins->dest, ins->src1, ins->src2,
                            ins->imm, ins->name ? ins->name : "",
                            ins->data ? ins->data : "");
