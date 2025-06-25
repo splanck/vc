@@ -194,6 +194,7 @@ struct stmt {
             type_kind_t type;
             size_t array_size;
             int is_static;
+            int is_const;
             /* optional initializer expression */
             expr_t *init;
             /* optional initializer list for arrays */
@@ -304,7 +305,7 @@ stmt_t *ast_make_expr_stmt(expr_t *expr, size_t line, size_t column);
 stmt_t *ast_make_return(expr_t *expr, size_t line, size_t column);
 /* Declare a variable optionally initialized by \p init or \p init_list. */
 stmt_t *ast_make_var_decl(const char *name, type_kind_t type, size_t array_size,
-                          int is_static,
+                          int is_static, int is_const,
                           expr_t *init, expr_t **init_list, size_t init_count,
                           size_t line, size_t column);
 /* Create an if/else statement. \p else_branch may be NULL. */

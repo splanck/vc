@@ -93,6 +93,7 @@ static int parse_basic_type(parser_t *p, type_kind_t *out)
 static stmt_t *parse_var_decl(parser_t *p)
 {
     int is_static = match(p, TOK_KW_STATIC);
+    int is_const = match(p, TOK_KW_CONST);
     token_t *kw_tok = peek(p);
     type_kind_t t;
     if (!parse_basic_type(p, &t))
@@ -140,7 +141,7 @@ static stmt_t *parse_var_decl(parser_t *p)
         if (!match(p, TOK_SEMI))
             return NULL;
     }
-    return ast_make_var_decl(name, t, arr_size, is_static,
+    return ast_make_var_decl(name, t, arr_size, is_static, is_const,
                              init, init_list, init_count,
                              kw_tok->line, kw_tok->column);
 }
@@ -227,6 +228,8 @@ stmt_t *parser_parse_stmt(parser_t *p)
 
     tok = peek(p);
     if (tok && tok->type == TOK_KW_STATIC)
+        return parse_var_decl(p);
+    if (tok && tok->type == TOK_KW_CONST)
         return parse_var_decl(p);
     if (tok && (tok->type == TOK_KW_INT || tok->type == TOK_KW_CHAR ||
                 tok->type == TOK_KW_FLOAT || tok->type == TOK_KW_DOUBLE ||
@@ -352,8 +355,8 @@ stmt_t *parser_parse_stmt(parser_t *p)
         stmt_t *init_decl = NULL;
         expr_t *init = NULL;
         tok = peek(p);
-        if (tok && (tok->type == TOK_KW_STATIC || tok->type == TOK_KW_INT ||
-                    tok->type == TOK_KW_CHAR || tok->type == TOK_KW_FLOAT ||
+        if (tok && (tok->type == TOK_KW_STATIC || tok->type == TOK_KW_CONST ||
+                    tok->type == TOK_KW_INT || tok->type == TOK_KW_CHAR || tok->type == TOK_KW_FLOAT ||
                     tok->type == TOK_KW_DOUBLE || tok->type == TOK_KW_SHORT ||
                     tok->type == TOK_KW_LONG || tok->type == TOK_KW_BOOL ||
                     tok->type == TOK_KW_UNSIGNED)) {

@@ -23,6 +23,7 @@ typedef struct symbol {
     int is_typedef;
     type_kind_t alias_type;
     int is_static;
+    int is_const;
     type_kind_t *param_types; /* for functions */
     size_t param_count;
     int is_prototype;
@@ -47,7 +48,8 @@ void symtable_free(symtable_t *table);
 /* Add a symbol to the table. Returns non-zero on success. */
 /* Locals */
 int symtable_add(symtable_t *table, const char *name, const char *ir_name,
-                 type_kind_t type, size_t array_size, int is_static);
+                 type_kind_t type, size_t array_size,
+                 int is_static, int is_const);
 /* Parameters are stored as locals with an index */
 int symtable_add_param(symtable_t *table, const char *name, type_kind_t type,
                        int index);
@@ -57,7 +59,8 @@ int symtable_add_func(symtable_t *table, const char *name, type_kind_t ret_type,
                       int is_prototype);
 /* Globals live in a separate list */
 int symtable_add_global(symtable_t *table, const char *name, const char *ir_name,
-                        type_kind_t type, size_t array_size, int is_static);
+                        type_kind_t type, size_t array_size,
+                        int is_static, int is_const);
 int symtable_add_enum(symtable_t *table, const char *name, int value);
 int symtable_add_enum_global(symtable_t *table, const char *name, int value);
 int symtable_add_typedef(symtable_t *table, const char *name, type_kind_t type,

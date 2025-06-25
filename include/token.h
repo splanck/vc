@@ -31,6 +31,7 @@ typedef enum {
     TOK_KW_UNION,
     TOK_KW_TYPEDEF,
     TOK_KW_STATIC,
+    TOK_KW_CONST,
     TOK_KW_RETURN,
     TOK_KW_IF,
     TOK_KW_ELSE,

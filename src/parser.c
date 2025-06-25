@@ -63,6 +63,7 @@ static const char *token_name(token_type_t type)
     case TOK_KW_UNION: return "\"union\"";
     case TOK_KW_TYPEDEF: return "\"typedef\"";
     case TOK_KW_STATIC: return "\"static\"";
+    case TOK_KW_CONST: return "\"const\"";
     case TOK_KW_RETURN: return "\"return\"";
     case TOK_KW_IF: return "\"if\"";
     case TOK_KW_ELSE: return "\"else\"";
@@ -314,6 +315,7 @@ int parser_parse_toplevel(parser_t *p, symtable_t *funcs,
 
     size_t save = p->pos;
     int is_static = match(p, TOK_KW_STATIC);
+    int is_const = match(p, TOK_KW_CONST);
     token_t *tok = peek(p);
     if (!tok)
         return 0;
@@ -446,7 +448,7 @@ int parser_parse_toplevel(parser_t *p, symtable_t *funcs,
         p->pos++; /* consume ';' */
         if (out_global)
             *out_global = ast_make_var_decl(id->lexeme, t, arr_size,
-                                           is_static,
+                                           is_static, is_const,
                                            NULL, NULL, 0,
                                            tok->line, tok->column);
         return *out_global != NULL;
@@ -480,7 +482,7 @@ int parser_parse_toplevel(parser_t *p, symtable_t *funcs,
         }
         if (out_global)
             *out_global = ast_make_var_decl(id->lexeme, t, arr_size,
-                                           is_static,
+                                           is_static, is_const,
                                            init, init_list, init_count,
                                            tok->line, tok->column);
         return *out_global != NULL;

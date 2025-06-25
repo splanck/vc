@@ -62,7 +62,8 @@ symbol_t *symtable_lookup(symtable_t *table, const char *name)
  * same name already exists in either the local or global list.
  */
 int symtable_add(symtable_t *table, const char *name, const char *ir_name,
-                 type_kind_t type, size_t array_size, int is_static)
+                 type_kind_t type, size_t array_size,
+                 int is_static, int is_const)
 {
     if (symtable_lookup(table, name))
         return 0;
@@ -87,8 +88,8 @@ int symtable_add(symtable_t *table, const char *name, const char *ir_name,
     sym->is_typedef = 0;
     sym->alias_type = TYPE_UNKNOWN;
     sym->is_static = 0;
-    sym->is_static = 0;
     sym->is_static = is_static;
+    sym->is_const = is_const;
     sym->param_index = -1;
     sym->param_types = NULL;
     sym->param_count = 0;
@@ -135,7 +136,8 @@ int symtable_add_param(symtable_t *table, const char *name, type_kind_t type,
 
 /* Insert a global variable into the table. */
 int symtable_add_global(symtable_t *table, const char *name, const char *ir_name,
-                        type_kind_t type, size_t array_size, int is_static)
+                        type_kind_t type, size_t array_size,
+                        int is_static, int is_const)
 {
     for (symbol_t *sym = table->globals; sym; sym = sym->next) {
         if (strcmp(sym->name, name) == 0)
@@ -161,8 +163,8 @@ int symtable_add_global(symtable_t *table, const char *name, const char *ir_name
     sym->is_typedef = 0;
     sym->alias_type = TYPE_UNKNOWN;
     sym->is_static = 0;
-    sym->is_static = 0;
     sym->is_static = is_static;
+    sym->is_const = is_const;
     sym->param_index = -1;
     sym->param_types = NULL;
     sym->param_count = 0;

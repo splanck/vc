@@ -83,6 +83,9 @@ behave like normal globals but are emitted as private symbols.  Static
 locals are stored in the data section with unique names and require
 constant initializers.
 
+The `const` qualifier marks a variable as read-only after initialization.
+Any attempt to assign to a `const` object results in a semantic error.
+
 Struct and union objects are declared similarly using the new
 `struct` and `union` keywords. Member access is parsed with `.` or
 `->`:
