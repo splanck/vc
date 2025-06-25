@@ -39,6 +39,8 @@ typedef struct symbol {
     char *name;
     type_kind_t type;
     int param_index; /* -1 for locals */
+    int is_typedef;  /* alias flag */
+    type_kind_t alias_type;
     struct symbol *next;
 } symbol_t;
 ```
@@ -77,6 +79,19 @@ struct Point p;
 p.x = 3;
 return p.x;
 ```
+
+#### Typedef aliases
+
+Type aliases can be introduced using the `typedef` keyword.  Only
+aliases of built-in types are supported currently:
+
+```c
+typedef int myint;
+myint val;
+```
+
+Typedef declarations are stored in the symbol table and may appear at
+global scope.
 
 #### Type checking and functions
 

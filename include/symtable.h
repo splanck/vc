@@ -19,6 +19,8 @@ typedef struct symbol {
     size_t array_size;
     int enum_value;
     int is_enum_const;
+    int is_typedef;
+    type_kind_t alias_type;
     type_kind_t *param_types; /* for functions */
     size_t param_count;
     struct symbol *next;
@@ -54,6 +56,10 @@ int symtable_add_global(symtable_t *table, const char *name, type_kind_t type,
                         size_t array_size);
 int symtable_add_enum(symtable_t *table, const char *name, int value);
 int symtable_add_enum_global(symtable_t *table, const char *name, int value);
+int symtable_add_typedef(symtable_t *table, const char *name, type_kind_t type,
+                         size_t array_size);
+int symtable_add_typedef_global(symtable_t *table, const char *name,
+                                type_kind_t type, size_t array_size);
 
 /* Look up a symbol by name. Returns NULL if not found. */
 symbol_t *symtable_lookup(symtable_t *table, const char *name);

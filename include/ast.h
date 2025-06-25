@@ -148,6 +148,7 @@ typedef enum {
     STMT_CONTINUE,
     STMT_LABEL,
     STMT_GOTO,
+    STMT_TYPEDEF,
     STMT_ENUM_DECL,
     STMT_BLOCK
 } stmt_kind_t;
@@ -205,6 +206,11 @@ struct stmt {
         struct {
             char *name;
         } goto_stmt;
+        struct {
+            char *name;
+            type_kind_t type;
+            size_t array_size;
+        } typedef_decl;
         struct {
             char *tag;
             enumerator_t *items;
@@ -294,6 +300,9 @@ stmt_t *ast_make_continue(size_t line, size_t column);
 stmt_t *ast_make_label(const char *name, size_t line, size_t column);
 /* goto statement */
 stmt_t *ast_make_goto(const char *name, size_t line, size_t column);
+/* Create a typedef declaration */
+stmt_t *ast_make_typedef(const char *name, type_kind_t type, size_t array_size,
+                         size_t line, size_t column);
 /* Declare an enum with \p count enumerators. */
 stmt_t *ast_make_enum_decl(const char *tag, enumerator_t *items, size_t count,
                            size_t line, size_t column);
