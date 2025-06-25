@@ -67,7 +67,8 @@ static const char *label_table_get_or_add(label_table_t *t, const char *name)
 
 static int is_intlike(type_kind_t t)
 {
-    return t == TYPE_INT || t == TYPE_CHAR;
+    return t == TYPE_INT || t == TYPE_CHAR ||
+           t == TYPE_FLOAT || t == TYPE_DOUBLE;
 }
 
 static void symtable_pop_scope(symtable_t *table, symbol_t *old_head)

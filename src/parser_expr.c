@@ -417,13 +417,17 @@ static int parse_type(parser_t *p, type_kind_t *out_type, size_t *out_size)
         t = TYPE_INT;
     } else if (match(p, TOK_KW_CHAR)) {
         t = TYPE_CHAR;
+    } else if (match(p, TOK_KW_FLOAT)) {
+        t = TYPE_FLOAT;
+    } else if (match(p, TOK_KW_DOUBLE)) {
+        t = TYPE_DOUBLE;
     } else if (match(p, TOK_KW_VOID)) {
         t = TYPE_VOID;
     } else {
         p->pos = save;
         return 0;
     }
-    if ((t == TYPE_INT || t == TYPE_CHAR) && match(p, TOK_STAR))
+    if ((t == TYPE_INT || t == TYPE_CHAR || t == TYPE_FLOAT || t == TYPE_DOUBLE) && match(p, TOK_STAR))
         t = TYPE_PTR;
     size_t arr = 0;
     if (match(p, TOK_LBRACKET)) {
