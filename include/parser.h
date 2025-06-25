@@ -62,6 +62,7 @@ expr_t *parser_parse_expr(parser_t *p);
 expr_t **parser_parse_init_list(parser_t *p, size_t *out_count);
 stmt_t *parser_parse_enum_decl(parser_t *p);
 stmt_t *parser_parse_union_decl(parser_t *p);
+stmt_t *parser_parse_union_var_decl(parser_t *p);
 
 /* Returns non-zero if the parser has reached EOF */
 int parser_is_eof(parser_t *p);

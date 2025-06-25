@@ -276,8 +276,8 @@ stmt_t *ast_make_return(expr_t *expr, size_t line, size_t column)
 stmt_t *ast_make_var_decl(const char *name, type_kind_t type, size_t array_size,
                           size_t elem_size, int is_static, int is_const,
                           expr_t *init, expr_t **init_list, size_t init_count,
-                          union_member_t *members, size_t member_count,
-                          size_t line, size_t column)
+                          const char *tag, union_member_t *members,
+                          size_t member_count, size_t line, size_t column)
 {
     stmt_t *stmt = malloc(sizeof(*stmt));
     if (!stmt)
@@ -293,7 +293,16 @@ stmt_t *ast_make_var_decl(const char *name, type_kind_t type, size_t array_size,
     stmt->var_decl.type = type;
     stmt->var_decl.array_size = array_size;
     stmt->var_decl.elem_size = elem_size;
-    stmt->var_decl.tag = NULL;
+    if (tag) {
+        stmt->var_decl.tag = vc_strdup(tag);
+        if (!stmt->var_decl.tag) {
+            free(stmt->var_decl.name);
+            free(stmt);
+            return NULL;
+        }
+    } else {
+        stmt->var_decl.tag = NULL;
+    }
     stmt->var_decl.is_static = is_static;
     stmt->var_decl.is_const = is_const;
     stmt->var_decl.init = init;
