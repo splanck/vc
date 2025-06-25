@@ -21,6 +21,7 @@ static void print_usage(const char *prog)
     printf("  -O<N>               Optimization level (0-3)\n");
     printf("  -h, --help           Display this help and exit\n");
     printf("  -v, --version        Print version information and exit\n");
+    printf("  -c, --compile        Assemble to an object file\n");
     printf("      --no-fold        Disable constant folding\n");
     printf("      --no-dce         Disable dead code elimination\n");
     printf("      --no-cprop       Disable constant propagation\n");
@@ -35,6 +36,7 @@ int cli_parse_args(int argc, char **argv, cli_options_t *opts)
         {"help",    no_argument,       0, 'h'},
         {"version", no_argument,       0, 'v'},
         {"output",  required_argument, 0, 'o'},
+        {"compile", no_argument,       0, 'c'},
         {"no-fold", no_argument,       0, 1},
         {"no-dce",  no_argument,       0, 2},
         {"x86-64", no_argument,       0, 3},
@@ -50,12 +52,13 @@ int cli_parse_args(int argc, char **argv, cli_options_t *opts)
     opts->opt_cfg.dead_code = 1;
     opts->opt_cfg.const_prop = 1;
     opts->use_x86_64 = 0;
+    opts->compile = 0;
     opts->dump_asm = 0;
     opts->dump_ir = 0;
     opts->source = NULL;
 
     int opt;
-    while ((opt = getopt_long(argc, argv, "hvo:O:", long_opts, NULL)) != -1) {
+    while ((opt = getopt_long(argc, argv, "hvo:O:c", long_opts, NULL)) != -1) {
         switch (opt) {
         case 'h':
             print_usage(argv[0]);
@@ -65,6 +68,9 @@ int cli_parse_args(int argc, char **argv, cli_options_t *opts)
             exit(0);
         case 'o':
             opts->output = optarg;
+            break;
+        case 'c':
+            opts->compile = 1;
             break;
         case 'O':
             opts->opt_cfg.opt_level = atoi(optarg);

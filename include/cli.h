@@ -15,6 +15,7 @@ typedef struct {
     char *output;       /* output file path */
     opt_config_t opt_cfg; /* optimization configuration */
     int use_x86_64;     /* enable 64-bit codegen */
+    int compile;        /* assemble to object */
     int dump_asm;       /* dump assembly to stdout */
     int dump_ir;        /* dump IR to stdout */
     const char *source; /* input source file */

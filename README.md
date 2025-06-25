@@ -19,6 +19,12 @@ Compile a source file to assembly:
 vc -o out.s source.c
 ```
 
+To generate an object file instead, pass `-c`:
+
+```sh
+vc -c -o out.o source.c
+```
+
 To print the generated assembly to stdout instead of creating a file,
 pass `--dump-asm`:
 
