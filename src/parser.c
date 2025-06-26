@@ -22,6 +22,8 @@
 #include "vector.h"
 #include "error.h"
 #include "parser_types.h"
+#include "ast_stmt.h"
+#include "ast_expr.h"
 
 /*
  * Initialize parser state with the provided token array.  "p->pos" is

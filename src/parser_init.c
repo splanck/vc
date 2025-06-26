@@ -1,6 +1,7 @@
 #include <stdlib.h>
 #include "parser.h"
 #include "parser_types.h"
+#include "ast_expr.h"
 #include "vector.h"
 #include "util.h"
 

@@ -13,6 +13,8 @@
 #include "vector.h"
 #include "util.h"
 #include "parser_types.h"
+#include "ast_stmt.h"
+#include "ast_expr.h"
 
 /* Variable declaration beginning at the current token. */
 stmt_t *parser_parse_var_decl(parser_t *p)
