@@ -1511,6 +1511,9 @@ int check_global(stmt_t *decl, symtable_t *globals, ir_builder_t *ir)
             }
         }
     }
+    if (decl->var_decl.is_extern)
+        return 1;
+
     if (decl->var_decl.type == TYPE_ARRAY) {
         size_t count = decl->var_decl.array_size;
         long long *vals = calloc(count, sizeof(long long));

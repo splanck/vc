@@ -45,6 +45,7 @@ static const keyword_t keyword_table[] = {
     { "union",    TOK_KW_UNION },
     { "typedef",  TOK_KW_TYPEDEF },
     { "static",   TOK_KW_STATIC },
+    { "extern",   TOK_KW_EXTERN },
     { "const",    TOK_KW_CONST },
     { "volatile", TOK_KW_VOLATILE },
     { "restrict", TOK_KW_RESTRICT },

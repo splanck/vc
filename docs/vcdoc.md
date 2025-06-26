@@ -278,6 +278,7 @@ RETURN v2
 - Floating-point types (`float`, `double`, `long double`)
 - `sizeof` operator
 - Global variables
+- `extern` declarations for globals and function prototypes
 - `break` and `continue` statements
 - Labels and `goto`
 - `struct` and `union` objects with member assignments
