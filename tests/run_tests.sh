@@ -131,6 +131,15 @@ if ! grep -q "movl \$7, %eax" "$dump_out"; then
 fi
 rm -f "$dump_out"
 
+# test -S option
+dashS_out=$(mktemp)
+"$BINARY" -S "$DIR/fixtures/simple_add.c" > "$dashS_out"
+if ! grep -q "movl \$7, %eax" "$dashS_out"; then
+    echo "Test dash_S failed"
+    fail=1
+fi
+rm -f "$dashS_out"
+
 # test --dump-ir option
 ir_out=$(mktemp)
 "$BINARY" --dump-ir "$DIR/fixtures/simple_add.c" > "$ir_out"

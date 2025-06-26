@@ -745,7 +745,7 @@ The compiler supports the following options:
 - `--x86-64` – generate 64‑bit x86 assembly.
 - `-c`, `--compile` – assemble the output into an object file using `cc -c`.
 - `--link` – build an executable by assembling and linking with `cc`.
-- `--dump-asm` – print the generated assembly to stdout instead of creating a file.
+- `-S`, `--dump-asm` – print the generated assembly to stdout instead of creating a file.
 - `--dump-ir` – print the IR to stdout before code generation.
 - `--std=<c99|gnu99>` – select the language standard (default is `c99`).
 - `-E`, `--preprocess` – print the preprocessed source to stdout and exit.
@@ -754,7 +754,7 @@ The compiler supports the following options:
 
 Use `vc -o out.s source.c` to compile a file, `vc -c -o out.o source.c` to
 produce an object, `vc --link -o prog main.c util.c` to build an executable
-from multiple sources, or `vc --dump-asm source.c` to print the assembly to the
+from multiple sources, or `vc -S source.c` to print the assembly to the
 terminal.
 
 ## Preprocessor Usage

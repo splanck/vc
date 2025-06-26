@@ -57,7 +57,7 @@ Assemble the output into an object file using \fBcc -c\fR.
 .B --link
 Assemble and link the output to create an executable with \fBcc\fR.
 .TP
-.B --dump-asm
+.BR -S "," \fB--dump-asm\fR
 Print generated assembly to stdout rather than creating a file.
 .TP
 .B --dump-ir
@@ -83,7 +83,7 @@ Build an executable:
 .PP
 Print the generated assembly:
 .PP
-.B vc --dump-asm source.c
+.B vc -S source.c
 .PP
 Compile a program using pointer increments:
 .PP
