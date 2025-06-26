@@ -768,13 +768,20 @@ followed by the standard system locations such as `/usr/include`. It also suppor
 object-like `#define` macros and parameterized
 macros such as `#define NAME(a, b)`; macro bodies are expanded recursively.
 Macros may be removed with `#undef NAME`.
-
 ```c
 #define VAL 3
 #define ADD(a, b) ((a) + (b))
 #define DOUBLE(x) ADD(x, x)
 #include "header.h"
 int main() { return DOUBLE(VAL); }
+```
+
+Macros may be removed with `#undef` and redefined later:
+
+```c
+#define TEMP 1
+#undef TEMP
+#define TEMP 2
 ```
 
 Conditional blocks may be controlled using the `defined` operator or
