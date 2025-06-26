@@ -310,15 +310,20 @@ static int process_file(const char *path, vector_t *macros,
         while (*line == ' ' || *line == '\t')
             line++;
         if (strncmp(line, "#include", 8) == 0 && (line[8] == ' ' || line[8] == '\t')) {
-            char *quote = strchr(line, '"');
-            char *end = quote ? strchr(quote + 1, '"') : NULL;
-            if (quote && end) {
-                size_t len = (size_t)(end - quote - 1);
+            char *start = strchr(line, '"');
+            char endc = '"';
+            if (!start) {
+                start = strchr(line, '<');
+                endc = '>';
+            }
+            char *end = start ? strchr(start + 1, endc) : NULL;
+            if (start && end) {
+                size_t len = (size_t)(end - start - 1);
                 char fname[256];
-                snprintf(fname, sizeof(fname), "%.*s", (int)len, quote + 1);
+                snprintf(fname, sizeof(fname), "%.*s", (int)len, start + 1);
                 char incpath[512];
                 const char *chosen = NULL;
-                if (dir) {
+                if (endc == '"' && dir) {
                     snprintf(incpath, sizeof(incpath), "%s%s", dir, fname);
                     if (access(incpath, R_OK) == 0)
                         chosen = incpath;
@@ -331,7 +336,15 @@ static int process_file(const char *path, vector_t *macros,
                             chosen = incpath;
                     }
                 }
-                if (!chosen) {
+                if (!chosen && endc == '<') {
+                    const char *sysdirs[] = {"/usr/local/include", "/usr/include", NULL};
+                    for (size_t i = 0; sysdirs[i] && !chosen; i++) {
+                        snprintf(incpath, sizeof(incpath), "%s/%s", sysdirs[i], fname);
+                        if (access(incpath, R_OK) == 0)
+                            chosen = incpath;
+                    }
+                }
+                if (!chosen && endc == '"') {
                     snprintf(incpath, sizeof(incpath), "%s", fname);
                     if (access(incpath, R_OK) == 0)
                         chosen = incpath;

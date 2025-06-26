@@ -10,7 +10,9 @@ for cfile in $(ls "$DIR"/fixtures/*.c | sort); do
     case "$base" in
         *_x86-64|struct_*) continue;;
     esac
-    [ "$base" = "include_search" ] && continue
+    case "$base" in
+        include_search|include_angle) continue;;
+    esac
     expect="$DIR/fixtures/$base.s"
     out=$(mktemp)
     echo "Running fixture $base"
@@ -71,6 +73,15 @@ if ! diff -u "$DIR/fixtures/include_search.s" "$inc_out"; then
     fail=1
 fi
 rm -f "$inc_out"
+
+# verify angle-bracket include search
+angle_out=$(mktemp)
+"$BINARY" -I "$DIR/includes" -o "$angle_out" "$DIR/fixtures/include_angle.c"
+if ! diff -u "$DIR/fixtures/include_angle.s" "$angle_out"; then
+    echo "Test include_angle failed"
+    fail=1
+fi
+rm -f "$angle_out"
 
 # negative test for parse error message
 err=$(mktemp)
