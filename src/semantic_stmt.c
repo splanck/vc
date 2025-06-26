@@ -131,6 +131,141 @@ static int check_typedef_stmt(stmt_t *stmt, symtable_t *vars)
     return 1;
 }
 
+/* Helpers for variable initialization */
+static void init_static_array(ir_builder_t *ir, const char *name,
+                              const long long *vals, size_t count)
+{
+    ir_build_glob_array(ir, name, vals, count, 1);
+}
+
+static void init_dynamic_array(ir_builder_t *ir, const char *name,
+                               const long long *vals, size_t count,
+                               int is_volatile)
+{
+    for (size_t i = 0; i < count; i++) {
+        ir_value_t idxv = ir_build_const(ir, (int)i);
+        ir_value_t valv = ir_build_const(ir, vals[i]);
+        if (is_volatile)
+            ir_build_store_idx_vol(ir, name, idxv, valv);
+        else
+            ir_build_store_idx(ir, name, idxv, valv);
+    }
+}
+
+static void init_struct_member(ir_builder_t *ir, ir_value_t base,
+                               size_t off, long long val)
+{
+    ir_value_t offv = ir_build_const(ir, (int)off);
+    ir_value_t addr = ir_build_ptr_add(ir, base, offv, 1);
+    ir_value_t valv = ir_build_const(ir, val);
+    ir_build_store_ptr(ir, addr, valv);
+}
+
+static int handle_array_init(stmt_t *stmt, symbol_t *sym, symtable_t *vars,
+                             ir_builder_t *ir)
+{
+    if (sym->array_size < stmt->var_decl.init_count) {
+        error_set(stmt->line, stmt->column);
+        return 0;
+    }
+
+    long long *vals = calloc(sym->array_size, sizeof(long long));
+    if (!vals)
+        return 0;
+
+    size_t cur = 0;
+    for (size_t i = 0; i < stmt->var_decl.init_count; i++) {
+        init_entry_t *ent = &stmt->var_decl.init_list[i];
+        size_t idx = cur;
+        if (ent->kind == INIT_INDEX) {
+            long long cidx;
+            if (!eval_const_expr(ent->index, vars, &cidx) || cidx < 0 ||
+                (size_t)cidx >= sym->array_size) {
+                free(vals);
+                error_set(ent->index->line, ent->index->column);
+                return 0;
+            }
+            idx = (size_t)cidx;
+            cur = idx;
+        } else if (ent->kind == INIT_FIELD) {
+            free(vals);
+            error_set(stmt->line, stmt->column);
+            return 0;
+        }
+        long long val;
+        if (!eval_const_expr(ent->value, vars, &val)) {
+            free(vals);
+            error_set(ent->value->line, ent->value->column);
+            return 0;
+        }
+        if (idx >= sym->array_size) {
+            free(vals);
+            error_set(stmt->line, stmt->column);
+            return 0;
+        }
+        vals[idx] = val;
+        cur = idx + 1;
+    }
+
+    if (stmt->var_decl.is_static)
+        init_static_array(ir, sym->ir_name, vals, sym->array_size);
+    else
+        init_dynamic_array(ir, sym->ir_name, vals, sym->array_size,
+                           stmt->var_decl.is_volatile);
+    free(vals);
+    return 1;
+}
+
+static int handle_struct_init(stmt_t *stmt, symbol_t *sym, symtable_t *vars,
+                              ir_builder_t *ir)
+{
+    if (!sym->struct_member_count) {
+        error_set(stmt->line, stmt->column);
+        return 0;
+    }
+
+    ir_value_t base = ir_build_addr(ir, sym->ir_name);
+    size_t cur = 0;
+    for (size_t i = 0; i < stmt->var_decl.init_count; i++) {
+        init_entry_t *ent = &stmt->var_decl.init_list[i];
+        size_t off = 0;
+        size_t mi = cur;
+        if (ent->kind == INIT_FIELD) {
+            int found = 0;
+            for (size_t j = 0; j < sym->struct_member_count; j++) {
+                if (strcmp(sym->struct_members[j].name, ent->field) == 0) {
+                    off = sym->struct_members[j].offset;
+                    mi = j;
+                    found = 1;
+                    break;
+                }
+            }
+            if (!found) {
+                error_set(stmt->line, stmt->column);
+                return 0;
+            }
+            cur = mi;
+        } else if (ent->kind == INIT_SIMPLE) {
+            if (cur >= sym->struct_member_count) {
+                error_set(stmt->line, stmt->column);
+                return 0;
+            }
+            off = sym->struct_members[cur].offset;
+        } else {
+            error_set(stmt->line, stmt->column);
+            return 0;
+        }
+        long long val;
+        if (!eval_const_expr(ent->value, vars, &val)) {
+            error_set(ent->value->line, ent->value->column);
+            return 0;
+        }
+        init_struct_member(ir, base, off, val);
+        cur = mi + 1;
+    }
+    return 1;
+}
+
 static int check_var_decl_stmt(stmt_t *stmt, symtable_t *vars,
                                symtable_t *funcs, ir_builder_t *ir)
 {
@@ -245,107 +380,11 @@ static int check_var_decl_stmt(stmt_t *stmt, symtable_t *vars,
         }
     } else if (stmt->var_decl.init_list) {
         if (stmt->var_decl.type == TYPE_ARRAY) {
-            if (stmt->var_decl.array_size < stmt->var_decl.init_count) {
-                error_set(stmt->line, stmt->column);
+            if (!handle_array_init(stmt, sym, vars, ir))
                 return 0;
-            }
-            long long *vals = calloc(stmt->var_decl.array_size, sizeof(long long));
-            if (!vals)
-                return 0;
-            size_t cur = 0;
-            for (size_t i = 0; i < stmt->var_decl.init_count; i++) {
-                init_entry_t *ent = &stmt->var_decl.init_list[i];
-                size_t idx = cur;
-                if (ent->kind == INIT_INDEX) {
-                    long long cidx;
-                    if (!eval_const_expr(ent->index, vars, &cidx) ||
-                        cidx < 0 || (size_t)cidx >= stmt->var_decl.array_size) {
-                        free(vals);
-                        error_set(ent->index->line, ent->index->column);
-                        return 0;
-                    }
-                    idx = (size_t)cidx;
-                    cur = idx;
-                } else if (ent->kind == INIT_FIELD) {
-                    free(vals);
-                    error_set(stmt->line, stmt->column);
-                    return 0;
-                }
-                long long val;
-                if (!eval_const_expr(ent->value, vars, &val)) {
-                    free(vals);
-                    error_set(ent->value->line, ent->value->column);
-                    return 0;
-                }
-                if (idx >= stmt->var_decl.array_size) {
-                    free(vals);
-                    error_set(stmt->line, stmt->column);
-                    return 0;
-                }
-                vals[idx] = val;
-                cur = idx + 1;
-            }
-            if (stmt->var_decl.is_static) {
-                ir_build_glob_array(ir, sym->ir_name, vals,
-                                   stmt->var_decl.array_size, 1);
-            } else {
-                for (size_t i = 0; i < stmt->var_decl.array_size; i++) {
-                    ir_value_t idxv = ir_build_const(ir, (int)i);
-                    ir_value_t valv = ir_build_const(ir, vals[i]);
-                    if (stmt->var_decl.is_volatile)
-                        ir_build_store_idx_vol(ir, sym->ir_name, idxv, valv);
-                    else
-                        ir_build_store_idx(ir, sym->ir_name, idxv, valv);
-                }
-            }
-            free(vals);
         } else if (stmt->var_decl.type == TYPE_STRUCT) {
-            if (!sym->struct_member_count) {
-                error_set(stmt->line, stmt->column);
+            if (!handle_struct_init(stmt, sym, vars, ir))
                 return 0;
-            }
-            ir_value_t base = ir_build_addr(ir, sym->ir_name);
-            size_t cur = 0;
-            for (size_t i = 0; i < stmt->var_decl.init_count; i++) {
-                init_entry_t *ent = &stmt->var_decl.init_list[i];
-                size_t off = 0;
-                size_t mi = cur;
-                if (ent->kind == INIT_FIELD) {
-                    int found = 0;
-                    for (size_t j = 0; j < sym->struct_member_count; j++) {
-                        if (strcmp(sym->struct_members[j].name, ent->field) == 0) {
-                            off = sym->struct_members[j].offset;
-                            mi = j;
-                            found = 1;
-                            break;
-                        }
-                    }
-                    if (!found) {
-                        error_set(stmt->line, stmt->column);
-                        return 0;
-                    }
-                    cur = mi;
-                } else if (ent->kind == INIT_SIMPLE) {
-                    if (cur >= sym->struct_member_count) {
-                        error_set(stmt->line, stmt->column);
-                        return 0;
-                    }
-                    off = sym->struct_members[cur].offset;
-                } else {
-                    error_set(stmt->line, stmt->column);
-                    return 0;
-                }
-                long long val;
-                if (!eval_const_expr(ent->value, vars, &val)) {
-                    error_set(ent->value->line, ent->value->column);
-                    return 0;
-                }
-                ir_value_t offv = ir_build_const(ir, (int)off);
-                ir_value_t addr = ir_build_ptr_add(ir, base, offv, 1);
-                ir_value_t valv = ir_build_const(ir, val);
-                ir_build_store_ptr(ir, addr, valv);
-                cur = mi + 1;
-            }
         } else {
             error_set(stmt->line, stmt->column);
             return 0;
