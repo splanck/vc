@@ -54,6 +54,7 @@ typedef struct {
  */
 void symtable_init(symtable_t *table);
 void symtable_free(symtable_t *table);
+symbol_t *symtable_create_symbol(const char *name, const char *ir_name);
 
 /* Add a symbol to the table. Returns non-zero on success. */
 /* Locals */
