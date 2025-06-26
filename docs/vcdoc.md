@@ -741,7 +741,7 @@ The preprocessor runs automatically before the lexer. It supports both
 `#include "file"` and `#include <file>` to insert the contents of another
 file. Additional directories to search for included files can be provided with
 the `-I`/`--include` option. Angle-bracket includes search those directories
-first and then the system paths such as `/usr/include`. It also supports
+followed by the standard system locations such as `/usr/include`. It also supports
 object-like `#define` macros and parameterized
 macros such as `#define NAME(a, b)`; macro bodies are expanded recursively:
 
