@@ -46,32 +46,116 @@ static void macro_free(macro_t *m)
 }
 
 /* Expand a macro body by substituting parameters with provided args */
+static void trim_trailing_ws(strbuf_t *sb)
+{
+    while (sb->len > 0 &&
+           (sb->data[sb->len - 1] == ' ' || sb->data[sb->len - 1] == '\t')) {
+        sb->len--;
+        sb->data[sb->len] = '\0';
+    }
+}
+
 static char *expand_params(const char *value, const vector_t *params, char **args)
 {
     strbuf_t sb;
     strbuf_init(&sb);
     for (size_t i = 0; value[i];) {
+        if (value[i] == '#' && value[i + 1] != '#') {
+            size_t j = i + 1;
+            while (value[j] == ' ' || value[j] == '\t')
+                j++;
+            if (isalpha((unsigned char)value[j]) || value[j] == '_') {
+                size_t k = j + 1;
+                while (isalnum((unsigned char)value[k]) || value[k] == '_')
+                    k++;
+                size_t len = k - j;
+                int done = 0;
+                for (size_t p = 0; p < params->count; p++) {
+                    const char *param = ((char **)params->data)[p];
+                    if (strlen(param) == len &&
+                        strncmp(param, value + j, len) == 0) {
+                        strbuf_appendf(&sb, "\"%s\"", args[p]);
+                        done = 1;
+                        break;
+                    }
+                }
+                if (done) {
+                    i = k;
+                    continue;
+                }
+            }
+            strbuf_append(&sb, "#");
+            i++;
+            continue;
+        }
         if (isalpha((unsigned char)value[i]) || value[i] == '_') {
             size_t j = i + 1;
             while (isalnum((unsigned char)value[j]) || value[j] == '_')
                 j++;
             size_t len = j - i;
-            int done = 0;
+            const char *rep = NULL;
             for (size_t p = 0; p < params->count; p++) {
                 const char *param = ((char **)params->data)[p];
-                if (strlen(param) == len && strncmp(param, value + i, len) == 0) {
-                    strbuf_append(&sb, args[p]);
-                    done = 1;
+                if (strlen(param) == len &&
+                    strncmp(param, value + i, len) == 0) {
+                    rep = args[p];
                     break;
                 }
             }
-            if (!done)
-                strbuf_appendf(&sb, "%.*s", (int)len, value + i);
-            i = j;
-        } else {
-            strbuf_appendf(&sb, "%c", value[i]);
-            i++;
+
+            size_t k = j;
+            while (value[k] == ' ' || value[k] == '\t')
+                k++;
+            if (value[k] == '#' && value[k + 1] == '#') {
+                k += 2;
+                while (value[k] == ' ' || value[k] == '\t')
+                    k++;
+                if (isalpha((unsigned char)value[k]) || value[k] == '_') {
+                    size_t l = k + 1;
+                    while (isalnum((unsigned char)value[l]) || value[l] == '_')
+                        l++;
+                    size_t len2 = l - k;
+                    const char *rep2 = NULL;
+                    for (size_t p = 0; p < params->count; p++) {
+                        const char *param = ((char **)params->data)[p];
+                        if (strlen(param) == len2 &&
+                            strncmp(param, value + k, len2) == 0) {
+                            rep2 = args[p];
+                            break;
+                        }
+                    }
+                    trim_trailing_ws(&sb);
+                    if (rep)
+                        strbuf_append(&sb, rep);
+                    else
+                        strbuf_appendf(&sb, "%.*s", (int)len, value + i);
+                    if (rep2)
+                        strbuf_append(&sb, rep2);
+                    else
+                        strbuf_appendf(&sb, "%.*s", (int)len2, value + k);
+                    i = l;
+                    continue;
+                } else {
+                    trim_trailing_ws(&sb);
+                    if (rep)
+                        strbuf_append(&sb, rep);
+                    else
+                        strbuf_appendf(&sb, "%.*s", (int)len, value + i);
+                    strbuf_appendf(&sb, "%c", value[k]);
+                    i = k + 1;
+                    continue;
+                }
+            } else {
+                if (rep)
+                    strbuf_append(&sb, rep);
+                else
+                    strbuf_appendf(&sb, "%.*s", (int)len, value + i);
+                i = j;
+                continue;
+            }
         }
+        strbuf_appendf(&sb, "%c", value[i]);
+        i++;
     }
     char *out = vc_strdup(sb.data ? sb.data : "");
     strbuf_free(&sb);

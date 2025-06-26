@@ -839,7 +839,8 @@ then any paths listed in the `VCPATH` environment variable (colon separated),
 followed by the standard system locations such as `/usr/include`. It also supports
 object-like `#define` macros and parameterized
 macros such as `#define NAME(a, b)`; macro bodies are expanded recursively.
-Macros may be removed with `#undef NAME`.
+The `#` operator stringizes a parameter and `##` concatenates two tokens during
+expansion. Macros may be removed with `#undef NAME`.
 
 Use the `-E`/`--preprocess` option to run just the preprocessor and print the
 expanded source to the terminal.
