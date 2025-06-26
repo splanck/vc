@@ -96,15 +96,19 @@ static stmt_t *parse_var_decl(parser_t *p)
     expr_t *size_expr = NULL;
     if (match(p, TOK_LBRACKET)) {
         size_t save = p->pos;
-        size_expr = parser_parse_expr(p);
-        if (!size_expr || !match(p, TOK_RBRACKET)) {
-            ast_free_expr(size_expr);
-            p->pos = save;
-            return NULL;
+        if (match(p, TOK_RBRACKET)) {
+            t = TYPE_ARRAY;
+        } else {
+            size_expr = parser_parse_expr(p);
+            if (!size_expr || !match(p, TOK_RBRACKET)) {
+                ast_free_expr(size_expr);
+                p->pos = save;
+                return NULL;
+            }
+            if (size_expr->kind == EXPR_NUMBER)
+                arr_size = strtoul(size_expr->number.value, NULL, 10);
+            t = TYPE_ARRAY;
         }
-        if (size_expr->kind == EXPR_NUMBER)
-            arr_size = strtoul(size_expr->number.value, NULL, 10);
-        t = TYPE_ARRAY;
     }
     expr_t *init = NULL;
     expr_t **init_list = NULL;

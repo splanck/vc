@@ -486,15 +486,19 @@ int parser_parse_toplevel(parser_t *p, symtable_t *funcs,
     expr_t *size_expr = NULL;
     if (next_tok && next_tok->type == TOK_LBRACKET) {
         p->pos++; /* '[' */
-        size_expr = parser_parse_expr(p);
-        if (!size_expr || !match(p, TOK_RBRACKET)) {
-            ast_free_expr(size_expr);
-            p->pos = save;
-            return 0;
+        if (match(p, TOK_RBRACKET)) {
+            t = TYPE_ARRAY;
+        } else {
+            size_expr = parser_parse_expr(p);
+            if (!size_expr || !match(p, TOK_RBRACKET)) {
+                ast_free_expr(size_expr);
+                p->pos = save;
+                return 0;
+            }
+            if (size_expr->kind == EXPR_NUMBER)
+                arr_size = strtoul(size_expr->number.value, NULL, 10);
+            t = TYPE_ARRAY;
         }
-        if (size_expr->kind == EXPR_NUMBER)
-            arr_size = strtoul(size_expr->number.value, NULL, 10);
-        t = TYPE_ARRAY;
         next_tok = peek(p);
     }
 

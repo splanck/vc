@@ -1239,6 +1239,11 @@ int check_stmt(stmt_t *stmt, symtable_t *vars, symtable_t *funcs,
             return 0;
         }
         symbol_t *sym = symtable_lookup(vars, stmt->var_decl.name);
+        if (stmt->var_decl.init_list && stmt->var_decl.type == TYPE_ARRAY &&
+            stmt->var_decl.array_size == 0) {
+            stmt->var_decl.array_size = stmt->var_decl.init_count;
+            sym->array_size = stmt->var_decl.array_size;
+        }
         if (stmt->var_decl.type == TYPE_UNION) {
             sym->total_size = stmt->var_decl.elem_size;
             if (stmt->var_decl.member_count) {
@@ -1304,8 +1309,11 @@ int check_stmt(stmt_t *stmt, symtable_t *vars, symtable_t *funcs,
                     ir_build_store(ir, sym->ir_name, val);
             }
         } else if (stmt->var_decl.init_list) {
-            if (stmt->var_decl.type != TYPE_ARRAY ||
-                stmt->var_decl.array_size < stmt->var_decl.init_count) {
+            if (stmt->var_decl.type != TYPE_ARRAY) {
+                error_set(stmt->line, stmt->column);
+                return 0;
+            }
+            if (stmt->var_decl.array_size < stmt->var_decl.init_count) {
                 error_set(stmt->line, stmt->column);
                 return 0;
             }
@@ -1484,6 +1492,11 @@ int check_global(stmt_t *decl, symtable_t *globals, ir_builder_t *ir)
         return 0;
     }
     symbol_t *gsym = symtable_lookup_global(globals, decl->var_decl.name);
+    if (decl->var_decl.init_list && decl->var_decl.type == TYPE_ARRAY &&
+        decl->var_decl.array_size == 0) {
+        decl->var_decl.array_size = decl->var_decl.init_count;
+        gsym->array_size = decl->var_decl.array_size;
+    }
     if (decl->var_decl.type == TYPE_UNION) {
         gsym->total_size = decl->var_decl.elem_size;
         if (decl->var_decl.member_count) {
