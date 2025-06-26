@@ -50,7 +50,8 @@ typedef enum {
     EXPR_ASSIGN_INDEX,
     EXPR_ASSIGN_MEMBER,
     EXPR_MEMBER,
-    EXPR_SIZEOF
+    EXPR_SIZEOF,
+    EXPR_COMPLIT
 } expr_kind_t;
 
 /* Binary operator types */
@@ -177,6 +178,14 @@ struct expr {
             size_t elem_size;
             expr_t *expr;
         } sizeof_expr;
+        struct {
+            type_kind_t type;
+            size_t array_size;
+            size_t elem_size;
+            expr_t *init;
+            init_entry_t *init_list;
+            size_t init_count;
+        } compound;
     };
 };
 
@@ -358,6 +367,11 @@ expr_t *ast_make_sizeof_expr(expr_t *expr, size_t line, size_t column);
 /* Create a function call expression with \p arg_count arguments. */
 expr_t *ast_make_call(const char *name, expr_t **args, size_t arg_count,
                       size_t line, size_t column);
+/* Create a compound literal expression */
+expr_t *ast_make_compound(type_kind_t type, size_t array_size,
+                          size_t elem_size, expr_t *init,
+                          init_entry_t *init_list, size_t init_count,
+                          size_t line, size_t column);
 
 /* Create an expression statement node. */
 stmt_t *ast_make_expr_stmt(expr_t *expr, size_t line, size_t column);

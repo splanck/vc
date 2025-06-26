@@ -579,6 +579,20 @@ Compile with:
 vc -o array_designate.s array_designate.c
 ```
 
+### Compound literals
+Compound literals create a temporary object using `(type){...}` syntax.
+
+```c
+/* compound_literal.c */
+int main() {
+    return (int){5};
+}
+```
+Compile with:
+```sh
+vc -o compound_literal.s compound_literal.c
+```
+
 ### sizeof
 `sizeof` returns the number of bytes for a type or expression without
 evaluating the expression.
