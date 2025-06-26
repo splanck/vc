@@ -179,6 +179,22 @@ static int is_macro_defined(vector_t *macros, const char *name)
     return 0;
 }
 
+/* Remove all definitions of a macro */
+static void remove_macro(vector_t *macros, const char *name)
+{
+    for (size_t i = 0; i < macros->count;) {
+        macro_t *m = &((macro_t *)macros->data)[i];
+        if (strcmp(m->name, name) == 0) {
+            macro_free(m);
+            if (i + 1 < macros->count)
+                memmove(m, m + 1, (macros->count - i - 1) * sizeof(macro_t));
+            macros->count--;
+        } else {
+            i++;
+        }
+    }
+}
+
 typedef struct {
     const char *s;
     vector_t *macros;
@@ -441,6 +457,16 @@ static int process_file(const char *path, vector_t *macros,
                     free(((char **)params.data)[t]);
                 vector_free(&params);
             }
+        } else if (strncmp(line, "#undef", 6) == 0 && isspace((unsigned char)line[6])) {
+            char *n = line + 6;
+            while (*n == ' ' || *n == '\t')
+                n++;
+            char *id = n;
+            while (isalnum((unsigned char)*n) || *n == '_')
+                n++;
+            *n = '\0';
+            if (stack_active(conds))
+                remove_macro(macros, id);
         } else if (strncmp(line, "#ifdef", 6) == 0 && isspace((unsigned char)line[6])) {
             char *n = line + 6;
             while (*n == ' ' || *n == '\t')
