@@ -6,3 +6,6 @@ main:
     movl $5, %eax
     movl %eax, %eax
     ret
+    movl %ebp, %esp
+    popl %ebp
+    ret

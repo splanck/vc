@@ -16,3 +16,6 @@ Luser2:
     movl i, %eax
     movl %eax, %eax
     ret
+    movl %ebp, %esp
+    popl %ebp
+    ret
