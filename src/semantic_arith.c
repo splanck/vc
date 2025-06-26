@@ -1,0 +1,268 @@
+/*
+ * Arithmetic expression semantic helpers.
+ *
+ * Part of vc under the BSD 2-Clause license.
+ * See LICENSE for details.
+ */
+
+#include <stdlib.h>
+#include <string.h>
+#include <stdio.h>
+#include "semantic_arith.h"
+#include "semantic_expr.h"
+#include "consteval.h"
+#include "symtable.h"
+#include "util.h"
+#include "label.h"
+#include "error.h"
+#include <limits.h>
+
+/* Mapping from BINOP_* to corresponding IR op.  Logical ops are
+ * handled separately and use IR_CMPEQ here just as a placeholder. */
+static const ir_op_t binop_to_ir[] = {
+    [BINOP_ADD]    = IR_ADD,
+    [BINOP_SUB]    = IR_SUB,
+    [BINOP_MUL]    = IR_MUL,
+    [BINOP_DIV]    = IR_DIV,
+    [BINOP_MOD]    = IR_MOD,
+    [BINOP_SHL]    = IR_SHL,
+    [BINOP_SHR]    = IR_SHR,
+    [BINOP_BITAND] = IR_AND,
+    [BINOP_BITXOR] = IR_XOR,
+    [BINOP_BITOR]  = IR_OR,
+    [BINOP_EQ]     = IR_CMPEQ,
+    [BINOP_NEQ]    = IR_CMPNE,
+    [BINOP_LOGAND] = IR_CMPEQ, /* unreachable */
+    [BINOP_LOGOR]  = IR_CMPEQ, /* unreachable */
+    [BINOP_LT]     = IR_CMPLT,
+    [BINOP_GT]     = IR_CMPGT,
+    [BINOP_LE]     = IR_CMPLE,
+    [BINOP_GE]     = IR_CMPGE,
+};
+
+/* Perform a binary arithmetic or comparison operation. */
+type_kind_t check_binary(expr_t *left, expr_t *right, symtable_t *vars,
+                         symtable_t *funcs, ir_builder_t *ir,
+                         ir_value_t *out, binop_t op)
+{
+    ir_value_t lval, rval;
+    type_kind_t lt = check_expr(left, vars, funcs, ir, &lval);
+    type_kind_t rt = check_expr(right, vars, funcs, ir, &rval);
+    if (is_floatlike(lt) && lt == rt &&
+        (op == BINOP_ADD || op == BINOP_SUB || op == BINOP_MUL || op == BINOP_DIV)) {
+        if (out) {
+            ir_op_t fop = IR_FADD;
+            switch (op) {
+            case BINOP_ADD: fop = (lt == TYPE_LDOUBLE) ? IR_LFADD : IR_FADD; break;
+            case BINOP_SUB: fop = (lt == TYPE_LDOUBLE) ? IR_LFSUB : IR_FSUB; break;
+            case BINOP_MUL: fop = (lt == TYPE_LDOUBLE) ? IR_LFMUL : IR_FMUL; break;
+            case BINOP_DIV: fop = (lt == TYPE_LDOUBLE) ? IR_LFDIV : IR_FDIV; break;
+            default: break;
+            }
+            *out = ir_build_binop(ir, fop, lval, rval);
+        }
+        return lt;
+    } else if (is_intlike(lt) && is_intlike(rt)) {
+        if (out) {
+            ir_op_t ir_op = binop_to_ir[op];
+            *out = ir_build_binop(ir, ir_op, lval, rval);
+        }
+        if (lt == TYPE_LLONG || lt == TYPE_ULLONG ||
+            rt == TYPE_LLONG || rt == TYPE_ULLONG)
+            return TYPE_LLONG;
+        return TYPE_INT;
+    } else if ((lt == TYPE_PTR && is_intlike(rt) &&
+                (op == BINOP_ADD || op == BINOP_SUB)) ||
+               (is_intlike(lt) && rt == TYPE_PTR && op == BINOP_ADD)) {
+        ir_value_t ptr = (lt == TYPE_PTR) ? lval : rval;
+        ir_value_t idx = (lt == TYPE_PTR) ? rval : lval;
+        size_t esz = 4;
+        expr_t *ptexpr = (lt == TYPE_PTR) ? left : right;
+        if (ptexpr->kind == EXPR_IDENT) {
+            symbol_t *s = symtable_lookup(vars, ptexpr->ident.name);
+            if (s && s->elem_size)
+                esz = s->elem_size;
+        }
+        if (op == BINOP_SUB && lt == TYPE_PTR) {
+            ir_value_t zero = ir_build_const(ir, 0);
+            idx = ir_build_binop(ir, IR_SUB, zero, idx);
+        }
+        if (out)
+            *out = ir_build_ptr_add(ir, ptr, idx, (int)esz);
+        return TYPE_PTR;
+    } else if (lt == TYPE_PTR && rt == TYPE_PTR && op == BINOP_SUB) {
+        size_t esz = 4;
+        if (left->kind == EXPR_IDENT) {
+            symbol_t *s = symtable_lookup(vars, left->ident.name);
+            if (s && s->elem_size)
+                esz = s->elem_size;
+        }
+        if (out)
+            *out = ir_build_ptr_diff(ir, lval, rval, (int)esz);
+        return TYPE_INT;
+    }
+    error_set(left->line, left->column);
+    return TYPE_UNKNOWN;
+}
+
+type_kind_t check_unary_expr(expr_t *expr, symtable_t *vars,
+                             symtable_t *funcs, ir_builder_t *ir,
+                             ir_value_t *out)
+{
+    expr_t *opnd = expr->unary.operand;
+    switch (expr->unary.op) {
+    case UNOP_DEREF: {
+        ir_value_t addr;
+        if (check_expr(opnd, vars, funcs, ir, &addr) == TYPE_PTR) {
+            if (out)
+                *out = ir_build_load_ptr(ir, addr);
+            return TYPE_INT;
+        }
+        error_set(opnd->line, opnd->column);
+        return TYPE_UNKNOWN;
+    }
+    case UNOP_ADDR:
+        if (opnd->kind != EXPR_IDENT) {
+            error_set(opnd->line, opnd->column);
+            return TYPE_UNKNOWN;
+        }
+        {
+            symbol_t *sym = symtable_lookup(vars, opnd->ident.name);
+            if (!sym) {
+                error_set(opnd->line, opnd->column);
+                return TYPE_UNKNOWN;
+            }
+            if (out)
+                *out = ir_build_addr(ir, sym->ir_name);
+            return TYPE_PTR;
+        }
+    case UNOP_NEG: {
+        ir_value_t val;
+        type_kind_t vt = check_expr(opnd, vars, funcs, ir, &val);
+        if (is_intlike(vt)) {
+            if (out) {
+                ir_value_t zero = ir_build_const(ir, 0);
+                *out = ir_build_binop(ir, IR_SUB, zero, val);
+            }
+            return vt == TYPE_LLONG || vt == TYPE_ULLONG ? TYPE_LLONG : TYPE_INT;
+        } else if (is_floatlike(vt)) {
+            if (out) {
+                ir_value_t zero = ir_build_const(ir, 0);
+                ir_op_t op = (vt == TYPE_LDOUBLE) ? IR_LFSUB : IR_FSUB;
+                *out = ir_build_binop(ir, op, zero, val);
+            }
+            return vt;
+        }
+        error_set(opnd->line, opnd->column);
+        return TYPE_UNKNOWN;
+    }
+    case UNOP_NOT: {
+        ir_value_t val;
+        if (is_intlike(check_expr(opnd, vars, funcs, ir, &val))) {
+            if (out) {
+                ir_value_t zero = ir_build_const(ir, 0);
+                *out = ir_build_binop(ir, IR_CMPEQ, val, zero);
+            }
+            return TYPE_INT;
+        }
+        error_set(opnd->line, opnd->column);
+        return TYPE_UNKNOWN;
+    }
+    case UNOP_PREINC: case UNOP_PREDEC:
+    case UNOP_POSTINC: case UNOP_POSTDEC:
+        if (opnd->kind != EXPR_IDENT) {
+            error_set(opnd->line, opnd->column);
+            return TYPE_UNKNOWN;
+        }
+        {
+            symbol_t *sym = symtable_lookup(vars, opnd->ident.name);
+            if (!sym ||
+                !(is_intlike(sym->type) || is_floatlike(sym->type) ||
+                  sym->type == TYPE_PTR)) {
+                error_set(opnd->line, opnd->column);
+                return TYPE_UNKNOWN;
+            }
+
+            ir_value_t cur = sym->param_index >= 0
+                                 ? ir_build_load_param(ir, sym->param_index)
+                                 : (sym->is_volatile
+                                        ? ir_build_load_vol(ir, sym->ir_name)
+                                        : ir_build_load(ir, sym->ir_name));
+
+            if (sym->type == TYPE_PTR) {
+                int esz = sym->elem_size ? (int)sym->elem_size : 4;
+                int step = (expr->unary.op == UNOP_PREDEC ||
+                            expr->unary.op == UNOP_POSTDEC)
+                               ? -1
+                               : 1;
+                ir_value_t idx = ir_build_const(ir, step);
+                ir_value_t upd = ir_build_ptr_add(ir, cur, idx, esz);
+                if (sym->param_index >= 0)
+                    ir_build_store_param(ir, sym->param_index, upd);
+                else if (sym->is_volatile)
+                    ir_build_store_vol(ir, sym->ir_name, upd);
+                else
+                    ir_build_store(ir, sym->ir_name, upd);
+                if (out)
+                    *out = (expr->unary.op == UNOP_PREINC ||
+                            expr->unary.op == UNOP_PREDEC)
+                               ? upd
+                               : cur;
+                return TYPE_PTR;
+            }
+
+            ir_value_t one = ir_build_const(ir, 1);
+            ir_op_t ir_op;
+            if (is_floatlike(sym->type))
+                ir_op = (expr->unary.op == UNOP_PREDEC ||
+                         expr->unary.op == UNOP_POSTDEC)
+                            ? (sym->type == TYPE_LDOUBLE ? IR_LFSUB : IR_FSUB)
+                            : (sym->type == TYPE_LDOUBLE ? IR_LFADD : IR_FADD);
+            else
+                ir_op = (expr->unary.op == UNOP_PREDEC ||
+                         expr->unary.op == UNOP_POSTDEC) ? IR_SUB : IR_ADD;
+            ir_value_t upd = ir_build_binop(ir, ir_op, cur, one);
+            if (sym->param_index >= 0)
+                ir_build_store_param(ir, sym->param_index, upd);
+            else if (sym->is_volatile)
+                ir_build_store_vol(ir, sym->ir_name, upd);
+            else
+                ir_build_store(ir, sym->ir_name, upd);
+            if (out)
+                *out = (expr->unary.op == UNOP_PREINC ||
+                        expr->unary.op == UNOP_PREDEC)
+                           ? upd
+                           : cur;
+            return sym->type;
+        }
+    default:
+        return TYPE_UNKNOWN;
+    }
+}
+
+type_kind_t check_binary_expr(expr_t *expr, symtable_t *vars,
+                              symtable_t *funcs, ir_builder_t *ir,
+                              ir_value_t *out)
+{
+    if (expr->binary.op == BINOP_LOGAND || expr->binary.op == BINOP_LOGOR) {
+        ir_value_t lval, rval;
+        if (!is_intlike(check_expr(expr->binary.left, vars, funcs, ir, &lval))) {
+            error_set(expr->binary.left->line, expr->binary.left->column);
+            return TYPE_UNKNOWN;
+        }
+        if (!is_intlike(check_expr(expr->binary.right, vars, funcs, ir, &rval))) {
+            error_set(expr->binary.right->line, expr->binary.right->column);
+            return TYPE_UNKNOWN;
+        }
+        if (out) {
+            if (expr->binary.op == BINOP_LOGAND)
+                *out = ir_build_logand(ir, lval, rval);
+            else
+                *out = ir_build_logor(ir, lval, rval);
+        }
+        return TYPE_INT;
+    }
+    return check_binary(expr->binary.left, expr->binary.right, vars, funcs,
+                        ir, out, expr->binary.op);
+}
+
