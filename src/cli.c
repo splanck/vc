@@ -32,7 +32,7 @@ static void print_usage(const char *prog)
     printf("      --x86-64         Generate 64-bit x86 assembly\n");
     printf("  -S, --dump-asm       Print assembly to stdout and exit\n");
     printf("      --dump-ir        Print IR to stdout and exit\n");
-    printf("  -E, --preprocess     Print preprocessed source and exit\n");
+    printf("  -E, --preprocess     Run only the preprocessor and print the result\n");
 }
 
 int cli_parse_args(int argc, char **argv, cli_options_t *opts)
