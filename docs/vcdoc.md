@@ -97,16 +97,14 @@ promises that the pointer is the sole reference to its pointed-to object
 for the lifetime of the pointer.  This lets the optimizer assume no aliasing
 between `restrict` qualified pointers.
 
-Union objects are declared with the `union` keyword.  Members are accessed
-using `.` for objects or `->` when working through a pointer.  Each
-member shares the same storage and the overall size of the object is
-determined by the largest member.  The compiler currently parses member
-access but does not verify which member is active.
+Structures and unions are declared with the `struct` or `union` keyword.
+Members are accessed using `.` for objects or `->` when working through a pointer.
+For structures each member has its own storage in the order declared.
+Union members share the same storage with size determined by the largest field.
+
+The compiler currently parses member access but does not verify which union member is active.
 
 #### Typedef aliases
-
-Type aliases can be introduced using the `typedef` keyword.  Only
-aliases of built-in types are supported currently:
 
 ```c
 typedef int myint;
@@ -280,7 +278,7 @@ RETURN v2
 - Global variables
 - `break` and `continue` statements
 - Labels and `goto`
-- `union` objects and member assignments
+- `struct` and `union` objects with member assignments
 - Object-like and multi-parameter `#define` macros with recursive expansion
 - Conditional preprocessing directives (`#if`, `#ifdef`, `#ifndef`, `#elif`, `#else`, `#endif`)
 - 64-bit integer literals and arithmetic when using `long long`
@@ -595,6 +593,36 @@ Compile with:
 vc -o enum_example.s enum_example.c
 ```
 
+### Struct declarations
+```c
+/* struct_example.c */
+struct Point { int x; int y; };
+int main() {
+    struct Point p;
+    p.x = 1;
+    p.y = 2;
+    return p.x + p.y;
+}
+```
+Compile with:
+```sh
+vc -o struct_example.s struct_example.c
+```
+
+### Struct pointers
+```c
+/* struct_ptr.c */
+struct Point { int x; int y; };
+int main() {
+    struct Point p = {1, 2};
+    struct Point *pp = &p;
+    return pp->y;
+}
+```
+Compile with:
+```sh
+vc -o struct_ptr.s struct_ptr.c
+```
 ### Union declarations
 ```c
 /* union_example.c */
