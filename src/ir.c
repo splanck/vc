@@ -293,6 +293,17 @@ void ir_build_store_idx_vol(ir_builder_t *b, const char *name, ir_value_t idx,
     ins->is_volatile = 1;
 }
 
+ir_value_t ir_build_alloca(ir_builder_t *b, ir_value_t size)
+{
+    ir_instr_t *ins = append_instr(b);
+    if (!ins)
+        return (ir_value_t){0};
+    ins->op = IR_ALLOCA;
+    ins->dest = b->next_value_id++;
+    ins->src1 = size.id;
+    return (ir_value_t){ins->dest};
+}
+
 /*
  * Emit a binary arithmetic or comparison instruction. Operands are in
  * src1 and src2 and a new destination value id is returned.

@@ -498,6 +498,21 @@ Compile with:
 vc -o array_init.s array_init.c
 ```
 
+Variable length arrays may use any runtime expression between the brackets:
+
+```c
+/* vla.c */
+int main(int n) {
+    int buf[n + 2];
+    buf[0] = 1;
+    return buf[n];
+}
+```
+Compile with:
+```sh
+vc -o vla.s vla.c
+```
+
 ### sizeof
 `sizeof` returns the number of bytes for a type or expression without
 evaluating the expression.
