@@ -383,6 +383,58 @@ static void test_parser_block(void)
     lexer_free_tokens(toks, count);
 }
 
+static void test_parser_init_list_index(void)
+{
+    const char *src = "{ [2] = 5, [0] = 1 }";
+    size_t count = 0;
+    token_t *toks = lexer_tokenize(src, &count);
+    parser_t p; parser_init(&p, toks, count);
+    size_t icount = 0;
+    init_entry_t *inits = parser_parse_init_list(&p, &icount);
+    ASSERT(inits && icount == 2);
+    ASSERT(inits[0].kind == INIT_INDEX);
+    ASSERT(inits[0].index->kind == EXPR_NUMBER &&
+           strcmp(inits[0].index->number.value, "2") == 0);
+    ASSERT(inits[0].value->kind == EXPR_NUMBER &&
+           strcmp(inits[0].value->number.value, "5") == 0);
+    ASSERT(inits[1].kind == INIT_INDEX);
+    ASSERT(inits[1].index->kind == EXPR_NUMBER &&
+           strcmp(inits[1].index->number.value, "0") == 0);
+    ASSERT(inits[1].value->kind == EXPR_NUMBER &&
+           strcmp(inits[1].value->number.value, "1") == 0);
+    for (size_t i = 0; i < icount; i++) {
+        ast_free_expr(inits[i].index);
+        ast_free_expr(inits[i].value);
+        free(inits[i].field);
+    }
+    free(inits);
+    lexer_free_tokens(toks, count);
+}
+
+static void test_parser_init_list_field(void)
+{
+    const char *src = "{ .y = 3, .x = 1 }";
+    size_t count = 0;
+    token_t *toks = lexer_tokenize(src, &count);
+    parser_t p; parser_init(&p, toks, count);
+    size_t icount = 0;
+    init_entry_t *inits = parser_parse_init_list(&p, &icount);
+    ASSERT(inits && icount == 2);
+    ASSERT(inits[0].kind == INIT_FIELD && strcmp(inits[0].field, "y") == 0);
+    ASSERT(inits[0].value->kind == EXPR_NUMBER &&
+           strcmp(inits[0].value->number.value, "3") == 0);
+    ASSERT(inits[1].kind == INIT_FIELD && strcmp(inits[1].field, "x") == 0);
+    ASSERT(inits[1].value->kind == EXPR_NUMBER &&
+           strcmp(inits[1].value->number.value, "1") == 0);
+    for (size_t i = 0; i < icount; i++) {
+        ast_free_expr(inits[i].index);
+        ast_free_expr(inits[i].value);
+        free(inits[i].field);
+    }
+    free(inits);
+    lexer_free_tokens(toks, count);
+}
+
 int main(void)
 {
     test_lexer_basic();
@@ -410,6 +462,8 @@ int main(void)
     test_parser_sizeof();
     test_parser_func();
     test_parser_block();
+    test_parser_init_list_index();
+    test_parser_init_list_field();
     if (failures == 0) {
         printf("All unit tests passed\n");
     } else {

@@ -25,6 +25,7 @@ for cfile in $(ls "$DIR"/fixtures/*.c | sort); do
 done
 
 # run struct fixtures separately to ensure struct member access and assignment
+# this also covers designated initializer tests like struct_designated.c
 for cfile in "$DIR"/fixtures/struct_*.c; do
     [ -e "$cfile" ] || continue
     base=$(basename "$cfile" .c)

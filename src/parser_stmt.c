@@ -409,8 +409,35 @@ stmt_t *parser_parse_struct_var_decl(parser_t *p)
         goto fail;
     p->pos++;
     char *name = name_tok->lexeme;
-    if (!match(p, TOK_SEMI))
-        goto fail;
+
+    expr_t *init = NULL;
+    init_entry_t *init_list = NULL;
+    size_t init_count = 0;
+    if (match(p, TOK_ASSIGN)) {
+        if (peek(p) && peek(p)->type == TOK_LBRACE) {
+            init_list = parser_parse_init_list(p, &init_count);
+            if (!init_list || !match(p, TOK_SEMI)) {
+                if (init_list) {
+                    for (size_t i = 0; i < init_count; i++) {
+                        ast_free_expr(init_list[i].index);
+                        ast_free_expr(init_list[i].value);
+                        free(init_list[i].field);
+                    }
+                    free(init_list);
+                }
+                goto fail;
+            }
+        } else {
+            init = parser_parse_expr(p);
+            if (!init || !match(p, TOK_SEMI)) {
+                ast_free_expr(init);
+                goto fail;
+            }
+        }
+    } else {
+        if (!match(p, TOK_SEMI))
+            goto fail;
+    }
 
     ok = 1;
 fail:
@@ -418,12 +445,20 @@ fail:
         for (size_t i = 0; i < members_v.count; i++)
             free(((struct_member_t *)members_v.data)[i].name);
         vector_free(&members_v);
+        for (size_t i = 0; i < init_count; i++) {
+            ast_free_expr(init_list ? init_list[i].index : NULL);
+            ast_free_expr(init_list ? init_list[i].value : NULL);
+            if (init_list)
+                free(init_list[i].field);
+        }
+        free(init_list);
+        ast_free_expr(init);
         return NULL;
     }
     struct_member_t *members = (struct_member_t *)members_v.data;
     size_t count = members_v.count;
     stmt_t *res = ast_make_var_decl(name, TYPE_STRUCT, 0, NULL, 0, is_static, is_extern,
-                                    is_const, is_volatile, 0, NULL, NULL, 0, NULL,
+                                    is_const, is_volatile, 0, init, init_list, init_count, NULL,
                                     (union_member_t *)members, count,
                                     kw->line, kw->column);
     if (!res) {
