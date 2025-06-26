@@ -11,7 +11,7 @@ for cfile in $(ls "$DIR"/fixtures/*.c | sort); do
         *_x86-64|struct_*) continue;;
     esac
     case "$base" in
-        include_search|include_angle) continue;;
+        include_search|include_angle|include_env) continue;;
     esac
     expect="$DIR/fixtures/$base.s"
     out=$(mktemp)
@@ -82,6 +82,15 @@ if ! diff -u "$DIR/fixtures/include_angle.s" "$angle_out"; then
     fail=1
 fi
 rm -f "$angle_out"
+
+# verify VCPATH include search
+env_out=$(mktemp)
+VCPATH="$DIR/includes" "$BINARY" -o "$env_out" "$DIR/fixtures/include_env.c"
+if ! diff -u "$DIR/fixtures/include_env.s" "$env_out"; then
+    echo "Test include_env failed"
+    fail=1
+fi
+rm -f "$env_out"
 
 # negative test for parse error message
 err=$(mktemp)

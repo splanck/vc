@@ -564,17 +564,43 @@ static int process_file(const char *path, vector_t *macros,
 /* Entry point: preprocess the file and return a newly allocated buffer. */
 char *preproc_run(const char *path, const vector_t *include_dirs)
 {
+    vector_t search_dirs;
+    vector_init(&search_dirs, sizeof(char *));
+    for (size_t i = 0; i < include_dirs->count; i++) {
+        const char *s = ((const char **)include_dirs->data)[i];
+        char *dup = vc_strdup(s);
+        vector_push(&search_dirs, &dup);
+    }
+
+    const char *env = getenv("VCPATH");
+    if (env && *env) {
+        char *tmp = vc_strdup(env);
+        char *tok; char *sp;
+        tok = strtok_r(tmp, ":", &sp);
+        while (tok) {
+            if (*tok) {
+                char *dup = vc_strdup(tok);
+                vector_push(&search_dirs, &dup);
+            }
+            tok = strtok_r(NULL, ":", &sp);
+        }
+        free(tmp);
+    }
+
     vector_t macros;
     vector_init(&macros, sizeof(macro_t));
     vector_t conds;
     vector_init(&conds, sizeof(cond_state_t));
     strbuf_t out;
     strbuf_init(&out);
-    int ok = process_file(path, &macros, &conds, &out, include_dirs);
+    int ok = process_file(path, &macros, &conds, &out, &search_dirs);
     vector_free(&conds);
     for (size_t i = 0; i < macros.count; i++)
         macro_free(&((macro_t *)macros.data)[i]);
     vector_free(&macros);
+    for (size_t i = 0; i < search_dirs.count; i++)
+        free(((char **)search_dirs.data)[i]);
+    vector_free(&search_dirs);
     char *res = NULL;
     if (ok)
         res = vc_strdup(out.data ? out.data : "");
