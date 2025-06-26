@@ -68,6 +68,7 @@ static const char *token_name(token_type_t type)
     case TOK_KW_CONST: return "\"const\"";
     case TOK_KW_VOLATILE: return "\"volatile\"";
     case TOK_KW_RESTRICT: return "\"restrict\"";
+    case TOK_KW_REGISTER: return "\"register\"";
     case TOK_KW_INLINE: return "\"inline\"";
     case TOK_KW_RETURN: return "\"return\"";
     case TOK_KW_IF: return "\"if\"";
@@ -315,6 +316,7 @@ int parser_parse_toplevel(parser_t *p, symtable_t *funcs,
     size_t save = p->pos;
     int is_extern = match(p, TOK_KW_EXTERN);
     int is_static = match(p, TOK_KW_STATIC);
+    int is_register = match(p, TOK_KW_REGISTER);
     match(p, TOK_KW_INLINE);
     int is_const = match(p, TOK_KW_CONST);
     int is_volatile = match(p, TOK_KW_VOLATILE);
@@ -510,7 +512,7 @@ int parser_parse_toplevel(parser_t *p, symtable_t *funcs,
         p->pos++; /* consume ';' */
         if (out_global)
             *out_global = ast_make_var_decl(id->lexeme, t, arr_size, size_expr,
-                                           elem_size, is_static, is_extern,
+                                           elem_size, is_static, is_register, is_extern,
                                            is_const, is_volatile, is_restrict,
                                            NULL, NULL, 0,
                                            NULL, NULL, 0,
@@ -549,7 +551,7 @@ int parser_parse_toplevel(parser_t *p, symtable_t *funcs,
         }
         if (out_global)
             *out_global = ast_make_var_decl(id->lexeme, t, arr_size, size_expr,
-                                           elem_size, is_static, is_extern,
+                                           elem_size, is_static, is_register, is_extern,
                                            is_const, is_volatile, is_restrict,
                                            init, init_list, init_count,
                                            NULL, NULL, 0,

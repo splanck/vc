@@ -30,6 +30,7 @@ typedef struct symbol {
     size_t struct_member_count;
     size_t struct_total_size;
     int is_static;
+    int is_register;
     int is_const;
     int is_volatile;
     int is_restrict;
@@ -58,7 +59,7 @@ void symtable_free(symtable_t *table);
 /* Locals */
 int symtable_add(symtable_t *table, const char *name, const char *ir_name,
                  type_kind_t type, size_t array_size, size_t elem_size,
-                 int is_static, int is_const, int is_volatile,
+                 int is_static, int is_register, int is_const, int is_volatile,
                  int is_restrict);
 /* Parameters are stored as locals with an index */
 int symtable_add_param(symtable_t *table, const char *name, type_kind_t type,
@@ -70,7 +71,7 @@ int symtable_add_func(symtable_t *table, const char *name, type_kind_t ret_type,
 /* Globals live in a separate list */
 int symtable_add_global(symtable_t *table, const char *name, const char *ir_name,
                         type_kind_t type, size_t array_size, size_t elem_size,
-                        int is_static, int is_const, int is_volatile,
+                        int is_static, int is_register, int is_const, int is_volatile,
                         int is_restrict);
 int symtable_add_enum(symtable_t *table, const char *name, int value);
 int symtable_add_enum_global(symtable_t *table, const char *name, int value);
