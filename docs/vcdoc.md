@@ -88,6 +88,7 @@ constant initializers.
 
 The `const` qualifier marks a variable as read-only after initialization.
 Any attempt to assign to a `const` object results in a semantic error.
+Declaring a `const` variable without an initializer is also a semantic error.
 
 The `volatile` qualifier tells the compiler that a variable's value may change
 unexpectedly.  Reads and writes to a `volatile` object are always emitted and
