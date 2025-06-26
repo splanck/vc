@@ -12,9 +12,6 @@
 #include "ir.h"
 #include "symtable.h"
 
-int is_intlike(type_kind_t t);
-int is_floatlike(type_kind_t t);
-int eval_const_expr(expr_t *expr, symtable_t *vars, long long *out);
 type_kind_t check_expr(expr_t *expr, symtable_t *vars, symtable_t *funcs,
                        ir_builder_t *ir, ir_value_t *out);
 
