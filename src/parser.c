@@ -466,19 +466,17 @@ int parser_parse_toplevel(parser_t *p, symtable_t *funcs,
         }
     }
 
+    expr_t *size_expr = NULL;
     if (next_tok && next_tok->type == TOK_LBRACKET) {
         p->pos++; /* '[' */
-        token_t *num = peek(p);
-        if (!num || num->type != TOK_NUMBER) {
+        size_expr = parser_parse_expr(p);
+        if (!size_expr || !match(p, TOK_RBRACKET)) {
+            ast_free_expr(size_expr);
             p->pos = save;
             return 0;
         }
-        p->pos++;
-        arr_size = strtoul(num->lexeme, NULL, 10);
-        if (!match(p, TOK_RBRACKET)) {
-            p->pos = save;
-            return 0;
-        }
+        if (size_expr->kind == EXPR_NUMBER)
+            arr_size = strtoul(size_expr->number.value, NULL, 10);
         t = TYPE_ARRAY;
         next_tok = peek(p);
     }
@@ -490,7 +488,7 @@ int parser_parse_toplevel(parser_t *p, symtable_t *funcs,
         }
         p->pos++; /* consume ';' */
         if (out_global)
-            *out_global = ast_make_var_decl(id->lexeme, t, arr_size,
+            *out_global = ast_make_var_decl(id->lexeme, t, arr_size, size_expr,
                                            elem_size, is_static, is_const,
                                            is_volatile, is_restrict,
                                            NULL, NULL, 0,
@@ -526,7 +524,7 @@ int parser_parse_toplevel(parser_t *p, symtable_t *funcs,
             }
         }
         if (out_global)
-            *out_global = ast_make_var_decl(id->lexeme, t, arr_size,
+            *out_global = ast_make_var_decl(id->lexeme, t, arr_size, size_expr,
                                            elem_size, is_static, is_const,
                                            is_volatile, is_restrict,
                                            init, init_list, init_count,

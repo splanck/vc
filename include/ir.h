@@ -53,6 +53,7 @@ typedef enum {
     IR_STORE_PTR,
     IR_LOAD_IDX,
     IR_STORE_IDX,
+    IR_ALLOCA,
     IR_ARG,
     IR_RETURN,
     IR_CALL,
@@ -143,6 +144,9 @@ void ir_build_store_idx(ir_builder_t *b, const char *name, ir_value_t idx,
                         ir_value_t val);
 void ir_build_store_idx_vol(ir_builder_t *b, const char *name, ir_value_t idx,
                             ir_value_t val);
+
+/* Allocate `size` bytes on the stack and return the address. */
+ir_value_t ir_build_alloca(ir_builder_t *b, ir_value_t size);
 
 /* Append IR_RETURN with return value `val`. */
 void ir_build_return(ir_builder_t *b, ir_value_t val);

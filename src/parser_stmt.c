@@ -91,14 +91,17 @@ static stmt_t *parse_var_decl(parser_t *p)
     p->pos++;
     char *name = tok->lexeme;
     size_t arr_size = 0;
+    expr_t *size_expr = NULL;
     if (match(p, TOK_LBRACKET)) {
-        token_t *num = peek(p);
-        if (!num || num->type != TOK_NUMBER)
+        size_t save = p->pos;
+        size_expr = parser_parse_expr(p);
+        if (!size_expr || !match(p, TOK_RBRACKET)) {
+            ast_free_expr(size_expr);
+            p->pos = save;
             return NULL;
-        p->pos++;
-        arr_size = strtoul(num->lexeme, NULL, 10);
-        if (!match(p, TOK_RBRACKET))
-            return NULL;
+        }
+        if (size_expr->kind == EXPR_NUMBER)
+            arr_size = strtoul(size_expr->number.value, NULL, 10);
         t = TYPE_ARRAY;
     }
     expr_t *init = NULL;
@@ -126,7 +129,7 @@ static stmt_t *parse_var_decl(parser_t *p)
         if (!match(p, TOK_SEMI))
             return NULL;
     }
-    stmt_t *res = ast_make_var_decl(name, t, arr_size, elem_size, is_static,
+    stmt_t *res = ast_make_var_decl(name, t, arr_size, size_expr, elem_size, is_static,
                                     is_const, is_volatile, is_restrict, init, init_list,
                                     init_count,
                                     tag_name, NULL, 0,
@@ -262,7 +265,7 @@ fail:
     }
     union_member_t *members = (union_member_t *)members_v.data;
     size_t count = members_v.count;
-    stmt_t *res = ast_make_var_decl(name, TYPE_UNION, 0, 0, is_static, is_const,
+    stmt_t *res = ast_make_var_decl(name, TYPE_UNION, 0, NULL, 0, is_static, is_const,
                                     is_volatile, 0, NULL, NULL, 0, NULL, members,
                                     count,
                                     kw->line, kw->column);
@@ -408,7 +411,7 @@ fail:
     }
     struct_member_t *members = (struct_member_t *)members_v.data;
     size_t count = members_v.count;
-    stmt_t *res = ast_make_var_decl(name, TYPE_STRUCT, 0, 0, is_static, is_const,
+    stmt_t *res = ast_make_var_decl(name, TYPE_STRUCT, 0, NULL, 0, is_static, is_const,
                                     is_volatile, 0, NULL, NULL, 0, NULL,
                                     (union_member_t *)members, count,
                                     kw->line, kw->column);

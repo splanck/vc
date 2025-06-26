@@ -441,6 +441,17 @@ static void emit_branch_instr(strbuf_t *sb, ir_instr_t *ins,
     case IR_LABEL:
         strbuf_appendf(sb, "%s:\n", ins->name);
         break;
+    case IR_ALLOCA: {
+        const char *sfx = x64 ? "q" : "l";
+        const char *sp = x64 ? "%rsp" : "%esp";
+        char buf1[32];
+        char buf2[32];
+        strbuf_appendf(sb, "    sub%s %s, %s\n", sfx,
+                       loc_str(buf1, ra, ins->src1, x64), sp);
+        strbuf_appendf(sb, "    mov%s %s, %s\n", sfx, sp,
+                       loc_str(buf2, ra, ins->dest, x64));
+        break;
+    }
     default:
         break;
     }
