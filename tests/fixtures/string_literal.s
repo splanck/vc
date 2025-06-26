@@ -4,3 +4,6 @@ main:
     movl $0, %eax
     movl %eax, %eax
     ret
+    movl %ebp, %esp
+    popl %ebp
+    ret

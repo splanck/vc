@@ -20,3 +20,6 @@ main:
     movl (%ecx), %edx
     movl %edx, %eax
     ret
+    movl %ebp, %esp
+    popl %ebp
+    ret

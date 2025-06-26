@@ -216,7 +216,11 @@ void regalloc_run(ir_builder_t *ir, regalloc_t *ra) {
 ```
 
 ### codegen
-Emits assembly from the IR. Currently only x86 is supported.
+Emits assembly from the IR. Currently only x86 is supported. Each
+function begins with a prolog that saves the caller frame pointer and
+reserves stack space for spills. The corresponding epilog restores the
+stack pointer, pops `%rbp`/`%ebp`, and emits `ret`. x86‑64 output keeps
+the stack 16‑byte aligned.
 
 ## Optimization Passes
 

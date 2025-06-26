@@ -28,3 +28,6 @@ main:
     movl (%ebx), %eax
     movl %eax, %eax
     ret
+    movl %ebp, %esp
+    popl %ebp
+    ret

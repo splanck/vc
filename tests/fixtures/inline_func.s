@@ -7,6 +7,9 @@ add:
     addl %ebx, %ecx
     movl %ecx, %eax
     ret
+    movl %ebp, %esp
+    popl %ebp
+    ret
 main:
     pushl %ebp
     movl %esp, %ebp
@@ -18,4 +21,7 @@ main:
     addl $8, %esp
     movl %eax, %ecx
     movl %ecx, %eax
+    ret
+    movl %ebp, %esp
+    popl %ebp
     ret

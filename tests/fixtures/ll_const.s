@@ -6,3 +6,6 @@ main:
     movl $705032709, %eax
     movl %eax, %eax
     ret
+    movl %ebp, %esp
+    popl %ebp
+    ret

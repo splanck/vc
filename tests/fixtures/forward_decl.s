@@ -8,6 +8,9 @@ main:
     movl %eax, %eax
     movl %eax, %eax
     ret
+    movl %ebp, %esp
+    popl %ebp
+    ret
 foo:
     pushl %ebp
     movl %esp, %ebp
@@ -16,4 +19,7 @@ foo:
     movl %eax, %ecx
     addl %ebx, %ecx
     movl %ecx, %eax
+    ret
+    movl %ebp, %esp
+    popl %ebp
     ret

@@ -17,3 +17,6 @@ L0_default:
     movl %eax, %eax
     ret
 L0_end:
+    movl %ebp, %esp
+    popl %ebp
+    ret

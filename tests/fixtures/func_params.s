@@ -4,6 +4,9 @@ id:
     movl 8(%ebp), %eax
     movl %eax, %eax
     ret
+    movl %ebp, %esp
+    popl %ebp
+    ret
 main:
     pushl %ebp
     movl %esp, %ebp
@@ -13,4 +16,7 @@ main:
     addl $4, %esp
     movl %eax, %eax
     movl %eax, %eax
+    ret
+    movl %ebp, %esp
+    popl %ebp
     ret

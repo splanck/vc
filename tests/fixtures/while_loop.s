@@ -14,3 +14,6 @@ L0_end:
     movl i, %eax
     movl %eax, %eax
     ret
+    movl %ebp, %esp
+    popl %ebp
+    ret

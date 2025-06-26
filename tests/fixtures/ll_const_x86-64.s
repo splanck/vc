@@ -6,3 +6,6 @@ main:
     movq $705032709, %rax
     movq %rax, %rax
     ret
+    movq %rbp, %rsp
+    popq %rbp
+    ret

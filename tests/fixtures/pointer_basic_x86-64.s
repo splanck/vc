@@ -9,3 +9,6 @@ main:
     movq (%rax), %rbx
     movq %rbx, %rax
     ret
+    movq %rbp, %rsp
+    popq %rbp
+    ret

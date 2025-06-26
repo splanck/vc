@@ -450,15 +450,23 @@ static void emit_branch_instr(strbuf_t *sb, ir_instr_t *ins,
         strbuf_appendf(sb, "    mov%s %s, %s\n", sfx, ax,
                        loc_str(buf1, ra, ins->dest, x64));
         break;
-    case IR_FUNC_BEGIN:
+    case IR_FUNC_BEGIN: {
         if (export_syms)
             strbuf_appendf(sb, ".globl %s\n", ins->name);
         strbuf_appendf(sb, "%s:\n", ins->name);
         strbuf_appendf(sb, "    push%s %s\n", sfx, bp);
         strbuf_appendf(sb, "    mov%s %s, %s\n", sfx, sp, bp);
+        int frame = ra ? ra->stack_slots * (x64 ? 8 : 4) : 0;
+        if (x64 && frame % 16 != 0)
+            frame += 16 - (frame % 16);
+        if (frame > 0)
+            strbuf_appendf(sb, "    sub%s $%d, %s\n", sfx, frame, sp);
         break;
+    }
     case IR_FUNC_END:
-        /* nothing for now */
+        strbuf_appendf(sb, "    mov%s %s, %s\n", sfx, bp, sp);
+        strbuf_appendf(sb, "    pop%s %s\n", sfx, bp);
+        strbuf_append(sb, "    ret\n");
         break;
     case IR_BR:
         strbuf_appendf(sb, "    jmp %s\n", ins->name);

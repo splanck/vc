@@ -10,3 +10,6 @@ main:
     movl $1, %eax
     movl %eax, %eax
     ret
+    movl %ebp, %esp
+    popl %ebp
+    ret

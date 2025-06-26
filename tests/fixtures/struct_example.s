@@ -35,3 +35,6 @@ main:
     addl %edx, %ebx
     movl %ebx, %eax
     ret
+    movl %ebp, %esp
+    popl %ebp
+    ret
