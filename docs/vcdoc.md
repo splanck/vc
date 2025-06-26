@@ -530,6 +530,16 @@ int main() {
     return nums[0];
 }
 ```
+If the size between the brackets is omitted, it is inferred from the number of
+initializer elements:
+
+```c
+/* array_infer_size.c */
+int main() {
+    int nums[] = {1, 2, 3};
+    return nums[1];
+}
+```
 Compile with:
 ```sh
 vc -o array_init.s array_init.c
