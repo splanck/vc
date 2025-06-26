@@ -37,7 +37,8 @@ Set optimization level (0 disables all optimizations).
 .TP
 .BR -I "," \fB--include\fR \fIdir\fR
 Add directory to the include search path. Angle-bracket includes search these
-directories followed by the standard locations such as \fI/usr/include\fR.
+directories, then any paths from the \fBVCPATH\fR environment variable,
+followed by the standard locations such as \fI/usr/include\fR.
 .TP
 .B --no-fold
 Disable constant folding optimization.
@@ -88,5 +89,11 @@ Print the generated assembly:
 Compile a program using pointer increments:
 .PP
 .B vc -o ptr_inc.s ptr_inc.c
+.SH ENVIRONMENT
+.TP
+.B VCPATH
+Colon separated list of additional directories searched for headers after any
+.B -I
+paths are processed.
 .SH SEE ALSO
 README.md, docs/vcdoc.md (see the "Union declarations" section)
