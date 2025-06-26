@@ -2,7 +2,7 @@
 /*
  * Minimal preprocessing implementation.
  *
- * Handles '#include "file"', object-like '#define' and parameterized macros
+ * Handles '#include "file"' and '#include <file>', object-like '#define' and parameterized macros
  * like '#define F(a,b)'.  Macro bodies may reference other macros and will be
  * expanded recursively.  Basic conditional directives '#if', '#ifdef',
  * '#ifndef', '#elif', '#else' and '#endif' are also recognized.  Expansion
@@ -19,6 +19,13 @@
 #include "util.h"
 #include "vector.h"
 #include "strbuf.h"
+
+/* Default system include search paths */
+static const char *std_include_dirs[] = {
+    "/usr/local/include",
+    "/usr/include",
+    NULL
+};
 
 /* Stored macro definition */
 typedef struct {
@@ -337,9 +344,8 @@ static int process_file(const char *path, vector_t *macros,
                     }
                 }
                 if (!chosen && endc == '<') {
-                    const char *sysdirs[] = {"/usr/local/include", "/usr/include", NULL};
-                    for (size_t i = 0; sysdirs[i] && !chosen; i++) {
-                        snprintf(incpath, sizeof(incpath), "%s/%s", sysdirs[i], fname);
+                    for (size_t i = 0; std_include_dirs[i] && !chosen; i++) {
+                        snprintf(incpath, sizeof(incpath), "%s/%s", std_include_dirs[i], fname);
                         if (access(incpath, R_OK) == 0)
                             chosen = incpath;
                     }
@@ -348,6 +354,13 @@ static int process_file(const char *path, vector_t *macros,
                     snprintf(incpath, sizeof(incpath), "%s", fname);
                     if (access(incpath, R_OK) == 0)
                         chosen = incpath;
+                    else {
+                        for (size_t i = 0; std_include_dirs[i] && !chosen; i++) {
+                            snprintf(incpath, sizeof(incpath), "%s/%s", std_include_dirs[i], fname);
+                            if (access(incpath, R_OK) == 0)
+                                chosen = incpath;
+                        }
+                    }
                 }
                 vector_t subconds;
                 vector_init(&subconds, sizeof(cond_state_t));
