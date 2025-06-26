@@ -30,7 +30,7 @@ static void print_usage(const char *prog)
     printf("      --no-dce         Disable dead code elimination\n");
     printf("      --no-cprop       Disable constant propagation\n");
     printf("      --x86-64         Generate 64-bit x86 assembly\n");
-    printf("      --dump-asm       Print assembly to stdout and exit\n");
+    printf("  -S, --dump-asm       Print assembly to stdout and exit\n");
     printf("      --dump-ir        Print IR to stdout and exit\n");
     printf("  -E, --preprocess     Print preprocessed source and exit\n");
 }
@@ -71,7 +71,7 @@ int cli_parse_args(int argc, char **argv, cli_options_t *opts)
     vector_init(&opts->sources, sizeof(char *));
 
     int opt;
-    while ((opt = getopt_long(argc, argv, "hvo:O:cEI:", long_opts, NULL)) != -1) {
+    while ((opt = getopt_long(argc, argv, "hvo:O:cEI:S", long_opts, NULL)) != -1) {
         switch (opt) {
         case 'h':
             print_usage(argv[0]);
@@ -111,6 +111,9 @@ int cli_parse_args(int argc, char **argv, cli_options_t *opts)
             break;
         case 3:
             opts->use_x86_64 = 1;
+            break;
+        case 'S':
+            opts->dump_asm = 1;
             break;
         case 4:
             opts->dump_asm = 1;

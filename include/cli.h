@@ -23,7 +23,7 @@ typedef struct {
     int use_x86_64;     /* enable 64-bit codegen */
     int compile;        /* assemble to object */
     int link;           /* build executable */
-    int dump_asm;       /* dump assembly to stdout */
+    int dump_asm;       /* dump assembly to stdout (-S/--dump-asm) */
     int dump_ir;        /* dump IR to stdout */
     int preprocess;     /* print preprocessed source */
     c_std_t std;        /* language standard */
