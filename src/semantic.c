@@ -155,7 +155,7 @@ static int eval_const_expr(expr_t *expr, symtable_t *vars, long long *out)
     switch (expr->kind) {
     case EXPR_NUMBER:
         if (out)
-            *out = strtoll(expr->number.value, NULL, 10);
+            *out = strtoll(expr->number.value, NULL, 0);
         return 1;
     case EXPR_CHAR:
         if (out)
@@ -480,7 +480,7 @@ type_kind_t check_expr(expr_t *expr, symtable_t *vars, symtable_t *funcs,
         return TYPE_UNKNOWN;
     switch (expr->kind) {
     case EXPR_NUMBER: {
-        long long val = strtoll(expr->number.value, NULL, 10);
+        long long val = strtoll(expr->number.value, NULL, 0);
         if (out)
             *out = ir_build_const(ir, val);
         if (val > INT_MAX || val < INT_MIN)
