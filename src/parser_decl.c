@@ -13,92 +13,160 @@
 #include "vector.h"
 #include "util.h"
 #include "parser_types.h"
+
 #include "ast_stmt.h"
 #include "ast_expr.h"
 
-/* Variable declaration beginning at the current token. */
-stmt_t *parser_parse_var_decl(parser_t *p)
+/* Helper prototypes */
+static int parse_decl_specs(parser_t *p, int *is_extern, int *is_static,
+                            int *is_register, int *is_const, int *is_volatile,
+                            int *is_restrict, type_kind_t *type,
+                            char **tag_name, size_t *elem_size,
+                            token_t **kw_tok);
+static int parse_array_suffix(parser_t *p, type_kind_t *type, char **name,
+                              size_t *arr_size, expr_t **size_expr);
+static int parse_initializer(parser_t *p, type_kind_t type, expr_t **init,
+                             init_entry_t **init_list, size_t *init_count);
+
+/* Parse declaration specifiers like storage class and base type. */
+static int parse_decl_specs(parser_t *p, int *is_extern, int *is_static,
+                            int *is_register, int *is_const, int *is_volatile,
+                            int *is_restrict, type_kind_t *type,
+                            char **tag_name, size_t *elem_size,
+                            token_t **kw_tok)
 {
-    int is_extern = match(p, TOK_KW_EXTERN);
-    int is_static = match(p, TOK_KW_STATIC);
-    int is_register = match(p, TOK_KW_REGISTER);
+    *is_extern = match(p, TOK_KW_EXTERN);
+    *is_static = match(p, TOK_KW_STATIC);
+    *is_register = match(p, TOK_KW_REGISTER);
     match(p, TOK_KW_INLINE);
-    int is_const = match(p, TOK_KW_CONST);
-    int is_volatile = match(p, TOK_KW_VOLATILE);
-    token_t *kw_tok = peek(p);
-    type_kind_t t;
-    char *tag_name = NULL;
-    size_t elem_size = 0;
+    *is_const = match(p, TOK_KW_CONST);
+    *is_volatile = match(p, TOK_KW_VOLATILE);
+
+    *kw_tok = peek(p);
+    *tag_name = NULL;
+    *elem_size = 0;
+
     if (match(p, TOK_KW_UNION)) {
-        token_t *tag_tok = peek(p);
-        if (!tag_tok || tag_tok->type != TOK_IDENT)
-            return NULL;
+        token_t *tag = peek(p);
+        if (!tag || tag->type != TOK_IDENT)
+            return 0;
         p->pos++;
-        tag_name = vc_strdup(tag_tok->lexeme);
-        if (!tag_name)
-            return NULL;
-        t = TYPE_UNION;
+        *tag_name = vc_strdup(tag->lexeme);
+        if (!*tag_name)
+            return 0;
+        *type = TYPE_UNION;
     } else {
-        if (!parse_basic_type(p, &t))
-            return NULL;
-        elem_size = basic_type_size(t);
+        if (!parse_basic_type(p, type))
+            return 0;
+        *elem_size = basic_type_size(*type);
     }
-    int is_restrict = 0;
+
+    *is_restrict = 0;
     if (match(p, TOK_STAR)) {
-        t = TYPE_PTR;
-        is_restrict = match(p, TOK_KW_RESTRICT);
+        *type = TYPE_PTR;
+        *is_restrict = match(p, TOK_KW_RESTRICT);
     }
+    return 1;
+}
+
+/* Parse the identifier and optional array size suffix. */
+static int parse_array_suffix(parser_t *p, type_kind_t *type, char **name,
+                              size_t *arr_size, expr_t **size_expr)
+{
     token_t *tok = peek(p);
     if (!tok || tok->type != TOK_IDENT)
-        return NULL;
+        return 0;
     p->pos++;
-    char *name = tok->lexeme;
-    size_t arr_size = 0;
-    expr_t *size_expr = NULL;
+    *name = tok->lexeme;
+    *arr_size = 0;
+    *size_expr = NULL;
+
     if (match(p, TOK_LBRACKET)) {
         size_t save = p->pos;
         if (match(p, TOK_RBRACKET)) {
-            t = TYPE_ARRAY;
+            *type = TYPE_ARRAY;
         } else {
-            size_expr = parser_parse_expr(p);
-            if (!size_expr || !match(p, TOK_RBRACKET)) {
-                ast_free_expr(size_expr);
+            *size_expr = parser_parse_expr(p);
+            if (!*size_expr || !match(p, TOK_RBRACKET)) {
+                ast_free_expr(*size_expr);
                 p->pos = save;
-                return NULL;
+                return 0;
             }
-            if (size_expr->kind == EXPR_NUMBER)
-                arr_size = strtoul(size_expr->number.value, NULL, 10);
-            t = TYPE_ARRAY;
+            if ((*size_expr)->kind == EXPR_NUMBER)
+                *arr_size = strtoul((*size_expr)->number.value, NULL, 10);
+            *type = TYPE_ARRAY;
         }
     }
-    expr_t *init = NULL;
-    init_entry_t *init_list = NULL;
-    size_t init_count = 0;
+    return 1;
+}
+
+/* Parse optional initializer and trailing semicolon. */
+static int parse_initializer(parser_t *p, type_kind_t type, expr_t **init,
+                             init_entry_t **init_list, size_t *init_count)
+{
+    *init = NULL;
+    *init_list = NULL;
+    *init_count = 0;
+
     if (match(p, TOK_ASSIGN)) {
-        if (t == TYPE_ARRAY && peek(p) && peek(p)->type == TOK_LBRACE) {
-            init_list = parser_parse_init_list(p, &init_count);
-            if (!init_list || !match(p, TOK_SEMI)) {
-                if (init_list) {
-                    for (size_t i = 0; i < init_count; i++) {
-                        ast_free_expr(init_list[i].index);
-                        ast_free_expr(init_list[i].value);
-                        free(init_list[i].field);
+        if (type == TYPE_ARRAY && peek(p) && peek(p)->type == TOK_LBRACE) {
+            *init_list = parser_parse_init_list(p, init_count);
+            if (!*init_list || !match(p, TOK_SEMI)) {
+                if (*init_list) {
+                    for (size_t i = 0; i < *init_count; i++) {
+                        ast_free_expr((*init_list)[i].index);
+                        ast_free_expr((*init_list)[i].value);
+                        free((*init_list)[i].field);
                     }
-                    free(init_list);
+                    free(*init_list);
                 }
-                return NULL;
+                return 0;
             }
         } else {
-            init = parser_parse_expr(p);
-            if (!init || !match(p, TOK_SEMI)) {
-                ast_free_expr(init);
-                return NULL;
+            *init = parser_parse_expr(p);
+            if (!*init || !match(p, TOK_SEMI)) {
+                ast_free_expr(*init);
+                return 0;
             }
         }
     } else {
         if (!match(p, TOK_SEMI))
-            return NULL;
+            return 0;
     }
+    return 1;
+}
+
+/* Variable declaration beginning at the current token. */
+stmt_t *parser_parse_var_decl(parser_t *p)
+{
+    int is_extern, is_static, is_register, is_const, is_volatile, is_restrict;
+    type_kind_t t;
+    char *tag_name = NULL;
+    size_t elem_size = 0;
+    token_t *kw_tok = NULL;
+
+    if (!parse_decl_specs(p, &is_extern, &is_static, &is_register,
+                          &is_const, &is_volatile, &is_restrict, &t,
+                          &tag_name, &elem_size, &kw_tok))
+        return NULL;
+
+    char *name;
+    size_t arr_size;
+    expr_t *size_expr;
+    if (!parse_array_suffix(p, &t, &name, &arr_size, &size_expr)) {
+        free(tag_name);
+        return NULL;
+    }
+
+    expr_t *init;
+    init_entry_t *init_list;
+    size_t init_count;
+    if (!parse_initializer(p, t, &init, &init_list, &init_count)) {
+        ast_free_expr(size_expr);
+        free(tag_name);
+        return NULL;
+    }
+
     stmt_t *res = ast_make_var_decl(name, t, arr_size, size_expr, elem_size,
                                     is_static, is_register, is_extern,
                                     is_const, is_volatile, is_restrict,
