@@ -5,8 +5,9 @@ BIN = vc
 # The resulting binary accepts -c/--compile to assemble objects using cc
 # Core compiler sources
 
-CORE_SRC = src/main.c src/cli.c src/lexer.c src/ast.c src/parser.c src/symtable.c src/parser_expr.c src/parser_stmt.c \
-           src/parser_types.c src/semantic_expr.c src/semantic_stmt.c src/semantic_global.c src/error.c src/ir.c \
+CORE_SRC = src/main.c src/cli.c src/lexer.c src/ast.c src/parser.c src/symtable.c src/parser_expr.c \
+           src/parser_decl.c src/parser_flow.c src/parser_stmt.c src/parser_types.c \
+           src/semantic_expr.c src/semantic_stmt.c src/semantic_global.c src/error.c src/ir.c \
            src/codegen.c src/regalloc.c src/regalloc_x86.c src/strbuf.c src/util.c src/vector.c src/ir_dump.c src/label.c \
            src/preproc_macros.c src/preproc_expr.c src/preproc_file.c
 
