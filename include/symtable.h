@@ -74,6 +74,9 @@ int symtable_add_global(symtable_t *table, const char *name, const char *ir_name
                         int is_restrict);
 int symtable_add_enum(symtable_t *table, const char *name, int value);
 int symtable_add_enum_global(symtable_t *table, const char *name, int value);
+int symtable_add_enum_tag(symtable_t *table, const char *tag);
+int symtable_add_enum_tag_global(symtable_t *table, const char *tag);
+symbol_t *symtable_lookup_enum_tag(symtable_t *table, const char *tag);
 int symtable_add_typedef(symtable_t *table, const char *name, type_kind_t type,
                          size_t array_size, size_t elem_size);
 int symtable_add_typedef_global(symtable_t *table, const char *name,

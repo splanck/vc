@@ -362,15 +362,27 @@ int parser_parse_toplevel(parser_t *p, symtable_t *funcs,
     }
 
     if (tok->type == TOK_KW_ENUM) {
-        p->pos++;
-        stmt_t *decl = parser_parse_enum_decl(p);
-        if (!decl) {
+        token_t *next = &p->tokens[p->pos + 1];
+        if (next && next->type == TOK_LBRACE) {
             p->pos = save;
-            return 0;
+            match(p, TOK_KW_ENUM);
+            if (out_global)
+                *out_global = parser_parse_enum_decl(p);
+            else
+                parser_parse_enum_decl(p);
+            return out_global ? *out_global != NULL : 1;
         }
-        if (out_global)
-            *out_global = decl;
-        return 1;
+        if (next && next->type == TOK_IDENT && p->pos + 2 < p->count &&
+            p->tokens[p->pos + 2].type == TOK_LBRACE) {
+            p->pos = save;
+            match(p, TOK_KW_ENUM);
+            if (out_global)
+                *out_global = parser_parse_enum_decl(p);
+            else
+                parser_parse_enum_decl(p);
+            return out_global ? *out_global != NULL : 1;
+        }
+        p->pos = save;
     }
 
     if (tok->type == TOK_KW_TYPEDEF) {

@@ -511,14 +511,31 @@ stmt_t *parser_parse_stmt(parser_t *p)
         return ast_make_label(lbl->lexeme, lbl->line, lbl->column);
     }
 
-    if (match(p, TOK_KW_ENUM))
-        return parser_parse_enum_decl(p);
-
     tok = peek(p);
     size_t save = p->pos;
     int has_static = match(p, TOK_KW_STATIC);
     int has_const = match(p, TOK_KW_CONST);
     int has_vol = match(p, TOK_KW_VOLATILE);
+    if (match(p, TOK_KW_ENUM)) {
+        token_t *next = peek(p);
+        if (next && next->type == TOK_LBRACE) {
+            p->pos = save;
+            match(p, TOK_KW_ENUM);
+            return parser_parse_enum_decl(p);
+        } else if (next && next->type == TOK_IDENT) {
+            p->pos++;
+            token_t *after = peek(p);
+            if (!has_static && !has_const && !has_vol && after && after->type == TOK_LBRACE) {
+                p->pos = save;
+                match(p, TOK_KW_ENUM);
+                return parser_parse_enum_decl(p);
+            }
+            p->pos = save;
+            return parse_var_decl(p);
+        } else {
+            p->pos = save;
+        }
+    }
     if (match(p, TOK_KW_STRUCT)) {
         token_t *next = peek(p);
         if (next && next->type == TOK_LBRACE) {
