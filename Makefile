@@ -7,7 +7,8 @@ BIN = vc
 
 CORE_SRC = src/main.c src/cli.c src/lexer.c src/ast.c src/parser.c src/symtable.c src/parser_expr.c \
            src/parser_stmt.c src/parser_types.c src/semantic.c src/error.c src/ir.c src/codegen.c src/regalloc.c src/regalloc_x86.c src/strbuf.c src/util.c \
-           src/vector.c src/ir_dump.c src/label.c src/preproc.c
+           src/vector.c src/ir_dump.c src/label.c \
+           src/preproc_macros.c src/preproc_expr.c src/preproc_file.c
 
 # Optional optimization sources
 OPT_SRC = src/opt.c
@@ -17,7 +18,8 @@ EXTRA_SRC ?=
 SRC = $(CORE_SRC) $(OPT_SRC) $(EXTRA_SRC)
 HDR = include/token.h include/ast.h include/parser.h include/symtable.h include/semantic.h \
     include/ir.h include/ir_dump.h include/opt.h include/codegen.h include/strbuf.h \
-    include/util.h include/cli.h include/vector.h include/regalloc_x86.h include/label.h include/error.h include/preproc.h include/parser_types.h
+    include/util.h include/cli.h include/vector.h include/regalloc_x86.h include/label.h include/error.h \
+    include/preproc.h include/preproc_file.h include/preproc_macros.h include/preproc_expr.h include/parser_types.h
 PREFIX ?= /usr/local
 INCLUDEDIR ?= $(PREFIX)/include/vc
 MANDIR ?= $(PREFIX)/share/man
