@@ -214,7 +214,9 @@ See [optimization.md](optimization.md) for additional context.
 
 ### Constant folding
 When both operands of an arithmetic instruction are known constants, the
-compiler performs the calculation at compile time.
+compiler performs the calculation at compile time.  This folding now
+also handles the floating-point operations `IR_FADD`, `IR_FSUB`,
+`IR_FMUL` and `IR_FDIV` when their operands are constant values.
 
 Before:
 ```text
