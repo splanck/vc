@@ -290,6 +290,7 @@ RETURN v2
 - Labels and `goto`
 - `struct` and `union` objects with member assignments
 - Object-like and multi-parameter `#define` macros with recursive expansion
+- `#undef` to remove a previously defined macro
 - Conditional preprocessing directives (`#if`, `#ifdef`, `#ifndef`, `#elif`, `#else`, `#endif`)
 - 64-bit integer literals and arithmetic when using `long long`
 - Hexadecimal (`0x`) and octal (leading `0`) integer literals
@@ -759,7 +760,8 @@ file. Additional directories to search for included files can be provided with
 the `-I`/`--include` option. Angle-bracket includes search those directories
 followed by the standard system locations such as `/usr/include`. It also supports
 object-like `#define` macros and parameterized
-macros such as `#define NAME(a, b)`; macro bodies are expanded recursively:
+macros such as `#define NAME(a, b)`; macro bodies are expanded recursively.
+Macros may be removed with `#undef NAME`.
 
 ```c
 #define VAL 3
