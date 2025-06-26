@@ -47,6 +47,40 @@ static int process_file(const char *path, vector_t *macros,
                         const vector_t *incdirs);
 
 /* handle a single #include directive */
+static const char *locate_include(const char *name, char endc, const char *dir,
+                                  const vector_t *incdirs, char *buf,
+                                  size_t bufsz)
+{
+    if (endc == '"' && dir) {
+        snprintf(buf, bufsz, "%s%s", dir, name);
+        if (access(buf, R_OK) == 0)
+            return buf;
+    }
+    for (size_t i = 0; i < incdirs->count; i++) {
+        const char *base = ((const char **)incdirs->data)[i];
+        snprintf(buf, bufsz, "%s/%s", base, name);
+        if (access(buf, R_OK) == 0)
+            return buf;
+    }
+    if (endc == '<') {
+        for (size_t i = 0; std_include_dirs[i]; i++) {
+            snprintf(buf, bufsz, "%s/%s", std_include_dirs[i], name);
+            if (access(buf, R_OK) == 0)
+                return buf;
+        }
+    } else {
+        snprintf(buf, bufsz, "%s", name);
+        if (access(buf, R_OK) == 0)
+            return buf;
+        for (size_t i = 0; std_include_dirs[i]; i++) {
+            snprintf(buf, bufsz, "%s/%s", std_include_dirs[i], name);
+            if (access(buf, R_OK) == 0)
+                return buf;
+        }
+    }
+    return NULL;
+}
+
 static int handle_include(char *line, const char *dir, vector_t *macros,
                           vector_t *conds, strbuf_t *out,
                           const vector_t *incdirs)
@@ -62,42 +96,9 @@ static int handle_include(char *line, const char *dir, vector_t *macros,
         size_t len = (size_t)(end - start - 1);
         char fname[256];
         snprintf(fname, sizeof(fname), "%.*s", (int)len, start + 1);
-        char incpath[512];
-        const char *chosen = NULL;
-        if (endc == '"' && dir) {
-            snprintf(incpath, sizeof(incpath), "%s%s", dir, fname);
-            if (access(incpath, R_OK) == 0)
-                chosen = incpath;
-        }
-        if (!chosen) {
-            for (size_t i = 0; i < incdirs->count && !chosen; i++) {
-                const char *base = ((const char **)incdirs->data)[i];
-                snprintf(incpath, sizeof(incpath), "%s/%s", base, fname);
-                if (access(incpath, R_OK) == 0)
-                    chosen = incpath;
-            }
-        }
-        if (!chosen && endc == '<') {
-            for (size_t i = 0; std_include_dirs[i] && !chosen; i++) {
-                snprintf(incpath, sizeof(incpath), "%s/%s",
-                         std_include_dirs[i], fname);
-                if (access(incpath, R_OK) == 0)
-                    chosen = incpath;
-            }
-        }
-        if (!chosen && endc == '"') {
-            snprintf(incpath, sizeof(incpath), "%s", fname);
-            if (access(incpath, R_OK) == 0)
-                chosen = incpath;
-            else {
-                for (size_t i = 0; std_include_dirs[i] && !chosen; i++) {
-                    snprintf(incpath, sizeof(incpath), "%s/%s",
-                             std_include_dirs[i], fname);
-                    if (access(incpath, R_OK) == 0)
-                        chosen = incpath;
-                }
-            }
-        }
+        char path[512];
+        const char *chosen = locate_include(fname, endc, dir, incdirs,
+                                            path, sizeof(path));
         vector_t subconds;
         vector_init(&subconds, sizeof(cond_state_t));
         int ok = 1;
@@ -110,164 +111,160 @@ static int handle_include(char *line, const char *dir, vector_t *macros,
             }
         }
         vector_free(&subconds);
-        if (!ok)
-            return 0;
+        return ok;
     }
     return 1;
 }
 
 /* handle a single #define directive */
+static void parse_params(char **p, vector_t *params)
+{
+    char *start = ++(*p);
+    while (**p && **p != ')')
+        (*p)++;
+    if (**p == ')') {
+        char *list = vc_strndup(start, (size_t)(*p - start));
+        char *tok, *sp;
+        for (tok = strtok_r(list, ",", &sp); tok; tok = strtok_r(NULL, ",", &sp)) {
+            while (isspace((unsigned char)*tok))
+                tok++;
+            char *end = tok + strlen(tok);
+            while (end > tok && isspace((unsigned char)end[-1]))
+                end--;
+            char *name = vc_strndup(tok, (size_t)(end - tok));
+            vector_push(params, &name);
+        }
+        free(list);
+        (*p)++;
+    } else {
+        *p = start - 1;
+    }
+}
+
 static int handle_define(char *line, vector_t *macros, vector_t *conds)
 {
-    char *n = line + 7;
-    while (*n == ' ' || *n == '\t')
-        n++;
-    char *name = n;
-    while (*n && !isspace((unsigned char)*n) && *n != '(')
-        n++;
+    char *p = line + 7;
+    while (isspace((unsigned char)*p))
+        p++;
+    char *name = p;
+    while (*p && !isspace((unsigned char)*p) && *p != '(')
+        p++;
     vector_t params;
     vector_init(&params, sizeof(char *));
-    if (*n == '(') {
-        *n++ = '\0';
-        char *pstart = n;
-        while (*n && *n != ')')
-            n++;
-        if (*n == ')') {
-            char *plist = vc_strndup(pstart, (size_t)(n - pstart));
-            char *tok; char *sp;
-            tok = strtok_r(plist, ",", &sp);
-            while (tok) {
-                while (*tok == ' ' || *tok == '\t')
-                    tok++;
-                char *end = tok + strlen(tok);
-                while (end > tok && (end[-1] == ' ' || end[-1] == '\t'))
-                    end--;
-                char *pname = vc_strndup(tok, (size_t)(end - tok));
-                vector_push(&params, &pname);
-                tok = strtok_r(NULL, ",", &sp);
-            }
-            free(plist);
-            n++; /* skip ')' */
-        } else {
-            n = pstart - 1; /* restore '(' position */
-            for (size_t t = 0; t < params.count; t++)
-                free(((char **)params.data)[t]);
-            vector_free(&params);
-            vector_init(&params, sizeof(char *));
-        }
-    } else if (*n) {
-        *n++ = '\0';
+    if (*p == '(')
+        parse_params(&p, &params);
+    else if (*p)
+        *p++ = '\0';
+    while (isspace((unsigned char)*p))
+        p++;
+    char *val = vc_strdup(*p ? p : "");
+    if (!stack_active(conds)) {
+        free(val);
+        for (size_t i = 0; i < params.count; i++)
+            free(((char **)params.data)[i]);
+        vector_free(&params);
+        return 1;
     }
-    while (*n == ' ' || *n == '\t')
-        n++;
-    char *val = *n ? n : "";
-    if (stack_active(conds)) {
-        macro_t m;
-        m.name = vc_strdup(name);
-        vector_init(&m.params, sizeof(char *));
-        for (size_t t = 0; t < params.count; t++) {
-            char *pname = ((char **)params.data)[t];
-            vector_push(&m.params, &pname);
-        }
-        vector_free(&params);
-        m.value = vc_strdup(val);
-        if (!vector_push(macros, &m)) {
-            macro_free(&m);
-            return 0;
-        }
-    } else {
-        for (size_t t = 0; t < params.count; t++)
-            free(((char **)params.data)[t]);
-        vector_free(&params);
+    macro_t m;
+    m.name = vc_strdup(name);
+    vector_init(&m.params, sizeof(char *));
+    for (size_t i = 0; i < params.count; i++) {
+        char *pr = ((char **)params.data)[i];
+        vector_push(&m.params, &pr);
+    }
+    vector_free(&params);
+    m.value = val;
+    if (!vector_push(macros, &m)) {
+        macro_free(&m);
+        return 0;
     }
     return 1;
 }
 
 /* handle conditional directives like #if/#else/#endif */
+static void push_cond(vector_t *conds, int take)
+{
+    cond_state_t st;
+    st.parent_active = stack_active(conds);
+    st.taken = 0;
+    if (st.parent_active && take) {
+        st.taking = 1;
+        st.taken = 1;
+    } else {
+        st.taking = 0;
+    }
+    vector_push(conds, &st);
+}
+
+static void handle_ifdef(char *line, vector_t *macros, vector_t *conds, int neg)
+{
+    char *p = line + (neg ? 7 : 6);
+    while (*p == ' ' || *p == '\t')
+        p++;
+    char *id = p;
+    while (isalnum((unsigned char)*p) || *p == '_')
+        p++;
+    *p = '\0';
+    int cond = is_macro_defined(macros, id);
+    push_cond(conds, neg ? !cond : cond);
+}
+
+static void handle_if(char *line, vector_t *macros, vector_t *conds)
+{
+    push_cond(conds, eval_expr(line + 3, macros));
+}
+
+static void handle_elif(char *line, vector_t *macros, vector_t *conds)
+{
+    if (!conds->count)
+        return;
+    cond_state_t *st = &((cond_state_t *)conds->data)[conds->count - 1];
+    if (!st->parent_active) {
+        st->taking = 0;
+        return;
+    }
+    if (st->taken) {
+        st->taking = 0;
+    } else {
+        st->taking = eval_expr(line + 5, macros);
+        if (st->taking)
+            st->taken = 1;
+    }
+}
+
+static void handle_else(vector_t *conds)
+{
+    if (conds->count) {
+        cond_state_t *st = &((cond_state_t *)conds->data)[conds->count - 1];
+        if (st->parent_active && !st->taken) {
+            st->taking = 1;
+            st->taken = 1;
+        } else {
+            st->taking = 0;
+        }
+    }
+}
+
+static void handle_endif(vector_t *conds)
+{
+    if (conds->count)
+        conds->count--;
+}
+
 static void handle_conditional(char *line, vector_t *macros, vector_t *conds)
 {
-    if (strncmp(line, "#ifdef", 6) == 0 && isspace((unsigned char)line[6])) {
-        char *n = line + 6;
-        while (*n == ' ' || *n == '\t')
-            n++;
-        char *id = n;
-        while (isalnum((unsigned char)*n) || *n == '_')
-            n++;
-        *n = '\0';
-        cond_state_t st;
-        st.parent_active = stack_active(conds);
-        st.taken = 0;
-        if (st.parent_active && is_macro_defined(macros, id)) {
-            st.taking = 1;
-            st.taken = 1;
-        } else {
-            st.taking = 0;
-        }
-        vector_push(conds, &st);
-    } else if (strncmp(line, "#ifndef", 7) == 0 &&
-               isspace((unsigned char)line[7])) {
-        char *n = line + 7;
-        while (*n == ' ' || *n == '\t')
-            n++;
-        char *id = n;
-        while (isalnum((unsigned char)*n) || *n == '_')
-            n++;
-        *n = '\0';
-        cond_state_t st;
-        st.parent_active = stack_active(conds);
-        st.taken = 0;
-        if (st.parent_active && !is_macro_defined(macros, id)) {
-            st.taking = 1;
-            st.taken = 1;
-        } else {
-            st.taking = 0;
-        }
-        vector_push(conds, &st);
-    } else if (strncmp(line, "#if", 3) == 0 && isspace((unsigned char)line[3])) {
-        char *expr = line + 3;
-        cond_state_t st;
-        st.parent_active = stack_active(conds);
-        st.taken = 0;
-        if (st.parent_active && eval_expr(expr, macros)) {
-            st.taking = 1;
-            st.taken = 1;
-        } else {
-            st.taking = 0;
-        }
-        vector_push(conds, &st);
-    } else if (strncmp(line, "#elif", 5) == 0 &&
-               isspace((unsigned char)line[5])) {
-        if (conds->count) {
-            cond_state_t *st =
-                &((cond_state_t *)conds->data)[conds->count - 1];
-            if (st->parent_active) {
-                if (st->taken) {
-                    st->taking = 0;
-                } else {
-                    char *expr = line + 5;
-                    st->taking = eval_expr(expr, macros);
-                    if (st->taking)
-                        st->taken = 1;
-                }
-            } else {
-                st->taking = 0;
-            }
-        }
-    } else if (strncmp(line, "#else", 5) == 0) {
-        if (conds->count) {
-            cond_state_t *st =
-                &((cond_state_t *)conds->data)[conds->count - 1];
-            if (st->parent_active && !st->taken) {
-                st->taking = 1;
-                st->taken = 1;
-            } else {
-                st->taking = 0;
-            }
-        }
-    } else if (strncmp(line, "#endif", 6) == 0) {
-        if (conds->count)
-            conds->count--;
-    }
+    if (strncmp(line, "#ifdef", 6) == 0 && isspace((unsigned char)line[6]))
+        handle_ifdef(line, macros, conds, 0);
+    else if (strncmp(line, "#ifndef", 7) == 0 && isspace((unsigned char)line[7]))
+        handle_ifdef(line, macros, conds, 1);
+    else if (strncmp(line, "#if", 3) == 0 && isspace((unsigned char)line[3]))
+        handle_if(line, macros, conds);
+    else if (strncmp(line, "#elif", 5) == 0 && isspace((unsigned char)line[5]))
+        handle_elif(line, macros, conds);
+    else if (strncmp(line, "#else", 5) == 0)
+        handle_else(conds);
+    else if (strncmp(line, "#endif", 6) == 0)
+        handle_endif(conds);
 }
 
 /* handle a #pragma directive (currently passed through) */
@@ -277,6 +274,60 @@ static void handle_pragma(char *line, vector_t *conds, strbuf_t *out)
         strbuf_append(out, line);
         strbuf_append(out, "\n");
     }
+}
+
+static void handle_line_directive(char *line, vector_t *conds, strbuf_t *out)
+{
+    char *p = line + 5;
+    while (*p == ' ' || *p == '\t')
+        p++;
+    char *start = p;
+    while (isdigit((unsigned char)*p))
+        p++;
+    int lineno = atoi(start);
+    while (*p == ' ' || *p == '\t')
+        p++;
+    char *fname = NULL;
+    if (*p == '"') {
+        char *fstart = ++p;
+        while (*p && *p != '"')
+            p++;
+        if (*p == '"')
+            fname = vc_strndup(fstart, (size_t)(p - fstart));
+    }
+    if (stack_active(conds)) {
+        strbuf_appendf(out, "# %d", lineno);
+        if (fname)
+            strbuf_appendf(out, " \"%s\"", fname);
+        strbuf_append(out, "\n");
+    }
+    free(fname);
+}
+
+static void handle_undef(char *line, vector_t *macros, vector_t *conds)
+{
+    char *p = line + 6;
+    while (*p == ' ' || *p == '\t')
+        p++;
+    char *id = p;
+    while (isalnum((unsigned char)*p) || *p == '_')
+        p++;
+    *p = '\0';
+    if (stack_active(conds))
+        remove_macro(macros, id);
+}
+
+static void handle_plain_line(char *line, vector_t *macros, vector_t *conds,
+                              strbuf_t *out)
+{
+    if (!stack_active(conds))
+        return;
+    strbuf_t tmp;
+    strbuf_init(&tmp);
+    expand_line(line, macros, &tmp);
+    strbuf_append(&tmp, "\n");
+    strbuf_append(out, tmp.data);
+    strbuf_free(&tmp);
 }
 
 static int process_file(const char *path, vector_t *macros,
@@ -307,31 +358,7 @@ static int process_file(const char *path, vector_t *macros,
             }
         } else if (strncmp(line, "#line", 5) == 0 &&
                    isspace((unsigned char)line[5])) {
-            char *p = line + 5;
-            while (*p == ' ' || *p == '\t')
-                p++;
-            char *start = p;
-            while (isdigit((unsigned char)*p))
-                p++;
-            int lineno = atoi(start);
-            while (*p == ' ' || *p == '\t')
-                p++;
-            char *fname = NULL;
-            if (*p == '"') {
-                p++;
-                char *fstart = p;
-                while (*p && *p != '"')
-                    p++;
-                if (*p == '"')
-                    fname = vc_strndup(fstart, (size_t)(p - fstart));
-            }
-            if (stack_active(conds)) {
-                strbuf_appendf(out, "# %d", lineno);
-                if (fname)
-                    strbuf_appendf(out, " \"%s\"", fname);
-                strbuf_append(out, "\n");
-            }
-            free(fname);
+            handle_line_directive(line, conds, out);
         } else if (strncmp(line, "#define", 7) == 0 &&
                    (line[7] == ' ' || line[7] == '\t')) {
             if (!handle_define(line, macros, conds)) {
@@ -341,15 +368,7 @@ static int process_file(const char *path, vector_t *macros,
             }
         } else if (strncmp(line, "#undef", 6) == 0 &&
                    isspace((unsigned char)line[6])) {
-            char *n = line + 6;
-            while (*n == ' ' || *n == '\t')
-                n++;
-            char *id = n;
-            while (isalnum((unsigned char)*n) || *n == '_')
-                n++;
-            *n = '\0';
-            if (stack_active(conds))
-                remove_macro(macros, id);
+            handle_undef(line, macros, conds);
         } else if (strncmp(line, "#pragma", 7) == 0 &&
                    isspace((unsigned char)line[7])) {
             handle_pragma(line, conds, out);
@@ -362,14 +381,7 @@ static int process_file(const char *path, vector_t *macros,
                     strncmp(line, "#endif", 6) == 0)) {
             handle_conditional(line, macros, conds);
         } else {
-            if (stack_active(conds)) {
-                strbuf_t tmp;
-                strbuf_init(&tmp);
-                expand_line(line, macros, &tmp);
-                strbuf_append(&tmp, "\n");
-                strbuf_append(out, tmp.data);
-                strbuf_free(&tmp);
-            }
+            handle_plain_line(line, macros, conds, out);
         }
         line = strtok_r(NULL, "\n", &saveptr);
     }
