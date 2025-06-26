@@ -12,6 +12,8 @@
 #include <stdlib.h>
 #include "parser.h"
 #include "vector.h"
+#include "ast_stmt.h"
+#include "ast_expr.h"
 
 /* Forward declaration from parser_decl.c */
 stmt_t *parser_parse_var_decl(parser_t *p);

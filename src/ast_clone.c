@@ -1,5 +1,6 @@
 #include <stdlib.h>
 #include "ast_clone.h"
+#include "ast_expr.h"
 #include "util.h"
 
 expr_t *clone_expr(const expr_t *expr)

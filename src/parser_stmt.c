@@ -15,6 +15,8 @@
 #include "vector.h"
 #include "util.h"
 #include "parser_types.h"
+#include "ast_stmt.h"
+#include "ast_expr.h"
 
 /* Forward declarations for control flow helpers */
 stmt_t *parser_parse_if_stmt(parser_t *p);

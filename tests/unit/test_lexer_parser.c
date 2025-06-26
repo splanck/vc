@@ -3,6 +3,8 @@
 #include "token.h"
 #include "parser.h"
 #include "ast.h"
+#include "ast_expr.h"
+#include "ast_stmt.h"
 
 static int failures = 0;
 #define ASSERT(cond) do { \
