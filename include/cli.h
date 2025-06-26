@@ -11,6 +11,11 @@
 #include "opt.h"
 #include "vector.h"
 
+typedef enum {
+    STD_C99 = 0,
+    STD_GNU99
+} c_std_t;
+
 /* Command line options parsed from argv */
 typedef struct {
     char *output;       /* output file path */
@@ -21,6 +26,7 @@ typedef struct {
     int dump_asm;       /* dump assembly to stdout */
     int dump_ir;        /* dump IR to stdout */
     int preprocess;     /* print preprocessed source */
+    c_std_t std;        /* language standard */
     vector_t include_dirs; /* additional include directories */
     const char *source; /* input source file */
 } cli_options_t;

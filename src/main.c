@@ -233,6 +233,7 @@ int main(int argc, char **argv)
     char *output = cli.output;
     opt_config_t opt_cfg = cli.opt_cfg;
     int use_x86_64 = cli.use_x86_64;
+    c_std_t std = cli.std;
     int dump_asm = cli.dump_asm;
     int dump_ir = cli.dump_ir;
     int link = cli.link;

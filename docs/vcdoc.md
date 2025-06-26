@@ -687,6 +687,7 @@ The compiler supports the following options:
 - `--link` – build an executable by assembling and linking with `cc`.
 - `--dump-asm` – print the generated assembly to stdout instead of creating a file.
 - `--dump-ir` – print the IR to stdout before code generation.
+- `--std=<c99|gnu99>` – select the language standard (default is `c99`).
 - `-E`, `--preprocess` – print the preprocessed source to stdout and exit.
 - `-I`, `--include <dir>` – add directory to the `#include` search path.
 - `-O<N>` – set optimization level (0 disables all passes).
