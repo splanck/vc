@@ -102,6 +102,14 @@ typedef struct union_member union_member_t;
 typedef struct struct_member struct_member_t;
 typedef struct func func_t;
 
+typedef enum { INIT_SIMPLE, INIT_FIELD, INIT_INDEX } init_kind_t;
+typedef struct init_entry {
+    init_kind_t kind;
+    char *field;      /* for .name */
+    expr_t *index;    /* for [expr] */
+    expr_t *value;
+} init_entry_t;
+
 struct expr {
     expr_kind_t kind;
     size_t line;
@@ -220,7 +228,7 @@ struct stmt {
             /* optional initializer expression */
             expr_t *init;
             /* optional initializer list for arrays */
-            expr_t **init_list;
+            init_entry_t *init_list;
             size_t init_count;
             union_member_t *members;
             size_t member_count;
@@ -359,7 +367,7 @@ stmt_t *ast_make_return(expr_t *expr, size_t line, size_t column);
 stmt_t *ast_make_var_decl(const char *name, type_kind_t type, size_t array_size,
                           expr_t *size_expr, size_t elem_size, int is_static,
                           int is_extern, int is_const, int is_volatile, int is_restrict,
-                          expr_t *init, expr_t **init_list, size_t init_count,
+                          expr_t *init, init_entry_t *init_list, size_t init_count,
                           const char *tag, union_member_t *members,
                           size_t member_count, size_t line, size_t column);
 /* Create an if/else statement. \p else_branch may be NULL. */

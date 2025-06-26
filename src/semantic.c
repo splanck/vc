@@ -1320,10 +1320,11 @@ int check_stmt(stmt_t *stmt, symtable_t *vars, symtable_t *funcs,
             long long *vals = calloc(stmt->var_decl.array_size, sizeof(long long));
             if (!vals) return 0;
             for (size_t i = 0; i < stmt->var_decl.init_count; i++) {
-                if (!eval_const_expr(stmt->var_decl.init_list[i], vars, &vals[i])) {
+                expr_t *e = stmt->var_decl.init_list[i].value;
+                if (!eval_const_expr(e, vars, &vals[i])) {
                     free(vals);
-                    error_set(stmt->var_decl.init_list[i]->line,
-                              stmt->var_decl.init_list[i]->column);
+                    error_set(e->line,
+                              e->column);
                     return 0;
                 }
             }
@@ -1547,10 +1548,11 @@ int check_global(stmt_t *decl, symtable_t *globals, ir_builder_t *ir)
             return 0;
         }
         for (size_t i = 0; i < init_count; i++) {
-            if (!eval_const_expr(decl->var_decl.init_list[i], globals, &vals[i])) {
+            expr_t *e = decl->var_decl.init_list[i].value;
+            if (!eval_const_expr(e, globals, &vals[i])) {
                 free(vals);
-                error_set(decl->var_decl.init_list[i]->line,
-                          decl->var_decl.init_list[i]->column);
+                error_set(e->line,
+                          e->column);
                 return 0;
             }
         }

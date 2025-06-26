@@ -297,7 +297,7 @@ stmt_t *ast_make_return(expr_t *expr, size_t line, size_t column)
 stmt_t *ast_make_var_decl(const char *name, type_kind_t type, size_t array_size,
                           expr_t *size_expr, size_t elem_size, int is_static, int is_extern,
                           int is_const, int is_volatile, int is_restrict,
-                          expr_t *init, expr_t **init_list, size_t init_count,
+                          expr_t *init, init_entry_t *init_list, size_t init_count,
                           const char *tag, union_member_t *members,
                           size_t member_count, size_t line, size_t column)
 {
@@ -709,8 +709,11 @@ void ast_free_stmt(stmt_t *stmt)
         free(stmt->var_decl.name);
         ast_free_expr(stmt->var_decl.size_expr);
         ast_free_expr(stmt->var_decl.init);
-        for (size_t i = 0; i < stmt->var_decl.init_count; i++)
-            ast_free_expr(stmt->var_decl.init_list[i]);
+        for (size_t i = 0; i < stmt->var_decl.init_count; i++) {
+            ast_free_expr(stmt->var_decl.init_list[i].index);
+            ast_free_expr(stmt->var_decl.init_list[i].value);
+            free(stmt->var_decl.init_list[i].field);
+        }
         free(stmt->var_decl.init_list);
         free(stmt->var_decl.tag);
         for (size_t i = 0; i < stmt->var_decl.member_count; i++)
