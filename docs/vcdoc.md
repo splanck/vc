@@ -280,7 +280,7 @@ RETURN v2
 - Global variables
 - `break` and `continue` statements
 - Labels and `goto`
-- `union` objects and member assignments
+- Complete `struct` and `union` objects with member assignments
 - Object-like and multi-parameter `#define` macros with recursive expansion
 - Conditional preprocessing directives (`#if`, `#ifdef`, `#ifndef`, `#elif`, `#else`, `#endif`)
 - 64-bit integer literals and arithmetic when using `long long`
