@@ -29,6 +29,9 @@ static expr_t *parse_bitand(parser_t *p);
 static expr_t *parse_bitxor(parser_t *p);
 static expr_t *parse_bitor(parser_t *p);
 static expr_t *parse_primary(parser_t *p);
+static expr_t *parse_prefix_expr(parser_t *p);
+static expr_t *parse_postfix_expr(parser_t *p);
+static expr_t *parse_base_term(parser_t *p);
 static expr_t *parse_literal(parser_t *p);
 static expr_t *parse_identifier_expr(parser_t *p);
 static expr_t *parse_call_or_postfix(parser_t *p, expr_t *base);
@@ -142,65 +145,8 @@ static expr_t *parse_call_or_postfix(parser_t *p, expr_t *base)
  * calls and array indexing.  Prefix unary operators are also handled
  * here.  The returned expr_t represents the parsed sub-expression.
  */
-static expr_t *parse_primary(parser_t *p)
+static expr_t *parse_base_term(parser_t *p)
 {
-    token_t *tok = peek(p);
-    if (!tok)
-        return NULL;
-
-    if (match(p, TOK_INC)) {
-        token_t *op_tok = &p->tokens[p->pos - 1];
-        expr_t *op = parse_primary(p);
-        if (!op)
-            return NULL;
-        return ast_make_unary(UNOP_PREINC, op, op_tok->line, op_tok->column);
-    } else if (match(p, TOK_DEC)) {
-        token_t *op_tok = &p->tokens[p->pos - 1];
-        expr_t *op = parse_primary(p);
-        if (!op)
-            return NULL;
-        return ast_make_unary(UNOP_PREDEC, op, op_tok->line, op_tok->column);
-    } else if (match(p, TOK_STAR)) {
-        token_t *op_tok = &p->tokens[p->pos - 1];
-        expr_t *op = parse_primary(p);
-        if (!op)
-            return NULL;
-        return ast_make_unary(UNOP_DEREF, op, op_tok->line, op_tok->column);
-    } else if (match(p, TOK_AMP)) {
-        token_t *op_tok = &p->tokens[p->pos - 1];
-        expr_t *op = parse_primary(p);
-        if (!op)
-            return NULL;
-        return ast_make_unary(UNOP_ADDR, op, op_tok->line, op_tok->column);
-    } else if (match(p, TOK_MINUS)) {
-        token_t *op_tok = &p->tokens[p->pos - 1];
-        expr_t *op = parse_primary(p);
-        if (!op)
-            return NULL;
-        return ast_make_unary(UNOP_NEG, op, op_tok->line, op_tok->column);
-    } else if (match(p, TOK_NOT)) {
-        token_t *op_tok = &p->tokens[p->pos - 1];
-        expr_t *op = parse_primary(p);
-        if (!op)
-            return NULL;
-        return ast_make_unary(UNOP_NOT, op, op_tok->line, op_tok->column);
-    } else if (match(p, TOK_KW_SIZEOF)) {
-        token_t *kw = &p->tokens[p->pos - 1];
-        if (!match(p, TOK_LPAREN))
-            return NULL;
-        size_t save = p->pos;
-        type_kind_t t; size_t sz; size_t esz;
-        if (parse_type(p, &t, &sz, &esz) && match(p, TOK_RPAREN))
-            return ast_make_sizeof_type(t, sz, esz, kw->line, kw->column);
-        p->pos = save;
-        expr_t *e = parse_expression(p);
-        if (!e || !match(p, TOK_RPAREN)) {
-            ast_free_expr(e);
-            return NULL;
-        }
-        return ast_make_sizeof_expr(e, kw->line, kw->column);
-    }
-
     expr_t *base = parse_literal(p);
     if (!base)
         base = parse_identifier_expr(p);
@@ -226,9 +172,82 @@ static expr_t *parse_primary(parser_t *p)
             base = expr;
         }
     }
+    return base;
+}
+
+static expr_t *parse_postfix_expr(parser_t *p)
+{
+    expr_t *base = parse_base_term(p);
     if (!base)
         return NULL;
     return parse_call_or_postfix(p, base);
+}
+
+static expr_t *parse_prefix_expr(parser_t *p)
+{
+    token_t *tok = peek(p);
+    if (!tok)
+        return NULL;
+
+    if (match(p, TOK_INC)) {
+        token_t *op_tok = &p->tokens[p->pos - 1];
+        expr_t *op = parse_prefix_expr(p);
+        if (!op)
+            return NULL;
+        return ast_make_unary(UNOP_PREINC, op, op_tok->line, op_tok->column);
+    } else if (match(p, TOK_DEC)) {
+        token_t *op_tok = &p->tokens[p->pos - 1];
+        expr_t *op = parse_prefix_expr(p);
+        if (!op)
+            return NULL;
+        return ast_make_unary(UNOP_PREDEC, op, op_tok->line, op_tok->column);
+    } else if (match(p, TOK_STAR)) {
+        token_t *op_tok = &p->tokens[p->pos - 1];
+        expr_t *op = parse_prefix_expr(p);
+        if (!op)
+            return NULL;
+        return ast_make_unary(UNOP_DEREF, op, op_tok->line, op_tok->column);
+    } else if (match(p, TOK_AMP)) {
+        token_t *op_tok = &p->tokens[p->pos - 1];
+        expr_t *op = parse_prefix_expr(p);
+        if (!op)
+            return NULL;
+        return ast_make_unary(UNOP_ADDR, op, op_tok->line, op_tok->column);
+    } else if (match(p, TOK_MINUS)) {
+        token_t *op_tok = &p->tokens[p->pos - 1];
+        expr_t *op = parse_prefix_expr(p);
+        if (!op)
+            return NULL;
+        return ast_make_unary(UNOP_NEG, op, op_tok->line, op_tok->column);
+    } else if (match(p, TOK_NOT)) {
+        token_t *op_tok = &p->tokens[p->pos - 1];
+        expr_t *op = parse_prefix_expr(p);
+        if (!op)
+            return NULL;
+        return ast_make_unary(UNOP_NOT, op, op_tok->line, op_tok->column);
+    } else if (match(p, TOK_KW_SIZEOF)) {
+        token_t *kw = &p->tokens[p->pos - 1];
+        if (!match(p, TOK_LPAREN))
+            return NULL;
+        size_t save = p->pos;
+        type_kind_t t; size_t sz; size_t esz;
+        if (parse_type(p, &t, &sz, &esz) && match(p, TOK_RPAREN))
+            return ast_make_sizeof_type(t, sz, esz, kw->line, kw->column);
+        p->pos = save;
+        expr_t *e = parse_expression(p);
+        if (!e || !match(p, TOK_RPAREN)) {
+            ast_free_expr(e);
+            return NULL;
+        }
+        return ast_make_sizeof_expr(e, kw->line, kw->column);
+    }
+
+    return parse_postfix_expr(p);
+}
+
+static expr_t *parse_primary(parser_t *p)
+{
+    return parse_prefix_expr(p);
 }
 
 /*
