@@ -284,6 +284,7 @@ RETURN v2
 - Object-like and multi-parameter `#define` macros with recursive expansion
 - Conditional preprocessing directives (`#if`, `#ifdef`, `#ifndef`, `#elif`, `#else`, `#endif`)
 - 64-bit integer literals and arithmetic when using `long long`
+- Hexadecimal (`0x`) and octal (leading `0`) integer literals
 
 Examples below show how to compile each feature.
 
@@ -369,6 +370,19 @@ Compile with:
 ```sh
 vc -o ll_const.s ll_const.c
 vc --x86-64 -o ll_const_x86-64.s ll_const.c
+```
+
+### Numeric constants
+
+Integer literals may be written in decimal, hexadecimal or octal form.
+Numbers beginning with `0x` or `0X` are parsed as hexadecimal. Numbers
+starting with `0` but not `0x`/`0X` are treated as octal. All other
+numbers are interpreted as decimal.
+
+```c
+int a = 0x2a;  /* 42 in hex */
+int b = 0755;  /* octal */
+int c = 10;    /* decimal */
 ```
 
 ### Function calls
