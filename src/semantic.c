@@ -1309,38 +1309,112 @@ int check_stmt(stmt_t *stmt, symtable_t *vars, symtable_t *funcs,
                     ir_build_store(ir, sym->ir_name, val);
             }
         } else if (stmt->var_decl.init_list) {
-            if (stmt->var_decl.type != TYPE_ARRAY) {
-                error_set(stmt->line, stmt->column);
-                return 0;
-            }
-            if (stmt->var_decl.array_size < stmt->var_decl.init_count) {
-                error_set(stmt->line, stmt->column);
-                return 0;
-            }
-            long long *vals = calloc(stmt->var_decl.array_size, sizeof(long long));
-            if (!vals) return 0;
-            for (size_t i = 0; i < stmt->var_decl.init_count; i++) {
-                expr_t *e = stmt->var_decl.init_list[i].value;
-                if (!eval_const_expr(e, vars, &vals[i])) {
-                    free(vals);
-                    error_set(e->line,
-                              e->column);
+            if (stmt->var_decl.type == TYPE_ARRAY) {
+                if (stmt->var_decl.array_size < stmt->var_decl.init_count) {
+                    error_set(stmt->line, stmt->column);
                     return 0;
                 }
-            }
-            if (stmt->var_decl.is_static) {
-                ir_build_glob_array(ir, sym->ir_name, vals, stmt->var_decl.array_size, 1);
-            } else {
-                for (size_t i = 0; i < stmt->var_decl.array_size; i++) {
-                    ir_value_t idx = ir_build_const(ir, (int)i);
-                    ir_value_t val = ir_build_const(ir, vals[i]);
-                    if (stmt->var_decl.is_volatile)
-                        ir_build_store_idx_vol(ir, sym->ir_name, idx, val);
-                    else
-                        ir_build_store_idx(ir, sym->ir_name, idx, val);
+                long long *vals = calloc(stmt->var_decl.array_size, sizeof(long long));
+                if (!vals)
+                    return 0;
+                size_t cur = 0;
+                for (size_t i = 0; i < stmt->var_decl.init_count; i++) {
+                    init_entry_t *ent = &stmt->var_decl.init_list[i];
+                    size_t idx = cur;
+                    if (ent->kind == INIT_INDEX) {
+                        long long cidx;
+                        if (!eval_const_expr(ent->index, vars, &cidx) ||
+                            cidx < 0 || (size_t)cidx >= stmt->var_decl.array_size) {
+                            free(vals);
+                            error_set(ent->index->line, ent->index->column);
+                            return 0;
+                        }
+                        idx = (size_t)cidx;
+                        cur = idx;
+                    } else if (ent->kind == INIT_FIELD) {
+                        free(vals);
+                        error_set(stmt->line, stmt->column);
+                        return 0;
+                    }
+                    long long val;
+                    if (!eval_const_expr(ent->value, vars, &val)) {
+                        free(vals);
+                        error_set(ent->value->line, ent->value->column);
+                        return 0;
+                    }
+                    if (idx >= stmt->var_decl.array_size) {
+                        free(vals);
+                        error_set(stmt->line, stmt->column);
+                        return 0;
+                    }
+                    vals[idx] = val;
+                    cur = idx + 1;
                 }
+                if (stmt->var_decl.is_static) {
+                    ir_build_glob_array(ir, sym->ir_name, vals,
+                                       stmt->var_decl.array_size, 1);
+                } else {
+                    for (size_t i = 0; i < stmt->var_decl.array_size; i++) {
+                        ir_value_t idxv = ir_build_const(ir, (int)i);
+                        ir_value_t valv = ir_build_const(ir, vals[i]);
+                        if (stmt->var_decl.is_volatile)
+                            ir_build_store_idx_vol(ir, sym->ir_name, idxv, valv);
+                        else
+                            ir_build_store_idx(ir, sym->ir_name, idxv, valv);
+                    }
+                }
+                free(vals);
+            } else if (stmt->var_decl.type == TYPE_STRUCT) {
+                if (!sym->struct_member_count) {
+                    error_set(stmt->line, stmt->column);
+                    return 0;
+                }
+                ir_value_t base = ir_build_addr(ir, sym->ir_name);
+                size_t cur = 0;
+                for (size_t i = 0; i < stmt->var_decl.init_count; i++) {
+                    init_entry_t *ent = &stmt->var_decl.init_list[i];
+                    size_t off = 0;
+                    size_t mi = cur;
+                    if (ent->kind == INIT_FIELD) {
+                        int found = 0;
+                        for (size_t j = 0; j < sym->struct_member_count; j++) {
+                            if (strcmp(sym->struct_members[j].name, ent->field) == 0) {
+                                off = sym->struct_members[j].offset;
+                                mi = j;
+                                found = 1;
+                                break;
+                            }
+                        }
+                        if (!found) {
+                            error_set(stmt->line, stmt->column);
+                            return 0;
+                        }
+                        cur = mi;
+                    } else if (ent->kind == INIT_SIMPLE) {
+                        if (cur >= sym->struct_member_count) {
+                            error_set(stmt->line, stmt->column);
+                            return 0;
+                        }
+                        off = sym->struct_members[cur].offset;
+                    } else {
+                        error_set(stmt->line, stmt->column);
+                        return 0;
+                    }
+                    long long val;
+                    if (!eval_const_expr(ent->value, vars, &val)) {
+                        error_set(ent->value->line, ent->value->column);
+                        return 0;
+                    }
+                    ir_value_t offv = ir_build_const(ir, (int)off);
+                    ir_value_t addr = ir_build_ptr_add(ir, base, offv, 1);
+                    ir_value_t valv = ir_build_const(ir, val);
+                    ir_build_store_ptr(ir, addr, valv);
+                    cur = mi + 1;
+                }
+            } else {
+                error_set(stmt->line, stmt->column);
+                return 0;
             }
-            free(vals);
         }
         return 1;
     }
@@ -1547,14 +1621,38 @@ int check_global(stmt_t *decl, symtable_t *globals, ir_builder_t *ir)
             error_set(decl->line, decl->column);
             return 0;
         }
+        size_t cur = 0;
         for (size_t i = 0; i < init_count; i++) {
-            expr_t *e = decl->var_decl.init_list[i].value;
-            if (!eval_const_expr(e, globals, &vals[i])) {
+            init_entry_t *ent = &decl->var_decl.init_list[i];
+            size_t idx = cur;
+            if (ent->kind == INIT_INDEX) {
+                long long cidx;
+                if (!eval_const_expr(ent->index, globals, &cidx) ||
+                    cidx < 0 || (size_t)cidx >= count) {
+                    free(vals);
+                    error_set(ent->index->line, ent->index->column);
+                    return 0;
+                }
+                idx = (size_t)cidx;
+                cur = idx;
+            } else if (ent->kind == INIT_FIELD) {
                 free(vals);
-                error_set(e->line,
-                          e->column);
+                error_set(decl->line, decl->column);
                 return 0;
             }
+            long long val;
+            if (!eval_const_expr(ent->value, globals, &val)) {
+                free(vals);
+                error_set(ent->value->line, ent->value->column);
+                return 0;
+            }
+            if (idx >= count) {
+                free(vals);
+                error_set(decl->line, decl->column);
+                return 0;
+            }
+            vals[idx] = val;
+            cur = idx + 1;
         }
         ir_build_glob_array(ir, decl->var_decl.name, vals, count,
                            decl->var_decl.is_static);
