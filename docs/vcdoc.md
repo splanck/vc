@@ -875,6 +875,11 @@ Macro expansion is purely textual; macros inside strings or comments are not
 recognized. Conditional directives are honored and support the `defined`
 operator along with numeric constants and the `!`, `&&` and `||` operators.
 
+The directive `#line <num> ["file"]` may be used to reset the reported line
+number (and optionally source file) for subsequent tokens. The preprocessor
+emits GCC-style markers such as `# 42 "path.c"` which are consumed by the
+lexer and do not appear in the parsed token stream.
+
 ## Compiling a Simple Program
 
 Example source files can be found under `tests/fixtures`. The simplest is

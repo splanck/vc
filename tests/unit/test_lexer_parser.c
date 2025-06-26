@@ -383,6 +383,15 @@ static void test_parser_block(void)
     lexer_free_tokens(toks, count);
 }
 
+static void test_line_directive(void)
+{
+    const char *src = "# 5 \"file.c\"\nint x;";
+    size_t count = 0;
+    token_t *toks = lexer_tokenize(src, &count);
+    ASSERT(toks[0].type == TOK_KW_INT && toks[0].line == 5 && toks[0].column == 1);
+    lexer_free_tokens(toks, count);
+}
+
 int main(void)
 {
     test_lexer_basic();
@@ -410,6 +419,7 @@ int main(void)
     test_parser_sizeof();
     test_parser_func();
     test_parser_block();
+    test_line_directive();
     if (failures == 0) {
         printf("All unit tests passed\n");
     } else {

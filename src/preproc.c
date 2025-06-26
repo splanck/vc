@@ -392,6 +392,32 @@ static int process_file(const char *path, vector_t *macros,
                 }
                 vector_free(&subconds);
             }
+        } else if (strncmp(line, "#line", 5) == 0 && isspace((unsigned char)line[5])) {
+            char *p = line + 5;
+            while (*p == ' ' || *p == '\t')
+                p++;
+            char *start = p;
+            while (isdigit((unsigned char)*p))
+                p++;
+            int lineno = atoi(start);
+            while (*p == ' ' || *p == '\t')
+                p++;
+            char *fname = NULL;
+            if (*p == '"') {
+                p++;
+                char *fstart = p;
+                while (*p && *p != '"')
+                    p++;
+                if (*p == '"')
+                    fname = vc_strndup(fstart, (size_t)(p - fstart));
+            }
+            if (stack_active(conds)) {
+                strbuf_appendf(out, "# %d", lineno);
+                if (fname)
+                    strbuf_appendf(out, " \"%s\"", fname);
+                strbuf_append(out, "\n");
+            }
+            free(fname);
         } else if (strncmp(line, "#define", 7) == 0 && (line[7] == ' ' || line[7] == '\t')) {
             char *n = line + 7;
             while (*n == ' ' || *n == '\t')
