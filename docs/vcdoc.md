@@ -560,6 +560,20 @@ Compile with:
 vc -o vla.s vla.c
 ```
 
+Designated initializers can specify the index for each element:
+
+```c
+/* array_designate.c */
+int main() {
+    int nums[5] = { [2] = 4, [4] = 9 };
+    return nums[2] + nums[4];
+}
+```
+Compile with:
+```sh
+vc -o array_designate.s array_designate.c
+```
+
 ### sizeof
 `sizeof` returns the number of bytes for a type or expression without
 evaluating the expression.
@@ -721,6 +735,20 @@ int main() {
 Compile with:
 ```sh
 vc -o struct_ptr.s struct_ptr.c
+```
+
+### Struct designators
+```c
+/* struct_designate.c */
+struct Point { int x; int y; };
+int main() {
+    struct Point p = { .y = 5, .x = 1 };
+    return p.y - p.x;
+}
+```
+Compile with:
+```sh
+vc -o struct_designate.s struct_designate.c
 ```
 ### Union declarations
 ```c
