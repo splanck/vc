@@ -56,6 +56,20 @@ static int eval_int_op(ir_op_t op, int a, int b)
     }
 }
 
+/* Evaluate a binary floating point op for constant folding */
+static int eval_float_op(ir_op_t op, int a, int b)
+{
+    union { float f; int i; } fa = {.i = a}, fb = {.i = b}, res;
+    switch (op) {
+    case IR_FADD: res.f = fa.f + fb.f; break;
+    case IR_FSUB: res.f = fa.f - fb.f; break;
+    case IR_FMUL: res.f = fa.f * fb.f; break;
+    case IR_FDIV: res.f = fb.f != 0.0f ? fa.f / fb.f : 0.0f; break;
+    default: res.i = 0; break;
+    }
+    return res.i;
+}
+
 /* Propagate constants from stores to subsequent loads */
 static void propagate_load_consts(ir_builder_t *ir)
 {
@@ -148,6 +162,7 @@ static void propagate_load_consts(ir_builder_t *ir)
         case IR_LABEL:
         case IR_ADD: case IR_SUB: case IR_MUL: case IR_DIV: case IR_MOD:
         case IR_SHL: case IR_SHR: case IR_AND: case IR_OR: case IR_XOR:
+        case IR_FADD: case IR_FSUB: case IR_FMUL: case IR_FDIV:
         case IR_PTR_ADD:
         case IR_PTR_DIFF:
         case IR_CMPEQ: case IR_CMPNE: case IR_CMPLT:
@@ -202,6 +217,23 @@ static void fold_constants(ir_builder_t *ir)
                 int a = values[ins->src1];
                 int b = values[ins->src2];
                 int result = eval_int_op(ins->op, a, b);
+                ins->op = IR_CONST;
+                ins->imm = result;
+                ins->src1 = ins->src2 = 0;
+                if (ins->dest >= 0 && ins->dest < max_id) {
+                    is_const[ins->dest] = 1;
+                    values[ins->dest] = result;
+                }
+            } else if (ins->dest >= 0 && ins->dest < max_id) {
+                is_const[ins->dest] = 0;
+            }
+            break;
+        case IR_FADD: case IR_FSUB: case IR_FMUL: case IR_FDIV:
+            if (ins->src1 < max_id && ins->src2 < max_id &&
+                is_const[ins->src1] && is_const[ins->src2]) {
+                int a = values[ins->src1];
+                int b = values[ins->src2];
+                int result = eval_float_op(ins->op, a, b);
                 ins->op = IR_CONST;
                 ins->imm = result;
                 ins->src1 = ins->src2 = 0;
