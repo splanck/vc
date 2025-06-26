@@ -21,6 +21,7 @@ static void print_usage(const char *prog)
     printf("  -o, --output <file>  Output path\n");
     printf("  -O<N>               Optimization level (0-3)\n");
     printf("  -I, --include <dir> Add directory to include search path\n");
+    printf("      --std=<std>      Language standard (c99 or gnu99)\n");
     printf("  -h, --help           Display this help and exit\n");
     printf("  -v, --version        Print version information and exit\n");
     printf("  -c, --compile        Assemble to an object file\n");
@@ -50,6 +51,7 @@ int cli_parse_args(int argc, char **argv, cli_options_t *opts)
         {"dump-ir", no_argument,      0, 6},
         {"preprocess", no_argument,  0, 'E'},
         {"link", no_argument,        0, 7},
+        {"std", required_argument,   0, 8},
         {0, 0, 0, 0}
     };
 
@@ -64,6 +66,7 @@ int cli_parse_args(int argc, char **argv, cli_options_t *opts)
     opts->dump_asm = 0;
     opts->dump_ir = 0;
     opts->preprocess = 0;
+    opts->std = STD_C99;
     vector_init(&opts->include_dirs, sizeof(char *));
     opts->source = NULL;
 
@@ -123,6 +126,16 @@ int cli_parse_args(int argc, char **argv, cli_options_t *opts)
             break;
         case 7:
             opts->link = 1;
+            break;
+        case 8:
+            if (strcmp(optarg, "c99") == 0)
+                opts->std = STD_C99;
+            else if (strcmp(optarg, "gnu99") == 0)
+                opts->std = STD_GNU99;
+            else {
+                fprintf(stderr, "Unknown standard '%s'\n", optarg);
+                return 1;
+            }
             break;
         default:
             print_usage(argv[0]);

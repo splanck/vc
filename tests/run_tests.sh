@@ -167,6 +167,26 @@ if ! od -An -t x1 "$exe_out" | head -n 1 | grep -q "7f 45 4c 46"; then
 fi
 rm -f "$exe_out"
 
+# test --std option
+std_out=$(mktemp)
+"$BINARY" --std=gnu99 -o "$std_out" "$DIR/fixtures/simple_add.c"
+if ! diff -u "$DIR/fixtures/simple_add.s" "$std_out" > /dev/null; then
+    echo "Test std_gnu99 failed"
+    fail=1
+fi
+rm -f "$std_out"
+
+err=$(mktemp)
+set +e
+"$BINARY" --std=c23 -o "$std_out" "$DIR/fixtures/simple_add.c" 2> "$err"
+ret=$?
+set -e
+if [ $ret -eq 0 ] || ! grep -q "Unknown standard" "$err"; then
+    echo "Test invalid_std failed"
+    fail=1
+fi
+rm -f "$std_out" "$err"
+
 if [ $fail -eq 0 ]; then
     echo "All tests passed"
 else
