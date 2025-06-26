@@ -87,72 +87,61 @@ int check_func(func_t *func, symtable_t *funcs, symtable_t *globals,
     return ok;
 }
 
-/*
- * Validate a global variable declaration and emit the IR needed to
- * initialize it.  Only constant expressions are permitted for globals.
- */
-int check_global(stmt_t *decl, symtable_t *globals, ir_builder_t *ir)
+static int check_enum_decl_global(stmt_t *decl, symtable_t *globals)
 {
-    if (!decl)
-        return 0;
-    if (decl->kind == STMT_ENUM_DECL) {
-        int next = 0;
-        for (size_t i = 0; i < decl->enum_decl.count; i++) {
-            enumerator_t *e = &decl->enum_decl.items[i];
-            long long val = next;
-            if (e->value) {
-                if (!eval_const_expr(e->value, globals, &val)) {
-                    error_set(e->value->line, e->value->column);
-                    return 0;
-                }
-            }
-            if (!symtable_add_enum_global(globals, e->name, (int)val)) {
-                error_set(decl->line, decl->column);
+    int next = 0;
+    for (size_t i = 0; i < decl->enum_decl.count; i++) {
+        enumerator_t *e = &decl->enum_decl.items[i];
+        long long val = next;
+        if (e->value) {
+            if (!eval_const_expr(e->value, globals, &val)) {
+                error_set(e->value->line, e->value->column);
                 return 0;
             }
-            next = (int)val + 1;
         }
-        if (decl->enum_decl.tag && decl->enum_decl.tag[0])
-            symtable_add_enum_tag_global(globals, decl->enum_decl.tag);
-        return 1;
-    }
-    if (decl->kind == STMT_STRUCT_DECL) {
-        size_t total = layout_struct_members(decl->struct_decl.members,
-                                             decl->struct_decl.count);
-        if (!symtable_add_struct_global(globals, decl->struct_decl.tag,
-                                        decl->struct_decl.members,
-                                        decl->struct_decl.count)) {
+        if (!symtable_add_enum_global(globals, e->name, (int)val)) {
             error_set(decl->line, decl->column);
             return 0;
         }
-        symbol_t *stype =
-            symtable_lookup_struct(globals, decl->struct_decl.tag);
-        if (stype)
-            stype->struct_total_size = total;
-        return 1;
+        next = (int)val + 1;
     }
-    if (decl->kind == STMT_UNION_DECL) {
-        layout_union_members(decl->union_decl.members, decl->union_decl.count);
-        if (!symtable_add_union_global(globals, decl->union_decl.tag,
-                                       decl->union_decl.members,
-                                       decl->union_decl.count)) {
-            error_set(decl->line, decl->column);
-            return 0;
-        }
-        return 1;
-    }
-    if (decl->kind == STMT_TYPEDEF) {
-        if (!symtable_add_typedef_global(globals, decl->typedef_decl.name,
-                                         decl->typedef_decl.type,
-                                         decl->typedef_decl.array_size,
-                                         decl->typedef_decl.elem_size)) {
-            error_set(decl->line, decl->column);
-            return 0;
-        }
-        return 1;
-    }
-    if (decl->kind != STMT_VAR_DECL)
+    if (decl->enum_decl.tag && decl->enum_decl.tag[0])
+        symtable_add_enum_tag_global(globals, decl->enum_decl.tag);
+    return 1;
+}
+
+static int check_struct_decl_global(stmt_t *decl, symtable_t *globals)
+{
+    size_t total = layout_struct_members(decl->struct_decl.members,
+                                         decl->struct_decl.count);
+    if (!symtable_add_struct_global(globals, decl->struct_decl.tag,
+                                    decl->struct_decl.members,
+                                    decl->struct_decl.count)) {
+        error_set(decl->line, decl->column);
         return 0;
+    }
+    symbol_t *stype =
+        symtable_lookup_struct(globals, decl->struct_decl.tag);
+    if (stype)
+        stype->struct_total_size = total;
+    return 1;
+}
+
+static int check_union_decl_global(stmt_t *decl, symtable_t *globals)
+{
+    layout_union_members(decl->union_decl.members, decl->union_decl.count);
+    if (!symtable_add_union_global(globals, decl->union_decl.tag,
+                                   decl->union_decl.members,
+                                   decl->union_decl.count)) {
+        error_set(decl->line, decl->column);
+        return 0;
+    }
+    return 1;
+}
+
+static int check_var_decl_global(stmt_t *decl, symtable_t *globals,
+                                 ir_builder_t *ir)
+{
     if (decl->var_decl.type == TYPE_UNION) {
         size_t max = layout_union_members(decl->var_decl.members,
                                           decl->var_decl.member_count);
@@ -272,7 +261,8 @@ int check_global(stmt_t *decl, symtable_t *globals, ir_builder_t *ir)
         long long value = 0;
         if (decl->var_decl.init) {
             if (!eval_const_expr(decl->var_decl.init, globals, &value)) {
-                error_set(decl->var_decl.init->line, decl->var_decl.init->column);
+                error_set(decl->var_decl.init->line,
+                          decl->var_decl.init->column);
                 return 0;
             }
         }
@@ -289,5 +279,39 @@ int check_global(stmt_t *decl, symtable_t *globals, ir_builder_t *ir)
                               decl->var_decl.is_static);
     }
     return 1;
+}
+
+/*
+ * Validate a global variable declaration and emit the IR needed to
+ * initialize it.  Only constant expressions are permitted for globals.
+ */
+int check_global(stmt_t *decl, symtable_t *globals, ir_builder_t *ir)
+{
+    if (!decl)
+        return 0;
+
+    switch (decl->kind) {
+    case STMT_ENUM_DECL:
+        return check_enum_decl_global(decl, globals);
+    case STMT_STRUCT_DECL:
+        return check_struct_decl_global(decl, globals);
+    case STMT_UNION_DECL:
+        return check_union_decl_global(decl, globals);
+    case STMT_TYPEDEF:
+        if (!symtable_add_typedef_global(globals, decl->typedef_decl.name,
+                                         decl->typedef_decl.type,
+                                         decl->typedef_decl.array_size,
+                                         decl->typedef_decl.elem_size)) {
+            error_set(decl->line, decl->column);
+            return 0;
+        }
+        return 1;
+    case STMT_VAR_DECL:
+        return check_var_decl_global(decl, globals, ir);
+    default:
+        break;
+    }
+
+    return 0;
 }
 
