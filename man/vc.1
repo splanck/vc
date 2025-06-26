@@ -3,7 +3,7 @@
 vc \- lightweight ANSI C compiler
 .SH SYNOPSIS
 .B vc
-.RI [ options ] " source.c"
+.RI [ options ] " source.c..."
 .SH DESCRIPTION
 .B vc
 is a lightweight ANSI C compiler with experimental C99 support.
@@ -78,7 +78,7 @@ Create an object file:
 .PP
 Build an executable:
 .PP
-.B vc --link -o prog source.c
+.B vc --link -o prog main.c util.c
 .PP
 Print the generated assembly:
 .PP

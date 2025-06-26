@@ -21,6 +21,7 @@
 #include "token.h"
 #include "parser.h"
 #include "vector.h"
+#include <string.h>
 #include "symtable.h"
 #include "semantic.h"
 #include "error.h"
@@ -45,6 +46,13 @@ static int semantic_stage(func_t **func_list, size_t fcount,
 static void optimize_stage(ir_builder_t *ir, const opt_config_t *cfg);
 static int output_stage(ir_builder_t *ir, const char *output,
                         int dump_ir, int dump_asm, int use_x86_64, int compile);
+
+/* Compile one translation unit to the given output path. */
+static int compile_unit(const char *source, const cli_options_t *cli,
+                        const char *output, int compile_obj);
+
+/* Create an object file containing the entry stub for linking. */
+static int create_startup_object(int use_x86_64, char **out_path);
 
 /* Tokenize the preprocessed source file */
 static int tokenize_stage(const char *source, const vector_t *incdirs,
@@ -223,33 +231,12 @@ static int output_stage(ir_builder_t *ir, const char *output,
     }
 }
 
-int main(int argc, char **argv)
+/* Compile a single translation unit */
+static int compile_unit(const char *source, const cli_options_t *cli,
+                        const char *output, int compile_obj)
 {
-    cli_options_t cli;
-    if (cli_parse_args(argc, argv, &cli) != 0)
-        return 1;
-
-    const char *source = cli.source;
-    char *output = cli.output;
-    opt_config_t opt_cfg = cli.opt_cfg;
-    int use_x86_64 = cli.use_x86_64;
-    c_std_t std = cli.std;
-    int dump_asm = cli.dump_asm;
-    int dump_ir = cli.dump_ir;
-    int link = cli.link;
-
-    if (cli.preprocess) {
-        char *text = preproc_run(source, &cli.include_dirs);
-        if (!text) {
-            perror("preproc_run");
-            return 1;
-        }
-        printf("%s", text);
-        free(text);
-        return 0;
-    }
-
     label_init();
+    codegen_set_export(cli->link);
 
     char *src_text = NULL;
     token_t *tokens = NULL;
@@ -258,7 +245,7 @@ int main(int argc, char **argv)
     symtable_t funcs, globals;
     ir_builder_t ir;
 
-    int ok = tokenize_stage(source, &cli.include_dirs, &src_text,
+    int ok = tokenize_stage(source, &cli->include_dirs, &src_text,
                             &tokens, &tok_count);
     if (ok)
         ok = parse_stage(tokens, tok_count, &func_list_v, &glob_list_v, &funcs);
@@ -267,58 +254,10 @@ int main(int argc, char **argv)
                             (stmt_t **)glob_list_v.data, glob_list_v.count,
                             &funcs, &globals, &ir);
     if (ok)
-        optimize_stage(&ir, &opt_cfg);
-    if (ok) {
-        if (link) {
-            char asmname[] = "/tmp/vcXXXXXX";
-            int asmfd = mkstemp(asmname);
-            if (asmfd < 0) {
-                perror("mkstemp");
-                ok = 0;
-            } else {
-                close(asmfd);
-                ok = output_stage(&ir, asmname, dump_ir, dump_asm, use_x86_64, 0);
-                if (ok) {
-                    FILE *stub = fopen(asmname, "a");
-                    if (!stub) {
-                        perror("fopen");
-                        ok = 0;
-                    } else {
-                        if (use_x86_64) {
-                            fputs(".globl _start\n_start:\n    call main\n    mov %rax, %rdi\n    mov $60, %rax\n    syscall\n", stub);
-                        } else {
-                            fputs(".globl _start\n_start:\n    call main\n    mov %eax, %ebx\n    mov $1, %eax\n    int $0x80\n", stub);
-                        }
-                        fclose(stub);
-                        char objtmp[] = "/tmp/vcobjXXXXXX";
-                        int objfd = mkstemp(objtmp);
-                        if (objfd < 0) {
-                            perror("mkstemp");
-                            ok = 0;
-                        } else {
-                            close(objfd);
-                            char cmd[512];
-                            const char *arch_flag = use_x86_64 ? "-m64" : "-m32";
-                            snprintf(cmd, sizeof(cmd), "cc -x assembler %s -c %s -o %s", arch_flag, asmname, objtmp);
-                            int ret = system(cmd);
-                            if (ret == 0) {
-                                snprintf(cmd, sizeof(cmd), "cc %s %s -nostdlib -o %s", arch_flag, objtmp, output);
-                                ret = system(cmd);
-                            }
-                            if (ret != 0) {
-                                fprintf(stderr, "cc failed\n");
-                                ok = 0;
-                            }
-                            unlink(objtmp);
-                        }
-                    }
-                }
-                unlink(asmname);
-            }
-        } else {
-            ok = output_stage(&ir, output, dump_ir, dump_asm, use_x86_64, cli.compile);
-        }
-    }
+        optimize_stage(&ir, &cli->opt_cfg);
+    if (ok)
+        ok = output_stage(&ir, output, cli->dump_ir, cli->dump_asm,
+                          cli->use_x86_64, compile_obj);
 
     for (size_t i = 0; i < func_list_v.count; i++)
         ast_free_func(((func_t **)func_list_v.data)[i]);
@@ -335,17 +274,158 @@ int main(int argc, char **argv)
 
     label_reset();
 
+    return ok;
+}
+
+/* Create object file with program entry point */
+static int create_startup_object(int use_x86_64, char **out_path)
+{
+    char asmname[] = "/tmp/vcstubXXXXXX";
+    int asmfd = mkstemp(asmname);
+    if (asmfd < 0) {
+        perror("mkstemp");
+        return 0;
+    }
+    FILE *stub = fdopen(asmfd, "w");
+    if (!stub) {
+        perror("fdopen");
+        close(asmfd);
+        unlink(asmname);
+        return 0;
+    }
+    if (use_x86_64)
+        fputs(".globl _start\n_start:\n    call main\n    mov %rax, %rdi\n    mov $60, %rax\n    syscall\n", stub);
+    else
+        fputs(".globl _start\n_start:\n    call main\n    mov %eax, %ebx\n    mov $1, %eax\n    int $0x80\n", stub);
+    fclose(stub);
+
+    char objname[] = "/tmp/vcobjXXXXXX";
+    int objfd = mkstemp(objname);
+    if (objfd < 0) {
+        perror("mkstemp");
+        unlink(asmname);
+        return 0;
+    }
+    close(objfd);
+    char cmd[512];
+    const char *arch_flag = use_x86_64 ? "-m64" : "-m32";
+    snprintf(cmd, sizeof(cmd), "cc -x assembler %s -c %s -o %s", arch_flag,
+             asmname, objname);
+    int ret = system(cmd);
+    unlink(asmname);
+    if (ret != 0) {
+        fprintf(stderr, "cc failed\n");
+        unlink(objname);
+        return 0;
+    }
+    *out_path = vc_strdup(objname);
+    return 1;
+}
+
+int main(int argc, char **argv)
+{
+    cli_options_t cli;
+    if (cli_parse_args(argc, argv, &cli) != 0)
+        return 1;
+
+    if (!cli.link && cli.sources.count != 1) {
+        fprintf(stderr, "Error: multiple input files require --link\n");
+        return 1;
+    }
+
+    if (cli.preprocess) {
+        for (size_t i = 0; i < cli.sources.count; i++) {
+            const char *src = ((const char **)cli.sources.data)[i];
+            char *text = preproc_run(src, &cli.include_dirs);
+            if (!text) {
+                perror("preproc_run");
+                return 1;
+            }
+            printf("%s", text);
+            free(text);
+        }
+        return 0;
+    }
+
+    int ok = 1;
+
+    if (cli.link) {
+        vector_t objs;
+        vector_init(&objs, sizeof(char *));
+        for (size_t i = 0; i < cli.sources.count && ok; i++) {
+            const char *src = ((const char **)cli.sources.data)[i];
+            char objname[] = "/tmp/vcobjXXXXXX";
+            int fd = mkstemp(objname);
+            if (fd < 0) {
+                perror("mkstemp");
+                ok = 0;
+                break;
+            }
+            close(fd);
+            ok = compile_unit(src, &cli, objname, 1);
+            if (ok) {
+                char *dup = vc_strdup(objname);
+                if (!vector_push(&objs, &dup)) {
+                    fprintf(stderr, "Out of memory\n");
+                    ok = 0;
+                }
+            }
+            if (!ok)
+                unlink(objname);
+        }
+
+        char *stubobj = NULL;
+        if (ok)
+            ok = create_startup_object(cli.use_x86_64, &stubobj);
+        if (ok) {
+            vector_push(&objs, &stubobj);
+            size_t cmd_len = 64;
+            for (size_t i = 0; i < objs.count; i++)
+                cmd_len += strlen(((char **)objs.data)[i]) + 1;
+            cmd_len += strlen(cli.output) + 1;
+            char *cmd = vc_alloc_or_exit(cmd_len + 32);
+            const char *arch_flag = cli.use_x86_64 ? "-m64" : "-m32";
+            snprintf(cmd, cmd_len + 32, "cc %s", arch_flag);
+            for (size_t i = 0; i < objs.count; i++) {
+                strcat(cmd, " ");
+                strcat(cmd, ((char **)objs.data)[i]);
+            }
+            strcat(cmd, " -nostdlib -o ");
+            strcat(cmd, cli.output);
+            int ret = system(cmd);
+            if (ret != 0) {
+                fprintf(stderr, "cc failed\n");
+                ok = 0;
+            }
+            free(cmd);
+        }
+
+        for (size_t i = 0; i < objs.count; i++) {
+            unlink(((char **)objs.data)[i]);
+            free(((char **)objs.data)[i]);
+        }
+        free(objs.data);
+    } else {
+        const char *src = ((const char **)cli.sources.data)[0];
+        ok = compile_unit(src, &cli, cli.output, cli.compile);
+    }
+
     if (ok) {
-        if (dump_ir)
-            printf("Compiling %s (IR dumped to stdout)\n", source);
-        else if (dump_asm)
-            printf("Compiling %s (assembly dumped to stdout)\n", source);
-        else if (link)
-            printf("Compiling %s -> %s (executable)\n", source, output);
+        if (cli.link)
+            printf("Linking %zu files -> %s (executable)\n", cli.sources.count,
+                   cli.output);
+        else if (cli.dump_ir)
+            printf("Compiling %s (IR dumped to stdout)\n",
+                   ((const char **)cli.sources.data)[0]);
+        else if (cli.dump_asm)
+            printf("Compiling %s (assembly dumped to stdout)\n",
+                   ((const char **)cli.sources.data)[0]);
         else if (cli.compile)
-            printf("Compiling %s -> %s (object)\n", source, output);
+            printf("Compiling %s -> %s (object)\n",
+                   ((const char **)cli.sources.data)[0], cli.output);
         else
-            printf("Compiling %s -> %s\n", source, output);
+            printf("Compiling %s -> %s\n",
+                   ((const char **)cli.sources.data)[0], cli.output);
     }
 
     return ok ? 0 : 1;

@@ -15,6 +15,13 @@
 #include "strbuf.h"
 #include "label.h"
 
+static int export_syms = 0;
+
+void codegen_set_export(int flag)
+{
+    export_syms = flag;
+}
+
 
 static const char *loc_str(char buf[32], regalloc_t *ra, int id, int x64)
 {
@@ -423,6 +430,8 @@ static void emit_branch_instr(strbuf_t *sb, ir_instr_t *ins,
                        loc_str(buf1, ra, ins->dest, x64));
         break;
     case IR_FUNC_BEGIN:
+        if (export_syms)
+            strbuf_appendf(sb, ".globl %s\n", ins->name);
         strbuf_appendf(sb, "%s:\n", ins->name);
         strbuf_appendf(sb, "    push%s %s\n", sfx, bp);
         strbuf_appendf(sb, "    mov%s %s, %s\n", sfx, sp, bp);

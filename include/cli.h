@@ -28,7 +28,7 @@ typedef struct {
     int preprocess;     /* print preprocessed source */
     c_std_t std;        /* language standard */
     vector_t include_dirs; /* additional include directories */
-    const char *source; /* input source file */
+    vector_t sources;      /* input source files */
 } cli_options_t;
 
 /* Parse command line arguments. Returns 0 on success, non-zero on error. */
