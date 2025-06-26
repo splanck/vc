@@ -131,6 +131,19 @@ if [ $ret -eq 0 ] || ! grep -q "Semantic error" "$err"; then
 fi
 rm -f "$out" "$err"
 
+# negative test for const variable without initializer
+err=$(mktemp)
+out=$(mktemp)
+set +e
+"$BINARY" -o "$out" "$DIR/invalid/const_no_init.c" 2> "$err"
+ret=$?
+set -e
+if [ $ret -eq 0 ] || ! grep -q "Semantic error" "$err"; then
+    echo "Test const_no_init failed"
+    fail=1
+fi
+rm -f "$out" "$err"
+
 # test --dump-asm option
 dump_out=$(mktemp)
 "$BINARY" --dump-asm "$DIR/fixtures/simple_add.c" > "$dump_out"

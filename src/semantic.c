@@ -1227,6 +1227,11 @@ int check_stmt(stmt_t *stmt, symtable_t *vars, symtable_t *funcs,
             if (stmt->var_decl.member_count || stmt->var_decl.tag)
                 stmt->var_decl.elem_size = total;
         }
+        if (stmt->var_decl.is_const && !stmt->var_decl.init &&
+            !stmt->var_decl.init_list) {
+            error_set(stmt->line, stmt->column);
+            return 0;
+        }
         if (!symtable_add(vars, stmt->var_decl.name, ir_name,
                           stmt->var_decl.type,
                           stmt->var_decl.array_size,
