@@ -5,7 +5,7 @@ BIN = vc
 # The resulting binary accepts -c/--compile to assemble objects using cc
 # Core compiler sources
 
-CORE_SRC = src/main.c src/cli.c src/lexer.c src/ast.c src/parser.c src/symtable.c src/parser_expr.c \
+CORE_SRC = src/main.c src/cli.c src/lexer.c src/ast.c src/ast_clone.c src/parser.c src/symtable.c src/parser_expr.c src/parser_init.c \
            src/parser_decl.c src/parser_flow.c src/parser_stmt.c src/parser_types.c \
            src/semantic_expr.c src/semantic_stmt.c src/semantic_global.c src/error.c src/ir.c \
            src/codegen.c src/regalloc.c src/regalloc_x86.c src/strbuf.c src/util.c src/vector.c src/ir_dump.c src/label.c \
@@ -17,7 +17,7 @@ OPT_SRC = src/opt.c
 EXTRA_SRC ?=
 # Final source list
 SRC = $(CORE_SRC) $(OPT_SRC) $(EXTRA_SRC)
-HDR = include/token.h include/ast.h include/parser.h include/symtable.h include/semantic.h     include/semantic_expr.h include/semantic_stmt.h include/semantic_global.h \
+HDR = include/token.h include/ast.h include/ast_clone.h include/parser.h include/symtable.h include/semantic.h     include/semantic_expr.h include/semantic_stmt.h include/semantic_global.h \
     include/ir.h include/ir_dump.h include/opt.h include/codegen.h include/strbuf.h \
     include/util.h include/cli.h include/vector.h include/regalloc_x86.h include/label.h include/error.h \
     include/preproc.h include/preproc_file.h include/preproc_macros.h include/preproc_expr.h include/parser_types.h
