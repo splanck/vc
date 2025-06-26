@@ -73,11 +73,50 @@ static void append_token(vector_t *vec, token_type_t type, const char *lexeme,
         exit(1);
 }
 
+/* Parse a line marker of the form '# <num> "file"' and update counters */
+static int consume_line_marker(const char *src, size_t *i,
+                               size_t *line, size_t *col)
+{
+    size_t j = *i;
+    if (*col != 1 || src[j] != '#')
+        return 0;
+    j++;
+    if (src[j] != ' ')
+        return 0;
+    j++;
+    if (!isdigit((unsigned char)src[j]))
+        return 0;
+    size_t num = 0;
+    while (isdigit((unsigned char)src[j])) {
+        num = num * 10 + (src[j] - '0');
+        j++;
+    }
+    while (src[j] == ' ' || src[j] == '\t')
+        j++;
+    if (src[j] == '"') {
+        j++;
+        while (src[j] && src[j] != '"')
+            j++;
+        if (src[j] == '"')
+            j++;
+    }
+    while (src[j] && src[j] != '\n')
+        j++;
+    if (src[j] == '\n')
+        j++;
+    *i = j;
+    *line = num;
+    *col = 1;
+    return 1;
+}
+
 /* Skip comments and whitespace, updating position counters */
 static void skip_whitespace(const char *src, size_t *i, size_t *line,
                             size_t *col)
 {
     while (src[*i]) {
+        if (consume_line_marker(src, i, line, col))
+            continue;
         char c = src[*i];
         if (c == '/' && src[*i + 1] == '/') { /* line comment */
             (*i) += 2;
