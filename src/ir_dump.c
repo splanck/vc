@@ -10,6 +10,8 @@
 #include <stdarg.h>
 #include "ir_dump.h"
 #include "strbuf.h"
+#include "regalloc.h"
+#include "regalloc_x86.h"
 
 static const char *op_name(ir_op_t op)
 {
@@ -79,23 +81,38 @@ char *ir_to_string(ir_builder_t *ir)
     if (!ir)
         return NULL;
 
+    regalloc_t ra;
+    regalloc_set_x86_64(0);
+    regalloc_run(ir, &ra);
+
     strbuf_t sb;
     strbuf_init(&sb);
     for (ir_instr_t *ins = ir->head; ins; ins = ins->next) {
         if (ins->op == IR_GLOB_ARRAY) {
             strbuf_appendf(&sb, "%s name=%s count=%lld\n", op_name(ins->op),
                            ins->name ? ins->name : "", ins->imm);
-        } else if (ins->op == IR_GLOB_UNION || ins->op == IR_GLOB_STRUCT) {
+            continue;
+        }
+        if (ins->op == IR_GLOB_UNION || ins->op == IR_GLOB_STRUCT) {
             strbuf_appendf(&sb, "%s name=%s size=%lld\n", op_name(ins->op),
                            ins->name ? ins->name : "", ins->imm);
-        } else {
-            strbuf_appendf(&sb,
-                           "%s dest=%d src1=%d src2=%d imm=%lld name=%s data=%s\n",
-                           op_name(ins->op), ins->dest, ins->src1, ins->src2,
-                           ins->imm, ins->name ? ins->name : "",
-                           ins->data ? ins->data : "");
+            continue;
         }
+
+        strbuf_appendf(&sb, "%s dest=%d", op_name(ins->op), ins->dest);
+        if (ins->dest > 0 && ra.loc[ins->dest] < 0)
+            strbuf_appendf(&sb, "[slot%d]", -ra.loc[ins->dest]);
+        strbuf_appendf(&sb, " src1=%d", ins->src1);
+        if (ins->src1 > 0 && ra.loc[ins->src1] < 0)
+            strbuf_appendf(&sb, "[slot%d]", -ra.loc[ins->src1]);
+        strbuf_appendf(&sb, " src2=%d", ins->src2);
+        if (ins->src2 > 0 && ra.loc[ins->src2] < 0)
+            strbuf_appendf(&sb, "[slot%d]", -ra.loc[ins->src2]);
+        strbuf_appendf(&sb, " imm=%lld name=%s data=%s\n", ins->imm,
+                       ins->name ? ins->name : "",
+                       ins->data ? ins->data : "");
     }
+    regalloc_free(&ra);
     return sb.data; /* caller frees */
 }
 

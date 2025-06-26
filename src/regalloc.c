@@ -14,7 +14,9 @@
 #include "regalloc.h"
 #include "regalloc_x86.h"
 
+#define SCRATCH_REG (REGALLOC_NUM_REGS - 1)
 #define NUM_REGS REGALLOC_NUM_REGS
+#define NUM_ALLOC_REGS (REGALLOC_NUM_REGS - 1)
 
 /*
  * Record the index of the final instruction that references each value.
@@ -61,10 +63,10 @@ void regalloc_run(ir_builder_t *ir, regalloc_t *ra)
     if (!last)
         return;
 
-    int free_regs[NUM_REGS];
-    int free_count = NUM_REGS;
-    for (int i = 0; i < NUM_REGS; i++)
-        free_regs[i] = NUM_REGS - 1 - i; /* allocate from high to low */
+    int free_regs[NUM_ALLOC_REGS];
+    int free_count = NUM_ALLOC_REGS;
+    for (int i = 0; i < NUM_ALLOC_REGS; i++)
+        free_regs[i] = NUM_ALLOC_REGS - 1 - i; /* allocate from high to low */
 
     int idx = 0;
     for (ir_instr_t *ins = ir->head; ins; ins = ins->next, idx++) {
