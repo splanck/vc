@@ -172,6 +172,15 @@ static void test_lexer_static_kw(void)
     lexer_free_tokens(toks, count);
 }
 
+static void test_lexer_register_kw(void)
+{
+    const char *src = "register int x;";
+    size_t count = 0;
+    token_t *toks = lexer_tokenize(src, &count);
+    ASSERT(toks[0].type == TOK_KW_REGISTER);
+    lexer_free_tokens(toks, count);
+}
+
 static void test_parser_static_local(void)
 {
     const char *src = "static int x;";
@@ -180,6 +189,18 @@ static void test_parser_static_local(void)
     parser_t p; parser_init(&p, toks, count);
     stmt_t *stmt = parser_parse_stmt(&p);
     ASSERT(stmt && stmt->kind == STMT_VAR_DECL && stmt->var_decl.is_static);
+    ast_free_stmt(stmt);
+    lexer_free_tokens(toks, count);
+}
+
+static void test_parser_register_local(void)
+{
+    const char *src = "register int x;";
+    size_t count = 0;
+    token_t *toks = lexer_tokenize(src, &count);
+    parser_t p; parser_init(&p, toks, count);
+    stmt_t *stmt = parser_parse_stmt(&p);
+    ASSERT(stmt && stmt->kind == STMT_VAR_DECL && stmt->var_decl.is_register);
     ast_free_stmt(stmt);
     lexer_free_tokens(toks, count);
 }
@@ -396,7 +417,9 @@ int main(void)
     test_parser_short_decl();
     test_parser_bool_decl();
     test_lexer_static_kw();
+    test_lexer_register_kw();
     test_parser_static_local();
+    test_parser_register_local();
     test_parser_array_decl();
     test_parser_index_expr();
     test_parser_unary_neg();

@@ -97,6 +97,10 @@ promises that the pointer is the sole reference to its pointed-to object
 for the lifetime of the pointer.  This lets the optimizer assume no aliasing
 between `restrict` qualified pointers.
 
+The `register` storage class hints that a variable should be kept in a
+machine register when possible.  vc currently ignores this hint but
+parses the keyword for future use.
+
 Structures and unions are declared with the `struct` or `union` keyword.
 Members are accessed using `.` for objects or `->` when working through a pointer.
 For structures each member has its own storage in the order declared.
@@ -285,6 +289,7 @@ RETURN v2
 - Conditional preprocessing directives (`#if`, `#ifdef`, `#ifndef`, `#elif`, `#else`, `#endif`)
 - 64-bit integer literals and arithmetic when using `long long`
 - Hexadecimal (`0x`) and octal (leading `0`) integer literals
+- `register` storage class for local variables (currently ignored)
 
 Examples below show how to compile each feature.
 
