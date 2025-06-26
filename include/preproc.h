@@ -11,12 +11,6 @@
 #ifndef VC_PREPROC_H
 #define VC_PREPROC_H
 
-#include "vector.h"
-
-/* Preprocess the file at the given path.
- * The returned string must be freed by the caller.
- * Returns NULL on failure.
- */
-char *preproc_run(const char *path, const vector_t *include_dirs);
+#include "preproc_file.h"
 
 #endif /* VC_PREPROC_H */
