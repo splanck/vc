@@ -20,6 +20,7 @@
 #include "cli.h"
 #include "token.h"
 #include "parser.h"
+#include "parser_core.h"
 #include "ast_stmt.h"
 #include "vector.h"
 #include <string.h>

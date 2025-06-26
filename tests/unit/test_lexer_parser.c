@@ -2,6 +2,7 @@
 #include <string.h>
 #include "token.h"
 #include "parser.h"
+#include "parser_core.h"
 #include "ast.h"
 #include "ast_expr.h"
 #include "ast_stmt.h"
