@@ -86,11 +86,49 @@ static stmt_t *parse_var_decl(parser_t *p)
         is_restrict = match(p, TOK_KW_RESTRICT);
     }
     token_t *tok = peek(p);
+    if (!tok)
+        return NULL;
+    char *name = NULL;
+    type_kind_t func_ret = TYPE_UNKNOWN;
+    type_kind_t *fparams = NULL;
+    size_t fcount = 0;
+    size_t arr_size = 0;
+    expr_t *init = NULL;
+    expr_t **init_list = NULL;
+    size_t init_count = 0;
+    if (tok->type == TOK_LPAREN) {
+        size_t save = p->pos;
+        p->pos++; /* '(' */
+        if (match(p, TOK_STAR)) {
+            token_t *idtok = peek(p);
+            if (idtok && idtok->type == TOK_IDENT) {
+                p->pos++; name = idtok->lexeme;
+                if (match(p, TOK_RPAREN) && match(p, TOK_LPAREN)) {
+                    vector_t pv; vector_init(&pv, sizeof(type_kind_t));
+                    if (!match(p, TOK_RPAREN)) {
+                        do {
+                            type_kind_t pt;
+                            if (!parse_basic_type(p, &pt)) { p->pos = save; vector_free(&pv); return NULL; }
+                            if (match(p, TOK_STAR)) pt = TYPE_PTR;
+                            token_t *tmp = peek(p);
+                            if (tmp && tmp->type == TOK_IDENT) p->pos++;
+                            if (!vector_push(&pv, &pt)) { p->pos = save; vector_free(&pv); return NULL; }
+                        } while (match(p, TOK_COMMA));
+                        if (!match(p, TOK_RPAREN)) { p->pos = save; vector_free(&pv); return NULL; }
+                    }
+                    if (!match(p, TOK_SEMI)) { p->pos = save; vector_free(&pv); return NULL; }
+                    fparams = pv.data; fcount = pv.count;
+                    func_ret = t; t = TYPE_PTR;
+                    arr_size = 0; init = NULL; init_list=NULL; init_count=0;
+                    goto make_decl;
+                }
+            }
+        }
+        p->pos = save;
+    }
     if (!tok || tok->type != TOK_IDENT)
         return NULL;
-    p->pos++;
-    char *name = tok->lexeme;
-    size_t arr_size = 0;
+    p->pos++; name = tok->lexeme;
     if (match(p, TOK_LBRACKET)) {
         token_t *num = peek(p);
         if (!num || num->type != TOK_NUMBER)
@@ -101,9 +139,6 @@ static stmt_t *parse_var_decl(parser_t *p)
             return NULL;
         t = TYPE_ARRAY;
     }
-    expr_t *init = NULL;
-    expr_t **init_list = NULL;
-    size_t init_count = 0;
     if (match(p, TOK_ASSIGN)) {
         if (t == TYPE_ARRAY && peek(p) && peek(p)->type == TOK_LBRACE) {
             init_list = parser_parse_init_list(p, &init_count);
@@ -126,13 +161,17 @@ static stmt_t *parse_var_decl(parser_t *p)
         if (!match(p, TOK_SEMI))
             return NULL;
     }
+make_decl:
     stmt_t *res = ast_make_var_decl(name, t, arr_size, elem_size, is_static,
                                     is_const, is_volatile, is_restrict, init, init_list,
                                     init_count,
                                     tag_name, NULL, 0,
+                                    func_ret, fparams, fcount,
                                     kw_tok->line, kw_tok->column);
-    if (!res)
+    if (!res) {
         free(tag_name);
+        free(fparams);
+    }
     return res;
 }
 
@@ -265,6 +304,7 @@ fail:
     stmt_t *res = ast_make_var_decl(name, TYPE_UNION, 0, 0, is_static, is_const,
                                     is_volatile, 0, NULL, NULL, 0, NULL, members,
                                     count,
+                                    TYPE_UNKNOWN, NULL, 0,
                                     kw->line, kw->column);
     if (!res) {
         for (size_t i = 0; i < count; i++)
@@ -411,6 +451,7 @@ fail:
     stmt_t *res = ast_make_var_decl(name, TYPE_STRUCT, 0, 0, is_static, is_const,
                                     is_volatile, 0, NULL, NULL, 0, NULL,
                                     (union_member_t *)members, count,
+                                    TYPE_UNKNOWN, NULL, 0,
                                     kw->line, kw->column);
     if (!res) {
         for (size_t i = 0; i < count; i++)

@@ -154,7 +154,8 @@ static expr_t *clone_expr(const expr_t *expr)
                 }
             }
         }
-        return ast_make_call(expr->call.name, args, n,
+        return ast_make_call(expr->call.name, expr->call.func,
+                             args, n,
                              expr->line, expr->column);
     }
     }
@@ -266,7 +267,8 @@ static expr_t *parse_primary(parser_t *p)
             }
             expr_t **args = (expr_t **)args_v.data;
             size_t count = args_v.count;
-            expr_t *call = ast_make_call(name, args, count,
+            expr_t *call = ast_make_call(name, NULL,
+                                         args, count,
                                          tok->line, tok->column);
             base = call;
         } else if (match(p, TOK_IDENT)) {
@@ -302,6 +304,41 @@ static expr_t *parse_primary(parser_t *p)
             p->pos++;
             base = ast_make_member(base, id->lexeme, via_ptr,
                                    id->line, id->column);
+        } else if (match(p, TOK_LPAREN)) {
+            token_t *lp = &p->tokens[p->pos - 1];
+            vector_t args_v;
+            vector_init(&args_v, sizeof(expr_t *));
+            if (!match(p, TOK_RPAREN)) {
+                do {
+                    expr_t *arg = parse_expression(p);
+                    if (!arg) {
+                        for (size_t i = 0; i < args_v.count; i++)
+                            ast_free_expr(((expr_t **)args_v.data)[i]);
+                        vector_free(&args_v);
+                        ast_free_expr(base);
+                        return NULL;
+                    }
+                    if (!vector_push(&args_v, &arg)) {
+                        ast_free_expr(arg);
+                        for (size_t i = 0; i < args_v.count; i++)
+                            ast_free_expr(((expr_t **)args_v.data)[i]);
+                        vector_free(&args_v);
+                        ast_free_expr(base);
+                        return NULL;
+                    }
+                } while (match(p, TOK_COMMA));
+                if (!match(p, TOK_RPAREN)) {
+                    for (size_t i = 0; i < args_v.count; i++)
+                        ast_free_expr(((expr_t **)args_v.data)[i]);
+                    vector_free(&args_v);
+                    ast_free_expr(base);
+                    return NULL;
+                }
+            }
+            expr_t **args = (expr_t **)args_v.data;
+            size_t count = args_v.count;
+            base = ast_make_call(NULL, base, args, count,
+                                 lp->line, lp->column);
         } else if (match(p, TOK_INC)) {
             token_t *op_tok = &p->tokens[p->pos - 1];
             base = ast_make_unary(UNOP_POSTINC, base,

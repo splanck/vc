@@ -500,6 +500,12 @@ type_kind_t check_expr(expr_t *expr, symtable_t *vars, symtable_t *funcs,
     case EXPR_IDENT: {
         symbol_t *sym = symtable_lookup(vars, expr->ident.name);
         if (!sym) {
+            sym = symtable_lookup(funcs, expr->ident.name);
+            if (sym) {
+                if (out)
+                    *out = ir_build_addr(ir, sym->ir_name);
+                return TYPE_PTR;
+            }
             error_set(expr->line, expr->column);
             return TYPE_UNKNOWN;
         }
@@ -841,7 +847,11 @@ type_kind_t check_expr(expr_t *expr, symtable_t *vars, symtable_t *funcs,
         return TYPE_INT;
     }
     case EXPR_CALL: {
-        symbol_t *fsym = symtable_lookup(funcs, expr->call.name);
+        symbol_t *fsym = NULL;
+        if (expr->call.name)
+            fsym = symtable_lookup(funcs, expr->call.name);
+        else if (expr->call.func && expr->call.func->kind == EXPR_IDENT)
+            fsym = symtable_lookup(vars, expr->call.func->ident.name);
         if (!fsym) {
             error_set(expr->line, expr->column);
             return TYPE_UNKNOWN;
@@ -870,11 +880,19 @@ type_kind_t check_expr(expr_t *expr, symtable_t *vars, symtable_t *funcs,
         for (size_t i = expr->call.arg_count; i > 0; i--)
             ir_build_arg(ir, vals[i - 1]);
         free(vals);
-        ir_value_t call_val = ir_build_call(ir, expr->call.name,
-                                           expr->call.arg_count);
+        ir_value_t call_val;
+        if (expr->call.name)
+            call_val = ir_build_call(ir, expr->call.name,
+                                     expr->call.arg_count);
+        else {
+            ir_value_t fnval;
+            check_expr(expr->call.func, vars, funcs, ir, &fnval);
+            call_val = ir_build_call_ind(ir, fnval,
+                                        expr->call.arg_count);
+        }
         if (out)
             *out = call_val;
-        return fsym->type;
+        return expr->call.name ? fsym->type : fsym->func_ret_type;
     }
     }
     error_set(expr->line, expr->column);
@@ -1267,6 +1285,16 @@ int check_stmt(stmt_t *stmt, symtable_t *vars, symtable_t *funcs,
                     sym->struct_members[i].offset = m->offset;
                 }
             }
+        }
+        if (stmt->var_decl.param_count) {
+            sym->param_types = malloc(stmt->var_decl.param_count * sizeof(type_kind_t));
+            if (!sym->param_types)
+                return 0;
+            for (size_t i = 0; i < stmt->var_decl.param_count; i++)
+                sym->param_types[i] = stmt->var_decl.param_types[i];
+            sym->param_count = stmt->var_decl.param_count;
+            sym->func_ret_type = stmt->var_decl.func_ret_type;
+            sym->is_func_ptr = 1;
         }
         if (stmt->var_decl.init) {
             if (stmt->var_decl.is_static) {

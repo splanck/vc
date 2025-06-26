@@ -46,6 +46,8 @@ typedef struct symbol {
     int param_index; /* -1 for locals */
     int is_typedef;  /* alias flag */
     type_kind_t alias_type;
+    int is_func_ptr; /* pointer to function */
+    type_kind_t func_ret_type;
     struct symbol *next;
 } symbol_t;
 ```
@@ -622,6 +624,15 @@ int main() {
 Compile with:
 ```sh
 vc -o struct_ptr.s struct_ptr.c
+```
+### Function pointers
+```c
+/* func_ptr.c */
+int add(int a, int b) { return a + b; }
+int main() {
+    int (*fp)(int, int) = add;
+    return fp(2, 3);
+}
 ```
 ### Union declarations
 ```c

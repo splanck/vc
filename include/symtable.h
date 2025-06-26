@@ -33,6 +33,8 @@ typedef struct symbol {
     int is_const;
     int is_volatile;
     int is_restrict;
+    int is_func_ptr;
+    type_kind_t func_ret_type;
     type_kind_t *param_types; /* for functions */
     size_t param_count;
     int is_prototype;

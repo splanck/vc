@@ -495,6 +495,7 @@ int parser_parse_toplevel(parser_t *p, symtable_t *funcs,
                                            is_volatile, is_restrict,
                                            NULL, NULL, 0,
                                            NULL, NULL, 0,
+                                           TYPE_UNKNOWN, NULL, 0,
                                            tok->line, tok->column);
         return *out_global != NULL;
     } else if (next_tok && next_tok->type == TOK_ASSIGN) {
@@ -531,6 +532,7 @@ int parser_parse_toplevel(parser_t *p, symtable_t *funcs,
                                            is_volatile, is_restrict,
                                            init, init_list, init_count,
                                            NULL, NULL, 0,
+                                           TYPE_UNKNOWN, NULL, 0,
                                            tok->line, tok->column);
         return *out_global != NULL;
     }

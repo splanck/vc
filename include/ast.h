@@ -31,6 +31,7 @@ typedef enum {
     TYPE_VOID,
     TYPE_STRUCT,
     TYPE_UNION,
+    TYPE_FUNC,
     TYPE_UNKNOWN
 } type_kind_t;
 
@@ -157,7 +158,8 @@ struct expr {
             int via_ptr;
         } member;
         struct {
-            char *name;
+            char *name;       /* direct call when non-NULL */
+            expr_t *func;     /* expression returning function pointer */
             expr_t **args;
             size_t arg_count;
         } call;
@@ -221,6 +223,9 @@ struct stmt {
             size_t init_count;
             union_member_t *members;
             size_t member_count;
+            type_kind_t func_ret_type;   /* for function pointers */
+            type_kind_t *param_types;
+            size_t param_count;
         } var_decl;
         struct {
             expr_t *cond;
@@ -345,7 +350,8 @@ expr_t *ast_make_sizeof_type(type_kind_t type, size_t array_size,
 /* Create a sizeof expression of another expression. */
 expr_t *ast_make_sizeof_expr(expr_t *expr, size_t line, size_t column);
 /* Create a function call expression with \p arg_count arguments. */
-expr_t *ast_make_call(const char *name, expr_t **args, size_t arg_count,
+expr_t *ast_make_call(const char *name, expr_t *func,
+                      expr_t **args, size_t arg_count,
                       size_t line, size_t column);
 
 /* Create an expression statement node. */
@@ -358,7 +364,10 @@ stmt_t *ast_make_var_decl(const char *name, type_kind_t type, size_t array_size,
                           int is_volatile, int is_restrict,
                           expr_t *init, expr_t **init_list, size_t init_count,
                           const char *tag, union_member_t *members,
-                          size_t member_count, size_t line, size_t column);
+                          size_t member_count,
+                          type_kind_t func_ret_type,
+                          type_kind_t *param_types, size_t param_count,
+                          size_t line, size_t column);
 /* Create an if/else statement. \p else_branch may be NULL. */
 stmt_t *ast_make_if(expr_t *cond, stmt_t *then_branch, stmt_t *else_branch,
                     size_t line, size_t column);
