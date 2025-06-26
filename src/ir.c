@@ -472,3 +472,15 @@ void ir_build_glob_union(ir_builder_t *b, const char *name, int size,
     ins->src1 = is_static;
 }
 
+void ir_build_glob_struct(ir_builder_t *b, const char *name, int size,
+                          int is_static)
+{
+    ir_instr_t *ins = append_instr(b);
+    if (!ins)
+        return;
+    ins->op = IR_GLOB_STRUCT;
+    ins->name = vc_strdup(name ? name : "");
+    ins->imm = size;
+    ins->src1 = is_static;
+}
+

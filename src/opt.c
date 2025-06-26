@@ -142,6 +142,7 @@ static void propagate_load_consts(ir_builder_t *ir)
         case IR_GLOB_VAR:
         case IR_GLOB_ARRAY:
         case IR_GLOB_UNION:
+        case IR_GLOB_STRUCT:
         case IR_BR:
         case IR_BCOND:
         case IR_LABEL:
@@ -239,6 +240,7 @@ static void fold_constants(ir_builder_t *ir)
         case IR_GLOB_VAR:
         case IR_GLOB_ARRAY:
         case IR_GLOB_UNION:
+        case IR_GLOB_STRUCT:
             if (ins->dest >= 0 && ins->dest < max_id)
                 is_const[ins->dest] = 0;
             break;
@@ -276,6 +278,7 @@ static int has_side_effect(ir_instr_t *ins)
     case IR_GLOB_VAR:
     case IR_GLOB_ARRAY:
     case IR_GLOB_UNION:
+    case IR_GLOB_STRUCT:
         return 1;
     case IR_LOAD:
     case IR_LOAD_IDX:
