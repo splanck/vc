@@ -300,6 +300,7 @@ RETURN v2
 - Conditional preprocessing directives (`#if`, `#ifdef`, `#ifndef`, `#elif`, `#else`, `#endif`)
 - 64-bit integer literals and arithmetic when using `long long`
 - Hexadecimal (`0x`) and octal (leading `0`) integer literals
+- String literals which evaluate to a `char *`
 
 Examples below show how to compile each feature.
 
@@ -458,6 +459,13 @@ int main() {
 Compile with:
 ```sh
 vc -o ptr.s ptr.c
+```
+
+String literals evaluate to the address of their storage and may be
+assigned to `char *` variables:
+
+```c
+char *msg = "hi";
 ```
 
 #### Pointer arithmetic
