@@ -29,12 +29,113 @@ static expr_t *parse_bitand(parser_t *p);
 static expr_t *parse_bitxor(parser_t *p);
 static expr_t *parse_bitor(parser_t *p);
 static expr_t *parse_primary(parser_t *p);
+static expr_t *parse_literal(parser_t *p);
+static expr_t *parse_identifier_expr(parser_t *p);
+static expr_t *parse_call_or_postfix(parser_t *p, expr_t *base);
 static int parse_type(parser_t *p, type_kind_t *out_type, size_t *out_size,
                       size_t *elem_size);
 static expr_t *parse_logical_and(parser_t *p);
 static expr_t *parse_logical_or(parser_t *p);
 static expr_t *parse_conditional(parser_t *p);
 
+
+/* Parse numeric, string and character literals. */
+static expr_t *parse_literal(parser_t *p)
+{
+    token_t *tok = peek(p);
+    if (!tok)
+        return NULL;
+    if (match(p, TOK_NUMBER))
+        return ast_make_number(tok->lexeme, tok->line, tok->column);
+    if (match(p, TOK_STRING))
+        return ast_make_string(tok->lexeme, tok->line, tok->column);
+    if (match(p, TOK_CHAR))
+        return ast_make_char(tok->lexeme[0], tok->line, tok->column);
+    return NULL;
+}
+
+/* Parse an identifier or function call expression. */
+static expr_t *parse_identifier_expr(parser_t *p)
+{
+    token_t *tok = peek(p);
+    if (!tok || tok->type != TOK_IDENT)
+        return NULL;
+    token_t *next = p->pos + 1 < p->count ? &p->tokens[p->pos + 1] : NULL;
+    if (next && next->type == TOK_LPAREN) {
+        p->pos++; /* consume identifier */
+        char *name = tok->lexeme;
+        match(p, TOK_LPAREN);
+        vector_t args_v;
+        vector_init(&args_v, sizeof(expr_t *));
+        if (!match(p, TOK_RPAREN)) {
+            do {
+                expr_t *arg = parse_expression(p);
+                if (!arg) {
+                    for (size_t i = 0; i < args_v.count; i++)
+                        ast_free_expr(((expr_t **)args_v.data)[i]);
+                    vector_free(&args_v);
+                    return NULL;
+                }
+                if (!vector_push(&args_v, &arg)) {
+                    ast_free_expr(arg);
+                    for (size_t i = 0; i < args_v.count; i++)
+                        ast_free_expr(((expr_t **)args_v.data)[i]);
+                    vector_free(&args_v);
+                    return NULL;
+                }
+            } while (match(p, TOK_COMMA));
+            if (!match(p, TOK_RPAREN)) {
+                for (size_t i = 0; i < args_v.count; i++)
+                    ast_free_expr(((expr_t **)args_v.data)[i]);
+                vector_free(&args_v);
+                return NULL;
+            }
+        }
+        expr_t **args = (expr_t **)args_v.data;
+        size_t count = args_v.count;
+        return ast_make_call(name, args, count, tok->line, tok->column);
+    }
+    match(p, TOK_IDENT);
+    return ast_make_ident(tok->lexeme, tok->line, tok->column);
+}
+
+/* Apply postfix operations like indexing and member access. */
+static expr_t *parse_call_or_postfix(parser_t *p, expr_t *base)
+{
+    while (1) {
+        if (match(p, TOK_LBRACKET)) {
+            token_t *lb = &p->tokens[p->pos - 1];
+            expr_t *idx = parse_expression(p);
+            if (!idx || !match(p, TOK_RBRACKET)) {
+                ast_free_expr(base);
+                ast_free_expr(idx);
+                return NULL;
+            }
+            base = ast_make_index(base, idx, lb->line, lb->column);
+        } else if (match(p, TOK_DOT) || match(p, TOK_ARROW)) {
+            int via_ptr = (p->tokens[p->pos - 1].type == TOK_ARROW);
+            token_t *id = peek(p);
+            if (!id || id->type != TOK_IDENT) {
+                ast_free_expr(base);
+                return NULL;
+            }
+            p->pos++;
+            base = ast_make_member(base, id->lexeme, via_ptr,
+                                   id->line, id->column);
+        } else if (match(p, TOK_INC)) {
+            token_t *op_tok = &p->tokens[p->pos - 1];
+            base = ast_make_unary(UNOP_POSTINC, base,
+                                  op_tok->line, op_tok->column);
+        } else if (match(p, TOK_DEC)) {
+            token_t *op_tok = &p->tokens[p->pos - 1];
+            base = ast_make_unary(UNOP_POSTDEC, base,
+                                  op_tok->line, op_tok->column);
+        } else {
+            break;
+        }
+    }
+    return base;
+}
 
 /*
  * Parse the most basic expression forms: literals, identifiers, function
@@ -100,54 +201,10 @@ static expr_t *parse_primary(parser_t *p)
         return ast_make_sizeof_expr(e, kw->line, kw->column);
     }
 
-    expr_t *base = NULL;
-    if (match(p, TOK_NUMBER)) {
-        base = ast_make_number(tok->lexeme, tok->line, tok->column);
-    } else if (match(p, TOK_STRING)) {
-        base = ast_make_string(tok->lexeme, tok->line, tok->column);
-    } else if (match(p, TOK_CHAR)) {
-        base = ast_make_char(tok->lexeme[0], tok->line, tok->column);
-    } else if (tok->type == TOK_IDENT) {
-        token_t *next = p->pos + 1 < p->count ? &p->tokens[p->pos + 1] : NULL;
-        if (next && next->type == TOK_LPAREN) {
-            p->pos++; /* consume ident */
-            char *name = tok->lexeme;
-            match(p, TOK_LPAREN);
-            vector_t args_v;
-            vector_init(&args_v, sizeof(expr_t *));
-            if (!match(p, TOK_RPAREN)) {
-                do {
-                    expr_t *arg = parse_expression(p);
-                    if (!arg) {
-                        for (size_t i = 0; i < args_v.count; i++)
-                            ast_free_expr(((expr_t **)args_v.data)[i]);
-                        vector_free(&args_v);
-                        return NULL;
-                    }
-                    if (!vector_push(&args_v, &arg)) {
-                        ast_free_expr(arg);
-                        for (size_t i = 0; i < args_v.count; i++)
-                            ast_free_expr(((expr_t **)args_v.data)[i]);
-                        vector_free(&args_v);
-                        return NULL;
-                    }
-                } while (match(p, TOK_COMMA));
-                if (!match(p, TOK_RPAREN)) {
-                    for (size_t i = 0; i < args_v.count; i++)
-                        ast_free_expr(((expr_t **)args_v.data)[i]);
-                    vector_free(&args_v);
-                    return NULL;
-                }
-            }
-            expr_t **args = (expr_t **)args_v.data;
-            size_t count = args_v.count;
-            expr_t *call = ast_make_call(name, args, count,
-                                         tok->line, tok->column);
-            base = call;
-        } else if (match(p, TOK_IDENT)) {
-            base = ast_make_ident(tok->lexeme, tok->line, tok->column);
-        }
-    } else if (match(p, TOK_LPAREN)) {
+    expr_t *base = parse_literal(p);
+    if (!base)
+        base = parse_identifier_expr(p);
+    if (!base && match(p, TOK_LPAREN)) {
         token_t *lp = &p->tokens[p->pos - 1];
         size_t save = p->pos;
         type_kind_t t; size_t arr_sz; size_t esz;
@@ -171,39 +228,7 @@ static expr_t *parse_primary(parser_t *p)
     }
     if (!base)
         return NULL;
-    while (1) {
-        if (match(p, TOK_LBRACKET)) {
-            token_t *lb = &p->tokens[p->pos - 1];
-            expr_t *idx = parse_expression(p);
-            if (!idx || !match(p, TOK_RBRACKET)) {
-                ast_free_expr(base);
-                ast_free_expr(idx);
-                return NULL;
-            }
-            base = ast_make_index(base, idx, lb->line, lb->column);
-        } else if (match(p, TOK_DOT) || match(p, TOK_ARROW)) {
-            int via_ptr = (p->tokens[p->pos - 1].type == TOK_ARROW);
-            token_t *id = peek(p);
-            if (!id || id->type != TOK_IDENT) {
-                ast_free_expr(base);
-                return NULL;
-            }
-            p->pos++;
-            base = ast_make_member(base, id->lexeme, via_ptr,
-                                   id->line, id->column);
-        } else if (match(p, TOK_INC)) {
-            token_t *op_tok = &p->tokens[p->pos - 1];
-            base = ast_make_unary(UNOP_POSTINC, base,
-                                  op_tok->line, op_tok->column);
-        } else if (match(p, TOK_DEC)) {
-            token_t *op_tok = &p->tokens[p->pos - 1];
-            base = ast_make_unary(UNOP_POSTDEC, base,
-                                  op_tok->line, op_tok->column);
-        } else {
-            break;
-        }
-    }
-    return base;
+    return parse_call_or_postfix(p, base);
 }
 
 /*
