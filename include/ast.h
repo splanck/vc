@@ -25,6 +25,7 @@ typedef enum {
     TYPE_BOOL,
     TYPE_FLOAT,
     TYPE_DOUBLE,
+    TYPE_LDOUBLE,
     TYPE_PTR,
     TYPE_ARRAY,
     TYPE_VOID,

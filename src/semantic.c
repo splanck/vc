@@ -82,7 +82,7 @@ static int is_intlike(type_kind_t t)
 
 static int is_floatlike(type_kind_t t)
 {
-    return t == TYPE_FLOAT || t == TYPE_DOUBLE;
+    return t == TYPE_FLOAT || t == TYPE_DOUBLE || t == TYPE_LDOUBLE;
 }
 
 /* Compute byte offsets for union members sequentially and return the
@@ -256,10 +256,10 @@ static type_kind_t check_binary(expr_t *left, expr_t *right, symtable_t *vars,
         if (out) {
             ir_op_t fop = IR_FADD;
             switch (op) {
-            case BINOP_ADD: fop = IR_FADD; break;
-            case BINOP_SUB: fop = IR_FSUB; break;
-            case BINOP_MUL: fop = IR_FMUL; break;
-            case BINOP_DIV: fop = IR_FDIV; break;
+            case BINOP_ADD: fop = (lt == TYPE_LDOUBLE) ? IR_LFADD : IR_FADD; break;
+            case BINOP_SUB: fop = (lt == TYPE_LDOUBLE) ? IR_LFSUB : IR_FSUB; break;
+            case BINOP_MUL: fop = (lt == TYPE_LDOUBLE) ? IR_LFMUL : IR_FMUL; break;
+            case BINOP_DIV: fop = (lt == TYPE_LDOUBLE) ? IR_LFDIV : IR_FDIV; break;
             default: break;
             }
             *out = ir_build_binop(ir, fop, lval, rval);
@@ -351,7 +351,8 @@ static type_kind_t check_unary_expr(expr_t *expr, symtable_t *vars,
         } else if (is_floatlike(vt)) {
             if (out) {
                 ir_value_t zero = ir_build_const(ir, 0);
-                *out = ir_build_binop(ir, IR_FSUB, zero, val);
+                ir_op_t op = (vt == TYPE_LDOUBLE) ? IR_LFSUB : IR_FSUB;
+                *out = ir_build_binop(ir, op, zero, val);
             }
             return vt;
         }
@@ -417,7 +418,9 @@ static type_kind_t check_unary_expr(expr_t *expr, symtable_t *vars,
             ir_op_t ir_op;
             if (is_floatlike(sym->type))
                 ir_op = (expr->unary.op == UNOP_PREDEC ||
-                         expr->unary.op == UNOP_POSTDEC) ? IR_FSUB : IR_FADD;
+                         expr->unary.op == UNOP_POSTDEC)
+                            ? (sym->type == TYPE_LDOUBLE ? IR_LFSUB : IR_FSUB)
+                            : (sym->type == TYPE_LDOUBLE ? IR_LFADD : IR_FADD);
             else
                 ir_op = (expr->unary.op == UNOP_PREDEC ||
                          expr->unary.op == UNOP_POSTDEC) ? IR_SUB : IR_ADD;

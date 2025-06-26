@@ -203,6 +203,30 @@ static void emit_arith_instr(strbuf_t *sb, ir_instr_t *ins,
             strbuf_appendf(sb, "    movss %s, %s\n", reg0, loc_str(buf2, ra, ins->dest, x64));
         break;
     }
+    case IR_LFADD:
+        strbuf_appendf(sb, "    fldt %s\n", loc_str(buf1, ra, ins->src1, x64));
+        strbuf_appendf(sb, "    fldt %s\n", loc_str(buf1, ra, ins->src2, x64));
+        strbuf_append(sb, "    faddp\n");
+        strbuf_appendf(sb, "    fstpt %s\n", loc_str(buf2, ra, ins->dest, x64));
+        break;
+    case IR_LFSUB:
+        strbuf_appendf(sb, "    fldt %s\n", loc_str(buf1, ra, ins->src1, x64));
+        strbuf_appendf(sb, "    fldt %s\n", loc_str(buf1, ra, ins->src2, x64));
+        strbuf_append(sb, "    fsubp\n");
+        strbuf_appendf(sb, "    fstpt %s\n", loc_str(buf2, ra, ins->dest, x64));
+        break;
+    case IR_LFMUL:
+        strbuf_appendf(sb, "    fldt %s\n", loc_str(buf1, ra, ins->src1, x64));
+        strbuf_appendf(sb, "    fldt %s\n", loc_str(buf1, ra, ins->src2, x64));
+        strbuf_append(sb, "    fmulp\n");
+        strbuf_appendf(sb, "    fstpt %s\n", loc_str(buf2, ra, ins->dest, x64));
+        break;
+    case IR_LFDIV:
+        strbuf_appendf(sb, "    fldt %s\n", loc_str(buf1, ra, ins->src1, x64));
+        strbuf_appendf(sb, "    fldt %s\n", loc_str(buf1, ra, ins->src2, x64));
+        strbuf_append(sb, "    fdivp\n");
+        strbuf_appendf(sb, "    fstpt %s\n", loc_str(buf2, ra, ins->dest, x64));
+        break;
     case IR_ADD:
         strbuf_appendf(sb, "    mov%s %s, %s\n", sfx,
                        loc_str(buf1, ra, ins->src1, x64),
@@ -437,6 +461,7 @@ static void emit_instr(strbuf_t *sb, ir_instr_t *ins, regalloc_t *ra, int x64)
 
     case IR_PTR_ADD: case IR_PTR_DIFF:
     case IR_FADD: case IR_FSUB: case IR_FMUL: case IR_FDIV:
+    case IR_LFADD: case IR_LFSUB: case IR_LFMUL: case IR_LFDIV:
     case IR_ADD: case IR_SUB: case IR_MUL:
     case IR_DIV: case IR_MOD: case IR_SHL:
     case IR_SHR: case IR_AND: case IR_OR:

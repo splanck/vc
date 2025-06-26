@@ -273,7 +273,7 @@ RETURN v2
 - Logical operators `&&`, `||` and `!`
 - Conditional operator (`?:`)
 - Bitwise operators (`&`, `|`, `^`, `<<`, `>>` and compound forms)
-- Floating-point types (`float`, `double`)
+- Floating-point types (`float`, `double`, `long double`)
 - `sizeof` operator
 - Global variables
 - `break` and `continue` statements

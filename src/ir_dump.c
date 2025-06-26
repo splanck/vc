@@ -29,6 +29,10 @@ static const char *op_name(ir_op_t op)
     case IR_FSUB: return "IR_FSUB";
     case IR_FMUL: return "IR_FMUL";
     case IR_FDIV: return "IR_FDIV";
+    case IR_LFADD: return "IR_LFADD";
+    case IR_LFSUB: return "IR_LFSUB";
+    case IR_LFMUL: return "IR_LFMUL";
+    case IR_LFDIV: return "IR_LFDIV";
     case IR_PTR_ADD: return "IR_PTR_ADD";
     case IR_PTR_DIFF: return "IR_PTR_DIFF";
     case IR_CMPEQ: return "IR_CMPEQ";
