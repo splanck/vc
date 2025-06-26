@@ -74,6 +74,7 @@ static int is_intlike(type_kind_t t)
     case TYPE_LONG: case TYPE_ULONG:
     case TYPE_LLONG: case TYPE_ULLONG:
     case TYPE_BOOL:
+    case TYPE_ENUM:
         return 1;
     default:
         return 0;
@@ -808,6 +809,9 @@ type_kind_t check_expr(expr_t *expr, symtable_t *vars, symtable_t *funcs,
             case TYPE_STRUCT:
                 sz = (int)expr->sizeof_expr.elem_size;
                 break;
+            case TYPE_ENUM:
+                sz = 4;
+                break;
             default: sz = 0; break;
             }
         } else {
@@ -816,7 +820,7 @@ type_kind_t check_expr(expr_t *expr, symtable_t *vars, symtable_t *funcs,
             ir_builder_free(&tmp);
             if (t == TYPE_CHAR || t == TYPE_UCHAR || t == TYPE_BOOL) sz = 1;
             else if (t == TYPE_SHORT || t == TYPE_USHORT) sz = 2;
-            else if (t == TYPE_INT || t == TYPE_UINT || t == TYPE_LONG || t == TYPE_ULONG) sz = 4;
+            else if (t == TYPE_INT || t == TYPE_UINT || t == TYPE_LONG || t == TYPE_ULONG || t == TYPE_ENUM) sz = 4;
             else if (t == TYPE_LLONG || t == TYPE_ULLONG) sz = 8;
             else if (t == TYPE_PTR) sz = 4;
             else if (t == TYPE_ARRAY) {
@@ -1165,6 +1169,8 @@ int check_stmt(stmt_t *stmt, symtable_t *vars, symtable_t *funcs,
             }
             next = (int)val + 1;
         }
+        if (stmt->enum_decl.tag && stmt->enum_decl.tag[0])
+            symtable_add_enum_tag(vars, stmt->enum_decl.tag);
         return 1;
     }
     case STMT_STRUCT_DECL: {
@@ -1413,6 +1419,8 @@ int check_global(stmt_t *decl, symtable_t *globals, ir_builder_t *ir)
             }
             next = (int)val + 1;
         }
+        if (decl->enum_decl.tag && decl->enum_decl.tag[0])
+            symtable_add_enum_tag_global(globals, decl->enum_decl.tag);
         return 1;
     }
     if (decl->kind == STMT_STRUCT_DECL) {

@@ -34,6 +34,15 @@ int parse_basic_type(parser_t *p, type_kind_t *out)
         t = TYPE_DOUBLE;
     } else if (match(p, TOK_KW_VOID)) {
         t = TYPE_VOID;
+    } else if (match(p, TOK_KW_ENUM)) {
+        token_t *id = peek(p);
+        if (!id || id->type != TOK_IDENT) {
+            p->pos = save;
+            return 0;
+        }
+        p->pos++;
+        (void)is_unsigned;
+        t = TYPE_ENUM;
     } else {
         p->pos = save;
         return 0;

@@ -244,6 +244,49 @@ int symtable_add_enum_global(symtable_t *table, const char *name, int value)
     return 1;
 }
 
+/* Record an enum tag in the current scope */
+int symtable_add_enum_tag(symtable_t *table, const char *tag)
+{
+    if (symtable_lookup(table, tag))
+        return 0;
+    symbol_t *sym = symtable_create_symbol(tag, tag);
+    if (!sym)
+        return 0;
+    sym->type = TYPE_ENUM;
+    sym->next = table->head;
+    table->head = sym;
+    return 1;
+}
+
+/* Record an enum tag in the global scope */
+int symtable_add_enum_tag_global(symtable_t *table, const char *tag)
+{
+    for (symbol_t *sym = table->globals; sym; sym = sym->next) {
+        if (strcmp(sym->name, tag) == 0)
+            return 0;
+    }
+    symbol_t *sym = symtable_create_symbol(tag, tag);
+    if (!sym)
+        return 0;
+    sym->type = TYPE_ENUM;
+    sym->next = table->globals;
+    table->globals = sym;
+    return 1;
+}
+
+symbol_t *symtable_lookup_enum_tag(symtable_t *table, const char *tag)
+{
+    for (symbol_t *sym = table->head; sym; sym = sym->next) {
+        if (sym->type == TYPE_ENUM && strcmp(sym->name, tag) == 0)
+            return sym;
+    }
+    for (symbol_t *sym = table->globals; sym; sym = sym->next) {
+        if (sym->type == TYPE_ENUM && strcmp(sym->name, tag) == 0)
+            return sym;
+    }
+    return NULL;
+}
+
 /* Add a typedef in the current scope */
 int symtable_add_typedef(symtable_t *table, const char *name, type_kind_t type,
                          size_t array_size, size_t elem_size)

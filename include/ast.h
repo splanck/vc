@@ -29,6 +29,7 @@ typedef enum {
     TYPE_PTR,
     TYPE_ARRAY,
     TYPE_VOID,
+    TYPE_ENUM,
     TYPE_STRUCT,
     TYPE_UNION,
     TYPE_UNKNOWN

@@ -632,6 +632,21 @@ Compile with:
 vc -o enum_example.s enum_example.c
 ```
 
+### Enum variables
+```c
+/* enum_var.c */
+enum Colors { RED, GREEN, BLUE };
+enum Colors c;
+int main() {
+    c = GREEN;
+    return c;
+}
+```
+Compile with:
+```sh
+vc -o enum_var.s enum_var.c
+```
+
 ### Struct declarations
 ```c
 /* struct_example.c */
