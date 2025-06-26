@@ -60,6 +60,7 @@ static stmt_t *parse_block(parser_t *p)
 static stmt_t *parse_var_decl(parser_t *p)
 {
     int is_static = match(p, TOK_KW_STATIC);
+    match(p, TOK_KW_INLINE);
     int is_const = match(p, TOK_KW_CONST);
     int is_volatile = match(p, TOK_KW_VOLATILE);
     token_t *kw_tok = peek(p);
