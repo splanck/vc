@@ -4,6 +4,8 @@
 #include <string.h>
 #include <stdio.h>
 #include "semantic_stmt.h"
+#include "semantic_loops.h"
+#include "semantic_switch.h"
 #include "consteval.h"
 #include "semantic_expr.h"
 #include "semantic_global.h"
@@ -15,47 +17,8 @@
 
 
 
-void label_table_init(label_table_t *t) { t->head = NULL; }
 
-void label_table_free(label_table_t *t)
-{
-    label_entry_t *e = t->head;
-    while (e) {
-        label_entry_t *n = e->next;
-        free(e->name);
-        free(e->ir_name);
-        free(e);
-        e = n;
-    }
-    t->head = NULL;
-}
-
-const char *label_table_get(label_table_t *t, const char *name)
-{
-    for (label_entry_t *e = t->head; e; e = e->next) {
-        if (strcmp(e->name, name) == 0)
-            return e->ir_name;
-    }
-    return NULL;
-}
-
-const char *label_table_get_or_add(label_table_t *t, const char *name)
-{
-    const char *ir = label_table_get(t, name);
-    if (ir)
-        return ir;
-    label_entry_t *e = malloc(sizeof(*e));
-    if (!e)
-        return NULL;
-    e->name = vc_strdup(name);
-    char buf[32];
-    e->ir_name = vc_strdup(label_format("Luser", label_next_id(), buf));
-    e->next = t->head;
-    t->head = e;
-    return e->ir_name;
-}
-
-static void symtable_pop_scope(symtable_t *table, symbol_t *old_head)
+void symtable_pop_scope(symtable_t *table, symbol_t *old_head)
 {
     while (table->head != old_head) {
         symbol_t *sym = table->head;
@@ -421,162 +384,7 @@ static int check_if_stmt(stmt_t *stmt, symtable_t *vars, symtable_t *funcs,
     return 1;
 }
 
-static int check_while_stmt(stmt_t *stmt, symtable_t *vars, symtable_t *funcs,
-                            label_table_t *labels, ir_builder_t *ir,
-                            type_kind_t func_ret_type)
-{
-    ir_value_t cond_val;
-    char start_label[32];
-    char end_label[32];
-    int id = label_next_id();
-    label_format_suffix("L", id, "_start", start_label);
-    label_format_suffix("L", id, "_end", end_label);
-    ir_build_label(ir, start_label);
-    if (check_expr(stmt->while_stmt.cond, vars, funcs, ir, &cond_val) == TYPE_UNKNOWN)
-        return 0;
-    ir_build_bcond(ir, cond_val, end_label);
-    if (!check_stmt(stmt->while_stmt.body, vars, funcs, labels, ir,
-                    func_ret_type, end_label, start_label))
-        return 0;
-    ir_build_br(ir, start_label);
-    ir_build_label(ir, end_label);
-    return 1;
-}
 
-static int check_do_while_stmt(stmt_t *stmt, symtable_t *vars, symtable_t *funcs,
-                               label_table_t *labels, ir_builder_t *ir,
-                               type_kind_t func_ret_type)
-{
-    ir_value_t cond_val;
-    char start_label[32];
-    char cond_label[32];
-    char end_label[32];
-    int id = label_next_id();
-    label_format_suffix("L", id, "_start", start_label);
-    label_format_suffix("L", id, "_cond", cond_label);
-    label_format_suffix("L", id, "_end", end_label);
-    ir_build_label(ir, start_label);
-    if (!check_stmt(stmt->do_while_stmt.body, vars, funcs, labels, ir,
-                    func_ret_type, end_label, cond_label))
-        return 0;
-    ir_build_label(ir, cond_label);
-    if (check_expr(stmt->do_while_stmt.cond, vars, funcs, ir, &cond_val) == TYPE_UNKNOWN)
-        return 0;
-    ir_build_bcond(ir, cond_val, end_label);
-    ir_build_br(ir, start_label);
-    ir_build_label(ir, end_label);
-    return 1;
-}
-
-static int check_for_stmt(stmt_t *stmt, symtable_t *vars, symtable_t *funcs,
-                          label_table_t *labels, ir_builder_t *ir,
-                          type_kind_t func_ret_type)
-{
-    ir_value_t cond_val;
-    char start_label[32];
-    char end_label[32];
-    int id = label_next_id();
-    label_format_suffix("L", id, "_start", start_label);
-    label_format_suffix("L", id, "_end", end_label);
-    symbol_t *old_head = vars->head;
-    if (stmt->for_stmt.init_decl) {
-        if (!check_stmt(stmt->for_stmt.init_decl, vars, funcs, labels, ir,
-                        func_ret_type, NULL, NULL)) {
-            symtable_pop_scope(vars, old_head);
-            return 0;
-        }
-    } else {
-        if (check_expr(stmt->for_stmt.init, vars, funcs, ir, &cond_val) == TYPE_UNKNOWN) {
-            symtable_pop_scope(vars, old_head);
-            return 0; /* reuse cond_val for init but ignore value */
-        }
-    }
-    ir_build_label(ir, start_label);
-    if (check_expr(stmt->for_stmt.cond, vars, funcs, ir, &cond_val) == TYPE_UNKNOWN) {
-        symtable_pop_scope(vars, old_head);
-        return 0;
-    }
-    ir_build_bcond(ir, cond_val, end_label);
-    char cont_label[32];
-    label_format_suffix("L", id, "_cont", cont_label);
-    if (!check_stmt(stmt->for_stmt.body, vars, funcs, labels, ir,
-                    func_ret_type, end_label, cont_label)) {
-        symtable_pop_scope(vars, old_head);
-        return 0;
-    }
-    ir_build_label(ir, cont_label);
-    if (check_expr(stmt->for_stmt.incr, vars, funcs, ir, &cond_val) == TYPE_UNKNOWN) {
-        symtable_pop_scope(vars, old_head);
-        return 0;
-    }
-    ir_build_br(ir, start_label);
-    ir_build_label(ir, end_label);
-    symtable_pop_scope(vars, old_head);
-    return 1;
-}
-
-static int check_switch_stmt(stmt_t *stmt, symtable_t *vars, symtable_t *funcs,
-                             label_table_t *labels, ir_builder_t *ir,
-                             type_kind_t func_ret_type)
-{
-    ir_value_t expr_val;
-    if (check_expr(stmt->switch_stmt.expr, vars, funcs, ir, &expr_val) == TYPE_UNKNOWN)
-        return 0;
-    char end_label[32];
-    char default_label[32];
-    int id = label_next_id();
-    label_format_suffix("L", id, "_end", end_label);
-    label_format_suffix("L", id, "_default", default_label);
-    char **case_labels = calloc(stmt->switch_stmt.case_count, sizeof(char *));
-    if (!case_labels)
-        return 0;
-    for (size_t i = 0; i < stmt->switch_stmt.case_count; i++) {
-        char lbl[32];
-        snprintf(lbl, sizeof(lbl), "L%d_case%zu", id, i);
-        case_labels[i] = vc_strdup(lbl);
-        long long cval;
-        if (!eval_const_expr(stmt->switch_stmt.cases[i].expr, vars, &cval)) {
-            for (size_t j = 0; j <= i; j++) free(case_labels[j]);
-            free(case_labels);
-            error_set(stmt->switch_stmt.cases[i].expr->line,
-                      stmt->switch_stmt.cases[i].expr->column);
-            return 0;
-        }
-        ir_value_t const_val = ir_build_const(ir, cval);
-        ir_value_t cmp = ir_build_binop(ir, IR_CMPEQ, expr_val, const_val);
-        ir_build_bcond(ir, cmp, case_labels[i]);
-    }
-    if (stmt->switch_stmt.default_body)
-        ir_build_br(ir, default_label);
-    else
-        ir_build_br(ir, end_label);
-    for (size_t i = 0; i < stmt->switch_stmt.case_count; i++) {
-        ir_build_label(ir, case_labels[i]);
-        if (!check_stmt(stmt->switch_stmt.cases[i].body, vars, funcs, labels, ir,
-                        func_ret_type, end_label, NULL)) {
-            for (size_t j = 0; j < stmt->switch_stmt.case_count; j++)
-                free(case_labels[j]);
-            free(case_labels);
-            return 0;
-        }
-        ir_build_br(ir, end_label);
-    }
-    if (stmt->switch_stmt.default_body) {
-        ir_build_label(ir, default_label);
-        if (!check_stmt(stmt->switch_stmt.default_body, vars, funcs, labels, ir,
-                        func_ret_type, end_label, NULL)) {
-            for (size_t j = 0; j < stmt->switch_stmt.case_count; j++)
-                free(case_labels[j]);
-            free(case_labels);
-            return 0;
-        }
-    }
-    ir_build_label(ir, end_label);
-    for (size_t j = 0; j < stmt->switch_stmt.case_count; j++)
-        free(case_labels[j]);
-    free(case_labels);
-    return 1;
-}
 
 /*
  * Validate a single statement.  Loop labels are used for 'break' and

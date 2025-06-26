@@ -11,6 +11,8 @@
 #include "consteval.h"
 #include "semantic_expr.h"
 #include "semantic_stmt.h"
+#include "semantic_loops.h"
+#include "semantic_switch.h"
 #include "semantic_global.h"
 
 #endif /* VC_SEMANTIC_H */
