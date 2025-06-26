@@ -45,6 +45,7 @@ static const keyword_t keyword_table[] = {
     { "union",    TOK_KW_UNION },
     { "typedef",  TOK_KW_TYPEDEF },
     { "static",   TOK_KW_STATIC },
+    { "extern",   TOK_KW_EXTERN },
     { "const",    TOK_KW_CONST },
     { "volatile", TOK_KW_VOLATILE },
     { "restrict", TOK_KW_RESTRICT },
@@ -140,8 +141,20 @@ static void read_number(const char *src, size_t *i, size_t *col,
                         vector_t *tokens, size_t line)
 {
     size_t start = *i;
-    while (isdigit((unsigned char)src[*i]))
+
+    if (src[*i] == '0' && (src[*i + 1] == 'x' || src[*i + 1] == 'X')) {
+        (*i) += 2; /* consume 0x */
+        while (isxdigit((unsigned char)src[*i]))
+            (*i)++;
+    } else if (src[*i] == '0') {
         (*i)++;
+        while (src[*i] >= '0' && src[*i] <= '7')
+            (*i)++;
+    } else {
+        while (isdigit((unsigned char)src[*i]))
+            (*i)++;
+    }
+
     size_t len = *i - start;
     append_token(tokens, TOK_NUMBER, src + start, len, line, *col);
     *col += len;

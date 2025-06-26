@@ -64,6 +64,7 @@ static const char *token_name(token_type_t type)
     case TOK_KW_UNION: return "\"union\"";
     case TOK_KW_TYPEDEF: return "\"typedef\"";
     case TOK_KW_STATIC: return "\"static\"";
+    case TOK_KW_EXTERN: return "\"extern\"";
     case TOK_KW_CONST: return "\"const\"";
     case TOK_KW_VOLATILE: return "\"volatile\"";
     case TOK_KW_RESTRICT: return "\"restrict\"";
@@ -312,6 +313,7 @@ int parser_parse_toplevel(parser_t *p, symtable_t *funcs,
     if (out_global) *out_global = NULL;
 
     size_t save = p->pos;
+    int is_extern = match(p, TOK_KW_EXTERN);
     int is_static = match(p, TOK_KW_STATIC);
     match(p, TOK_KW_INLINE);
     int is_const = match(p, TOK_KW_CONST);
@@ -492,8 +494,8 @@ int parser_parse_toplevel(parser_t *p, symtable_t *funcs,
         p->pos++; /* consume ';' */
         if (out_global)
             *out_global = ast_make_var_decl(id->lexeme, t, arr_size, size_expr,
-                                           elem_size, is_static, is_const,
-                                           is_volatile, is_restrict,
+                                           elem_size, is_static, is_extern,
+                                           is_const, is_volatile, is_restrict,
                                            NULL, NULL, 0,
                                            NULL, NULL, 0,
                                            tok->line, tok->column);
@@ -528,8 +530,8 @@ int parser_parse_toplevel(parser_t *p, symtable_t *funcs,
         }
         if (out_global)
             *out_global = ast_make_var_decl(id->lexeme, t, arr_size, size_expr,
-                                           elem_size, is_static, is_const,
-                                           is_volatile, is_restrict,
+                                           elem_size, is_static, is_extern,
+                                           is_const, is_volatile, is_restrict,
                                            init, init_list, init_count,
                                            NULL, NULL, 0,
                                            tok->line, tok->column);

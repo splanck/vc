@@ -59,6 +59,7 @@ static stmt_t *parse_block(parser_t *p)
 /* Parse a variable declaration starting after a type keyword already matched */
 static stmt_t *parse_var_decl(parser_t *p)
 {
+    int is_extern = match(p, TOK_KW_EXTERN);
     int is_static = match(p, TOK_KW_STATIC);
     match(p, TOK_KW_INLINE);
     int is_const = match(p, TOK_KW_CONST);
@@ -131,7 +132,7 @@ static stmt_t *parse_var_decl(parser_t *p)
             return NULL;
     }
     stmt_t *res = ast_make_var_decl(name, t, arr_size, size_expr, elem_size, is_static,
-                                    is_const, is_volatile, is_restrict, init, init_list,
+                                    is_extern, is_const, is_volatile, is_restrict, init, init_list,
                                     init_count,
                                     tag_name, NULL, 0,
                                     kw_tok->line, kw_tok->column);
@@ -202,6 +203,7 @@ fail:
 /* Parse a union variable with inline member specification */
 stmt_t *parser_parse_union_var_decl(parser_t *p)
 {
+    int is_extern = match(p, TOK_KW_EXTERN);
     int is_static = match(p, TOK_KW_STATIC);
     int is_const = match(p, TOK_KW_CONST);
     int is_volatile = match(p, TOK_KW_VOLATILE);
@@ -266,8 +268,8 @@ fail:
     }
     union_member_t *members = (union_member_t *)members_v.data;
     size_t count = members_v.count;
-    stmt_t *res = ast_make_var_decl(name, TYPE_UNION, 0, NULL, 0, is_static, is_const,
-                                    is_volatile, 0, NULL, NULL, 0, NULL, members,
+    stmt_t *res = ast_make_var_decl(name, TYPE_UNION, 0, NULL, 0, is_static, is_extern,
+                                    is_const, is_volatile, 0, NULL, NULL, 0, NULL, members,
                                     count,
                                     kw->line, kw->column);
     if (!res) {
@@ -348,6 +350,7 @@ fail:
 /* Parse a struct variable with inline member specification */
 stmt_t *parser_parse_struct_var_decl(parser_t *p)
 {
+    int is_extern = match(p, TOK_KW_EXTERN);
     int is_static = match(p, TOK_KW_STATIC);
     int is_const = match(p, TOK_KW_CONST);
     int is_volatile = match(p, TOK_KW_VOLATILE);
@@ -412,8 +415,8 @@ fail:
     }
     struct_member_t *members = (struct_member_t *)members_v.data;
     size_t count = members_v.count;
-    stmt_t *res = ast_make_var_decl(name, TYPE_STRUCT, 0, NULL, 0, is_static, is_const,
-                                    is_volatile, 0, NULL, NULL, 0, NULL,
+    stmt_t *res = ast_make_var_decl(name, TYPE_STRUCT, 0, NULL, 0, is_static, is_extern,
+                                    is_const, is_volatile, 0, NULL, NULL, 0, NULL,
                                     (union_member_t *)members, count,
                                     kw->line, kw->column);
     if (!res) {
