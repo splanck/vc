@@ -5,6 +5,7 @@
 #include <stdio.h>
 #include "semantic_global.h"
 #include "semantic_stmt.h"
+#include "consteval.h"
 #include "semantic_expr.h"
 #include "symtable.h"
 #include "util.h"

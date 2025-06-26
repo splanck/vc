@@ -8,6 +8,7 @@
 #ifndef VC_SEMANTIC_H
 #define VC_SEMANTIC_H
 
+#include "consteval.h"
 #include "semantic_expr.h"
 #include "semantic_stmt.h"
 #include "semantic_global.h"
