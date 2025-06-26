@@ -8,9 +8,24 @@ for cfile in $(ls "$DIR"/fixtures/*.c | sort); do
     base=$(basename "$cfile" .c)
 
     case "$base" in
-        *_x86-64) continue;;
+        *_x86-64|struct_*) continue;;
     esac
     [ "$base" = "include_search" ] && continue
+    expect="$DIR/fixtures/$base.s"
+    out=$(mktemp)
+    echo "Running fixture $base"
+    "$BINARY" -o "$out" "$cfile"
+    if ! diff -u "$expect" "$out"; then
+        echo "Test $base failed"
+        fail=1
+    fi
+    rm -f "$out"
+done
+
+# run struct fixtures separately to ensure struct member access and assignment
+for cfile in "$DIR"/fixtures/struct_*.c; do
+    [ -e "$cfile" ] || continue
+    base=$(basename "$cfile" .c)
     expect="$DIR/fixtures/$base.s"
     out=$(mktemp)
     echo "Running fixture $base"
