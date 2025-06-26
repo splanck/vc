@@ -60,6 +60,7 @@ expr_t *parser_parse_expr(parser_t *p);
 /* Parse an initializer list between '{' and '}'.  The number of parsed
  * expressions is stored in out_count. */
 init_entry_t *parser_parse_init_list(parser_t *p, size_t *out_count);
+stmt_t *parser_parse_var_decl(parser_t *p);
 stmt_t *parser_parse_enum_decl(parser_t *p);
 stmt_t *parser_parse_union_decl(parser_t *p);
 stmt_t *parser_parse_union_var_decl(parser_t *p);
