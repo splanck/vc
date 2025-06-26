@@ -37,16 +37,9 @@ static inline int match(parser_t *p, token_type_t type)
     return 0;
 }
 
-/* Initialize the parser with a token array.  Resets the position to 0. */
-void parser_init(parser_t *p, token_t *tokens, size_t count);
-
 /* Parse a single statement at the current position and advance past it.
  * Returns the constructed stmt_t or NULL on failure. */
 stmt_t *parser_parse_stmt(parser_t *p);
-
-/* Parse an entire function definition beginning with its return type.
- * The returned func_t owns all allocated memory. */
-func_t *parser_parse_func(parser_t *p);
 
 /* Parse a top-level declaration.  Exactly one of out_func or out_global
  * will be set on success.  The return value is non-zero if a valid
@@ -66,14 +59,5 @@ stmt_t *parser_parse_union_decl(parser_t *p);
 stmt_t *parser_parse_union_var_decl(parser_t *p);
 stmt_t *parser_parse_struct_decl(parser_t *p);
 stmt_t *parser_parse_struct_var_decl(parser_t *p);
-
-/* Returns non-zero if the parser has reached EOF */
-int parser_is_eof(parser_t *p);
-
-/* Print a parser error message showing the unexpected token and a list of
- * expected tokens. The expected token array may be NULL if there are none. */
-void parser_print_error(parser_t *p,
-                        const token_type_t *expected,
-                        size_t expected_count);
 
 #endif /* VC_PARSER_H */
