@@ -1,0 +1,33 @@
+/*
+ * Macro handling for the preprocessor.
+ *
+ * Part of vc under the BSD 2-Clause license.
+ * See LICENSE for details.
+ */
+
+#ifndef VC_PREPROC_MACROS_H
+#define VC_PREPROC_MACROS_H
+
+#include "vector.h"
+#include "strbuf.h"
+
+/* Stored macro definition */
+typedef struct {
+    char *name;
+    vector_t params; /* vector of char* parameter names */
+    char *value;
+} macro_t;
+
+/* Free memory used by a macro */
+void macro_free(macro_t *m);
+
+/* Expand macros in one line */
+void expand_line(const char *line, vector_t *macros, strbuf_t *out);
+
+/* Check whether a macro exists */
+int is_macro_defined(vector_t *macros, const char *name);
+
+/* Remove all definitions of a macro */
+void remove_macro(vector_t *macros, const char *name);
+
+#endif /* VC_PREPROC_MACROS_H */
