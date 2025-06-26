@@ -111,15 +111,18 @@ static stmt_t *parse_var_decl(parser_t *p)
         }
     }
     expr_t *init = NULL;
-    expr_t **init_list = NULL;
+    init_entry_t *init_list = NULL;
     size_t init_count = 0;
     if (match(p, TOK_ASSIGN)) {
         if (t == TYPE_ARRAY && peek(p) && peek(p)->type == TOK_LBRACE) {
             init_list = parser_parse_init_list(p, &init_count);
             if (!init_list || !match(p, TOK_SEMI)) {
                 if (init_list) {
-                    for (size_t i = 0; i < init_count; i++)
-                        ast_free_expr(init_list[i]);
+                    for (size_t i = 0; i < init_count; i++) {
+                        ast_free_expr(init_list[i].index);
+                        ast_free_expr(init_list[i].value);
+                        free(init_list[i].field);
+                    }
                     free(init_list);
                 }
                 return NULL;

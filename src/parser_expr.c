@@ -14,6 +14,7 @@
 #include "parser.h"
 #include "parser_types.h"
 #include "vector.h"
+#include "util.h"
 
 /* Forward declarations */
 static expr_t *parse_expression(parser_t *p);
@@ -723,39 +724,89 @@ static expr_t *parse_expression(parser_t *p)
  * expressions has "*out_count" elements and must be freed by the
  * caller.  NULL is returned on error.
  */
-expr_t **parser_parse_init_list(parser_t *p, size_t *out_count)
+init_entry_t *parser_parse_init_list(parser_t *p, size_t *out_count)
 {
     if (!match(p, TOK_LBRACE))
         return NULL;
     vector_t vals_v;
-    vector_init(&vals_v, sizeof(expr_t *));
+    vector_init(&vals_v, sizeof(init_entry_t));
     if (!match(p, TOK_RBRACE)) {
         do {
-            expr_t *e = parse_expression(p);
-            if (!e) {
-                for (size_t i = 0; i < vals_v.count; i++)
-                    ast_free_expr(((expr_t **)vals_v.data)[i]);
-                vector_free(&vals_v);
-                return NULL;
+            init_entry_t e = { INIT_SIMPLE, NULL, NULL, NULL };
+            if (match(p, TOK_DOT)) {
+                token_t *id = peek(p);
+                if (!id || id->type != TOK_IDENT) {
+                    vector_free(&vals_v);
+                    return NULL;
+                }
+                p->pos++;
+                e.kind = INIT_FIELD;
+                e.field = vc_strdup(id->lexeme);
+                if (!e.field) {
+                    vector_free(&vals_v);
+                    return NULL;
+                }
+                if (!match(p, TOK_ASSIGN)) {
+                    free(e.field);
+                    vector_free(&vals_v);
+                    return NULL;
+                }
+                e.value = parse_expression(p);
+                if (!e.value) {
+                    free(e.field);
+                    vector_free(&vals_v);
+                    return NULL;
+                }
+            } else if (match(p, TOK_LBRACKET)) {
+                e.kind = INIT_INDEX;
+                e.index = parse_expression(p);
+                if (!e.index || !match(p, TOK_RBRACKET) || !match(p, TOK_ASSIGN)) {
+                    ast_free_expr(e.index);
+                    vector_free(&vals_v);
+                    return NULL;
+                }
+                e.value = parse_expression(p);
+                if (!e.value) {
+                    ast_free_expr(e.index);
+                    vector_free(&vals_v);
+                    return NULL;
+                }
+            } else {
+                e.value = parse_expression(p);
+                if (!e.value) {
+                    vector_free(&vals_v);
+                    return NULL;
+                }
             }
+
             if (!vector_push(&vals_v, &e)) {
-                ast_free_expr(e);
-                for (size_t i = 0; i < vals_v.count; i++)
-                    ast_free_expr(((expr_t **)vals_v.data)[i]);
+                ast_free_expr(e.index);
+                ast_free_expr(e.value);
+                free(e.field);
+                for (size_t i = 0; i < vals_v.count; i++) {
+                    init_entry_t *it = &((init_entry_t *)vals_v.data)[i];
+                    ast_free_expr(it->index);
+                    ast_free_expr(it->value);
+                    free(it->field);
+                }
                 vector_free(&vals_v);
                 return NULL;
             }
         } while (match(p, TOK_COMMA));
         if (!match(p, TOK_RBRACE)) {
-            for (size_t i = 0; i < vals_v.count; i++)
-                ast_free_expr(((expr_t **)vals_v.data)[i]);
+            for (size_t i = 0; i < vals_v.count; i++) {
+                init_entry_t *it = &((init_entry_t *)vals_v.data)[i];
+                ast_free_expr(it->index);
+                ast_free_expr(it->value);
+                free(it->field);
+            }
             vector_free(&vals_v);
             return NULL;
         }
     }
     if (out_count)
         *out_count = vals_v.count;
-    return (expr_t **)vals_v.data;
+    return (init_entry_t *)vals_v.data;
 }
 
 /* Public wrapper for expression parsing used by other modules. */
