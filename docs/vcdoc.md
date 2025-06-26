@@ -286,6 +286,7 @@ RETURN v2
 - Increment and decrement operators (`++`, `--`)
 - Logical operators `&&`, `||` and `!`
 - Conditional operator (`?:`)
+- `switch` statements with `case` and `default`
 - Bitwise operators (`&`, `|`, `^`, `<<`, `>>` and compound forms)
 - Floating-point types (`float`, `double`, `long double`)
 - `sizeof` operator
@@ -602,6 +603,26 @@ int main() {
 Compile with:
 ```sh
 vc -o for_decl.s for_decl.c
+```
+
+### Switch statements
+```c
+/* switch.c */
+int main() {
+    int x = 1;
+    switch (x) {
+    case 0:
+        return 5;
+    case 1:
+        return 10;
+    default:
+        return -1;
+    }
+}
+```
+Compile with:
+```sh
+vc -o switch.s switch.c
 ```
 
 ### Logical operators
