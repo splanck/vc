@@ -34,6 +34,7 @@ typedef enum {
     TOK_KW_CONST,
     TOK_KW_VOLATILE,
     TOK_KW_RESTRICT,
+    TOK_KW_INLINE,
     TOK_KW_RETURN,
     TOK_KW_IF,
     TOK_KW_ELSE,
