@@ -732,8 +732,9 @@ The compiler supports the following options:
 - `-O<N>` – set optimization level (0 disables all passes).
 
 Use `vc -o out.s source.c` to compile a file, `vc -c -o out.o source.c` to
-produce an object, `vc --link -o prog source.c` to build an executable, or
-`vc --dump-asm source.c` to print the assembly to the terminal.
+produce an object, `vc --link -o prog main.c util.c` to build an executable
+from multiple sources, or `vc --dump-asm source.c` to print the assembly to the
+terminal.
 
 ## Preprocessor Usage
 

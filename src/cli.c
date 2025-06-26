@@ -16,7 +16,7 @@
 
 static void print_usage(const char *prog)
 {
-    printf("Usage: %s [options] <source>\n", prog);
+    printf("Usage: %s [options] <source...>\n", prog);
     printf("Options:\n");
     printf("  -o, --output <file>  Output path\n");
     printf("  -O<N>               Optimization level (0-3)\n");
@@ -68,7 +68,7 @@ int cli_parse_args(int argc, char **argv, cli_options_t *opts)
     opts->preprocess = 0;
     opts->std = STD_C99;
     vector_init(&opts->include_dirs, sizeof(char *));
-    opts->source = NULL;
+    vector_init(&opts->sources, sizeof(char *));
 
     int opt;
     while ((opt = getopt_long(argc, argv, "hvo:O:cEI:", long_opts, NULL)) != -1) {
@@ -155,7 +155,13 @@ int cli_parse_args(int argc, char **argv, cli_options_t *opts)
         return 1;
     }
 
-    opts->source = argv[optind];
+    for (int i = optind; i < argc; i++) {
+        if (!vector_push(&opts->sources, &argv[i])) {
+            fprintf(stderr, "Out of memory\n");
+            return 1;
+        }
+    }
+
     return 0;
 }
 
