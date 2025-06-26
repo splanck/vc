@@ -158,6 +158,39 @@ static expr_t *clone_expr(const expr_t *expr)
         return ast_make_call(expr->call.name, args, n,
                              expr->line, expr->column);
     }
+    case EXPR_COMPLIT: {
+        expr_t *init = clone_expr(expr->compound.init);
+        init_entry_t *list = NULL;
+        if (expr->compound.init_count) {
+            list = malloc(expr->compound.init_count * sizeof(*list));
+            if (!list) {
+                ast_free_expr(init);
+                return NULL;
+            }
+            for (size_t i = 0; i < expr->compound.init_count; i++) {
+                list[i].kind = expr->compound.init_list[i].kind;
+                list[i].field = expr->compound.init_list[i].field ? vc_strdup(expr->compound.init_list[i].field) : NULL;
+                list[i].index = clone_expr(expr->compound.init_list[i].index);
+                list[i].value = clone_expr(expr->compound.init_list[i].value);
+                if ((expr->compound.init_list[i].field && !list[i].field) ||
+                    (expr->compound.init_list[i].index && !list[i].index) ||
+                    (expr->compound.init_list[i].value && !list[i].value)) {
+                    for (size_t j = 0; j <= i; j++) {
+                        free(list[j].field);
+                        ast_free_expr(list[j].index);
+                        ast_free_expr(list[j].value);
+                    }
+                    free(list);
+                    ast_free_expr(init);
+                    return NULL;
+                }
+            }
+        }
+        return ast_make_compound(expr->compound.type, expr->compound.array_size,
+                                 expr->compound.elem_size, init, list,
+                                 expr->compound.init_count, expr->line,
+                                 expr->column);
+    }
     }
     return NULL;
 }
@@ -274,12 +307,26 @@ static expr_t *parse_primary(parser_t *p)
             base = ast_make_ident(tok->lexeme, tok->line, tok->column);
         }
     } else if (match(p, TOK_LPAREN)) {
-        expr_t *expr = parse_expression(p);
-        if (!match(p, TOK_RPAREN)) {
-            ast_free_expr(expr);
-            return NULL;
+        token_t *lp = &p->tokens[p->pos - 1];
+        size_t save = p->pos;
+        type_kind_t t; size_t arr_sz; size_t esz;
+        if (parse_type(p, &t, &arr_sz, &esz) && match(p, TOK_RPAREN) &&
+            peek(p) && peek(p)->type == TOK_LBRACE) {
+            size_t count = 0;
+            init_entry_t *list = parser_parse_init_list(p, &count);
+            if (!list)
+                return NULL;
+            base = ast_make_compound(t, arr_sz, esz, NULL, list, count,
+                                     lp->line, lp->column);
+        } else {
+            p->pos = save;
+            expr_t *expr = parse_expression(p);
+            if (!match(p, TOK_RPAREN)) {
+                ast_free_expr(expr);
+                return NULL;
+            }
+            base = expr;
         }
-        base = expr;
     }
     if (!base)
         return NULL;

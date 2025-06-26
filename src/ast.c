@@ -266,6 +266,26 @@ expr_t *ast_make_call(const char *name, expr_t **args, size_t arg_count,
     return expr;
 }
 
+expr_t *ast_make_compound(type_kind_t type, size_t array_size,
+                          size_t elem_size, expr_t *init,
+                          init_entry_t *init_list, size_t init_count,
+                          size_t line, size_t column)
+{
+    expr_t *expr = malloc(sizeof(*expr));
+    if (!expr)
+        return NULL;
+    expr->kind = EXPR_COMPLIT;
+    expr->line = line;
+    expr->column = column;
+    expr->compound.type = type;
+    expr->compound.array_size = array_size;
+    expr->compound.elem_size = elem_size;
+    expr->compound.init = init;
+    expr->compound.init_list = init_list;
+    expr->compound.init_count = init_count;
+    return expr;
+}
+
 /* Constructors for statements */
 /* Wrap an expression as a statement. */
 stmt_t *ast_make_expr_stmt(expr_t *expr, size_t line, size_t column)
@@ -688,6 +708,15 @@ void ast_free_expr(expr_t *expr)
             ast_free_expr(expr->call.args[i]);
         free(expr->call.args);
         free(expr->call.name);
+        break;
+    case EXPR_COMPLIT:
+        ast_free_expr(expr->compound.init);
+        for (size_t i = 0; i < expr->compound.init_count; i++) {
+            ast_free_expr(expr->compound.init_list[i].index);
+            ast_free_expr(expr->compound.init_list[i].value);
+            free(expr->compound.init_list[i].field);
+        }
+        free(expr->compound.init_list);
         break;
     }
     free(expr);

@@ -844,6 +844,44 @@ type_kind_t check_expr(expr_t *expr, symtable_t *vars, symtable_t *funcs,
             *out = ir_build_const(ir, sz);
         return TYPE_INT;
     }
+    case EXPR_COMPLIT: {
+        size_t count = expr->compound.init_count;
+        size_t arr_sz = expr->compound.array_size;
+        if (expr->compound.type == TYPE_ARRAY && arr_sz == 0)
+            arr_sz = count;
+        size_t total = (arr_sz ? arr_sz : 1) * expr->compound.elem_size;
+        ir_value_t sizev = ir_build_const(ir, (int)total);
+        ir_value_t addr = ir_build_alloca(ir, sizev);
+        if (expr->compound.init_list) {
+            for (size_t i = 0; i < count; i++) {
+                init_entry_t *e = &expr->compound.init_list[i];
+                if (e->kind != INIT_SIMPLE)
+                    return TYPE_UNKNOWN;
+                ir_value_t val;
+                if (check_expr(e->value, vars, funcs, ir, &val) == TYPE_UNKNOWN)
+                    return TYPE_UNKNOWN;
+                ir_value_t idxv = ir_build_const(ir, (int)i);
+                ir_value_t ptr = ir_build_ptr_add(ir, addr, idxv,
+                                                 (int)expr->compound.elem_size);
+                ir_build_store_ptr(ir, ptr, val);
+            }
+        } else if (expr->compound.init) {
+            ir_value_t val;
+            if (check_expr(expr->compound.init, vars, funcs, ir, &val) == TYPE_UNKNOWN)
+                return TYPE_UNKNOWN;
+            ir_build_store_ptr(ir, addr, val);
+        }
+        if (out) {
+            if (expr->compound.type == TYPE_ARRAY || expr->compound.type == TYPE_STRUCT || expr->compound.type == TYPE_UNION)
+                *out = addr;
+            else
+                *out = ir_build_load_ptr(ir, addr);
+        }
+        if (expr->compound.type == TYPE_ARRAY || expr->compound.type == TYPE_STRUCT || expr->compound.type == TYPE_UNION)
+            return TYPE_PTR;
+        else
+            return expr->compound.type;
+    }
     case EXPR_CALL: {
         symbol_t *fsym = symtable_lookup(funcs, expr->call.name);
         if (!fsym) {
