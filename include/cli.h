@@ -25,7 +25,7 @@ typedef struct {
     int link;           /* build executable */
     int dump_asm;       /* dump assembly to stdout (-S/--dump-asm) */
     int dump_ir;        /* dump IR to stdout */
-    int preprocess;     /* print preprocessed source */
+    int preprocess;     /* run preprocessor only and print to stdout */
     c_std_t std;        /* language standard */
     vector_t include_dirs; /* additional include directories */
     vector_t sources;      /* input source files */

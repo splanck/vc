@@ -333,6 +333,7 @@ int main(int argc, char **argv)
         return 1;
     }
 
+    /* Only run the preprocessor when -E/--preprocess is supplied */
     if (cli.preprocess) {
         for (size_t i = 0; i < cli.sources.count; i++) {
             const char *src = ((const char **)cli.sources.data)[i];

@@ -158,6 +158,15 @@ if ! grep -q "IR_CONST" "$ir_out"; then
 fi
 rm -f "$ir_out"
 
+# test -E/--preprocess option
+pp_out=$(mktemp)
+"$BINARY" -E "$DIR/fixtures/macro_object.c" > "$pp_out"
+if ! grep -q "return 42;" "$pp_out"; then
+    echo "Test preprocess_option failed"
+    fail=1
+fi
+rm -f "$pp_out"
+
 # test --no-cprop option
 cprop_out=$(mktemp)
 "$BINARY" --no-cprop -o "$cprop_out" "$DIR/fixtures/const_load.c"
