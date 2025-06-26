@@ -1274,6 +1274,9 @@ int check_stmt(stmt_t *stmt, symtable_t *vars, symtable_t *funcs,
                 }
                 if (stmt->var_decl.type == TYPE_UNION)
                     ir_build_glob_union(ir, sym->ir_name, (int)sym->elem_size, 1);
+                else if (stmt->var_decl.type == TYPE_STRUCT)
+                    ir_build_glob_struct(ir, sym->ir_name,
+                                         (int)sym->struct_total_size, 1);
                 else
                     ir_build_glob_var(ir, sym->ir_name, cval, 1);
             } else {
@@ -1539,6 +1542,10 @@ int check_global(stmt_t *decl, symtable_t *globals, ir_builder_t *ir)
             ir_build_glob_union(ir, decl->var_decl.name,
                                (int)decl->var_decl.elem_size,
                                decl->var_decl.is_static);
+        else if (decl->var_decl.type == TYPE_STRUCT)
+            ir_build_glob_struct(ir, decl->var_decl.name,
+                                (int)decl->var_decl.elem_size,
+                                decl->var_decl.is_static);
         else
             ir_build_glob_var(ir, decl->var_decl.name, value,
                               decl->var_decl.is_static);
