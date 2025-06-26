@@ -99,6 +99,10 @@ promises that the pointer is the sole reference to its pointed-to object
 for the lifetime of the pointer.  This lets the optimizer assume no aliasing
 between `restrict` qualified pointers.
 
+The `register` qualifier is accepted for compatibility.  The qualifier is
+recorded in symbol tables but has no effect on code generation.  Objects
+declared with `register` behave the same as ordinary locals or globals.
+
 Structures and unions are declared with the `struct` or `union` keyword.
 Members are accessed using `.` for objects or `->` when working through a pointer.
 For structures each member has its own storage in the order declared.

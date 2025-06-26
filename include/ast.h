@@ -221,6 +221,7 @@ struct stmt {
             size_t elem_size;
             char *tag; /* NULL for basic types */
             int is_static;
+            int is_register;
             int is_extern;
             int is_const;
             int is_volatile;
@@ -366,7 +367,7 @@ stmt_t *ast_make_return(expr_t *expr, size_t line, size_t column);
 /* Declare a variable optionally initialized by \p init or \p init_list. */
 stmt_t *ast_make_var_decl(const char *name, type_kind_t type, size_t array_size,
                           expr_t *size_expr, size_t elem_size, int is_static,
-                          int is_extern, int is_const, int is_volatile, int is_restrict,
+                          int is_register, int is_extern, int is_const, int is_volatile, int is_restrict,
                           expr_t *init, init_entry_t *init_list, size_t init_count,
                           const char *tag, union_member_t *members,
                           size_t member_count, size_t line, size_t column);

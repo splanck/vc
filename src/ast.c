@@ -295,8 +295,8 @@ stmt_t *ast_make_return(expr_t *expr, size_t line, size_t column)
 
 /* Create a variable declaration statement. */
 stmt_t *ast_make_var_decl(const char *name, type_kind_t type, size_t array_size,
-                          expr_t *size_expr, size_t elem_size, int is_static, int is_extern,
-                          int is_const, int is_volatile, int is_restrict,
+                          expr_t *size_expr, size_t elem_size, int is_static, int is_register,
+                          int is_extern, int is_const, int is_volatile, int is_restrict,
                           expr_t *init, init_entry_t *init_list, size_t init_count,
                           const char *tag, union_member_t *members,
                           size_t member_count, size_t line, size_t column)
@@ -327,6 +327,7 @@ stmt_t *ast_make_var_decl(const char *name, type_kind_t type, size_t array_size,
         stmt->var_decl.tag = NULL;
     }
     stmt->var_decl.is_static = is_static;
+    stmt->var_decl.is_register = is_register;
     stmt->var_decl.is_extern = is_extern;
     stmt->var_decl.is_const = is_const;
     stmt->var_decl.is_volatile = is_volatile;

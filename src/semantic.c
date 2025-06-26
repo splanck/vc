@@ -1237,6 +1237,7 @@ int check_stmt(stmt_t *stmt, symtable_t *vars, symtable_t *funcs,
                           stmt->var_decl.array_size,
                           stmt->var_decl.elem_size,
                           stmt->var_decl.is_static,
+                          stmt->var_decl.is_register,
                           stmt->var_decl.is_const,
                           stmt->var_decl.is_volatile,
                           stmt->var_decl.is_restrict)) {
@@ -1565,6 +1566,7 @@ int check_global(stmt_t *decl, symtable_t *globals, ir_builder_t *ir)
                              decl->var_decl.array_size,
                              decl->var_decl.elem_size,
                              decl->var_decl.is_static,
+                             decl->var_decl.is_register,
                              decl->var_decl.is_const,
                              decl->var_decl.is_volatile,
                              decl->var_decl.is_restrict)) {
