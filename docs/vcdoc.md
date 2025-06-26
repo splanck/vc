@@ -2,7 +2,8 @@
 
 This document describes the compilation pipeline, the role of each module
 and the language features currently supported. Recent updates add basic
-support for floating-point types and operations.
+support for floating-point types and operations, along with preliminary
+handling of inline function definitions.
 
 ## Pipeline Overview
 
@@ -138,6 +139,12 @@ must match the previously declared signature.
 
 Any mismatch results in `error_print` reporting the source
 location of the failure.
+
+Function definitions may also be marked with the `inline` specifier. Inline
+functions are currently treated like regular functions. The compiler does not
+enforce the one-definition rule so multiple identical inline definitions are
+accepted. When combined with `static`, the `static` keyword must appear before
+`inline`.
 
 ### ir
 Defines the IR structures used throughout the rest of the compiler.

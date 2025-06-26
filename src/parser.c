@@ -68,6 +68,7 @@ static const char *token_name(token_type_t type)
     case TOK_KW_CONST: return "\"const\"";
     case TOK_KW_VOLATILE: return "\"volatile\"";
     case TOK_KW_RESTRICT: return "\"restrict\"";
+    case TOK_KW_INLINE: return "\"inline\"";
     case TOK_KW_RETURN: return "\"return\"";
     case TOK_KW_IF: return "\"if\"";
     case TOK_KW_ELSE: return "\"else\"";
@@ -314,8 +315,10 @@ int parser_parse_toplevel(parser_t *p, symtable_t *funcs,
     size_t save = p->pos;
     int is_extern = match(p, TOK_KW_EXTERN);
     int is_static = match(p, TOK_KW_STATIC);
+    match(p, TOK_KW_INLINE);
     int is_const = match(p, TOK_KW_CONST);
     int is_volatile = match(p, TOK_KW_VOLATILE);
+    size_t spec_pos = p->pos;
     token_t *tok = peek(p);
     if (!tok)
         return 0;
@@ -457,7 +460,7 @@ int parser_parse_toplevel(parser_t *p, symtable_t *funcs,
             return 1;
         } else if (after && after->type == TOK_LBRACE) {
             vector_free(&param_types_v);
-            p->pos = save;
+            p->pos = spec_pos;
             if (out_func)
                 *out_func = parser_parse_func(p);
             return *out_func != NULL;
@@ -535,7 +538,7 @@ int parser_parse_toplevel(parser_t *p, symtable_t *funcs,
         return *out_global != NULL;
     }
 
-    p->pos = save;
+    p->pos = spec_pos;
     if (out_func)
         *out_func = parser_parse_func(p);
     return *out_func != NULL;
