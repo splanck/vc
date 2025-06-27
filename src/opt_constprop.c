@@ -117,6 +117,7 @@ void propagate_load_consts(ir_builder_t *ir)
         case IR_ADD: case IR_SUB: case IR_MUL: case IR_DIV: case IR_MOD:
         case IR_SHL: case IR_SHR: case IR_AND: case IR_OR: case IR_XOR:
         case IR_FADD: case IR_FSUB: case IR_FMUL: case IR_FDIV:
+        case IR_LFADD: case IR_LFSUB: case IR_LFMUL: case IR_LFDIV:
         case IR_PTR_ADD:
         case IR_PTR_DIFF:
         case IR_CMPEQ: case IR_CMPNE: case IR_CMPLT:
