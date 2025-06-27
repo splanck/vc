@@ -20,7 +20,7 @@
 
 int export_syms = 0;
 
-/* Set whether assembly symbols should be exported. */
+/* Enable or disable exporting of global symbols. */
 void codegen_set_export(int flag)
 {
     export_syms = flag;

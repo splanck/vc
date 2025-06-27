@@ -14,6 +14,7 @@
 
 #define VERSION "0.1.0"
 
+/* Print command line usage information. */
 static void print_usage(const char *prog)
 {
     printf("Usage: %s [options] <source...>\n", prog);
@@ -35,6 +36,7 @@ static void print_usage(const char *prog)
     printf("  -E, --preprocess     Run only the preprocessor and print the result\n");
 }
 
+/* Parse command line options into the provided structure. */
 int cli_parse_args(int argc, char **argv, cli_options_t *opts)
 {
     static struct option long_opts[] = {

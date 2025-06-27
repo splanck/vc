@@ -9,6 +9,7 @@
 #include "consteval.h"
 #include "symtable.h"
 
+/* Return non-zero if type `t` is an integral type. */
 int is_intlike(type_kind_t t)
 {
     switch (t) {
@@ -25,11 +26,13 @@ int is_intlike(type_kind_t t)
     }
 }
 
+/* Return non-zero if type `t` is any floating-point type. */
 int is_floatlike(type_kind_t t)
 {
     return t == TYPE_FLOAT || t == TYPE_DOUBLE || t == TYPE_LDOUBLE;
 }
 
+/* Evaluate constant expression `expr` if possible. */
 int eval_const_expr(expr_t *expr, symtable_t *vars, long long *out)
 {
     if (!expr)
