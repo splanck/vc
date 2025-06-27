@@ -13,6 +13,7 @@
 #include "regalloc.h"
 #include "regalloc_x86.h"
 
+/* Return the textual name for the given IR opcode. */
 static const char *op_name(ir_op_t op)
 {
     switch (op) {

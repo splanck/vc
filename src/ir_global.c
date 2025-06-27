@@ -27,6 +27,7 @@ static ir_instr_t *append_instr(ir_builder_t *b)
     return ins;
 }
 
+/* Define a global variable named `name` with an optional initial value. */
 void ir_build_glob_var(ir_builder_t *b, const char *name, long long value,
                        int is_static)
 {
@@ -39,6 +40,7 @@ void ir_build_glob_var(ir_builder_t *b, const char *name, long long value,
     ins->src1 = is_static;
 }
 
+/* Define a global array `name` with the provided values. */
 void ir_build_glob_array(ir_builder_t *b, const char *name,
                          const long long *values, size_t count,
                          int is_static)
@@ -60,6 +62,7 @@ void ir_build_glob_array(ir_builder_t *b, const char *name,
     }
 }
 
+/* Begin a global union definition with the given name and size. */
 void ir_build_glob_union(ir_builder_t *b, const char *name, int size,
                          int is_static)
 {
@@ -72,6 +75,7 @@ void ir_build_glob_union(ir_builder_t *b, const char *name, int size,
     ins->src1 = is_static;
 }
 
+/* Begin a global struct definition with the given name and size. */
 void ir_build_glob_struct(ir_builder_t *b, const char *name, int size,
                           int is_static)
 {

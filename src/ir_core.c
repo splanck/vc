@@ -209,6 +209,7 @@ void ir_build_store_ptr(ir_builder_t *b, ir_value_t addr, ir_value_t val)
     ins->src2 = val.id;
 }
 
+/* Emit IR_PTR_ADD adding `idx` (scaled by element size) to pointer `ptr`. */
 ir_value_t ir_build_ptr_add(ir_builder_t *b, ir_value_t ptr, ir_value_t idx,
                             int elem_size)
 {
@@ -223,6 +224,7 @@ ir_value_t ir_build_ptr_add(ir_builder_t *b, ir_value_t ptr, ir_value_t idx,
     return (ir_value_t){ins->dest};
 }
 
+/* Emit IR_PTR_DIFF computing the difference between two pointers. */
 ir_value_t ir_build_ptr_diff(ir_builder_t *b, ir_value_t a, ir_value_t bptr,
                              int elem_size)
 {
@@ -252,6 +254,7 @@ ir_value_t ir_build_load_idx(ir_builder_t *b, const char *name, ir_value_t idx)
     return (ir_value_t){ins->dest};
 }
 
+/* Volatile variant of IR_LOAD_IDX for element `name[idx]`. */
 ir_value_t ir_build_load_idx_vol(ir_builder_t *b, const char *name, ir_value_t idx)
 {
     ir_instr_t *ins = append_instr(b);
@@ -280,6 +283,7 @@ void ir_build_store_idx(ir_builder_t *b, const char *name, ir_value_t idx,
     ins->name = vc_strdup(name ? name : "");
 }
 
+/* Volatile variant of IR_STORE_IDX assigning `val` to `name[idx]`. */
 void ir_build_store_idx_vol(ir_builder_t *b, const char *name, ir_value_t idx,
                             ir_value_t val)
 {
@@ -293,6 +297,7 @@ void ir_build_store_idx_vol(ir_builder_t *b, const char *name, ir_value_t idx,
     ins->is_volatile = 1;
 }
 
+/* Emit IR_ALLOCA reserving stack space of the given size. */
 ir_value_t ir_build_alloca(ir_builder_t *b, ir_value_t size)
 {
     ir_instr_t *ins = append_instr(b);
@@ -320,6 +325,7 @@ ir_value_t ir_build_binop(ir_builder_t *b, ir_op_t op, ir_value_t left, ir_value
     return (ir_value_t){ins->dest};
 }
 
+/* Emit IR_LOGAND performing logical AND. */
 ir_value_t ir_build_logand(ir_builder_t *b, ir_value_t left, ir_value_t right)
 {
     ir_instr_t *ins = append_instr(b);
@@ -332,6 +338,7 @@ ir_value_t ir_build_logand(ir_builder_t *b, ir_value_t left, ir_value_t right)
     return (ir_value_t){ins->dest};
 }
 
+/* Emit IR_LOGOR performing logical OR. */
 ir_value_t ir_build_logor(ir_builder_t *b, ir_value_t left, ir_value_t right)
 {
     ir_instr_t *ins = append_instr(b);
