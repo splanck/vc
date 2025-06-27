@@ -300,6 +300,44 @@ static void read_punct(char c, vector_t *tokens, size_t line, size_t column)
     append_token(tokens, type, &c, 1, line, column);
 }
 
+/* Shallow scanning helpers */
+static int scan_identifier(const char *src, size_t *i, size_t *col,
+                           vector_t *tokens, size_t line)
+{
+    char c = src[*i];
+    if (!isalpha((unsigned char)c) && c != '_')
+        return 0;
+    read_identifier(src, i, col, tokens, line);
+    return 1;
+}
+
+static int scan_number(const char *src, size_t *i, size_t *col,
+                       vector_t *tokens, size_t line)
+{
+    if (!isdigit((unsigned char)src[*i]))
+        return 0;
+    read_number(src, i, col, tokens, line);
+    return 1;
+}
+
+static int scan_string(const char *src, size_t *i, size_t *col,
+                       vector_t *tokens, size_t line)
+{
+    if (src[*i] != '"')
+        return 0;
+    read_string_lit(src, i, col, tokens, line);
+    return 1;
+}
+
+static int scan_char(const char *src, size_t *i, size_t *col,
+                     vector_t *tokens, size_t line)
+{
+    if (src[*i] != '\'')
+        return 0;
+    read_char_const(src, i, col, tokens, line);
+    return 1;
+}
+
 /* Public API */
 
 /* Tokenize the entire source string */
@@ -314,14 +352,11 @@ token_t *lexer_tokenize(const char *src, size_t *out_count)
         if (!src[i])
             break;
         char c = src[i];
-        if (isalpha((unsigned char)c) || c == '_') {
-            read_identifier(src, &i, &col, &vec, line);
-        } else if (isdigit((unsigned char)c)) {
-            read_number(src, &i, &col, &vec, line);
-        } else if (c == '"') {
-            read_string_lit(src, &i, &col, &vec, line);
-        } else if (c == '\'') {
-            read_char_const(src, &i, &col, &vec, line);
+        if (scan_identifier(src, &i, &col, &vec, line) ||
+            scan_number(src, &i, &col, &vec, line) ||
+            scan_string(src, &i, &col, &vec, line) ||
+            scan_char(src, &i, &col, &vec, line)) {
+            continue;
         } else if (c == '=' && src[i + 1] == '=') {
             append_token(&vec, TOK_EQ, "==", 2, line, col);
             i += 2; col += 2;
