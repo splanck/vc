@@ -54,6 +54,28 @@ static int *compute_last_use(ir_builder_t *ir, int max_id)
 }
 
 /*
+ * Assign a register or stack slot to the destination of `ins`.
+ *
+ * The allocator pulls registers from the `free_regs` stack until it runs
+ * out, at which point new stack slots are allocated sequentially.  The
+ * destination value of `ins` only receives a location if it has a valid id
+ * and none was previously assigned.
+ */
+static void allocate_location(ir_instr_t *ins, int *free_regs, int *free_count,
+                              regalloc_t *ra)
+{
+    int id = ins->dest;
+    if (id <= 0 || ra->loc[id] != -1)
+        return;
+
+    if (*free_count > 0) {
+        ra->loc[id] = free_regs[--(*free_count)];
+    } else {
+        ra->loc[id] = -(++ra->stack_slots);
+    }
+}
+
+/*
  * Populate `ra` with locations for every value defined in `ir`.
  *
  * The allocator performs a linear pass over the IR instructions.
@@ -67,6 +89,14 @@ static int *compute_last_use(ir_builder_t *ir, int max_id)
  */
 void regalloc_run(ir_builder_t *ir, regalloc_t *ra)
 {
+    /*
+     * Allocation proceeds in a single linear pass.  First the last use of
+     * every value is computed so registers can be released as soon as the
+     * allocator walks past that point.  During the scan each destination is
+     * given a register from the free stack or spilled to a new stack slot if
+     * none remain.  Freed registers are pushed back onto the stack for reuse.
+     */
+
     int max_id = ir->next_value_id;
     ra->loc = malloc((size_t)max_id * sizeof(int));
     ra->stack_slots = 0;
@@ -76,8 +106,11 @@ void regalloc_run(ir_builder_t *ir, regalloc_t *ra)
         ra->loc[i] = -1;
 
     int *last = compute_last_use(ir, max_id);
-    if (!last)
+    if (!last) {
+        free(ra->loc);
+        ra->loc = NULL;
         return;
+    }
 
     int free_regs[NUM_ALLOC_REGS];
     int free_count = NUM_ALLOC_REGS;
@@ -86,30 +119,21 @@ void regalloc_run(ir_builder_t *ir, regalloc_t *ra)
 
     int idx = 0;
     for (ir_instr_t *ins = ir->head; ins; ins = ins->next, idx++) {
-        /* Allocate a location for the destination value */
-        if (ins->dest > 0 && ins->dest < max_id && ra->loc[ins->dest] == -1) {
-            if (free_count > 0) {
-                /* grab a free register */
-                ra->loc[ins->dest] = free_regs[--free_count];
-            } else {
-                /* spill to a new stack slot */
-                ra->loc[ins->dest] = -(++ra->stack_slots);
-            }
-        }
+        /* assign the destination a register or stack slot */
+        allocate_location(ins, free_regs, &free_count, ra);
 
-        /* Return registers once their values are no longer needed */
+        /* release registers whose value will not be needed again */
         if (ins->src1 > 0 && ins->src1 < max_id &&
-            ra->loc[ins->src1] >= 0 && last[ins->src1] == idx) {
+            ra->loc[ins->src1] >= 0 && last[ins->src1] == idx)
             free_regs[free_count++] = ra->loc[ins->src1];
-        }
+
         if (ins->src2 > 0 && ins->src2 < max_id &&
-            ra->loc[ins->src2] >= 0 && last[ins->src2] == idx) {
+            ra->loc[ins->src2] >= 0 && last[ins->src2] == idx)
             free_regs[free_count++] = ra->loc[ins->src2];
-        }
+
         if (ins->dest > 0 && ins->dest < max_id &&
-            ra->loc[ins->dest] >= 0 && last[ins->dest] == idx) {
+            ra->loc[ins->dest] >= 0 && last[ins->dest] == idx)
             free_regs[free_count++] = ra->loc[ins->dest];
-        }
     }
     free(last);
 }
