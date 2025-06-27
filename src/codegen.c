@@ -1,5 +1,12 @@
 /*
- * Generate x86 assembly from IR.
+ * High level translation of the IR to x86 assembly.
+ *
+ * Each instruction emitted by the IR builder is dispatched to one of the
+ * specialised emitters found in the codegen_* modules.  Those helpers use
+ * register allocation information to determine whether operands live in
+ * registers or on the stack and output the appropriate assembly.  Both
+ * 32- and 64-bit variants are supported.  The `x64` parameter selects
+ * which register set and instruction suffixes are used.
  *
  * Part of vc under the BSD 2-Clause license.
  * See LICENSE for details.
@@ -20,7 +27,13 @@
 
 int export_syms = 0;
 
-/* Set whether assembly symbols should be exported. */
+/*
+ * Enable or disable symbol export.
+ *
+ * When enabled the prologue emitter in codegen_branch.c will mark
+ * functions with `.globl` so that the resulting object exposes the
+ * symbol.  This mirrors the behaviour of a public function in C.
+ */
 void codegen_set_export(int flag)
 {
     export_syms = flag;
@@ -28,7 +41,13 @@ void codegen_set_export(int flag)
 
 
 
-/* Dispatch an IR instruction to the appropriate emitter. */
+/*
+ * Dispatch a single IR instruction to the specialised emitter.
+ *
+ * The opcode determines which helper handles the instruction.  The
+ * register allocator state `ra` provides operand locations and `x64`
+ * selects the 32- or 64-bit instruction forms used by the helper.
+ */
 static void emit_instr(strbuf_t *sb, ir_instr_t *ins, regalloc_t *ra, int x64)
 {
     switch (ins->op) {
@@ -62,11 +81,13 @@ static void emit_instr(strbuf_t *sb, ir_instr_t *ins, regalloc_t *ra, int x64)
 }
 
 /*
- * Translate the IR instruction stream to x86 and return it as a string.
+ * Translate the IR instruction stream to x86 assembly and return it.
  *
- * Register allocation is performed and each instruction is lowered by
- * `emit_instr`. Global data directives are not included. The returned
- * buffer is heap allocated and must be freed by the caller.
+ * Register allocation is performed before walking the list of IR
+ * instructions.  Each IR opcode is lowered with `emit_instr`, producing
+ * either 32- or 64-bit mnemonics depending on the `x64` flag.  Global
+ * declarations are not included in the returned buffer.  The caller takes
+ * ownership of the heap-allocated string.
  */
 char *codegen_ir_to_string(ir_builder_t *ir, int x64)
 {
@@ -88,10 +109,10 @@ char *codegen_ir_to_string(ir_builder_t *ir, int x64)
 /*
  * Emit the assembly representation of `ir` to the stream `out`.
  *
- * Global declarations are written first using the appropriate `.data`
- * directives. The remaining instructions are lowered via
- * `codegen_ir_to_string` and printed after an optional `.text` header.
- * Set `x64` to enable 64-bit output.
+ * Global data is written first using `.data` directives.  The instruction
+ * sequence is then converted to either 32- or 64-bit x86 via
+ * `codegen_ir_to_string` and emitted after a `.text` header when needed.
+ * The `x64` argument selects the target word size.
  */
 void codegen_emit_x86(FILE *out, ir_builder_t *ir, int x64)
 {

@@ -1,6 +1,11 @@
 /*
  * Emitters for branch and control-flow IR instructions.
  *
+ * This module handles function prologues/epilogues, calls and jumps.  The
+ * generated code uses the stack layout computed by the register allocator
+ * and adapts instruction suffixes and frame sizes for 32- or 64-bit mode
+ * based on the `x64` argument passed to the emitters.
+ *
  * Part of vc under the BSD 2-Clause license.
  * See LICENSE for details.
  */
@@ -26,7 +31,15 @@ static const char *loc_str(char buf[32], regalloc_t *ra, int id, int x64)
     return buf;
 }
 
-/* Emit jumps, calls and other branch instructions. */
+/*
+ * Emit jumps, calls and other branch instructions.
+ *
+ * The register allocator provides operand locations and frame size.  This
+ * function uses that information to generate correct prologue/epilogue
+ * code and to lower control-flow opcodes.  Instruction variants differ
+ * between 32- and 64-bit mode; the `x64` flag selects the proper suffixes
+ * and stack pointer registers.
+ */
 void emit_branch_instr(strbuf_t *sb, ir_instr_t *ins,
                        regalloc_t *ra, int x64)
 {

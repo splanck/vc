@@ -1,6 +1,12 @@
 /*
  * Emitters for memory-related IR instructions.
  *
+ * Operations such as loads, stores and address calculations are lowered
+ * here after registers have been assigned.  Spilled values are written to
+ * or read from the stack as dictated by the register allocator.  The
+ * `x64` flag chooses between 32- and 64-bit addressing modes and register
+ * names.
+ *
  * Part of vc under the BSD 2-Clause license.
  * See LICENSE for details.
  */
@@ -26,7 +32,14 @@ static const char *loc_str(char buf[32], regalloc_t *ra, int id, int x64)
     return buf;
 }
 
-/* Emit x86 for load/store and other memory instructions. */
+/*
+ * Emit x86 for load/store and other memory instructions.
+ *
+ * Operand locations are taken from the register allocator.  If the
+ * destination is spilled, a temporary register is used and the value is
+ * stored back to the stack.  The `x64` flag determines pointer size and
+ * register names so that either 32- or 64-bit code can be produced.
+ */
 void emit_memory_instr(strbuf_t *sb, ir_instr_t *ins,
                        regalloc_t *ra, int x64)
 {
