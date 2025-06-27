@@ -1,5 +1,7 @@
 /*
  * Statement semantic validation helpers.
+ * Provides the function used to verify statements and
+ * emit IR for their control flow and effects.
  *
  * Part of vc under the BSD 2-Clause license.
  * See LICENSE for details.

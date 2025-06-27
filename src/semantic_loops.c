@@ -1,5 +1,7 @@
 /*
  * Loop statement semantic helpers.
+ * These functions verify loop constructs and generate the
+ * control-flow IR needed for iteration.
  *
  * Part of vc under the BSD 2-Clause license.
  * See LICENSE for details.

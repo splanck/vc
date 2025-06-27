@@ -1,5 +1,7 @@
 /*
  * Expression semantic analysis helpers.
+ * Provides functions to validate expressions of all forms and
+ * emit IR instructions for their evaluation.
  *
  * Part of vc under the BSD 2-Clause license.
  * See LICENSE for details.

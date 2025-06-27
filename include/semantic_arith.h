@@ -1,5 +1,7 @@
 /*
  * Arithmetic expression semantic helpers.
+ * Functions verify arithmetic and comparison expressions and
+ * produce the corresponding IR instructions.
  *
  * Part of vc under the BSD 2-Clause license.
  * See LICENSE for details.

@@ -1,5 +1,7 @@
 /*
  * Implementation of statement semantic checking.
+ * Handles all statement kinds and emits IR reflecting their
+ * control flow and side effects.
  *
  * Part of vc under the BSD 2-Clause license.
  * See LICENSE for details.

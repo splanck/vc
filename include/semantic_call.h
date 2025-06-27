@@ -1,5 +1,7 @@
 /*
  * Function call expression semantic helper.
+ * Provides the routine that checks call expressions and
+ * generates the IR call instruction.
  *
  * Part of vc under the BSD 2-Clause license.
  * See LICENSE for details.

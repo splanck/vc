@@ -1,5 +1,7 @@
 /*
  * Memory-related expression semantic helpers.
+ * Interfaces for checking array indexing, member access and
+ * compound literals while emitting the appropriate IR.
  *
  * Part of vc under the BSD 2-Clause license.
  * See LICENSE for details.
