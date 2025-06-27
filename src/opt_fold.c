@@ -48,6 +48,20 @@ static int eval_float_op(ir_op_t op, int a, int b)
     return res.i;
 }
 
+/* Evaluate a binary long double op for constant folding */
+static long long eval_long_float_op(ir_op_t op, long long a, long long b)
+{
+    union { long double f; long long i; } fa = {.i = a}, fb = {.i = b}, res;
+    switch (op) {
+    case IR_LFADD: res.f = fa.f + fb.f; break;
+    case IR_LFSUB: res.f = fa.f - fb.f; break;
+    case IR_LFMUL: res.f = fa.f * fb.f; break;
+    case IR_LFDIV: res.f = fb.f != 0.0L ? fa.f / fb.f : 0.0L; break;
+    default: res.i = 0; break;
+    }
+    return res.i;
+}
+
 /* Perform simple constant folding */
 void fold_constants(ir_builder_t *ir)
 {
@@ -93,17 +107,23 @@ void fold_constants(ir_builder_t *ir)
             }
             break;
         case IR_FADD: case IR_FSUB: case IR_FMUL: case IR_FDIV:
+        case IR_LFADD: case IR_LFSUB: case IR_LFMUL: case IR_LFDIV:
             if (ins->src1 < max_id && ins->src2 < max_id &&
                 is_const[ins->src1] && is_const[ins->src2]) {
-                int a = values[ins->src1];
-                int b = values[ins->src2];
-                int result = eval_float_op(ins->op, a, b);
+                long long a = values[ins->src1];
+                long long b = values[ins->src2];
+                long long result;
+                if (ins->op == IR_LFADD || ins->op == IR_LFSUB ||
+                    ins->op == IR_LFMUL || ins->op == IR_LFDIV)
+                    result = eval_long_float_op(ins->op, a, b);
+                else
+                    result = eval_float_op(ins->op, (int)a, (int)b);
                 ins->op = IR_CONST;
                 ins->imm = result;
                 ins->src1 = ins->src2 = 0;
                 if (ins->dest >= 0 && ins->dest < max_id) {
                     is_const[ins->dest] = 1;
-                    values[ins->dest] = result;
+                    values[ins->dest] = (int)result;
                 }
             } else if (ins->dest >= 0 && ins->dest < max_id) {
                 is_const[ins->dest] = 0;
@@ -126,6 +146,7 @@ void fold_constants(ir_builder_t *ir)
         case IR_STORE_PTR:
         case IR_PTR_ADD:
         case IR_PTR_DIFF:
+        case IR_ALLOCA:
             if (ins->dest >= 0 && ins->dest < max_id)
                 is_const[ins->dest] = 0;
             break;
