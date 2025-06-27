@@ -379,6 +379,60 @@ static void handle_pragma(char *line, vector_t *conds, strbuf_t *out)
 }
 
 /* Small helpers used by process_file */
+
+/*
+ * Read a file and split it into NUL terminated lines.  The returned
+ * text buffer holds the line data and must remain valid for the lifetime
+ * of the line array.  The caller must free both using the cleanup helper.
+ * NULL is returned on I/O errors.
+ */
+static int handle_directive(char *line, const char *dir, vector_t *macros,
+                            vector_t *conds, strbuf_t *out,
+                            const vector_t *incdirs);
+
+static char *read_file_lines(const char *path, char ***out_lines)
+{
+    char *text = vc_read_file(path);
+    if (!text)
+        return NULL;
+
+    size_t line_count = 1;
+    for (char *p = text; *p; p++)
+        if (*p == '\n')
+            line_count++;
+
+    char **lines = vc_alloc_or_exit(sizeof(char *) * (line_count + 1));
+
+    char *saveptr;
+    char *line = strtok_r(text, "\n", &saveptr);
+    size_t idx = 0;
+    while (line) {
+        lines[idx++] = line;
+        line = strtok_r(NULL, "\n", &saveptr);
+    }
+    lines[idx] = NULL;
+    *out_lines = lines;
+    return text;
+}
+
+/* Process one line of input.  Leading whitespace is skipped before
+ * dispatching to the directive handlers. */
+static int process_line(char *line, const char *dir, vector_t *macros,
+                        vector_t *conds, strbuf_t *out,
+                        const vector_t *incdirs)
+{
+    while (*line == ' ' || *line == '\t')
+        line++;
+    return handle_directive(line, dir, macros, conds, out, incdirs);
+}
+
+/* Free resources allocated by process_file */
+static void cleanup_file_resources(char *text, char **lines, char *dir)
+{
+    free(lines);
+    free(text);
+    free(dir);
+}
 /* Process a single #include directive and recursively handle the file. */
 static int process_include(char *line, const char *dir, vector_t *macros,
                            vector_t *conds, strbuf_t *out,
@@ -516,9 +570,11 @@ static int process_file(const char *path, vector_t *macros,
                         vector_t *conds, strbuf_t *out,
                         const vector_t *incdirs)
 {
-    char *text = vc_read_file(path);
+    char **lines;
+    char *text = read_file_lines(path, &lines);
     if (!text)
         return 0;
+
     char *dir = NULL;
     const char *slash = strrchr(path, '/');
     if (slash) {
@@ -526,22 +582,16 @@ static int process_file(const char *path, vector_t *macros,
         dir = vc_strndup(path, len);
     }
 
-    char *saveptr;
-    char *line = strtok_r(text, "\n", &saveptr);
-    while (line) {
-        while (*line == ' ' || *line == '\t')
-            line++;
-        int ok = handle_directive(line, dir, macros, conds, out, incdirs);
-        if (!ok) {
-            free(text);
-            free(dir);
-            return 0;
+    int ok = 1;
+    for (size_t i = 0; lines[i]; i++) {
+        if (!process_line(lines[i], dir, macros, conds, out, incdirs)) {
+            ok = 0;
+            break;
         }
-        line = strtok_r(NULL, "\n", &saveptr);
     }
-    free(text);
-    free(dir);
-    return 1;
+
+    cleanup_file_resources(text, lines, dir);
+    return ok;
 }
 
 /*
