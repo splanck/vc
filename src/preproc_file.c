@@ -152,6 +152,74 @@ static int handle_include(char *line, const char *dir, vector_t *macros,
 }
 
 /*
+ * Parse a comma separated parameter list starting at *p.
+ *
+ * "p" should point to the character immediately following the macro
+ * name.  On return the vector "out" contains the parameter names and
+ * the returned pointer points to the character following the closing
+ * ')', or the first non-whitespace character when no parameter list
+ * was present.  The macro name is NUL-terminated by this routine. */
+static char *parse_macro_params(char *p, vector_t *out)
+{
+    vector_init(out, sizeof(char *));
+    if (*p == '(') {
+        *p++ = '\0';
+        char *start = p;
+        while (*p && *p != ')')
+            p++;
+        if (*p == ')') {
+            char *plist = vc_strndup(start, (size_t)(p - start));
+            char *tok; char *sp;
+            tok = strtok_r(plist, ",", &sp);
+            while (tok) {
+                while (*tok == ' ' || *tok == '\t')
+                    tok++;
+                char *end = tok + strlen(tok);
+                while (end > tok && (end[-1] == ' ' || end[-1] == '\t'))
+                    end--;
+                char *dup = vc_strndup(tok, (size_t)(end - tok));
+                vector_push(out, &dup);
+                tok = strtok_r(NULL, ",", &sp);
+            }
+            free(plist);
+            p++; /* skip ')' */
+        } else {
+            p = start - 1; /* restore '(' position */
+            for (size_t i = 0; i < out->count; i++)
+                free(((char **)out->data)[i]);
+            vector_free(out);
+            vector_init(out, sizeof(char *));
+        }
+    } else if (*p) {
+        *p++ = '\0';
+    }
+    return p;
+}
+
+/** Create a macro definition and append it to the macro table.
+ *
+ * Ownership of any parameter strings is transferred from "params" to
+ * the new macro entry.  Returns non-zero on success. */
+static int add_macro(const char *name, const char *value, vector_t *params,
+                     vector_t *macros)
+{
+    macro_t m;
+    m.name = vc_strdup(name);
+    vector_init(&m.params, sizeof(char *));
+    for (size_t i = 0; i < params->count; i++) {
+        char *pname = ((char **)params->data)[i];
+        vector_push(&m.params, &pname);
+    }
+    vector_free(params);
+    m.value = vc_strdup(value);
+    if (!vector_push(macros, &m)) {
+        macro_free(&m);
+        return 0;
+    }
+    return 1;
+}
+
+/*
  * Parse and store a macro definition from a #define directive.
  * When the current conditional stack is active, the macro is added
  * to the macro table for later expansion.
@@ -165,61 +233,19 @@ static int handle_define(char *line, vector_t *macros, vector_t *conds)
     while (*n && !isspace((unsigned char)*n) && *n != '(')
         n++;
     vector_t params;
-    vector_init(&params, sizeof(char *));
-    if (*n == '(') {
-        *n++ = '\0';
-        char *pstart = n;
-        while (*n && *n != ')')
-            n++;
-        if (*n == ')') {
-            char *plist = vc_strndup(pstart, (size_t)(n - pstart));
-            char *tok; char *sp;
-            tok = strtok_r(plist, ",", &sp);
-            while (tok) {
-                while (*tok == ' ' || *tok == '\t')
-                    tok++;
-                char *end = tok + strlen(tok);
-                while (end > tok && (end[-1] == ' ' || end[-1] == '\t'))
-                    end--;
-                char *pname = vc_strndup(tok, (size_t)(end - tok));
-                vector_push(&params, &pname);
-                tok = strtok_r(NULL, ",", &sp);
-            }
-            free(plist);
-            n++; /* skip ')' */
-        } else {
-            n = pstart - 1; /* restore '(' position */
-            for (size_t t = 0; t < params.count; t++)
-                free(((char **)params.data)[t]);
-            vector_free(&params);
-            vector_init(&params, sizeof(char *));
-        }
-    } else if (*n) {
-        *n++ = '\0';
-    }
+    n = parse_macro_params(n, &params);
     while (*n == ' ' || *n == '\t')
         n++;
     char *val = *n ? n : "";
+    int ok = 1;
     if (stack_active(conds)) {
-        macro_t m;
-        m.name = vc_strdup(name);
-        vector_init(&m.params, sizeof(char *));
-        for (size_t t = 0; t < params.count; t++) {
-            char *pname = ((char **)params.data)[t];
-            vector_push(&m.params, &pname);
-        }
-        vector_free(&params);
-        m.value = vc_strdup(val);
-        if (!vector_push(macros, &m)) {
-            macro_free(&m);
-            return 0;
-        }
+        ok = add_macro(name, val, &params, macros);
     } else {
         for (size_t t = 0; t < params.count; t++)
             free(((char **)params.data)[t]);
         vector_free(&params);
     }
-    return 1;
+    return ok;
 }
 
 /* Push a new state for #ifdef/#ifndef directives.  When "neg" is non-zero
