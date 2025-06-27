@@ -179,11 +179,11 @@ static int check_union_decl_global(stmt_t *decl, symtable_t *globals)
 }
 
 /*
- * Register a global variable in the symbol table.
- * Layout any aggregate members and copy them to the inserted symbol.
- * Returns the created symbol or NULL on failure.
+ * Compute layout information for an aggregate global variable.  Struct and
+ * union members are assigned offsets and the resulting element size is stored
+ * back into the declaration for later use.
  */
-static symbol_t *register_global_symbol(stmt_t *decl, symtable_t *globals)
+static void compute_global_layout(stmt_t *decl)
 {
     if (decl->var_decl.type == TYPE_UNION) {
         size_t max = layout_union_members(decl->var_decl.members,
@@ -192,12 +192,93 @@ static symbol_t *register_global_symbol(stmt_t *decl, symtable_t *globals)
     }
 
     if (decl->var_decl.type == TYPE_STRUCT) {
-        size_t total = layout_struct_members(
-            (struct_member_t *)decl->var_decl.members,
-            decl->var_decl.member_count);
+        size_t total =
+            layout_struct_members((struct_member_t *)decl->var_decl.members,
+                                  decl->var_decl.member_count);
         if (decl->var_decl.member_count || decl->var_decl.tag)
             decl->var_decl.elem_size = total;
     }
+}
+
+/*
+ * Copy union member metadata from the parsed declaration to the newly created
+ * symbol.  Allocates arrays and duplicates member names.  Returns non-zero on
+ * success.
+ */
+static int copy_union_metadata(symbol_t *sym, union_member_t *members,
+                               size_t count, size_t total)
+{
+    sym->total_size = total;
+    if (!count)
+        return 1;
+    sym->members = malloc(count * sizeof(*sym->members));
+    if (!sym->members)
+        return 0;
+    sym->member_count = count;
+    for (size_t i = 0; i < count; i++) {
+        union_member_t *m = &members[i];
+        sym->members[i].name = vc_strdup(m->name);
+        sym->members[i].type = m->type;
+        sym->members[i].elem_size = m->elem_size;
+        sym->members[i].offset = m->offset;
+    }
+    return 1;
+}
+
+/*
+ * Copy struct member metadata from the parsed declaration to the symbol.  The
+ * member array is duplicated and offsets preserved.  Returns non-zero on
+ * success.
+ */
+static int copy_struct_metadata(symbol_t *sym, struct_member_t *members,
+                                size_t count, size_t total)
+{
+    sym->struct_total_size = total;
+    if (!count)
+        return 1;
+    sym->struct_members = malloc(count * sizeof(*sym->struct_members));
+    if (!sym->struct_members)
+        return 0;
+    sym->struct_member_count = count;
+    for (size_t i = 0; i < count; i++) {
+        struct_member_t *m = &members[i];
+        sym->struct_members[i].name = vc_strdup(m->name);
+        sym->struct_members[i].type = m->type;
+        sym->struct_members[i].elem_size = m->elem_size;
+        sym->struct_members[i].offset = m->offset;
+    }
+    return 1;
+}
+
+/*
+ * Copy aggregate member metadata from the declaration to the inserted symbol
+ * record.  Dispatches to the struct or union helper and returns non-zero on
+ * success.
+ */
+static int copy_aggregate_metadata(stmt_t *decl, symbol_t *sym)
+{
+    if (decl->var_decl.type == TYPE_UNION)
+        return copy_union_metadata(sym, decl->var_decl.members,
+                                   decl->var_decl.member_count,
+                                   decl->var_decl.elem_size);
+
+    if (decl->var_decl.type == TYPE_STRUCT)
+        return copy_struct_metadata(sym,
+                                    (struct_member_t *)decl->var_decl.members,
+                                    decl->var_decl.member_count,
+                                    decl->var_decl.elem_size);
+
+    return 1;
+}
+
+/*
+ * Register a global variable in the symbol table.
+ * Layout any aggregate members and copy them to the inserted symbol.
+ * Returns the created symbol or NULL on failure.
+ */
+static symbol_t *register_global_symbol(stmt_t *decl, symtable_t *globals)
+{
+    compute_global_layout(decl);
 
     if (!symtable_add_global(globals, decl->var_decl.name,
                              decl->var_decl.name, decl->var_decl.type,
@@ -220,42 +301,8 @@ static symbol_t *register_global_symbol(stmt_t *decl, symtable_t *globals)
         sym->array_size = decl->var_decl.array_size;
     }
 
-    if (decl->var_decl.type == TYPE_UNION) {
-        sym->total_size = decl->var_decl.elem_size;
-        if (decl->var_decl.member_count) {
-            sym->members = malloc(decl->var_decl.member_count *
-                                  sizeof(*sym->members));
-            if (!sym->members)
-                return NULL;
-            sym->member_count = decl->var_decl.member_count;
-            for (size_t i = 0; i < sym->member_count; i++) {
-                union_member_t *m = &decl->var_decl.members[i];
-                sym->members[i].name = vc_strdup(m->name);
-                sym->members[i].type = m->type;
-                sym->members[i].elem_size = m->elem_size;
-                sym->members[i].offset = m->offset;
-            }
-        }
-    }
-
-    if (decl->var_decl.type == TYPE_STRUCT) {
-        sym->struct_total_size = decl->var_decl.elem_size;
-        if (decl->var_decl.member_count) {
-            sym->struct_members = malloc(decl->var_decl.member_count *
-                                         sizeof(*sym->struct_members));
-            if (!sym->struct_members)
-                return NULL;
-            sym->struct_member_count = decl->var_decl.member_count;
-            for (size_t i = 0; i < sym->struct_member_count; i++) {
-                struct_member_t *m =
-                    (struct_member_t *)&decl->var_decl.members[i];
-                sym->struct_members[i].name = vc_strdup(m->name);
-                sym->struct_members[i].type = m->type;
-                sym->struct_members[i].elem_size = m->elem_size;
-                sym->struct_members[i].offset = m->offset;
-            }
-        }
-    }
+    if (!copy_aggregate_metadata(decl, sym))
+        return NULL;
 
     return sym;
 }
