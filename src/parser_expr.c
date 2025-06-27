@@ -42,6 +42,9 @@ static expr_t *parse_base_term(parser_t *p);
 static expr_t *parse_literal(parser_t *p);
 static expr_t *parse_identifier_expr(parser_t *p);
 static expr_t *parse_compound_literal(parser_t *p);
+static expr_t *parse_index_op(parser_t *p, expr_t *base);
+static expr_t *parse_member_op(parser_t *p, expr_t *base);
+static expr_t *parse_postincdec(parser_t *p, expr_t *base);
 static expr_t *parse_call_or_postfix(parser_t *p, expr_t *base);
 static int parse_type(parser_t *p, type_kind_t *out_type, size_t *out_size,
                       size_t *elem_size);
@@ -163,40 +166,84 @@ static expr_t *parse_identifier_expr(parser_t *p)
     return ast_make_ident(tok->lexeme, tok->line, tok->column);
 }
 
+/* Parse a single array indexing operation. */
+static expr_t *parse_index_op(parser_t *p, expr_t *base)
+{
+    if (!match(p, TOK_LBRACKET))
+        return base;
+
+    token_t *lb = &p->tokens[p->pos - 1];
+    expr_t *idx = parse_expression(p);
+    if (!idx || !match(p, TOK_RBRACKET)) {
+        ast_free_expr(base);
+        ast_free_expr(idx);
+        return NULL;
+    }
+
+    return ast_make_index(base, idx, lb->line, lb->column);
+}
+
+/* Parse a single struct/union member access. */
+static expr_t *parse_member_op(parser_t *p, expr_t *base)
+{
+    if (!match(p, TOK_DOT) && !match(p, TOK_ARROW))
+        return base;
+
+    int via_ptr = (p->tokens[p->pos - 1].type == TOK_ARROW);
+    token_t *id = peek(p);
+    if (!id || id->type != TOK_IDENT) {
+        ast_free_expr(base);
+        return NULL;
+    }
+    p->pos++;
+    return ast_make_member(base, id->lexeme, via_ptr, id->line, id->column);
+}
+
+/* Parse a single postfix increment or decrement. */
+static expr_t *parse_postincdec(parser_t *p, expr_t *base)
+{
+    if (match(p, TOK_INC)) {
+        token_t *tok = &p->tokens[p->pos - 1];
+        return ast_make_unary(UNOP_POSTINC, base, tok->line, tok->column);
+    }
+    if (match(p, TOK_DEC)) {
+        token_t *tok = &p->tokens[p->pos - 1];
+        return ast_make_unary(UNOP_POSTDEC, base, tok->line, tok->column);
+    }
+    return base;
+}
+
 /* Apply postfix operations like indexing and member access. */
 static expr_t *parse_call_or_postfix(parser_t *p, expr_t *base)
 {
     while (1) {
-        if (match(p, TOK_LBRACKET)) {
-            token_t *lb = &p->tokens[p->pos - 1];
-            expr_t *idx = parse_expression(p);
-            if (!idx || !match(p, TOK_RBRACKET)) {
-                ast_free_expr(base);
-                ast_free_expr(idx);
-                return NULL;
-            }
-            base = ast_make_index(base, idx, lb->line, lb->column);
-        } else if (match(p, TOK_DOT) || match(p, TOK_ARROW)) {
-            int via_ptr = (p->tokens[p->pos - 1].type == TOK_ARROW);
-            token_t *id = peek(p);
-            if (!id || id->type != TOK_IDENT) {
-                ast_free_expr(base);
-                return NULL;
-            }
-            p->pos++;
-            base = ast_make_member(base, id->lexeme, via_ptr,
-                                   id->line, id->column);
-        } else if (match(p, TOK_INC)) {
-            token_t *op_tok = &p->tokens[p->pos - 1];
-            base = ast_make_unary(UNOP_POSTINC, base,
-                                  op_tok->line, op_tok->column);
-        } else if (match(p, TOK_DEC)) {
-            token_t *op_tok = &p->tokens[p->pos - 1];
-            base = ast_make_unary(UNOP_POSTDEC, base,
-                                  op_tok->line, op_tok->column);
-        } else {
-            break;
+        expr_t *next = base;
+
+        next = parse_index_op(p, next);
+        if (!next)
+            return NULL;
+        if (next != base) {
+            base = next;
+            continue;
         }
+
+        next = parse_member_op(p, next);
+        if (!next)
+            return NULL;
+        if (next != base) {
+            base = next;
+            continue;
+        }
+
+        next = parse_postincdec(p, next);
+        if (!next)
+            return NULL;
+        if (next != base) {
+            base = next;
+            continue;
+        }
+
+        break;
     }
     return base;
 }
