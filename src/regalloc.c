@@ -1,10 +1,17 @@
 /*
  * Linear scan register allocator.
  *
- * Each IR value is mapped to one of a small set of registers or to a
- * stack slot when all registers are in use. The allocator performs a
- * single pass over the instruction stream and releases registers when
- * the last use of a value is reached.
+ * This allocator walks the IR once assigning every value either a
+ * register or a stack slot.  A small array of physical registers forms
+ * the free pool; when it is exhausted new values are "spilled" to the
+ * stack.  Lifetimes are tracked by computing the last instruction that
+ * references each value so that registers can be released as soon as a
+ * value is no longer needed.
+ *
+ * Each allocated location is stored in the `regalloc_t` structure where
+ * non-negative entries represent a physical register and negative values
+ * encode a stack slot number (\-n).  The table is later used by the code
+ * generator to decide whether to emit register or memory operands.
  *
  * Part of vc under the BSD 2-Clause license.
  * See LICENSE for details.
@@ -21,13 +28,12 @@
 /*
  * Compute the "last use" position for every value in the IR.
  *
- * The instruction list is scanned exactly once.  Whenever a value is
- * seen as a source operand we record the index of the current
- * instruction.  By the end of the scan each entry holds the index of
- * the final instruction that references that value (or -1 if the value
- * is never used).  The resulting array is indexed by value id and
- * should be freed by the caller.  NULL is returned on allocation
- * failure.
+ * The instruction stream is scanned exactly once.  Whenever a value
+ * appears as a source operand the index of the current instruction is
+ * recorded.  At the end of the scan each entry holds the index of the
+ * final instruction that references the value (or -1 if the value is
+ * never used).  The resulting array is indexed by value id and should
+ * be freed by the caller.  NULL is returned on allocation failure.
  */
 static int *compute_last_use(ir_builder_t *ir, int max_id)
 {
@@ -50,11 +56,14 @@ static int *compute_last_use(ir_builder_t *ir, int max_id)
 /*
  * Populate `ra` with locations for every value defined in `ir`.
  *
- * The allocator walks the instruction list once. New values are
- * assigned a free register if one exists; otherwise a fresh stack
- * slot number is used. The `last` array records when each value is
- * seen for the final time so its register can be returned to the
- * free pool.
+ * The allocator performs a linear pass over the IR instructions.
+ * When a new value is defined a register is taken from the free
+ * pool if available; otherwise a new stack slot is allocated.  As
+ * soon as the current instruction index matches the pre-computed
+ * last-use index of a value its register is returned to the pool
+ * for reuse by later instructions.  This strategy ensures that
+ * register pressure remains low while avoiding complex live range
+ * analysis.
  */
 void regalloc_run(ir_builder_t *ir, regalloc_t *ra)
 {
@@ -105,7 +114,12 @@ void regalloc_run(ir_builder_t *ir, regalloc_t *ra)
     free(last);
 }
 
-/* Release any memory allocated during `regalloc_run`. */
+/*
+ * Release any memory allocated during `regalloc_run`.
+ *
+ * This simply frees the location table and resets the bookkeeping
+ * fields.  It does not alter the IR itself.
+ */
 void regalloc_free(regalloc_t *ra)
 {
     free(ra->loc);
