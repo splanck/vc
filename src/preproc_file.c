@@ -574,35 +574,99 @@ static int process_text_line(char *line, vector_t *macros,
  * specific handler for the directive and falls back to text expansion when the
  * line is not a recognised directive.
  */
+typedef int (*directive_fn_t)(char *, const char *, vector_t *, vector_t *,
+                              strbuf_t *, const vector_t *);
+
+enum { SPACE_NONE, SPACE_BLANK, SPACE_ANY };
+
+static int wrap_line_directive(char *line, const char *dir, vector_t *macros,
+                               vector_t *conds, strbuf_t *out,
+                               const vector_t *incdirs)
+{
+    (void)dir; (void)macros; (void)incdirs;
+    return process_line_directive(line, conds, out);
+}
+
+static int wrap_define(char *line, const char *dir, vector_t *macros,
+                       vector_t *conds, strbuf_t *out,
+                       const vector_t *incdirs)
+{
+    (void)dir; (void)out; (void)incdirs;
+    return process_define(line, macros, conds);
+}
+
+static int wrap_undef(char *line, const char *dir, vector_t *macros,
+                      vector_t *conds, strbuf_t *out,
+                      const vector_t *incdirs)
+{
+    (void)dir; (void)out; (void)incdirs;
+    return process_undef(line, macros, conds);
+}
+
+static int wrap_pragma(char *line, const char *dir, vector_t *macros,
+                       vector_t *conds, strbuf_t *out,
+                       const vector_t *incdirs)
+{
+    (void)dir; (void)macros; (void)incdirs;
+    return process_pragma_line(line, conds, out);
+}
+
+static int wrap_conditional(char *line, const char *dir, vector_t *macros,
+                            vector_t *conds, strbuf_t *out,
+                            const vector_t *incdirs)
+{
+    (void)dir; (void)out; (void)incdirs;
+    return process_conditional_line(line, macros, conds);
+}
+
+static int wrap_text(char *line, const char *dir, vector_t *macros,
+                     vector_t *conds, strbuf_t *out,
+                     const vector_t *incdirs)
+{
+    (void)dir; (void)incdirs;
+    return process_text_line(line, macros, conds, out);
+}
+
+typedef struct {
+    const char    *name;
+    int            space;
+    directive_fn_t handler;
+} directive_entry_t;
+
 static int handle_directive(char *line, const char *dir, vector_t *macros,
                             vector_t *conds, strbuf_t *out,
                             const vector_t *incdirs)
 {
-    if (strncmp(line, "#include", 8) == 0 &&
-        (line[8] == ' ' || line[8] == '\t')) {
-        return process_include(line, dir, macros, conds, out, incdirs);
-    } else if (strncmp(line, "#line", 5) == 0 &&
-               isspace((unsigned char)line[5])) {
-        return process_line_directive(line, conds, out);
-    } else if (strncmp(line, "#define", 7) == 0 &&
-               (line[7] == ' ' || line[7] == '\t')) {
-        return process_define(line, macros, conds);
-    } else if (strncmp(line, "#undef", 6) == 0 &&
-               isspace((unsigned char)line[6])) {
-        return process_undef(line, macros, conds);
-    } else if (strncmp(line, "#pragma", 7) == 0 &&
-               isspace((unsigned char)line[7])) {
-        return process_pragma_line(line, conds, out);
-    } else if (strncmp(line, "#", 1) == 0 &&
-               (strncmp(line, "#ifdef", 6) == 0 ||
-                strncmp(line, "#ifndef", 7) == 0 ||
-                strncmp(line, "#if", 3) == 0 ||
-                strncmp(line, "#elif", 5) == 0 ||
-                strncmp(line, "#else", 5) == 0 ||
-                strncmp(line, "#endif", 6) == 0)) {
-        return process_conditional_line(line, macros, conds);
+    static const directive_entry_t table[] = {
+        {"#include", SPACE_BLANK, process_include},
+        {"#line",    SPACE_ANY,   wrap_line_directive},
+        {"#define",  SPACE_BLANK, wrap_define},
+        {"#undef",   SPACE_ANY,   wrap_undef},
+        {"#pragma",  SPACE_ANY,   wrap_pragma},
+        {"#ifdef",   SPACE_ANY,   wrap_conditional},
+        {"#ifndef",  SPACE_ANY,   wrap_conditional},
+        {"#if",      SPACE_ANY,   wrap_conditional},
+        {"#elif",    SPACE_ANY,   wrap_conditional},
+        {"#else",    SPACE_NONE,  wrap_conditional},
+        {"#endif",   SPACE_NONE,  wrap_conditional}
+    };
+
+    for (size_t i = 0; i < sizeof(table)/sizeof(table[0]); i++) {
+        const directive_entry_t *d = &table[i];
+        size_t len = strlen(d->name);
+        if (strncmp(line, d->name, len) == 0) {
+            int ok = 1;
+            char next = line[len];
+            if (d->space == SPACE_BLANK)
+                ok = (next == ' ' || next == '\t');
+            else if (d->space == SPACE_ANY)
+                ok = isspace((unsigned char)next);
+            if (ok)
+                return d->handler(line, dir, macros, conds, out, incdirs);
+        }
     }
-    return process_text_line(line, macros, conds, out);
+
+    return wrap_text(line, dir, macros, conds, out, incdirs);
 }
 
 /*
