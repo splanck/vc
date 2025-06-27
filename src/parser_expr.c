@@ -332,7 +332,7 @@ static expr_t *parse_additive(parser_t *p)
     return left;
 }
 
-/* Comparison operators <, >, <= and >=. */
+/* Parse bitwise shift operations '<<' and '>>'. */
 static expr_t *parse_shift(parser_t *p)
 {
     expr_t *left = parse_additive(p);
@@ -365,6 +365,7 @@ static expr_t *parse_shift(parser_t *p)
     return left;
 }
 
+/* Comparison operators <, >, <= and >=. */
 static expr_t *parse_relational(parser_t *p)
 {
     expr_t *left = parse_shift(p);
@@ -448,6 +449,7 @@ static expr_t *parse_equality(parser_t *p)
     return left;
 }
 
+/* Parse bitwise AND expressions. */
 static expr_t *parse_bitand(parser_t *p)
 {
     expr_t *left = parse_equality(p);
@@ -467,6 +469,7 @@ static expr_t *parse_bitand(parser_t *p)
     return left;
 }
 
+/* Parse bitwise XOR expressions. */
 static expr_t *parse_bitxor(parser_t *p)
 {
     expr_t *left = parse_bitand(p);
@@ -486,6 +489,7 @@ static expr_t *parse_bitxor(parser_t *p)
     return left;
 }
 
+/* Parse bitwise OR expressions. */
 static expr_t *parse_bitor(parser_t *p)
 {
     expr_t *left = parse_bitxor(p);

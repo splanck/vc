@@ -52,6 +52,7 @@ int parse_basic_type(parser_t *p, type_kind_t *out)
     return 1;
 }
 
+/* Return the size in bytes for the given fundamental type. */
 size_t basic_type_size(type_kind_t t)
 {
     switch (t) {
