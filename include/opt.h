@@ -8,7 +8,7 @@
 #ifndef VC_OPT_H
 #define VC_OPT_H
 
-#include "ir.h"
+#include "ir_core.h"
 
 typedef struct {
     int opt_level;     /* numeric optimization level */

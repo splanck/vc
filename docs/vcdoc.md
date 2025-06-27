@@ -156,7 +156,7 @@ Defines the IR structures used throughout the rest of the compiler.
 
 #### Instruction set
 The IR uses a straightforward three-address format. The operations defined in
-[`include/ir.h`](../include/ir.h) include:
+[`include/ir_core.h`](../include/ir_core.h) include:
 
 - `IR_CONST` for integer constants
 - arithmetic ops `IR_ADD`, `IR_SUB`, `IR_MUL`, `IR_DIV`, `IR_MOD`

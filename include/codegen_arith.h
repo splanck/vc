@@ -9,7 +9,7 @@
 #define VC_CODEGEN_ARITH_H
 
 #include "strbuf.h"
-#include "ir.h"
+#include "ir_core.h"
 #include "regalloc.h"
 
 void emit_arith_instr(strbuf_t *sb, ir_instr_t *ins,

@@ -9,7 +9,7 @@
 #define VC_CODEGEN_MEM_H
 
 #include "strbuf.h"
-#include "ir.h"
+#include "ir_core.h"
 #include "regalloc.h"
 
 void emit_memory_instr(strbuf_t *sb, ir_instr_t *ins,

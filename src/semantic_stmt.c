@@ -9,6 +9,7 @@
 #include "consteval.h"
 #include "semantic_expr.h"
 #include "semantic_global.h"
+#include "ir_global.h"
 #include "symtable.h"
 #include "util.h"
 #include "label.h"

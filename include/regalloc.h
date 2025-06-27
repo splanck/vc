@@ -13,7 +13,7 @@
 #ifndef VC_REGALLOC_H
 #define VC_REGALLOC_H
 
-#include "ir.h"
+#include "ir_core.h"
 
 /* Location mapping for IR values */
 typedef struct {

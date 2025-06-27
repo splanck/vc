@@ -9,7 +9,7 @@
 #define VC_SEMANTIC_ARITH_H
 
 #include "ast.h"
-#include "ir.h"
+#include "ir_core.h"
 #include "symtable.h"
 
 /* Binary operation helper used by check_binary_expr */
