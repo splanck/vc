@@ -24,6 +24,7 @@
 #include "parser_core.h"
 #include "ast_stmt.h"
 #include "vector.h"
+#include "strbuf.h"
 #include <string.h>
 #include "symtable.h"
 #include "semantic.h"
@@ -427,23 +428,16 @@ static int compile_source_obj(const char *source, const cli_options_t *cli,
 static int run_link_command(const vector_t *objs, const char *output,
                             int use_x86_64)
 {
-    size_t cmd_len = 64;
-    for (size_t i = 0; i < objs->count; i++)
-        cmd_len += strlen(((char **)objs->data)[i]) + 1;
-    cmd_len += strlen(output) + 1;
-
-    char *cmd = vc_alloc_or_exit(cmd_len + 32);
+    strbuf_t cmd;
+    strbuf_init(&cmd);
     const char *arch_flag = use_x86_64 ? "-m64" : "-m32";
-    snprintf(cmd, cmd_len + 32, "cc %s", arch_flag);
-    for (size_t i = 0; i < objs->count; i++) {
-        strcat(cmd, " ");
-        strcat(cmd, ((char **)objs->data)[i]);
-    }
-    strcat(cmd, " -nostdlib -o ");
-    strcat(cmd, output);
+    strbuf_appendf(&cmd, "cc %s", arch_flag);
+    for (size_t i = 0; i < objs->count; i++)
+        strbuf_appendf(&cmd, " %s", ((char **)objs->data)[i]);
+    strbuf_appendf(&cmd, " -nostdlib -o %s", output);
 
-    int ret = system(cmd);
-    free(cmd);
+    int ret = system(cmd.data);
+    strbuf_free(&cmd);
     if (ret != 0) {
         fprintf(stderr, "cc failed\n");
         return 0;
