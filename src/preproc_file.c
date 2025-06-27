@@ -200,93 +200,128 @@ static int handle_define(char *line, vector_t *macros, vector_t *conds)
     return 1;
 }
 
+/* Push a new state for an #ifdef directive */
+static void cond_push_ifdef(char *line, vector_t *macros, vector_t *conds)
+{
+    char *n = line + 6;
+    while (*n == ' ' || *n == '\t')
+        n++;
+    char *id = n;
+    while (isalnum((unsigned char)*n) || *n == '_')
+        n++;
+    *n = '\0';
+    cond_state_t st;
+    st.parent_active = stack_active(conds);
+    st.taken = 0;
+    if (st.parent_active && is_macro_defined(macros, id)) {
+        st.taking = 1;
+        st.taken = 1;
+    } else {
+        st.taking = 0;
+    }
+    vector_push(conds, &st);
+}
+
+/* Push a new state for an #ifndef directive */
+static void cond_push_ifndef(char *line, vector_t *macros, vector_t *conds)
+{
+    char *n = line + 7;
+    while (*n == ' ' || *n == '\t')
+        n++;
+    char *id = n;
+    while (isalnum((unsigned char)*n) || *n == '_')
+        n++;
+    *n = '\0';
+    cond_state_t st;
+    st.parent_active = stack_active(conds);
+    st.taken = 0;
+    if (st.parent_active && !is_macro_defined(macros, id)) {
+        st.taking = 1;
+        st.taken = 1;
+    } else {
+        st.taking = 0;
+    }
+    vector_push(conds, &st);
+}
+
+/* Push a new state for a generic #if expression */
+static void cond_push_ifexpr(char *line, vector_t *macros, vector_t *conds)
+{
+    char *expr = line + 3;
+    cond_state_t st;
+    st.parent_active = stack_active(conds);
+    st.taken = 0;
+    if (st.parent_active && eval_expr(expr, macros)) {
+        st.taking = 1;
+        st.taken = 1;
+    } else {
+        st.taking = 0;
+    }
+    vector_push(conds, &st);
+}
+
+/* Handle an #elif directive */
+static void cond_handle_elif(char *line, vector_t *macros, vector_t *conds)
+{
+    if (!conds->count)
+        return;
+    cond_state_t *st =
+        &((cond_state_t *)conds->data)[conds->count - 1];
+    if (st->parent_active) {
+        if (st->taken) {
+            st->taking = 0;
+        } else {
+            char *expr = line + 5;
+            st->taking = eval_expr(expr, macros);
+            if (st->taking)
+                st->taken = 1;
+        }
+    } else {
+        st->taking = 0;
+    }
+}
+
+/* Handle an #else directive */
+static void cond_handle_else(vector_t *conds)
+{
+    if (!conds->count)
+        return;
+    cond_state_t *st =
+        &((cond_state_t *)conds->data)[conds->count - 1];
+    if (st->parent_active && !st->taken) {
+        st->taking = 1;
+        st->taken = 1;
+    } else {
+        st->taking = 0;
+    }
+}
+
+/* Handle an #endif directive */
+static void cond_handle_endif(vector_t *conds)
+{
+    if (conds->count)
+        conds->count--;
+}
+
 /*
- * Update the conditional state stack for directives such as
- * #if, #ifdef, #elif, #else and #endif.
+ * Dispatch conditional directives to the specific helper handlers.
  */
 static void handle_conditional(char *line, vector_t *macros, vector_t *conds)
 {
     if (strncmp(line, "#ifdef", 6) == 0 && isspace((unsigned char)line[6])) {
-        char *n = line + 6;
-        while (*n == ' ' || *n == '\t')
-            n++;
-        char *id = n;
-        while (isalnum((unsigned char)*n) || *n == '_')
-            n++;
-        *n = '\0';
-        cond_state_t st;
-        st.parent_active = stack_active(conds);
-        st.taken = 0;
-        if (st.parent_active && is_macro_defined(macros, id)) {
-            st.taking = 1;
-            st.taken = 1;
-        } else {
-            st.taking = 0;
-        }
-        vector_push(conds, &st);
+        cond_push_ifdef(line, macros, conds);
     } else if (strncmp(line, "#ifndef", 7) == 0 &&
                isspace((unsigned char)line[7])) {
-        char *n = line + 7;
-        while (*n == ' ' || *n == '\t')
-            n++;
-        char *id = n;
-        while (isalnum((unsigned char)*n) || *n == '_')
-            n++;
-        *n = '\0';
-        cond_state_t st;
-        st.parent_active = stack_active(conds);
-        st.taken = 0;
-        if (st.parent_active && !is_macro_defined(macros, id)) {
-            st.taking = 1;
-            st.taken = 1;
-        } else {
-            st.taking = 0;
-        }
-        vector_push(conds, &st);
+        cond_push_ifndef(line, macros, conds);
     } else if (strncmp(line, "#if", 3) == 0 && isspace((unsigned char)line[3])) {
-        char *expr = line + 3;
-        cond_state_t st;
-        st.parent_active = stack_active(conds);
-        st.taken = 0;
-        if (st.parent_active && eval_expr(expr, macros)) {
-            st.taking = 1;
-            st.taken = 1;
-        } else {
-            st.taking = 0;
-        }
-        vector_push(conds, &st);
+        cond_push_ifexpr(line, macros, conds);
     } else if (strncmp(line, "#elif", 5) == 0 &&
                isspace((unsigned char)line[5])) {
-        if (conds->count) {
-            cond_state_t *st =
-                &((cond_state_t *)conds->data)[conds->count - 1];
-            if (st->parent_active) {
-                if (st->taken) {
-                    st->taking = 0;
-                } else {
-                    char *expr = line + 5;
-                    st->taking = eval_expr(expr, macros);
-                    if (st->taking)
-                        st->taken = 1;
-                }
-            } else {
-                st->taking = 0;
-            }
-        }
+        cond_handle_elif(line, macros, conds);
     } else if (strncmp(line, "#else", 5) == 0) {
-        if (conds->count) {
-            cond_state_t *st =
-                &((cond_state_t *)conds->data)[conds->count - 1];
-            if (st->parent_active && !st->taken) {
-                st->taking = 1;
-                st->taken = 1;
-            } else {
-                st->taking = 0;
-            }
-        }
+        cond_handle_else(conds);
     } else if (strncmp(line, "#endif", 6) == 0) {
-        if (conds->count)
-            conds->count--;
+        cond_handle_endif(conds);
     }
 }
 
