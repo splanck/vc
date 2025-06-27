@@ -40,6 +40,7 @@ static int parse_type(parser_t *p, type_kind_t *out_type, size_t *out_size,
 static expr_t *parse_logical_and(parser_t *p);
 static expr_t *parse_logical_or(parser_t *p);
 static expr_t *parse_conditional(parser_t *p);
+static int parse_argument_list(parser_t *p, vector_t *out_args);
 
 /* Function pointer type used by parse_binop_chain */
 typedef expr_t *(*parse_fn)(parser_t *);
@@ -72,6 +73,37 @@ static void free_expr_vector(vector_t *v)
     vector_free(v);
 }
 
+/* Parse a comma-separated argument list enclosed in parentheses. */
+static int parse_argument_list(parser_t *p, vector_t *out_args)
+{
+    if (!match(p, TOK_LPAREN))
+        return 0;
+
+    vector_init(out_args, sizeof(expr_t *));
+
+    if (!match(p, TOK_RPAREN)) {
+        do {
+            expr_t *arg = parse_expression(p);
+            if (!arg) {
+                free_expr_vector(out_args);
+                return 0;
+            }
+            if (!vector_push(out_args, &arg)) {
+                ast_free_expr(arg);
+                free_expr_vector(out_args);
+                return 0;
+            }
+        } while (match(p, TOK_COMMA));
+
+        if (!match(p, TOK_RPAREN)) {
+            free_expr_vector(out_args);
+            return 0;
+        }
+    }
+
+    return 1;
+}
+
 /* Parse numeric, string and character literals. */
 static expr_t *parse_literal(parser_t *p)
 {
@@ -97,27 +129,9 @@ static expr_t *parse_identifier_expr(parser_t *p)
     if (next && next->type == TOK_LPAREN) {
         p->pos++; /* consume identifier */
         char *name = tok->lexeme;
-        match(p, TOK_LPAREN);
         vector_t args_v;
-        vector_init(&args_v, sizeof(expr_t *));
-        if (!match(p, TOK_RPAREN)) {
-            do {
-                expr_t *arg = parse_expression(p);
-                if (!arg) {
-                    free_expr_vector(&args_v);
-                    return NULL;
-                }
-                if (!vector_push(&args_v, &arg)) {
-                    ast_free_expr(arg);
-                    free_expr_vector(&args_v);
-                    return NULL;
-                }
-            } while (match(p, TOK_COMMA));
-            if (!match(p, TOK_RPAREN)) {
-                free_expr_vector(&args_v);
-                return NULL;
-            }
-        }
+        if (!parse_argument_list(p, &args_v))
+            return NULL;
         expr_t **args = (expr_t **)args_v.data;
         size_t count = args_v.count;
         return ast_make_call(name, args, count, tok->line, tok->column);
