@@ -9,7 +9,7 @@
 #define VC_SEMANTIC_GLOBAL_H
 
 #include "ast.h"
-#include "ir.h"
+#include "ir_core.h"
 #include "symtable.h"
 
 size_t layout_union_members(union_member_t *members, size_t count);

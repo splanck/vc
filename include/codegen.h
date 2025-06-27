@@ -9,7 +9,7 @@
 #define VC_CODEGEN_H
 
 #include <stdio.h>
-#include "ir.h"
+#include "ir_core.h"
 
 /*
  * Emit the full x86 assembly for `ir` to `out`.

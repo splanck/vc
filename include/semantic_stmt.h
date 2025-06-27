@@ -9,7 +9,7 @@
 #define VC_SEMANTIC_STMT_H
 
 #include "ast.h"
-#include "ir.h"
+#include "ir_core.h"
 #include "symtable.h"
 
 int check_stmt(stmt_t *stmt, symtable_t *vars, symtable_t *funcs,

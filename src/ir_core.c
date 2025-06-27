@@ -8,7 +8,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <stdarg.h>
-#include "ir.h"
+#include "ir_core.h"
 #include "label.h"
 #include "strbuf.h"
 #include "util.h"
@@ -433,65 +433,4 @@ void ir_build_label(ir_builder_t *b, const char *label)
     ins->name = vc_strdup(label ? label : "");
 }
 
-/*
- * Emit IR_GLOB_VAR declaring global variable `name` with constant
- * initializer `value`.
- */
-void ir_build_glob_var(ir_builder_t *b, const char *name, long long value,
-                       int is_static)
-{
-    ir_instr_t *ins = append_instr(b);
-    if (!ins)
-        return;
-    ins->op = IR_GLOB_VAR;
-    ins->name = vc_strdup(name ? name : "");
-    ins->imm = value;
-    ins->src1 = is_static;
-}
-
-void ir_build_glob_array(ir_builder_t *b, const char *name,
-                         const long long *values, size_t count, int is_static)
-{
-    /* Emit IR_GLOB_ARRAY storing an array of constants. `data` points
-     * to a copy of the initializer values. */
-    ir_instr_t *ins = append_instr(b);
-    if (!ins)
-        return;
-    ins->op = IR_GLOB_ARRAY;
-    ins->name = vc_strdup(name ? name : "");
-    ins->imm = (long long)count;
-    ins->src1 = is_static;
-    if (count) {
-        long long *vals = malloc(count * sizeof(long long));
-        if (!vals)
-            return;
-        for (size_t i = 0; i < count; i++)
-            vals[i] = values[i];
-        ins->data = (char *)vals;
-    }
-}
-
-void ir_build_glob_union(ir_builder_t *b, const char *name, int size,
-                         int is_static)
-{
-    ir_instr_t *ins = append_instr(b);
-    if (!ins)
-        return;
-    ins->op = IR_GLOB_UNION;
-    ins->name = vc_strdup(name ? name : "");
-    ins->imm = size;
-    ins->src1 = is_static;
-}
-
-void ir_build_glob_struct(ir_builder_t *b, const char *name, int size,
-                          int is_static)
-{
-    ir_instr_t *ins = append_instr(b);
-    if (!ins)
-        return;
-    ins->op = IR_GLOB_STRUCT;
-    ins->name = vc_strdup(name ? name : "");
-    ins->imm = size;
-    ins->src1 = is_static;
-}
 

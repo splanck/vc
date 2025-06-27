@@ -27,7 +27,7 @@
 #include "symtable.h"
 #include "semantic.h"
 #include "error.h"
-#include "ir.h"
+#include "ir_core.h"
 #include "ir_dump.h"
 #include "opt.h"
 #include "codegen.h"

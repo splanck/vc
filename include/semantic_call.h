@@ -9,7 +9,7 @@
 #define VC_SEMANTIC_CALL_H
 
 #include "ast.h"
-#include "ir.h"
+#include "ir_core.h"
 #include "symtable.h"
 
 type_kind_t check_call_expr(expr_t *expr, symtable_t *vars,

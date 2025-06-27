@@ -9,7 +9,7 @@
 #define VC_SEMANTIC_MEM_H
 
 #include "ast.h"
-#include "ir.h"
+#include "ir_core.h"
 #include "symtable.h"
 
 /* Array indexing */
