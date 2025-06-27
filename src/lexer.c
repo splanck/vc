@@ -54,6 +54,37 @@ static const keyword_t keyword_table[] = {
     { "return",   TOK_KW_RETURN }
 };
 
+typedef struct {
+    const char *op;
+    token_type_t tok;
+} punct_entry_t;
+
+/* ordered longest to shortest for greedy matching */
+static const punct_entry_t punct_table[] = {
+    { "<<=", TOK_SHLEQ },
+    { ">>=", TOK_SHREQ },
+    { "==",  TOK_EQ },
+    { "!=",  TOK_NEQ },
+    { "&&",  TOK_LOGAND },
+    { "||",  TOK_LOGOR },
+    { "<<",  TOK_SHL },
+    { ">>",  TOK_SHR },
+    { "<=",  TOK_LE },
+    { ">=",  TOK_GE },
+    { "->",  TOK_ARROW },
+    { "++",  TOK_INC },
+    { "--",  TOK_DEC },
+    { "+=",  TOK_PLUSEQ },
+    { "-=",  TOK_MINUSEQ },
+    { "*=",  TOK_STAREQ },
+    { "/=",  TOK_SLASHEQ },
+    { "%=",  TOK_PERCENTEQ },
+    { "&=",  TOK_AMPEQ },
+    { "|=",  TOK_PIPEEQ },
+    { "^=",  TOK_CARETEQ },
+    { "!",   TOK_NOT }
+};
+
 /* Iterate the keyword table and return the matching token type, or
  * TOK_IDENT if the text is not a keyword.
  */
@@ -341,6 +372,22 @@ static int scan_char(const char *src, size_t *i, size_t *col,
     return 1;
 }
 
+static int scan_punct_table(const char *src, size_t *i, size_t *col,
+                            vector_t *tokens, size_t line)
+{
+    for (size_t p = 0; p < sizeof(punct_table) / sizeof(punct_table[0]); p++) {
+        const punct_entry_t *entry = &punct_table[p];
+        size_t len = strlen(entry->op);
+        if (strncmp(src + *i, entry->op, len) == 0) {
+            append_token(tokens, entry->tok, entry->op, len, line, *col);
+            *i += len;
+            *col += len;
+            return 1;
+        }
+    }
+    return 0;
+}
+
 /* Public API */
 
 /* Tokenize the entire source string */
@@ -360,76 +407,13 @@ token_t *lexer_tokenize(const char *src, size_t *out_count)
             scan_string(src, &i, &col, &vec, line) ||
             scan_char(src, &i, &col, &vec, line)) {
             continue;
-        } else if (c == '=' && src[i + 1] == '=') {
-            append_token(&vec, TOK_EQ, "==", 2, line, col);
-            i += 2; col += 2;
-        } else if (c == '!' && src[i + 1] == '=') {
-            append_token(&vec, TOK_NEQ, "!=", 2, line, col);
-            i += 2; col += 2;
-        } else if (c == '&' && src[i + 1] == '&') {
-            append_token(&vec, TOK_LOGAND, "&&", 2, line, col);
-            i += 2; col += 2;
-        } else if (c == '|' && src[i + 1] == '|') {
-            append_token(&vec, TOK_LOGOR, "||", 2, line, col);
-            i += 2; col += 2;
-        } else if (c == '!') {
-            append_token(&vec, TOK_NOT, "!", 1, line, col);
-            i++; col++;
-        } else if (c == '<' && src[i + 1] == '<' && src[i + 2] == '=') {
-            append_token(&vec, TOK_SHLEQ, "<<=", 3, line, col);
-            i += 3; col += 3;
-        } else if (c == '>' && src[i + 1] == '>' && src[i + 2] == '=') {
-            append_token(&vec, TOK_SHREQ, ">>=", 3, line, col);
-            i += 3; col += 3;
-        } else if (c == '<' && src[i + 1] == '<') {
-            append_token(&vec, TOK_SHL, "<<", 2, line, col);
-            i += 2; col += 2;
-        } else if (c == '>' && src[i + 1] == '>') {
-            append_token(&vec, TOK_SHR, ">>", 2, line, col);
-            i += 2; col += 2;
-        } else if (c == '<' && src[i + 1] == '=') {
-            append_token(&vec, TOK_LE, "<=", 2, line, col);
-            i += 2; col += 2;
-        } else if (c == '>' && src[i + 1] == '=') {
-            append_token(&vec, TOK_GE, ">=", 2, line, col);
-            i += 2; col += 2;
-        } else if (c == '-' && src[i + 1] == '>') {
-            append_token(&vec, TOK_ARROW, "->", 2, line, col);
-            i += 2; col += 2;
-        } else if (c == '+' && src[i + 1] == '+') {
-            append_token(&vec, TOK_INC, "++", 2, line, col);
-            i += 2; col += 2;
-        } else if (c == '-' && src[i + 1] == '-') {
-            append_token(&vec, TOK_DEC, "--", 2, line, col);
-            i += 2; col += 2;
-        } else if (c == '+' && src[i + 1] == '=') {
-            append_token(&vec, TOK_PLUSEQ, "+=", 2, line, col);
-            i += 2; col += 2;
-        } else if (c == '-' && src[i + 1] == '=') {
-            append_token(&vec, TOK_MINUSEQ, "-=", 2, line, col);
-            i += 2; col += 2;
-        } else if (c == '*' && src[i + 1] == '=') {
-            append_token(&vec, TOK_STAREQ, "*=", 2, line, col);
-            i += 2; col += 2;
-        } else if (c == '/' && src[i + 1] == '=') {
-            append_token(&vec, TOK_SLASHEQ, "/=", 2, line, col);
-            i += 2; col += 2;
-        } else if (c == '%' && src[i + 1] == '=') {
-            append_token(&vec, TOK_PERCENTEQ, "%=", 2, line, col);
-            i += 2; col += 2;
-        } else if (c == '&' && src[i + 1] == '=') {
-            append_token(&vec, TOK_AMPEQ, "&=", 2, line, col);
-            i += 2; col += 2;
-        } else if (c == '|' && src[i + 1] == '=') {
-            append_token(&vec, TOK_PIPEEQ, "|=", 2, line, col);
-            i += 2; col += 2;
-        } else if (c == '^' && src[i + 1] == '=') {
-            append_token(&vec, TOK_CARETEQ, "^=", 2, line, col);
-            i += 2; col += 2;
-        } else {
-            read_punct(c, &vec, line, col);
-            i++; col++;
         }
+
+        if (scan_punct_table(src, &i, &col, &vec, line))
+            continue;
+
+        read_punct(c, &vec, line, col);
+        i++; col++;
     }
 
     append_token(&vec, TOK_EOF, "", 0, line, col);
