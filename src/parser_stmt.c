@@ -26,6 +26,10 @@ stmt_t *parser_parse_for_stmt(parser_t *p);
 stmt_t *parser_parse_switch_stmt(parser_t *p);
 
 static stmt_t *parse_block(parser_t *p);
+static stmt_t *parse_enum_decl_stmt(parser_t *p);
+static stmt_t *parse_struct_decl_stmt(parser_t *p);
+static stmt_t *parse_union_decl_stmt(parser_t *p);
+static stmt_t *parse_var_or_typedef_stmt(parser_t *p);
 static stmt_t *parse_declaration_stmt(parser_t *p);
 static stmt_t *parse_jump_stmt(parser_t *p);
 static stmt_t *parse_flow_stmt(parser_t *p);
@@ -60,96 +64,144 @@ static stmt_t *parse_block(parser_t *p)
     return ast_make_block(stmts, count, lb_tok->line, lb_tok->column);
 }
 
-/* Parse a variable or type declaration statement if present. */
-static stmt_t *parse_declaration_stmt(parser_t *p)
+/* Parse an enum declaration or inline enum variable definition. */
+static stmt_t *parse_enum_decl_stmt(parser_t *p)
 {
-    token_t *tok = peek(p);
-    if (!tok)
-        return NULL;
-
     size_t save = p->pos;
     int has_static = match(p, TOK_KW_STATIC);
     int has_reg = match(p, TOK_KW_REGISTER);
     int has_const = match(p, TOK_KW_CONST);
     int has_vol = match(p, TOK_KW_VOLATILE);
 
-    if (match(p, TOK_KW_ENUM)) {
-        token_t *next = peek(p);
-        if (next && next->type == TOK_LBRACE) {
+    if (!match(p, TOK_KW_ENUM)) {
+        p->pos = save;
+        return NULL;
+    }
+
+    token_t *next = peek(p);
+    if (next && next->type == TOK_LBRACE) {
+        p->pos = save;
+        match(p, TOK_KW_ENUM);
+        return parser_parse_enum_decl(p);
+    } else if (next && next->type == TOK_IDENT) {
+        p->pos++;
+        token_t *after = peek(p);
+        if (!has_static && !has_reg && !has_const && !has_vol && after &&
+            after->type == TOK_LBRACE) {
             p->pos = save;
             match(p, TOK_KW_ENUM);
             return parser_parse_enum_decl(p);
-        } else if (next && next->type == TOK_IDENT) {
-            p->pos++;
-            token_t *after = peek(p);
-            if (!has_static && !has_reg && !has_const && !has_vol && after &&
-                after->type == TOK_LBRACE) {
-                p->pos = save;
-                match(p, TOK_KW_ENUM);
-                return parser_parse_enum_decl(p);
-            }
-            p->pos = save;
-            return parser_parse_var_decl(p);
-        } else {
-            p->pos = save;
         }
-    }
-
-    if (match(p, TOK_KW_STRUCT)) {
-        token_t *next = peek(p);
-        if (next && next->type == TOK_LBRACE) {
-            p->pos = save;
-            return parser_parse_struct_var_decl(p);
-        } else if (next && next->type == TOK_IDENT) {
-            p->pos++;
-            token_t *after = peek(p);
-            if (!has_static && !has_reg && !has_const && !has_vol && after &&
-                after->type == TOK_LBRACE) {
-                p->pos = save;
-                return parser_parse_struct_decl(p);
-            }
-            p->pos = save;
-            return parser_parse_var_decl(p);
-        } else {
-            p->pos = save;
-        }
-    } else if (match(p, TOK_KW_UNION)) {
-        token_t *next = peek(p);
-        if (next && next->type == TOK_LBRACE) {
-            p->pos = save;
-            return parser_parse_union_var_decl(p);
-        } else if (next && next->type == TOK_IDENT) {
-            p->pos++;
-            token_t *after = peek(p);
-            if (!has_static && !has_reg && !has_const && !has_vol && after &&
-                after->type == TOK_LBRACE) {
-                p->pos = save;
-                return parser_parse_union_decl(p);
-            }
-            p->pos = save;
-            return parser_parse_var_decl(p);
-        } else {
-            p->pos = save;
-        }
-    } else {
         p->pos = save;
+        return parser_parse_var_decl(p);
     }
 
-    if (tok && tok->type == TOK_KW_STATIC)
-        return parser_parse_var_decl(p);
-    if (tok && tok->type == TOK_KW_REGISTER)
-        return parser_parse_var_decl(p);
-    if (tok && tok->type == TOK_KW_CONST)
-        return parser_parse_var_decl(p);
-    if (tok && tok->type == TOK_KW_VOLATILE)
-        return parser_parse_var_decl(p);
-    if (tok && (tok->type == TOK_KW_INT || tok->type == TOK_KW_CHAR ||
-                tok->type == TOK_KW_FLOAT || tok->type == TOK_KW_DOUBLE ||
-                tok->type == TOK_KW_SHORT || tok->type == TOK_KW_LONG ||
-                tok->type == TOK_KW_BOOL || tok->type == TOK_KW_UNSIGNED)) {
+    p->pos = save;
+    return NULL;
+}
+
+/* Parse a struct declaration or inline struct variable definition. */
+static stmt_t *parse_struct_decl_stmt(parser_t *p)
+{
+    size_t save = p->pos;
+    int has_static = match(p, TOK_KW_STATIC);
+    int has_reg = match(p, TOK_KW_REGISTER);
+    int has_const = match(p, TOK_KW_CONST);
+    int has_vol = match(p, TOK_KW_VOLATILE);
+
+    if (!match(p, TOK_KW_STRUCT)) {
+        p->pos = save;
+        return NULL;
+    }
+
+    token_t *next = peek(p);
+    if (next && next->type == TOK_LBRACE) {
+        p->pos = save;
+        return parser_parse_struct_var_decl(p);
+    } else if (next && next->type == TOK_IDENT) {
+        p->pos++;
+        token_t *after = peek(p);
+        if (!has_static && !has_reg && !has_const && !has_vol && after &&
+            after->type == TOK_LBRACE) {
+            p->pos = save;
+            return parser_parse_struct_decl(p);
+        }
+        p->pos = save;
         return parser_parse_var_decl(p);
     }
+
+    p->pos = save;
     return NULL;
+}
+
+/* Parse a union declaration or inline union variable definition. */
+static stmt_t *parse_union_decl_stmt(parser_t *p)
+{
+    size_t save = p->pos;
+    int has_static = match(p, TOK_KW_STATIC);
+    int has_reg = match(p, TOK_KW_REGISTER);
+    int has_const = match(p, TOK_KW_CONST);
+    int has_vol = match(p, TOK_KW_VOLATILE);
+
+    if (!match(p, TOK_KW_UNION)) {
+        p->pos = save;
+        return NULL;
+    }
+
+    token_t *next = peek(p);
+    if (next && next->type == TOK_LBRACE) {
+        p->pos = save;
+        return parser_parse_union_var_decl(p);
+    } else if (next && next->type == TOK_IDENT) {
+        p->pos++;
+        token_t *after = peek(p);
+        if (!has_static && !has_reg && !has_const && !has_vol && after &&
+            after->type == TOK_LBRACE) {
+            p->pos = save;
+            return parser_parse_union_decl(p);
+        }
+        p->pos = save;
+        return parser_parse_var_decl(p);
+    }
+
+    p->pos = save;
+    return NULL;
+}
+
+/* Parse a plain variable declaration or qualifier based declaration. */
+static stmt_t *parse_var_or_typedef_stmt(parser_t *p)
+{
+    token_t *tok = peek(p);
+    if (!tok)
+        return NULL;
+
+    if (tok->type == TOK_KW_STATIC || tok->type == TOK_KW_REGISTER ||
+        tok->type == TOK_KW_CONST || tok->type == TOK_KW_VOLATILE ||
+        tok->type == TOK_KW_INT || tok->type == TOK_KW_CHAR ||
+        tok->type == TOK_KW_FLOAT || tok->type == TOK_KW_DOUBLE ||
+        tok->type == TOK_KW_SHORT || tok->type == TOK_KW_LONG ||
+        tok->type == TOK_KW_BOOL || tok->type == TOK_KW_UNSIGNED)
+        return parser_parse_var_decl(p);
+
+    return NULL;
+}
+
+/* Parse a variable or type declaration statement if present. */
+static stmt_t *parse_declaration_stmt(parser_t *p)
+{
+    stmt_t *s = parse_enum_decl_stmt(p);
+    if (s)
+        return s;
+
+    s = parse_struct_decl_stmt(p);
+    if (s)
+        return s;
+
+    s = parse_union_decl_stmt(p);
+    if (s)
+        return s;
+
+    return parse_var_or_typedef_stmt(p);
 }
 
 /* Parse return, break, continue and goto statements. */
