@@ -48,6 +48,93 @@ static void trim_trailing_ws(strbuf_t *sb)
     }
 }
 
+/* Parse an identifier and return its length. */
+static size_t parse_ident(const char *s)
+{
+    size_t i = 0;
+    if (!isalpha((unsigned char)s[i]) && s[i] != '_')
+        return 0;
+    i++;
+    while (isalnum((unsigned char)s[i]) || s[i] == '_')
+        i++;
+    return i;
+}
+
+/* Look up a parameter name and return the argument string if found. */
+static const char *lookup_param(const char *name, size_t len,
+                               const vector_t *params, char **args)
+{
+    for (size_t p = 0; p < params->count; p++) {
+        const char *param = ((char **)params->data)[p];
+        if (strlen(param) == len && strncmp(param, name, len) == 0)
+            return args[p];
+    }
+    return NULL;
+}
+
+/* Handle a `#` operator starting at `i`.  Appends to `sb` and
+ * returns the index after the processed sequence. */
+static size_t handle_stringify(const char *value, size_t i,
+                               const vector_t *params, char **args,
+                               strbuf_t *sb)
+{
+    size_t j = i + 1;
+    while (value[j] == ' ' || value[j] == '\t')
+        j++;
+    size_t len = parse_ident(value + j);
+    if (len) {
+        const char *rep = lookup_param(value + j, len, params, args);
+        if (rep) {
+            strbuf_appendf(sb, "\"%s\"", rep);
+            return j + len;
+        }
+    }
+    strbuf_append(sb, "#");
+    return i + 1;
+}
+
+/* Handle a `##` operator following the identifier that starts at `i`.
+ * `len` and `rep` describe this first identifier.  Returns non-zero
+ * when token pasting occurred and updates `*out_i` to the index after
+ * the processed sequence. */
+static int handle_token_paste(const char *value, size_t i, size_t len,
+                              const char *rep, const vector_t *params,
+                              char **args, strbuf_t *sb, size_t *out_i)
+{
+    size_t k = i + len;
+    while (value[k] == ' ' || value[k] == '\t')
+        k++;
+    if (value[k] != '#' || value[k + 1] != '#')
+        return 0;
+    k += 2;
+    while (value[k] == ' ' || value[k] == '\t')
+        k++;
+
+    if (isalpha((unsigned char)value[k]) || value[k] == '_') {
+        size_t l = parse_ident(value + k);
+        const char *rep2 = lookup_param(value + k, l, params, args);
+        trim_trailing_ws(sb);
+        if (rep)
+            strbuf_append(sb, rep);
+        else
+            strbuf_appendf(sb, "%.*s", (int)len, value + i);
+        if (rep2)
+            strbuf_append(sb, rep2);
+        else
+            strbuf_appendf(sb, "%.*s", (int)l, value + k);
+        *out_i = k + l;
+    } else {
+        trim_trailing_ws(sb);
+        if (rep)
+            strbuf_append(sb, rep);
+        else
+            strbuf_appendf(sb, "%.*s", (int)len, value + i);
+        strbuf_appendf(sb, "%c", value[k]);
+        *out_i = k + 1;
+    }
+    return 1;
+}
+
 /*
  * Expand parameter references inside a macro body.
  * Handles substitution, stringification (#) and token pasting (##)
@@ -59,99 +146,27 @@ static char *expand_params(const char *value, const vector_t *params, char **arg
     strbuf_init(&sb);
     for (size_t i = 0; value[i];) {
         if (value[i] == '#' && value[i + 1] != '#') {
-            size_t j = i + 1;
-            while (value[j] == ' ' || value[j] == '\t')
-                j++;
-            if (isalpha((unsigned char)value[j]) || value[j] == '_') {
-                size_t k = j + 1;
-                while (isalnum((unsigned char)value[k]) || value[k] == '_')
-                    k++;
-                size_t len = k - j;
-                int done = 0;
-                for (size_t p = 0; p < params->count; p++) {
-                    const char *param = ((char **)params->data)[p];
-                    if (strlen(param) == len &&
-                        strncmp(param, value + j, len) == 0) {
-                        strbuf_appendf(&sb, "\"%s\"", args[p]);
-                        done = 1;
-                        break;
-                    }
-                }
-                if (done) {
-                    i = k;
-                    continue;
-                }
-            }
-            strbuf_append(&sb, "#");
-            i++;
+            i = handle_stringify(value, i, params, args, &sb);
             continue;
         }
-        if (isalpha((unsigned char)value[i]) || value[i] == '_') {
-            size_t j = i + 1;
-            while (isalnum((unsigned char)value[j]) || value[j] == '_')
-                j++;
-            size_t len = j - i;
-            const char *rep = NULL;
-            for (size_t p = 0; p < params->count; p++) {
-                const char *param = ((char **)params->data)[p];
-                if (strlen(param) == len &&
-                    strncmp(param, value + i, len) == 0) {
-                    rep = args[p];
-                    break;
-                }
-            }
 
-            size_t k = j;
-            while (value[k] == ' ' || value[k] == '\t')
-                k++;
-            if (value[k] == '#' && value[k + 1] == '#') {
-                k += 2;
-                while (value[k] == ' ' || value[k] == '\t')
-                    k++;
-                if (isalpha((unsigned char)value[k]) || value[k] == '_') {
-                    size_t l = k + 1;
-                    while (isalnum((unsigned char)value[l]) || value[l] == '_')
-                        l++;
-                    size_t len2 = l - k;
-                    const char *rep2 = NULL;
-                    for (size_t p = 0; p < params->count; p++) {
-                        const char *param = ((char **)params->data)[p];
-                        if (strlen(param) == len2 &&
-                            strncmp(param, value + k, len2) == 0) {
-                            rep2 = args[p];
-                            break;
-                        }
-                    }
-                    trim_trailing_ws(&sb);
-                    if (rep)
-                        strbuf_append(&sb, rep);
-                    else
-                        strbuf_appendf(&sb, "%.*s", (int)len, value + i);
-                    if (rep2)
-                        strbuf_append(&sb, rep2);
-                    else
-                        strbuf_appendf(&sb, "%.*s", (int)len2, value + k);
-                    i = l;
-                    continue;
-                } else {
-                    trim_trailing_ws(&sb);
-                    if (rep)
-                        strbuf_append(&sb, rep);
-                    else
-                        strbuf_appendf(&sb, "%.*s", (int)len, value + i);
-                    strbuf_appendf(&sb, "%c", value[k]);
-                    i = k + 1;
-                    continue;
-                }
-            } else {
-                if (rep)
-                    strbuf_append(&sb, rep);
-                else
-                    strbuf_appendf(&sb, "%.*s", (int)len, value + i);
-                i = j;
+        size_t len = parse_ident(value + i);
+        if (len) {
+            const char *rep = lookup_param(value + i, len, params, args);
+            size_t next;
+            if (handle_token_paste(value, i, len, rep, params, args, &sb, &next)) {
+                i = next;
                 continue;
             }
+
+            if (rep)
+                strbuf_append(&sb, rep);
+            else
+                strbuf_appendf(&sb, "%.*s", (int)len, value + i);
+            i += len;
+            continue;
         }
+
         strbuf_appendf(&sb, "%c", value[i]);
         i++;
     }
