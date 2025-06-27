@@ -4,7 +4,9 @@
  * This module acts as a thin dispatcher for statement parsing.  It
  * recognizes the statement kind and forwards to the appropriate helper
  * in parser_decl.c or parser_flow.c.  Only basic block and simple
- * statements are handled directly here.
+ * statements are handled directly here.  Declaration parsing is
+ * performed by small helper routines that leave the parser state
+ * unchanged on failure so callers can attempt multiple forms.
  *
  * Part of vc under the BSD 2-Clause license.
  * See LICENSE for details.
@@ -26,10 +28,10 @@ stmt_t *parser_parse_for_stmt(parser_t *p);
 stmt_t *parser_parse_switch_stmt(parser_t *p);
 
 static stmt_t *parse_block(parser_t *p);
-static stmt_t *parse_enum_decl_stmt(parser_t *p);
-static stmt_t *parse_struct_decl_stmt(parser_t *p);
-static stmt_t *parse_union_decl_stmt(parser_t *p);
-static stmt_t *parse_var_or_typedef_stmt(parser_t *p);
+static stmt_t *parse_enum_declaration(parser_t *p);
+static stmt_t *parse_struct_declaration(parser_t *p);
+static stmt_t *parse_union_declaration(parser_t *p);
+static stmt_t *maybe_parse_var_decl(parser_t *p);
 static stmt_t *parse_declaration_stmt(parser_t *p);
 static stmt_t *parse_jump_stmt(parser_t *p);
 static stmt_t *parse_flow_stmt(parser_t *p);
@@ -65,7 +67,7 @@ static stmt_t *parse_block(parser_t *p)
 }
 
 /* Parse an enum declaration or inline enum variable definition. */
-static stmt_t *parse_enum_decl_stmt(parser_t *p)
+static stmt_t *parse_enum_declaration(parser_t *p)
 {
     size_t save = p->pos;
     int has_static = match(p, TOK_KW_STATIC);
@@ -101,7 +103,7 @@ static stmt_t *parse_enum_decl_stmt(parser_t *p)
 }
 
 /* Parse a struct declaration or inline struct variable definition. */
-static stmt_t *parse_struct_decl_stmt(parser_t *p)
+static stmt_t *parse_struct_declaration(parser_t *p)
 {
     size_t save = p->pos;
     int has_static = match(p, TOK_KW_STATIC);
@@ -135,7 +137,7 @@ static stmt_t *parse_struct_decl_stmt(parser_t *p)
 }
 
 /* Parse a union declaration or inline union variable definition. */
-static stmt_t *parse_union_decl_stmt(parser_t *p)
+static stmt_t *parse_union_declaration(parser_t *p)
 {
     size_t save = p->pos;
     int has_static = match(p, TOK_KW_STATIC);
@@ -168,8 +170,11 @@ static stmt_t *parse_union_decl_stmt(parser_t *p)
     return NULL;
 }
 
-/* Parse a plain variable declaration or qualifier based declaration. */
-static stmt_t *parse_var_or_typedef_stmt(parser_t *p)
+/*
+ * Attempt to parse a simple variable declaration beginning at the current
+ * position.  The parser state is restored if no declaration is present.
+ */
+static stmt_t *maybe_parse_var_decl(parser_t *p)
 {
     token_t *tok = peek(p);
     if (!tok)
@@ -187,21 +192,21 @@ static stmt_t *parse_var_or_typedef_stmt(parser_t *p)
 }
 
 /* Parse a variable or type declaration statement if present. */
+/*
+ * Attempt to parse any kind of declaration at statement scope.
+ * Each helper leaves the parser position unchanged on failure so
+ * we can simply try them in sequence.
+ */
 static stmt_t *parse_declaration_stmt(parser_t *p)
 {
-    stmt_t *s = parse_enum_decl_stmt(p);
-    if (s)
-        return s;
-
-    s = parse_struct_decl_stmt(p);
-    if (s)
-        return s;
-
-    s = parse_union_decl_stmt(p);
-    if (s)
-        return s;
-
-    return parse_var_or_typedef_stmt(p);
+    stmt_t *s = parse_enum_declaration(p);
+    if (!s)
+        s = parse_struct_declaration(p);
+    if (!s)
+        s = parse_union_declaration(p);
+    if (!s)
+        s = maybe_parse_var_decl(p);
+    return s;
 }
 
 /* Parse return, break, continue and goto statements. */
