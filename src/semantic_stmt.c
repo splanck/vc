@@ -1,4 +1,9 @@
-/* Semantic statement validation implementation. */
+/*
+ * Implementation of statement semantic checking.
+ *
+ * Part of vc under the BSD 2-Clause license.
+ * See LICENSE for details.
+ */
 
 #include <stdlib.h>
 #include <string.h>
@@ -18,7 +23,7 @@
 
 
 
-
+/* Remove all symbols added after old_head from the table. */
 void symtable_pop_scope(symtable_t *table, symbol_t *old_head)
 {
     while (table->head != old_head) {
@@ -29,7 +34,7 @@ void symtable_pop_scope(symtable_t *table, symbol_t *old_head)
         free(sym);
     }
 }
-
+/* Validate an enum declaration and register its members. */
 static int check_enum_decl_stmt(stmt_t *stmt, symtable_t *vars)
 {
     int next = 0;
@@ -52,7 +57,7 @@ static int check_enum_decl_stmt(stmt_t *stmt, symtable_t *vars)
         symtable_add_enum_tag(vars, stmt->enum_decl.tag);
     return 1;
 }
-
+/* Validate a struct declaration and store layout information. */
 static int check_struct_decl_stmt(stmt_t *stmt, symtable_t *vars)
 {
     size_t total = layout_struct_members(stmt->struct_decl.members,
@@ -68,7 +73,7 @@ static int check_struct_decl_stmt(stmt_t *stmt, symtable_t *vars)
         stype->struct_total_size = total;
     return 1;
 }
-
+/* Validate a union declaration and record its size. */
 static int check_union_decl_stmt(stmt_t *stmt, symtable_t *vars)
 {
     size_t max = layout_union_members(stmt->union_decl.members,
@@ -82,7 +87,7 @@ static int check_union_decl_stmt(stmt_t *stmt, symtable_t *vars)
     }
     return 1;
 }
-
+/* Register a typedef alias in the symbol table. */
 static int check_typedef_stmt(stmt_t *stmt, symtable_t *vars)
 {
     if (!symtable_add_typedef(vars, stmt->typedef_decl.name,
@@ -96,12 +101,14 @@ static int check_typedef_stmt(stmt_t *stmt, symtable_t *vars)
 }
 
 /* Helpers for variable initialization */
+/* Emit IR for a static array initialized with constant values. */
 static void init_static_array(ir_builder_t *ir, const char *name,
                               const long long *vals, size_t count)
 {
     ir_build_glob_array(ir, name, vals, count, 1);
 }
 
+/* Store constant values into a dynamic array variable. */
 static void init_dynamic_array(ir_builder_t *ir, const char *name,
                                const long long *vals, size_t count,
                                int is_volatile)
@@ -116,6 +123,7 @@ static void init_dynamic_array(ir_builder_t *ir, const char *name,
     }
 }
 
+/* Store a constant initializer into a struct field. */
 static void init_struct_member(ir_builder_t *ir, ir_value_t base,
                                size_t off, long long val)
 {
@@ -124,7 +132,7 @@ static void init_struct_member(ir_builder_t *ir, ir_value_t base,
     ir_value_t valv = ir_build_const(ir, val);
     ir_build_store_ptr(ir, addr, valv);
 }
-
+/* Expand an initializer list for an array variable. */
 static int handle_array_init(stmt_t *stmt, symbol_t *sym, symtable_t *vars,
                              ir_builder_t *ir)
 {
@@ -179,7 +187,7 @@ static int handle_array_init(stmt_t *stmt, symbol_t *sym, symtable_t *vars,
     free(vals);
     return 1;
 }
-
+/* Expand an initializer list for a struct variable. */
 static int handle_struct_init(stmt_t *stmt, symbol_t *sym, symtable_t *vars,
                               ir_builder_t *ir)
 {
@@ -229,7 +237,7 @@ static int handle_struct_init(stmt_t *stmt, symbol_t *sym, symtable_t *vars,
     }
     return 1;
 }
-
+/* Validate a variable declaration and generate initialization IR. */
 static int check_var_decl_stmt(stmt_t *stmt, symtable_t *vars,
                                symtable_t *funcs, ir_builder_t *ir)
 {
@@ -356,6 +364,7 @@ static int check_var_decl_stmt(stmt_t *stmt, symtable_t *vars,
     }
     return 1;
 }
+/* Perform semantic checking and emit IR for an if/else statement. */
 static int check_if_stmt(stmt_t *stmt, symtable_t *vars, symtable_t *funcs,
                          label_table_t *labels, ir_builder_t *ir,
                          type_kind_t func_ret_type,
