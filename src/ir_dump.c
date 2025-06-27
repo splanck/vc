@@ -59,6 +59,7 @@ static const char *op_name(ir_op_t op)
     case IR_STORE_PTR: return "IR_STORE_PTR";
     case IR_LOAD_IDX: return "IR_LOAD_IDX";
     case IR_STORE_IDX: return "IR_STORE_IDX";
+    case IR_ALLOCA: return "IR_ALLOCA";
     case IR_ARG: return "IR_ARG";
     case IR_RETURN: return "IR_RETURN";
     case IR_CALL: return "IR_CALL";
