@@ -54,6 +54,9 @@ static const keyword_t keyword_table[] = {
     { "return",   TOK_KW_RETURN }
 };
 
+/* Iterate the keyword table and return the matching token type, or
+ * TOK_IDENT if the text is not a keyword.
+ */
 static token_type_t lookup_keyword(const char *str, size_t len)
 {
     for (size_t i = 0; i < sizeof(keyword_table) / sizeof(keyword_table[0]); i++) {
