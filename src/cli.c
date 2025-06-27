@@ -1,5 +1,8 @@
 /*
- * Command line option parsing.
+ * Command line option parsing for the vc compiler.
+ *
+ * This module translates argv into a cli_options_t structure
+ * that drives later compilation stages.
  *
  * Part of vc under the BSD 2-Clause license.
  * See LICENSE for details.

@@ -2,7 +2,8 @@
 /*
  * Entry point of the vc compiler.
  *
- * This file drives the entire compilation pipeline:
+ * This module orchestrates command line parsing and drives the
+ * entire compilation pipeline:
  *  1. Source code is tokenized by the lexer.
  *  2. The parser builds an AST from those tokens.
  *  3. Semantic analysis creates an intermediate representation (IR).
@@ -324,6 +325,11 @@ static int create_startup_object(int use_x86_64, char **out_path)
     return 1;
 }
 
+/*
+ * Program entry point. Parses command line options and drives the
+ * compilation stages for each input file. Handles linking when the
+ * --link option is used.
+ */
 int main(int argc, char **argv)
 {
     cli_options_t cli;

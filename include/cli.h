@@ -1,5 +1,8 @@
 /*
- * Command line option structures.
+ * Definitions for the vc command line interface.
+ *
+ * This header declares the cli_options_t structure used by
+ * the compiler and the function for parsing argv.
  *
  * Part of vc under the BSD 2-Clause license.
  * See LICENSE for details.
