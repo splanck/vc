@@ -1,3 +1,10 @@
+/*
+ * Global symbol table helpers.
+ *
+ * Part of vc under the BSD 2-Clause license.
+ * See LICENSE for details.
+ */
+
 #include <stdlib.h>
 #include <string.h>
 #include "symtable.h"
@@ -60,7 +67,11 @@ int symtable_add_func(symtable_t *table, const char *name, type_kind_t ret_type,
     return 1;
 }
 
-/* Look up a name only in the global list. */
+/*
+ * Look up a symbol name only in the global `globals` list.
+ *
+ * No search of the local `head` list is performed.
+ */
 symbol_t *symtable_lookup_global(symtable_t *table, const char *name)
 {
     for (symbol_t *sym = table->globals; sym; sym = sym->next) {

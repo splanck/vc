@@ -54,6 +54,12 @@ typedef struct {
  */
 void symtable_init(symtable_t *table);
 void symtable_free(symtable_t *table);
+/*
+ * Allocate an unlinked symbol record.
+ *
+ * The caller must insert the returned symbol into either the
+ * local `head` list or the global `globals` list.
+ */
 symbol_t *symtable_create_symbol(const char *name, const char *ir_name);
 
 /* Add a symbol to the table. Returns non-zero on success. */
@@ -95,8 +101,14 @@ int symtable_add_struct_global(symtable_t *table, const char *tag,
                                struct_member_t *members, size_t member_count);
 symbol_t *symtable_lookup_struct(symtable_t *table, const char *tag);
 
-/* Look up a symbol by name. Returns NULL if not found. */
+/*
+ * Look up a symbol by name.
+ *
+ * The local `head` list is searched first, followed by the
+ * global `globals` list. Returns NULL if not found.
+ */
 symbol_t *symtable_lookup(symtable_t *table, const char *name);
+/* Search only the `globals` list. */
 symbol_t *symtable_lookup_global(symtable_t *table, const char *name);
 
 #endif /* VC_SYMTABLE_H */

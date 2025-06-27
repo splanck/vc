@@ -1,3 +1,10 @@
+/*
+ * Compound type symbol helpers (structs, unions and enums).
+ *
+ * Part of vc under the BSD 2-Clause license.
+ * See LICENSE for details.
+ */
+
 #include <stdlib.h>
 #include <string.h>
 #include "symtable.h"
@@ -67,6 +74,10 @@ int symtable_add_enum_tag_global(symtable_t *table, const char *tag)
     return 1;
 }
 
+/*
+ * Search for an enum tag in both the local and global lists.
+ * Returns NULL if no matching tag exists.
+ */
 symbol_t *symtable_lookup_enum_tag(symtable_t *table, const char *tag)
 {
     for (symbol_t *sym = table->head; sym; sym = sym->next) {
@@ -154,7 +165,10 @@ int symtable_add_union_global(symtable_t *table, const char *tag,
     return 1;
 }
 
-/* Look up a union type definition by tag */
+/*
+ * Look up a union type definition by tag by scanning both lists.
+ * Returns NULL if the tag is not defined.
+ */
 symbol_t *symtable_lookup_union(symtable_t *table, const char *tag)
 {
     for (symbol_t *sym = table->head; sym; sym = sym->next) {
@@ -246,7 +260,10 @@ int symtable_add_struct_global(symtable_t *table, const char *tag,
     return 1;
 }
 
-/* Look up a struct type definition by tag */
+/*
+ * Look up a struct type definition by tag across both lists.
+ * Returns NULL if the tag is unknown.
+ */
 symbol_t *symtable_lookup_struct(symtable_t *table, const char *tag)
 {
     for (symbol_t *sym = table->head; sym; sym = sym->next) {
