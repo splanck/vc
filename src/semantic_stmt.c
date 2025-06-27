@@ -206,12 +206,7 @@ static int handle_struct_init(stmt_t *stmt, symbol_t *sym, symtable_t *vars, ir_
     free(vals);
     return 1;
 }
-/*
- * Register the variable symbol in the current scope.
- * Handles static name mangling, computes layout information for
- * aggregate types and inserts the symbol into the table.
- * Returns the inserted symbol or NULL on failure.
- */
+
 /*
  * Compute layout information for an aggregate variable.  Struct and
  * union members are assigned offsets and the resulting element size is
@@ -263,6 +258,12 @@ static symbol_t *insert_var_symbol(stmt_t *stmt, symtable_t *vars,
     return sym;
 }
 
+/*
+ * Register the variable symbol in the current scope.
+ * Handles static name mangling, computes layout information for
+ * aggregate types and inserts the symbol into the table.
+ * Returns the inserted symbol or NULL on failure.
+ */
 static symbol_t *register_var_symbol(stmt_t *stmt, symtable_t *vars)
 {
     char ir_name_buf[32];
