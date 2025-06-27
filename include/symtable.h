@@ -65,11 +65,11 @@ int symtable_add(symtable_t *table, const char *name, const char *ir_name,
 /* Parameters are stored as locals with an index */
 int symtable_add_param(symtable_t *table, const char *name, type_kind_t type,
                        size_t elem_size, int index, int is_restrict);
-/* Functions record return and parameter types */
+/* Add a function symbol with its return and parameter types */
 int symtable_add_func(symtable_t *table, const char *name, type_kind_t ret_type,
                       type_kind_t *param_types, size_t param_count,
                       int is_prototype);
-/* Globals live in a separate list */
+/* Add a variable to the global list */
 int symtable_add_global(symtable_t *table, const char *name, const char *ir_name,
                         type_kind_t type, size_t array_size, size_t elem_size,
                         int is_static, int is_register, int is_const, int is_volatile,
@@ -97,6 +97,7 @@ symbol_t *symtable_lookup_struct(symtable_t *table, const char *tag);
 
 /* Look up a symbol by name. Returns NULL if not found. */
 symbol_t *symtable_lookup(symtable_t *table, const char *name);
+/* Search only the global list for a name */
 symbol_t *symtable_lookup_global(symtable_t *table, const char *name);
 
 #endif /* VC_SYMTABLE_H */

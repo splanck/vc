@@ -1,9 +1,19 @@
+/*
+ * Global symbol table utilities.
+ *
+ * Part of vc under the BSD 2-Clause license.
+ * See LICENSE for details.
+ */
+
 #include <stdlib.h>
 #include <string.h>
 #include "symtable.h"
 #include "util.h"
 
-/* Insert a global variable into the table. */
+/*
+ * Add a variable to the global list.
+ * Returns non-zero on success and fails if the name already exists.
+ */
 int symtable_add_global(symtable_t *table, const char *name, const char *ir_name,
                         type_kind_t type, size_t array_size, size_t elem_size,
                         int is_static, int is_register, int is_const, int is_volatile,
@@ -30,7 +40,8 @@ int symtable_add_global(symtable_t *table, const char *name, const char *ir_name
 }
 
 /*
- * Insert a function symbol along with its return type and parameter types.
+ * Add a function symbol along with its return type and parameter types.
+ * `is_prototype` marks declarations without a body.
  */
 int symtable_add_func(symtable_t *table, const char *name, type_kind_t ret_type,
                       type_kind_t *param_types, size_t param_count,
@@ -60,7 +71,7 @@ int symtable_add_func(symtable_t *table, const char *name, type_kind_t ret_type,
     return 1;
 }
 
-/* Look up a name only in the global list. */
+/* Look up a symbol only in the global list. */
 symbol_t *symtable_lookup_global(symtable_t *table, const char *name)
 {
     for (symbol_t *sym = table->globals; sym; sym = sym->next) {
