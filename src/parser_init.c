@@ -1,3 +1,10 @@
+/*
+ * Initializer list parsing helpers.
+ *
+ * Part of vc under the BSD 2-Clause license.
+ * See LICENSE for details.
+ */
+
 #include <stdlib.h>
 #include "parser.h"
 #include "parser_types.h"
@@ -5,12 +12,19 @@
 #include "vector.h"
 #include "util.h"
 
+/* Parse a brace-enclosed initializer list.
+ * The returned array is heap allocated and out_count receives its length.
+ * On any syntax or allocation failure the function frees all allocated
+ * entries and returns NULL.
+ */
+
 init_entry_t *parser_parse_init_list(parser_t *p, size_t *out_count)
 {
     if (!match(p, TOK_LBRACE))
         return NULL;
     vector_t vals_v;
     vector_init(&vals_v, sizeof(init_entry_t));
+    /* Parse comma-separated entries until the closing brace. */
     if (!match(p, TOK_RBRACE)) {
         do {
             init_entry_t e = { INIT_SIMPLE, NULL, NULL, NULL };
@@ -60,6 +74,7 @@ init_entry_t *parser_parse_init_list(parser_t *p, size_t *out_count)
                 }
             }
 
+            /* Attempt to append the parsed entry; free everything on allocation failure. */
             if (!vector_push(&vals_v, &e)) {
                 ast_free_expr(e.index);
                 ast_free_expr(e.value);
@@ -74,6 +89,7 @@ init_entry_t *parser_parse_init_list(parser_t *p, size_t *out_count)
                 return NULL;
             }
         } while (match(p, TOK_COMMA));
+        /* Clean up if the list is unterminated. */
         if (!match(p, TOK_RBRACE)) {
             for (size_t i = 0; i < vals_v.count; i++) {
                 init_entry_t *it = &((init_entry_t *)vals_v.data)[i];
