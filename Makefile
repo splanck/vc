@@ -5,7 +5,7 @@ BIN = vc
 # The resulting binary accepts -c/--compile to assemble objects using cc
 # Core compiler sources
 
-CORE_SRC = src/main.c src/cli.c src/lexer.c src/ast_expr.c src/ast_stmt.c src/ast_clone.c src/parser_core.c src/parser_toplevel.c src/symtable_core.c src/symtable_globals.c src/symtable_struct.c src/parser_expr.c src/parser_init.c \
+CORE_SRC = src/main.c src/compile.c src/cli.c src/lexer.c src/ast_expr.c src/ast_stmt.c src/ast_clone.c src/parser_core.c src/parser_toplevel.c src/symtable_core.c src/symtable_globals.c src/symtable_struct.c src/parser_expr.c src/parser_init.c \
            src/parser_decl.c src/parser_flow.c src/parser_stmt.c src/parser_types.c \
            src/semantic_expr.c src/semantic_arith.c src/semantic_mem.c src/semantic_call.c \
            src/semantic_loops.c src/semantic_switch.c src/semantic_init.c src/semantic_stmt.c src/semantic_global.c src/consteval.c src/error.c src/ir_core.c src/ir_global.c \
@@ -50,6 +50,9 @@ clean:
 .PHONY: all clean install test
 src/main.o: src/main.c $(HDR)
 	$(CC) $(CFLAGS) $(OPTFLAGS) -Iinclude -c src/main.c -o src/main.o
+src/compile.o: src/compile.c $(HDR)
+	$(CC) $(CFLAGS) $(OPTFLAGS) -Iinclude -c src/compile.c -o src/compile.o
+
 
 src/cli.o: src/cli.c $(HDR)
 	$(CC) $(CFLAGS) $(OPTFLAGS) -Iinclude -c src/cli.c -o src/cli.o
