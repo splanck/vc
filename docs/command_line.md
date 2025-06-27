@@ -1,5 +1,13 @@
 ## Command-line Options
 
+See the [documentation index](index.md) for a list of all available pages.
+
+## Table of Contents
+
+- [Command-line Options](#command-line-options)
+- [Preprocessor Usage](#preprocessor-usage)
+- [Compiling a Simple Program](#compiling-a-simple-program)
+
 The compiler supports the following options:
 
 - `-o`, `--output <file>` – path for the generated assembly.

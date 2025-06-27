@@ -1,5 +1,28 @@
 ## Supported Language Features
 
+See the [documentation index](index.md) for a list of all available pages.
+
+## Table of Contents
+
+- [Basic arithmetic](#basic-arithmetic)
+- [Compound assignment](#compound-assignment)
+- [Increment and decrement](#increment-and-decrement)
+- [Floating-point arithmetic](#floating-point-arithmetic)
+- [Bitwise operations](#bitwise-operations)
+- [64-bit integers](#64-bit-integers)
+- [Numeric constants](#numeric-constants)
+- [Function calls](#function-calls)
+- [Loops](#loops)
+- [Pointers](#pointers)
+- [Arrays](#arrays)
+- [Compound literals](#compound-literals)
+- [sizeof](#sizeof)
+- [Global variables](#global-variables)
+- [Break and continue](#break-and-continue)
+- [Switch statements](#switch-statements)
+- [Logical operators](#logical-operators)
+- [Enum declarations](#enum-declarations)
+
 - Basic arithmetic expressions
 - Function definitions and calls
 - `for`, `while` and `do`/`while` loops

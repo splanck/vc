@@ -1,5 +1,11 @@
 # Compiler Architecture
 
+See the [documentation index](index.md) for a list of all available pages.
+
+## Table of Contents
+
+- [Overview](#overview)
+
 This document describes the high level architecture of **vc**.
 
 ## Overview
