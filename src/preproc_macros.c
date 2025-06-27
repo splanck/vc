@@ -175,6 +175,62 @@ static char *expand_params(const char *value, const vector_t *params, char **arg
     return out;
 }
 
+/* Parse the argument list for a parameterized macro call.
+ *
+ * "pos" should point to the character immediately following the macro
+ * name.  On success the parsed arguments are stored in "out" and the
+ * index after the closing ')' is written to *pos.  Returns non-zero when
+ * a well formed argument list was found. */
+static int parse_macro_args(const char *line, size_t *pos, vector_t *out)
+{
+    size_t p = *pos;
+    vector_init(out, sizeof(char *));
+    while (line[p] == ' ' || line[p] == '\t')
+        p++;
+    if (line[p] != '(')
+        return 0;
+    p++; /* skip '(' */
+    size_t start = p;
+    while (line[p] && line[p] != ')')
+        p++;
+    if (line[p] != ')')
+        return 0;
+
+    char *argstr = vc_strndup(line + start, p - start);
+    char *tok; char *sp;
+    tok = strtok_r(argstr, ",", &sp);
+    while (tok) {
+        while (*tok == ' ' || *tok == '\t')
+            tok++;
+        char *end = tok + strlen(tok);
+        while (end > tok && (end[-1] == ' ' || end[-1] == '\t'))
+            end--;
+        char *a = vc_strndup(tok, (size_t)(end - tok));
+        vector_push(out, &a);
+        tok = strtok_r(NULL, ",", &sp);
+    }
+    free(argstr);
+    *pos = p + 1;
+    return 1;
+}
+
+/* Expand a macro invocation and append the result to "out". */
+static void expand_macro_call(macro_t *m, char **args, vector_t *macros,
+                              strbuf_t *out)
+{
+    strbuf_t tmp;
+    strbuf_init(&tmp);
+    if (m->params.count) {
+        char *body = expand_params(m->value, &m->params, args);
+        expand_line(body, macros, &tmp);
+        free(body);
+    } else {
+        expand_line(m->value, macros, &tmp);
+    }
+    strbuf_append(out, tmp.data ? tmp.data : "");
+    strbuf_free(&tmp);
+}
+
 /*
  * Expand all macros found in a single line of input.
  * Performs recursive expansion so macro bodies may contain other
@@ -193,53 +249,23 @@ void expand_line(const char *line, vector_t *macros, strbuf_t *out)
                 macro_t *m = &((macro_t *)macros->data)[k];
                 if (strlen(m->name) == len && strncmp(m->name, line + i, len) == 0) {
                     if (m->params.count) {
-                        size_t p = j;
-                        while (line[p] == ' ' || line[p] == '\t')
-                            p++;
-                        if (line[p] == '(') {
-                            p++;
-                            size_t start = p;
-                            while (line[p] && line[p] != ')')
-                                p++;
-                            if (line[p] == ')') {
-                                char *argstr = vc_strndup(line + start, p - start);
-                                vector_t args; vector_init(&args, sizeof(char *));
-                                char *tok; char *sp;
-                                tok = strtok_r(argstr, ",", &sp);
-                                while (tok) {
-                                    while (*tok == ' ' || *tok == '\t')
-                                        tok++;
-                                    char *end = tok + strlen(tok);
-                                    while (end > tok && (end[-1] == ' ' || end[-1] == '\t'))
-                                        end--;
-                                    char *a = vc_strndup(tok, (size_t)(end - tok));
-                                    vector_push(&args, &a);
-                                    tok = strtok_r(NULL, ",", &sp);
-                                }
-                                if (args.count == m->params.count) {
-                                    char *body = expand_params(m->value, &m->params, (char **)args.data);
-                                    strbuf_t tmp; strbuf_init(&tmp);
-                                    expand_line(body, macros, &tmp);
-                                    strbuf_append(out, tmp.data ? tmp.data : "");
-                                    strbuf_free(&tmp);
-                                    free(body);
-                                    i = p + 1;
-                                    replaced = 1;
-                                }
-                                for (size_t t = 0; t < args.count; t++)
-                                    free(((char **)args.data)[t]);
-                                vector_free(&args);
-                                free(argstr);
-                                if (replaced)
-                                    break;
-                            }
+                        size_t pos = j;
+                        vector_t args;
+                        if (parse_macro_args(line, &pos, &args) &&
+                            args.count == m->params.count) {
+                            expand_macro_call(m, (char **)args.data, macros, out);
+                            for (size_t t = 0; t < args.count; t++)
+                                free(((char **)args.data)[t]);
+                            vector_free(&args);
+                            i = pos;
+                            replaced = 1;
+                            break;
                         }
-                        /* fallthrough if no parentheses */
+                        for (size_t t = 0; t < args.count; t++)
+                            free(((char **)args.data)[t]);
+                        vector_free(&args);
                     } else {
-                        strbuf_t tmp; strbuf_init(&tmp);
-                        expand_line(m->value, macros, &tmp);
-                        strbuf_append(out, tmp.data ? tmp.data : "");
-                        strbuf_free(&tmp);
+                        expand_macro_call(m, NULL, macros, out);
                         i = j;
                         replaced = 1;
                         break;
