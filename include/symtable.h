@@ -74,25 +74,36 @@ int symtable_add_global(symtable_t *table, const char *name, const char *ir_name
                         type_kind_t type, size_t array_size, size_t elem_size,
                         int is_static, int is_register, int is_const, int is_volatile,
                         int is_restrict);
+/* Add an enum constant to the current scope */
 int symtable_add_enum(symtable_t *table, const char *name, int value);
+/* Add an enum constant to the global scope */
 int symtable_add_enum_global(symtable_t *table, const char *name, int value);
+/* Register an enum tag in the current scope */
 int symtable_add_enum_tag(symtable_t *table, const char *tag);
+/* Register an enum tag in the global scope */
 int symtable_add_enum_tag_global(symtable_t *table, const char *tag);
+/* Look up an enum tag by name */
 symbol_t *symtable_lookup_enum_tag(symtable_t *table, const char *tag);
 int symtable_add_typedef(symtable_t *table, const char *name, type_kind_t type,
                          size_t array_size, size_t elem_size);
 int symtable_add_typedef_global(symtable_t *table, const char *name,
                                 type_kind_t type, size_t array_size,
                                 size_t elem_size);
+/* Add a union definition to the current scope */
 int symtable_add_union(symtable_t *table, const char *tag,
                        union_member_t *members, size_t member_count);
+/* Add a union definition to the global scope */
 int symtable_add_union_global(symtable_t *table, const char *tag,
                               union_member_t *members, size_t member_count);
+/* Look up a union definition by tag */
 symbol_t *symtable_lookup_union(symtable_t *table, const char *tag);
+/* Add a struct definition to the current scope */
 int symtable_add_struct(symtable_t *table, const char *tag,
                         struct_member_t *members, size_t member_count);
+/* Add a struct definition to the global scope */
 int symtable_add_struct_global(symtable_t *table, const char *tag,
                                struct_member_t *members, size_t member_count);
+/* Look up a struct definition by tag */
 symbol_t *symtable_lookup_struct(symtable_t *table, const char *tag);
 
 /* Look up a symbol by name. Returns NULL if not found. */

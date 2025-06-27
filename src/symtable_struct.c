@@ -1,3 +1,10 @@
+/*
+ * Helpers for tracking enum, struct, and union definitions.
+ *
+ * Part of vc under the BSD 2-Clause license.
+ * See LICENSE for details.
+ */
+
 #include <stdlib.h>
 #include <string.h>
 #include "symtable.h"
@@ -67,6 +74,7 @@ int symtable_add_enum_tag_global(symtable_t *table, const char *tag)
     return 1;
 }
 
+/* Find an enum tag by name */
 symbol_t *symtable_lookup_enum_tag(symtable_t *table, const char *tag)
 {
     for (symbol_t *sym = table->head; sym; sym = sym->next) {
