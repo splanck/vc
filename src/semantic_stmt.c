@@ -396,6 +396,57 @@ static int emit_aggregate_initializer(stmt_t *stmt, symbol_t *sym,
 }
 
 /*
+ * Copy metadata describing aggregate members from the declaration to the
+ * symbol table entry.  Dispatches to the struct or union helper based on the
+ * variable's type.  Returns non-zero on success.
+ */
+static int copy_aggregate_metadata(stmt_t *stmt, symbol_t *sym)
+{
+    if (stmt->var_decl.type == TYPE_UNION)
+        return copy_union_metadata(sym, stmt->var_decl.members,
+                                   stmt->var_decl.member_count,
+                                   stmt->var_decl.elem_size);
+
+    if (stmt->var_decl.type == TYPE_STRUCT)
+        return copy_struct_metadata(sym,
+                                    (struct_member_t *)stmt->var_decl.members,
+                                    stmt->var_decl.member_count,
+                                    stmt->var_decl.elem_size);
+
+    return 1;
+}
+
+/*
+ * Emit IR for a static initializer.  This simply wraps the existing helper
+ * used to handle constant expression initializers for scalars and aggregates.
+ */
+static int emit_static_init(stmt_t *stmt, symbol_t *sym, symtable_t *vars,
+                            ir_builder_t *ir)
+{
+    return emit_static_initializer(stmt, sym, vars, ir);
+}
+
+/*
+ * Emit IR for a dynamic initializer evaluated at run time.  The expression is
+ * validated and then stored to the variable.
+ */
+static int emit_dynamic_init(stmt_t *stmt, symbol_t *sym, symtable_t *vars,
+                             symtable_t *funcs, ir_builder_t *ir)
+{
+    return emit_dynamic_initializer(stmt, sym, vars, funcs, ir);
+}
+
+/*
+ * Emit IR for an initializer list of an aggregate type.  This delegates to the
+ * array or struct handlers via the existing aggregate initializer helper.
+ */
+static int emit_aggregate_init(stmt_t *stmt, symbol_t *sym,
+                               symtable_t *vars, ir_builder_t *ir)
+{
+    return emit_aggregate_initializer(stmt, sym, vars, ir);
+}
+
+/*
  * Emit IR for any initializer attached to the variable.
  * Copies aggregate member metadata to the symbol and writes
  * constant or computed values using the IR builder.
@@ -405,28 +456,17 @@ static int emit_var_initializer(stmt_t *stmt, symbol_t *sym,
                                 symtable_t *vars, symtable_t *funcs,
                                 ir_builder_t *ir)
 {
-    if (stmt->var_decl.type == TYPE_UNION) {
-        if (!copy_union_metadata(sym, stmt->var_decl.members,
-                                 stmt->var_decl.member_count,
-                                 stmt->var_decl.elem_size))
-            return 0;
-    }
+    if (!copy_aggregate_metadata(stmt, sym))
+        return 0;
 
-    if (stmt->var_decl.type == TYPE_STRUCT) {
-        if (!copy_struct_metadata(sym,
-                                  (struct_member_t *)stmt->var_decl.members,
-                                  stmt->var_decl.member_count,
-                                  stmt->var_decl.elem_size))
-            return 0;
-    }
+    if (stmt->var_decl.init)
+        return stmt->var_decl.is_static
+                   ? emit_static_init(stmt, sym, vars, ir)
+                   : emit_dynamic_init(stmt, sym, vars, funcs, ir);
 
-    if (stmt->var_decl.init) {
-        if (stmt->var_decl.is_static)
-            return emit_static_initializer(stmt, sym, vars, ir);
-        return emit_dynamic_initializer(stmt, sym, vars, funcs, ir);
-    }
     if (stmt->var_decl.init_list)
-        return emit_aggregate_initializer(stmt, sym, vars, ir);
+        return emit_aggregate_init(stmt, sym, vars, ir);
+
     return 1;
 }
 
