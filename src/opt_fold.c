@@ -48,6 +48,53 @@ static int eval_float_op(ir_op_t op, int a, int b)
     return res.i;
 }
 
+/* Update destination entry in constant tracking tables */
+static void update_const(ir_instr_t *ins, int val, int cst,
+                         int max_id, int *is_const, int *values)
+{
+    if (ins->dest >= 0 && ins->dest < max_id) {
+        is_const[ins->dest] = cst;
+        if (cst)
+            values[ins->dest] = val;
+    }
+}
+
+/* Try folding an integer binary operation */
+static void fold_int_instr(ir_instr_t *ins, int max_id,
+                           int *is_const, int *values)
+{
+    if (ins->src1 < max_id && ins->src2 < max_id &&
+        is_const[ins->src1] && is_const[ins->src2]) {
+        int a = values[ins->src1];
+        int b = values[ins->src2];
+        int result = eval_int_op(ins->op, a, b);
+        ins->op = IR_CONST;
+        ins->imm = result;
+        ins->src1 = ins->src2 = 0;
+        update_const(ins, result, 1, max_id, is_const, values);
+    } else {
+        update_const(ins, 0, 0, max_id, is_const, values);
+    }
+}
+
+/* Try folding a floating point binary operation */
+static void fold_float_instr(ir_instr_t *ins, int max_id,
+                             int *is_const, int *values)
+{
+    if (ins->src1 < max_id && ins->src2 < max_id &&
+        is_const[ins->src1] && is_const[ins->src2]) {
+        int a = values[ins->src1];
+        int b = values[ins->src2];
+        int result = eval_float_op(ins->op, a, b);
+        ins->op = IR_CONST;
+        ins->imm = result;
+        ins->src1 = ins->src2 = 0;
+        update_const(ins, result, 1, max_id, is_const, values);
+    } else {
+        update_const(ins, 0, 0, max_id, is_const, values);
+    }
+}
+
 /* Perform simple constant folding */
 void fold_constants(ir_builder_t *ir)
 {
@@ -66,63 +113,29 @@ void fold_constants(ir_builder_t *ir)
     for (ir_instr_t *ins = ir->head; ins; ins = ins->next) {
         switch (ins->op) {
         case IR_CONST:
-            if (ins->dest >= 0 && ins->dest < max_id) {
-                is_const[ins->dest] = 1;
-                values[ins->dest] = ins->imm;
-            }
+            update_const(ins, (int)ins->imm, 1, max_id, is_const, values);
             break;
         case IR_ADD: case IR_SUB: case IR_MUL: case IR_DIV: case IR_MOD:
         case IR_SHL: case IR_SHR: case IR_AND: case IR_OR: case IR_XOR:
         case IR_CMPEQ: case IR_CMPNE: case IR_CMPLT:
         case IR_CMPGT: case IR_CMPLE: case IR_CMPGE:
         case IR_LOGAND: case IR_LOGOR:
-            if (ins->src1 < max_id && ins->src2 < max_id &&
-                is_const[ins->src1] && is_const[ins->src2]) {
-                int a = values[ins->src1];
-                int b = values[ins->src2];
-                int result = eval_int_op(ins->op, a, b);
-                ins->op = IR_CONST;
-                ins->imm = result;
-                ins->src1 = ins->src2 = 0;
-                if (ins->dest >= 0 && ins->dest < max_id) {
-                    is_const[ins->dest] = 1;
-                    values[ins->dest] = result;
-                }
-            } else if (ins->dest >= 0 && ins->dest < max_id) {
-                is_const[ins->dest] = 0;
-            }
+            fold_int_instr(ins, max_id, is_const, values);
             break;
         case IR_FADD: case IR_FSUB: case IR_FMUL: case IR_FDIV:
-            if (ins->src1 < max_id && ins->src2 < max_id &&
-                is_const[ins->src1] && is_const[ins->src2]) {
-                int a = values[ins->src1];
-                int b = values[ins->src2];
-                int result = eval_float_op(ins->op, a, b);
-                ins->op = IR_CONST;
-                ins->imm = result;
-                ins->src1 = ins->src2 = 0;
-                if (ins->dest >= 0 && ins->dest < max_id) {
-                    is_const[ins->dest] = 1;
-                    values[ins->dest] = result;
-                }
-            } else if (ins->dest >= 0 && ins->dest < max_id) {
-                is_const[ins->dest] = 0;
-            }
+            fold_float_instr(ins, max_id, is_const, values);
             break;
         case IR_LFADD: case IR_LFSUB: case IR_LFMUL: case IR_LFDIV:
-            if (ins->dest >= 0 && ins->dest < max_id)
-                is_const[ins->dest] = 0;
+            update_const(ins, 0, 0, max_id, is_const, values);
             break;
         case IR_LOAD:
         case IR_LOAD_IDX:
-            if (ins->dest >= 0 && ins->dest < max_id)
-                is_const[ins->dest] = 0;
+            update_const(ins, 0, 0, max_id, is_const, values);
             break;
         case IR_STORE:
         case IR_LOAD_PARAM:
         case IR_STORE_IDX:
-            if (ins->dest >= 0 && ins->dest < max_id)
-                is_const[ins->dest] = 0;
+            update_const(ins, 0, 0, max_id, is_const, values);
             break;
         case IR_STORE_PARAM:
         case IR_ADDR:
@@ -131,8 +144,7 @@ void fold_constants(ir_builder_t *ir)
         case IR_PTR_ADD:
         case IR_PTR_DIFF:
         case IR_ALLOCA:
-            if (ins->dest >= 0 && ins->dest < max_id)
-                is_const[ins->dest] = 0;
+            update_const(ins, 0, 0, max_id, is_const, values);
             break;
         case IR_RETURN:
             /* nothing to do */
@@ -142,12 +154,10 @@ void fold_constants(ir_builder_t *ir)
         case IR_GLOB_ARRAY:
         case IR_GLOB_UNION:
         case IR_GLOB_STRUCT:
-            if (ins->dest >= 0 && ins->dest < max_id)
-                is_const[ins->dest] = 0;
+            update_const(ins, 0, 0, max_id, is_const, values);
             break;
         case IR_CALL: case IR_FUNC_BEGIN: case IR_FUNC_END: case IR_ARG:
-            if (ins->dest >= 0 && ins->dest < max_id)
-                is_const[ins->dest] = 0;
+            update_const(ins, 0, 0, max_id, is_const, values);
             break;
         case IR_BCOND: case IR_LABEL: case IR_BR:
             break;
