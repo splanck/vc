@@ -17,6 +17,10 @@
 #include "error.h"
 #include <limits.h>
 
+/*
+ * Validate a function call by checking argument types against the
+ * function's prototype and emit the call IR instruction.
+ */
 type_kind_t check_call_expr(expr_t *expr, symtable_t *vars,
                             symtable_t *funcs, ir_builder_t *ir,
                             ir_value_t *out)

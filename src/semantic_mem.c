@@ -17,6 +17,10 @@
 #include "error.h"
 #include <limits.h>
 
+/*
+ * Validate array indexing and emit a load from the computed element
+ * address in the IR.
+ */
 type_kind_t check_index_expr(expr_t *expr, symtable_t *vars,
                              symtable_t *funcs, ir_builder_t *ir,
                              ir_value_t *out)
@@ -50,6 +54,10 @@ type_kind_t check_index_expr(expr_t *expr, symtable_t *vars,
     return TYPE_INT;
 }
 
+/*
+ * Validate assignment through an array index and emit a store to the
+ * appropriate element in the IR.
+ */
 type_kind_t check_assign_index_expr(expr_t *expr, symtable_t *vars,
                                     symtable_t *funcs, ir_builder_t *ir,
                                     ir_value_t *out)
@@ -94,6 +102,10 @@ type_kind_t check_assign_index_expr(expr_t *expr, symtable_t *vars,
     return TYPE_INT;
 }
 
+/*
+ * Validate assignment to a struct or union member and generate a store
+ * to the field's computed address in the IR.
+ */
 type_kind_t check_assign_member_expr(expr_t *expr, symtable_t *vars,
                                      symtable_t *funcs, ir_builder_t *ir,
                                      ir_value_t *out)
@@ -173,6 +185,10 @@ type_kind_t check_assign_member_expr(expr_t *expr, symtable_t *vars,
     return mtype;
 }
 
+/*
+ * Validate member access on a struct, union or pointer and emit a load
+ * from the member's address.
+ */
 type_kind_t check_member_expr(expr_t *expr, symtable_t *vars,
                                symtable_t *funcs, ir_builder_t *ir,
                                ir_value_t *out)
@@ -245,6 +261,10 @@ type_kind_t check_member_expr(expr_t *expr, symtable_t *vars,
     return mtype;
 }
 
+/*
+ * Validate a compound literal, allocate temporary storage and emit IR
+ * to initialize each element.
+ */
 type_kind_t check_complit_expr(expr_t *expr, symtable_t *vars,
                                symtable_t *funcs, ir_builder_t *ir,
                                ir_value_t *out)

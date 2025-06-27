@@ -40,7 +40,10 @@ static const ir_op_t binop_to_ir[] = {
     [BINOP_GE]     = IR_CMPGE,
 };
 
-/* Perform a binary arithmetic or comparison operation. */
+/*
+ * Perform a binary arithmetic or comparison operation and emit the
+ * corresponding IR instructions.
+ */
 type_kind_t check_binary(expr_t *left, expr_t *right, symtable_t *vars,
                          symtable_t *funcs, ir_builder_t *ir,
                          ir_value_t *out, binop_t op)
@@ -105,6 +108,10 @@ type_kind_t check_binary(expr_t *left, expr_t *right, symtable_t *vars,
     return TYPE_UNKNOWN;
 }
 
+/*
+ * Validate unary arithmetic and pointer operators and produce the
+ * appropriate IR for the operation.
+ */
 type_kind_t check_unary_expr(expr_t *expr, symtable_t *vars,
                              symtable_t *funcs, ir_builder_t *ir,
                              ir_value_t *out)
@@ -240,6 +247,11 @@ type_kind_t check_unary_expr(expr_t *expr, symtable_t *vars,
     }
 }
 
+/*
+ * Validate a binary expression.  Logical operations are handled
+ * separately while other operators delegate to check_binary to
+ * generate the IR.
+ */
 type_kind_t check_binary_expr(expr_t *expr, symtable_t *vars,
                               symtable_t *funcs, ir_builder_t *ir,
                               ir_value_t *out)

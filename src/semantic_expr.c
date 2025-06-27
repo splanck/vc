@@ -19,6 +19,10 @@
 #include "error.h"
 #include <limits.h>
 
+/*
+ * Validate a numeric literal and emit a constant IR value.  The returned
+ * type depends on the literal's size.
+ */
 static type_kind_t check_number_expr(expr_t *expr, symtable_t *vars,
                                      symtable_t *funcs, ir_builder_t *ir,
                                      ir_value_t *out)
@@ -32,6 +36,10 @@ static type_kind_t check_number_expr(expr_t *expr, symtable_t *vars,
     return TYPE_INT;
 }
 
+/*
+ * Validate a string literal and build its constant representation in the IR.
+ * The resulting value has pointer type.
+ */
 static type_kind_t check_string_expr(expr_t *expr, symtable_t *vars,
                                      symtable_t *funcs, ir_builder_t *ir,
                                      ir_value_t *out)
@@ -42,6 +50,9 @@ static type_kind_t check_string_expr(expr_t *expr, symtable_t *vars,
     return TYPE_PTR;
 }
 
+/*
+ * Validate a character literal and emit a constant integer IR value.
+ */
 static type_kind_t check_char_expr(expr_t *expr, symtable_t *vars,
                                    symtable_t *funcs, ir_builder_t *ir,
                                    ir_value_t *out)
@@ -52,6 +63,10 @@ static type_kind_t check_char_expr(expr_t *expr, symtable_t *vars,
     return TYPE_CHAR;
 }
 
+/*
+ * Resolve an identifier, ensuring it exists and loading its value or address
+ * into the IR.  Enum constants become immediate values.
+ */
 static type_kind_t check_ident_expr(expr_t *expr, symtable_t *vars,
                                     symtable_t *funcs, ir_builder_t *ir,
                                     ir_value_t *out)
@@ -84,6 +99,10 @@ static type_kind_t check_ident_expr(expr_t *expr, symtable_t *vars,
     }
 }
 
+/*
+ * Validate a ternary conditional expression.  Both branches are checked and
+ * IR is emitted to select the appropriate value based on the condition.
+ */
 static type_kind_t check_cond_expr(expr_t *expr, symtable_t *vars,
                                    symtable_t *funcs, ir_builder_t *ir,
                                    ir_value_t *out)
@@ -124,6 +143,10 @@ static type_kind_t check_cond_expr(expr_t *expr, symtable_t *vars,
     return TYPE_INT;
 }
 
+/*
+ * Validate an assignment to a variable and generate the store operation in
+ * the IR.  Type compatibility between the target and value is enforced.
+ */
 static type_kind_t check_assign_expr(expr_t *expr, symtable_t *vars,
                                      symtable_t *funcs, ir_builder_t *ir,
                                      ir_value_t *out)
@@ -158,6 +181,10 @@ static type_kind_t check_assign_expr(expr_t *expr, symtable_t *vars,
     return TYPE_UNKNOWN;
 }
 
+/*
+ * Compute the size of a type or expression and emit a constant IR value with
+ * that size in bytes.
+ */
 static type_kind_t check_sizeof_expr(expr_t *expr, symtable_t *vars,
                                      symtable_t *funcs, ir_builder_t *ir,
                                      ir_value_t *out)
