@@ -1,10 +1,12 @@
 /*
  * Register allocation interface.
  *
- * The allocator maps IR value identifiers to either a physical
- * register or a stack slot. A linear scan over the instruction
- * stream decides when to assign registers and when to spill
- * values to the stack.
+ * The allocator assigns each SSA value produced by the IR to either a
+ * physical register or a stack slot.  Allocation is performed using a
+ * simple linear scan: values are given registers from a small fixed pool
+ * and spilled to the stack when no registers remain.  Registers are
+ * recycled immediately after the last use of a value, allowing them to
+ * be reused later in the instruction stream.
  *
  * Part of vc under the BSD 2-Clause license.
  * See LICENSE for details.
@@ -15,7 +17,14 @@
 
 #include "ir_core.h"
 
-/* Location mapping for IR values */
+/*
+ * Location mapping for IR values returned by the allocator.
+ *
+ * `loc[i]` holds the location assigned to value `i`.  Non-negative
+ * numbers correspond to a physical register index while negative
+ * numbers encode a stack slot number (\-n).  `stack_slots` reports how
+ * many stack slots were required in total.
+ */
 typedef struct {
     int *loc;       /* >=0 register index, <0 stack slot (-n) */
     int stack_slots;/* number of stack slots used */
@@ -29,6 +38,11 @@ typedef struct {
  * becomes free again once the allocator reaches the last
  * instruction that references the value stored in it.
  */
+/*
+ * Run the allocator on the given builder and populate `ra` with the
+ * computed location map.  `ir` must contain the finalized list of IR
+ * instructions.
+ */
 void regalloc_run(ir_builder_t *ir, regalloc_t *ra);
 
 /*
@@ -37,6 +51,7 @@ void regalloc_run(ir_builder_t *ir, regalloc_t *ra);
  * This does not modify the IR but simply releases the location
  * table produced by `regalloc_run`.
  */
+/* Release all memory held inside `ra`. */
 void regalloc_free(regalloc_t *ra);
 
 
