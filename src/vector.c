@@ -10,7 +10,10 @@
 #include "vector.h"
 #include "util.h"
 
-/* Initialize vector for elements of the given size */
+/*
+ * Prepare a vector to hold elements of "elem_size" bytes.  The vector
+ * initially contains zero elements and no allocated storage.
+ */
 void vector_init(vector_t *vec, size_t elem_size)
 {
     if (!vec)
@@ -21,7 +24,11 @@ void vector_init(vector_t *vec, size_t elem_size)
     vec->elem_size = elem_size;
 }
 
-/* Append one element to the vector */
+/*
+ * Append one element to the end of the vector.  The element data is
+ * copied from the memory pointed to by "elem".  The vector grows as
+ * needed.  Returns 1 on success and 0 on invalid arguments.
+ */
 int vector_push(vector_t *vec, const void *elem)
 {
     if (!vec || !elem)
@@ -37,7 +44,10 @@ int vector_push(vector_t *vec, const void *elem)
     return 1;
 }
 
-/* Release memory held by the vector */
+/*
+ * Release all memory owned by the vector and reset its fields.  The
+ * vector may be reused after calling vector_init() again.
+ */
 void vector_free(vector_t *vec)
 {
     if (!vec)
