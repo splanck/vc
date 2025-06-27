@@ -1,6 +1,12 @@
 /*
  * AST statement constructors and helpers for the compiler.
  *
+ * This file implements the statement and function constructors declared in
+ * ``ast_stmt.h''.  Like the expression constructors, each routine returns a
+ * freshly allocated node that forms part of the abstract syntax tree.  The
+ * destructor ``ast_free_stmt'' recursively frees any child statements and
+ * expressions while ``ast_free_func'' handles complete function objects.
+ *
  * Part of vc under the BSD 2-Clause license.
  * See LICENSE for details.
  */

@@ -1,6 +1,12 @@
 /*
  * Routines for cloning AST expression nodes.
  *
+ * Expression nodes are dynamically allocated and linked together to form
+ * a tree.  Cloning must therefore walk the entire tree and duplicate each
+ * node so that the clone shares no storage with the original.  This file
+ * implements ``clone_expr'' which dispatches to helper functions for every
+ * expression kind defined in ``ast.h''.
+ *
  * Part of vc under the BSD 2-Clause license.
  * See LICENSE for details.
  */

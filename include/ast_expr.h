@@ -1,6 +1,11 @@
 /*
  * Expression AST construction helpers.
  *
+ * These routines allocate and initialise the expression nodes defined in
+ * ``ast.h''.  Each constructor returns a pointer to a newly allocated node
+ * or ``NULL'' on failure.  The caller becomes responsible for freeing the
+ * returned tree using ``ast_free_expr''.
+ *
  * Part of vc under the BSD 2-Clause license.
  * See LICENSE for details.
  */

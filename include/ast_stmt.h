@@ -1,6 +1,12 @@
 /*
  * Statement and function AST construction helpers.
  *
+ * These routines mirror those in ``ast_expr.h'' but operate on the various
+ * statement node types and complete function definitions.  Each constructor
+ * allocates a new node and returns it to the caller, who is then
+ * responsible for eventually freeing the structure with ``ast_free_stmt'' or
+ * ``ast_free_func''.
+ *
  * Part of vc under the BSD 2-Clause license.
  * See LICENSE for details.
  */

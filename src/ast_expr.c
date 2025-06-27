@@ -1,6 +1,12 @@
 /*
  * AST constructors and helpers for the compiler.
  *
+ * This module contains the concrete implementations of the expression
+ * constructor functions declared in ``ast_expr.h''.  Each routine allocates
+ * a new node, fills in its tagged union fields and returns the result to
+ * the caller.  ``ast_free_expr'' provides the matching destructor which
+ * recursively frees a tree of expressions.
+ *
  * Part of vc under the BSD 2-Clause license.
  * See LICENSE for details.
  */
