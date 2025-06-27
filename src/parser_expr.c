@@ -134,7 +134,13 @@ static expr_t *parse_identifier_expr(parser_t *p)
             return NULL;
         expr_t **args = (expr_t **)args_v.data;
         size_t count = args_v.count;
-        return ast_make_call(name, args, count, tok->line, tok->column);
+        expr_t *call = ast_make_call(name, args, count,
+                                     tok->line, tok->column);
+        if (!call) {
+            free_expr_vector(&args_v);
+            return NULL;
+        }
+        return call;
     }
     match(p, TOK_IDENT);
     return ast_make_ident(tok->lexeme, tok->line, tok->column);
