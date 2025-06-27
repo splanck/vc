@@ -184,6 +184,79 @@ static type_kind_t check_assign_expr(expr_t *expr, symtable_t *vars,
 }
 
 /*
+ * Determine the byte size of a type operand of sizeof().
+ * Array and struct sizes are provided by the parser.
+ */
+static int sizeof_from_type(type_kind_t type, size_t array_size,
+                            size_t elem_size)
+{
+    switch (type) {
+    /* single byte integer types */
+    case TYPE_CHAR: case TYPE_UCHAR: case TYPE_BOOL:
+        return 1;
+    /* two byte integer types */
+    case TYPE_SHORT: case TYPE_USHORT:
+        return 2;
+    /* four byte integer types, also used for enums */
+    case TYPE_INT: case TYPE_UINT: case TYPE_LONG: case TYPE_ULONG:
+    case TYPE_ENUM:
+        return 4;
+    /* eight byte integer types */
+    case TYPE_LLONG: case TYPE_ULLONG:
+        return 8;
+    /* pointer size */
+    case TYPE_PTR:
+        return 4;
+    case TYPE_ARRAY:
+        /* arrays: element size times element count */
+        return (int)array_size * (int)elem_size;
+    case TYPE_STRUCT:
+        /* elem_size stores the total struct size */
+        return (int)elem_size;
+    default:
+        return 0;
+    }
+}
+
+/*
+ * Determine the byte size of an expression operand of sizeof().
+ * For aggregate types the symbol table is consulted when possible.
+ */
+static int sizeof_from_expr(expr_t *op, type_kind_t t, symtable_t *vars)
+{
+    if (t == TYPE_CHAR || t == TYPE_UCHAR || t == TYPE_BOOL)
+        return 1;
+    if (t == TYPE_SHORT || t == TYPE_USHORT)
+        return 2;
+    if (t == TYPE_INT || t == TYPE_UINT || t == TYPE_LONG ||
+        t == TYPE_ULONG || t == TYPE_ENUM)
+        return 4;
+    if (t == TYPE_LLONG || t == TYPE_ULLONG)
+        return 8;
+    if (t == TYPE_PTR)
+        return 4;
+    if (t == TYPE_ARRAY) {
+        symbol_t *sym = NULL;
+        if (op && op->kind == EXPR_IDENT)
+            sym = symtable_lookup(vars, op->ident.name);
+        return sym ? (int)sym->array_size * (int)sym->elem_size : 4;
+    }
+    if (t == TYPE_UNION) {
+        symbol_t *sym = NULL;
+        if (op && op->kind == EXPR_IDENT)
+            sym = symtable_lookup(vars, op->ident.name);
+        return sym ? (int)sym->total_size : 0;
+    }
+    if (t == TYPE_STRUCT) {
+        symbol_t *sym = NULL;
+        if (op && op->kind == EXPR_IDENT)
+            sym = symtable_lookup(vars, op->ident.name);
+        return sym ? (int)sym->struct_total_size : 0;
+    }
+    return 0;
+}
+
+/*
  * Compute the size of a type or expression and emit a constant IR value with
  * that size in bytes.
  */
@@ -194,49 +267,15 @@ static type_kind_t check_sizeof_expr(expr_t *expr, symtable_t *vars,
     (void)funcs;
     int sz = 0;
     if (expr->sizeof_expr.is_type) {
-        switch (expr->sizeof_expr.type) {
-        case TYPE_CHAR: case TYPE_UCHAR: case TYPE_BOOL: sz = 1; break;
-        case TYPE_SHORT: case TYPE_USHORT: sz = 2; break;
-        case TYPE_INT: case TYPE_UINT: case TYPE_LONG: case TYPE_ULONG: sz = 4; break;
-        case TYPE_LLONG: case TYPE_ULLONG: sz = 8; break;
-        case TYPE_PTR:  sz = 4; break;
-        case TYPE_ARRAY:
-            sz = (int)expr->sizeof_expr.array_size *
-                 (int)expr->sizeof_expr.elem_size;
-            break;
-        case TYPE_STRUCT:
-            sz = (int)expr->sizeof_expr.elem_size;
-            break;
-        case TYPE_ENUM:
-            sz = 4;
-            break;
-        default: sz = 0; break;
-        }
+        sz = sizeof_from_type(expr->sizeof_expr.type,
+                              expr->sizeof_expr.array_size,
+                              expr->sizeof_expr.elem_size);
     } else {
         ir_builder_t tmp; ir_builder_init(&tmp);
-        type_kind_t t = check_expr(expr->sizeof_expr.expr, vars, funcs, &tmp, NULL);
+        type_kind_t t = check_expr(expr->sizeof_expr.expr, vars, funcs,
+                                   &tmp, NULL);
         ir_builder_free(&tmp);
-        if (t == TYPE_CHAR || t == TYPE_UCHAR || t == TYPE_BOOL) sz = 1;
-        else if (t == TYPE_SHORT || t == TYPE_USHORT) sz = 2;
-        else if (t == TYPE_INT || t == TYPE_UINT || t == TYPE_LONG || t == TYPE_ULONG || t == TYPE_ENUM) sz = 4;
-        else if (t == TYPE_LLONG || t == TYPE_ULLONG) sz = 8;
-        else if (t == TYPE_PTR) sz = 4;
-        else if (t == TYPE_ARRAY) {
-            symbol_t *sym = NULL;
-            if (expr->sizeof_expr.expr->kind == EXPR_IDENT)
-                sym = symtable_lookup(vars, expr->sizeof_expr.expr->ident.name);
-            sz = sym ? (int)sym->array_size * (int)sym->elem_size : 4;
-        } else if (t == TYPE_UNION) {
-            symbol_t *sym = NULL;
-            if (expr->sizeof_expr.expr->kind == EXPR_IDENT)
-                sym = symtable_lookup(vars, expr->sizeof_expr.expr->ident.name);
-            sz = sym ? (int)sym->total_size : 0;
-        } else if (t == TYPE_STRUCT) {
-            symbol_t *sym = NULL;
-            if (expr->sizeof_expr.expr->kind == EXPR_IDENT)
-                sym = symtable_lookup(vars, expr->sizeof_expr.expr->ident.name);
-            sz = sym ? (int)sym->struct_total_size : 0;
-        }
+        sz = sizeof_from_expr(expr->sizeof_expr.expr, t, vars);
     }
     if (out)
         *out = ir_build_const(ir, sz);
