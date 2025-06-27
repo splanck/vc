@@ -6,6 +6,9 @@
  * purely textual and does not recognize strings or comments.  Basic
  * conditional directives ('#if', '#ifdef', '#ifndef', '#elif', '#else',
  * '#endif') are supported with simple expression evaluation.
+ *
+ * Part of vc under the BSD 2-Clause license.
+ * See LICENSE for details.
  */
 
 #ifndef VC_PREPROC_H

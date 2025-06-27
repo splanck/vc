@@ -1,3 +1,10 @@
+/*
+ * Unit tests for lexer and parser.
+ *
+ * Part of vc under the BSD 2-Clause license.
+ * See LICENSE for details.
+ */
+
 #include <stdio.h>
 #include <string.h>
 #include "token.h"
