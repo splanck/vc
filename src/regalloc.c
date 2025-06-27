@@ -19,8 +19,15 @@
 #define NUM_ALLOC_REGS (REGALLOC_NUM_REGS - 1)
 
 /*
- * Record the index of the final instruction that references each value.
- * Returns an array indexed by value id or NULL on allocation failure.
+ * Compute the "last use" position for every value in the IR.
+ *
+ * The instruction list is scanned exactly once.  Whenever a value is
+ * seen as a source operand we record the index of the current
+ * instruction.  By the end of the scan each entry holds the index of
+ * the final instruction that references that value (or -1 if the value
+ * is never used).  The resulting array is indexed by value id and
+ * should be freed by the caller.  NULL is returned on allocation
+ * failure.
  */
 static int *compute_last_use(ir_builder_t *ir, int max_id)
 {

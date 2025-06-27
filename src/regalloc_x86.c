@@ -22,7 +22,15 @@ static const char *phys_regs_64[REGALLOC_NUM_REGS] = {
     "%rax", "%rbx", "%rcx", "%rdx", "%rsi", "%rdi"
 };
 
-/* Translate an allocator register index to a physical register name. */
+/*
+ * Translate an allocator register index into the textual name of the
+ * underlying CPU register.
+ *
+ * The allocator itself works only with small integer indices.  This
+ * function maps those indices to the appropriate register name using
+ * either the 32-bit or 64-bit table above.  Out-of-range indices fall
+ * back to the first register of the selected table.
+ */
 const char *regalloc_reg_name(int idx)
 {
     const char **regs = use_x86_64 ? phys_regs_64 : phys_regs_32;
