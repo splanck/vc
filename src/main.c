@@ -36,19 +36,20 @@
 #include "preproc.h"
 
 /* Compilation stage helpers */
-static int tokenize_stage(const char *source, const vector_t *incdirs,
-                          char **out_src, token_t **out_toks,
-                          size_t *out_count);
-static int parse_stage(token_t *toks, size_t count,
-                       vector_t *funcs_v, vector_t *globs_v,
-                       symtable_t *funcs);
-static int semantic_stage(func_t **func_list, size_t fcount,
-                          stmt_t **glob_list, size_t gcount,
-                          symtable_t *funcs, symtable_t *globals,
-                          ir_builder_t *ir);
-static void optimize_stage(ir_builder_t *ir, const opt_config_t *cfg);
-static int output_stage(ir_builder_t *ir, const char *output,
-                        int dump_ir, int dump_asm, int use_x86_64, int compile);
+static int run_tokenize_stage(const char *source, const vector_t *incdirs,
+                              char **out_src, token_t **out_toks,
+                              size_t *out_count);
+static int run_parse_stage(token_t *toks, size_t count,
+                           vector_t *funcs_v, vector_t *globs_v,
+                           symtable_t *funcs);
+static int run_semantic_stage(func_t **func_list, size_t fcount,
+                              stmt_t **glob_list, size_t gcount,
+                              symtable_t *funcs, symtable_t *globals,
+                              ir_builder_t *ir);
+static void run_optimize_stage(ir_builder_t *ir, const opt_config_t *cfg);
+static int run_output_stage(ir_builder_t *ir, const char *output,
+                            int dump_ir, int dump_asm, int use_x86_64,
+                            int compile);
 
 /* Compile one translation unit to the given output path. */
 static int compile_unit(const char *source, const cli_options_t *cli,
@@ -58,9 +59,9 @@ static int compile_unit(const char *source, const cli_options_t *cli,
 static int create_startup_object(int use_x86_64, char **out_path);
 
 /* Tokenize the preprocessed source file */
-static int tokenize_stage(const char *source, const vector_t *incdirs,
-                          char **out_src, token_t **out_toks,
-                          size_t *out_count)
+static int run_tokenize_stage(const char *source, const vector_t *incdirs,
+                              char **out_src, token_t **out_toks,
+                              size_t *out_count)
 {
     char *text = preproc_run(source, incdirs);
     if (!text) {
@@ -82,9 +83,9 @@ static int tokenize_stage(const char *source, const vector_t *incdirs,
 }
 
 /* Parse tokens into AST lists */
-static int parse_stage(token_t *toks, size_t count,
-                       vector_t *funcs_v, vector_t *globs_v,
-                       symtable_t *funcs)
+static int run_parse_stage(token_t *toks, size_t count,
+                           vector_t *funcs_v, vector_t *globs_v,
+                           symtable_t *funcs)
 {
     parser_t parser;
     parser_init(&parser, toks, count);
@@ -118,10 +119,10 @@ static int parse_stage(token_t *toks, size_t count,
 }
 
 /* Perform semantic analysis and IR generation */
-static int semantic_stage(func_t **func_list, size_t fcount,
-                          stmt_t **glob_list, size_t gcount,
-                          symtable_t *funcs, symtable_t *globals,
-                          ir_builder_t *ir)
+static int run_semantic_stage(func_t **func_list, size_t fcount,
+                              stmt_t **glob_list, size_t gcount,
+                              symtable_t *funcs, symtable_t *globals,
+                              ir_builder_t *ir)
 {
     symtable_init(globals);
     ir_builder_init(ir);
@@ -168,15 +169,16 @@ static int semantic_stage(func_t **func_list, size_t fcount,
 }
 
 /* Run IR optimizations */
-static void optimize_stage(ir_builder_t *ir, const opt_config_t *cfg)
+static void run_optimize_stage(ir_builder_t *ir, const opt_config_t *cfg)
 {
     if (cfg)
         opt_run(ir, cfg);
 }
 
 /* Emit the requested output */
-static int output_stage(ir_builder_t *ir, const char *output,
-                        int dump_ir, int dump_asm, int use_x86_64, int compile)
+static int run_output_stage(ir_builder_t *ir, const char *output,
+                            int dump_ir, int dump_asm, int use_x86_64,
+                            int compile)
 {
     if (dump_ir) {
         char *text = ir_to_string(ir);
@@ -241,26 +243,31 @@ static int compile_unit(const char *source, const cli_options_t *cli,
     label_init();
     codegen_set_export(cli->link);
 
+    int ok = 1;
+
+    /* Tokenization stage */
     char *src_text = NULL;
     token_t *tokens = NULL;
     size_t tok_count = 0;
-    vector_t func_list_v, glob_list_v;
-    symtable_t funcs, globals;
-    ir_builder_t ir;
-
-    int ok = tokenize_stage(source, &cli->include_dirs, &src_text,
+    ok = run_tokenize_stage(source, &cli->include_dirs, &src_text,
                             &tokens, &tok_count);
+
+    /* Parsing stage */
+    vector_t func_list_v, glob_list_v;
+    symtable_t funcs;
     if (ok)
-        ok = parse_stage(tokens, tok_count, &func_list_v, &glob_list_v, &funcs);
+        ok = run_parse_stage(tokens, tok_count, &func_list_v, &glob_list_v,
+                             &funcs);
+    lexer_free_tokens(tokens, tok_count);
+    free(src_text);
+
+    /* Semantic analysis */
+    symtable_t globals;
+    ir_builder_t ir;
     if (ok)
-        ok = semantic_stage((func_t **)func_list_v.data, func_list_v.count,
-                            (stmt_t **)glob_list_v.data, glob_list_v.count,
-                            &funcs, &globals, &ir);
-    if (ok)
-        optimize_stage(&ir, &cli->opt_cfg);
-    if (ok)
-        ok = output_stage(&ir, output, cli->dump_ir, cli->dump_asm,
-                          cli->use_x86_64, compile_obj);
+        ok = run_semantic_stage((func_t **)func_list_v.data, func_list_v.count,
+                                (stmt_t **)glob_list_v.data, glob_list_v.count,
+                                &funcs, &globals, &ir);
 
     for (size_t i = 0; i < func_list_v.count; i++)
         ast_free_func(((func_t **)func_list_v.data)[i]);
@@ -268,12 +275,17 @@ static int compile_unit(const char *source, const cli_options_t *cli,
         ast_free_stmt(((stmt_t **)glob_list_v.data)[i]);
     free(func_list_v.data);
     free(glob_list_v.data);
+    symtable_free(&funcs);
+
+    /* Optimization and output */
+    if (ok) {
+        run_optimize_stage(&ir, &cli->opt_cfg);
+        ok = run_output_stage(&ir, output, cli->dump_ir, cli->dump_asm,
+                              cli->use_x86_64, compile_obj);
+    }
 
     ir_builder_free(&ir);
-    symtable_free(&funcs);
     symtable_free(&globals);
-    lexer_free_tokens(tokens, tok_count);
-    free(src_text);
 
     label_reset();
 
