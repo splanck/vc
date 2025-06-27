@@ -32,6 +32,223 @@ static const char *loc_str(char buf[32], regalloc_t *ra, int id, int x64)
     return buf;
 }
 
+/* Load an immediate constant (IR_CONST).
+ *
+ *  dest - value receiving the constant
+ *  imm  - value to load
+ */
+static void emit_const(strbuf_t *sb, ir_instr_t *ins,
+                       regalloc_t *ra, int x64)
+{
+    char destb[32];
+    char mem[32];
+    const char *sfx = x64 ? "q" : "l";
+    int spill = (ra && ins->dest > 0 && ra->loc[ins->dest] < 0);
+    const char *dest = spill ? regalloc_reg_name(SCRATCH_REG)
+                             : loc_str(destb, ra, ins->dest, x64);
+    const char *slot = loc_str(mem, ra, ins->dest, x64);
+    strbuf_appendf(sb, "    mov%s $%lld, %s\n", sfx, ins->imm, dest);
+    if (spill)
+        strbuf_appendf(sb, "    mov%s %s, %s\n", sfx, dest, slot);
+}
+
+/* Load a variable by name (IR_LOAD).
+ *
+ *  dest - result register
+ *  name - symbol to read from
+ */
+static void emit_load(strbuf_t *sb, ir_instr_t *ins,
+                      regalloc_t *ra, int x64)
+{
+    char destb[32];
+    char mem[32];
+    const char *sfx = x64 ? "q" : "l";
+    int spill = (ra && ins->dest > 0 && ra->loc[ins->dest] < 0);
+    const char *dest = spill ? regalloc_reg_name(SCRATCH_REG)
+                             : loc_str(destb, ra, ins->dest, x64);
+    const char *slot = loc_str(mem, ra, ins->dest, x64);
+    strbuf_appendf(sb, "    mov%s %s, %s\n", sfx, ins->name, dest);
+    if (spill)
+        strbuf_appendf(sb, "    mov%s %s, %s\n", sfx, dest, slot);
+}
+
+/* Store a value to a variable (IR_STORE).
+ *
+ *  src1 - value to store
+ *  name - destination symbol
+ */
+static void emit_store(strbuf_t *sb, ir_instr_t *ins,
+                       regalloc_t *ra, int x64)
+{
+    char b1[32];
+    const char *sfx = x64 ? "q" : "l";
+    strbuf_appendf(sb, "    mov%s %s, %s\n", sfx,
+                   loc_str(b1, ra, ins->src1, x64), ins->name);
+}
+
+/* Load a function parameter (IR_LOAD_PARAM).
+ *
+ *  dest  - receives parameter value
+ *  imm   - parameter index
+ */
+static void emit_load_param(strbuf_t *sb, ir_instr_t *ins,
+                            regalloc_t *ra, int x64)
+{
+    char destb[32];
+    char mem[32];
+    const char *bp = x64 ? "%rbp" : "%ebp";
+    const char *sfx = x64 ? "q" : "l";
+    int spill = (ra && ins->dest > 0 && ra->loc[ins->dest] < 0);
+    const char *dest = spill ? regalloc_reg_name(SCRATCH_REG)
+                             : loc_str(destb, ra, ins->dest, x64);
+    const char *slot = loc_str(mem, ra, ins->dest, x64);
+    int off = 8 + ins->imm * (x64 ? 8 : 4);
+    strbuf_appendf(sb, "    mov%s %d(%s), %s\n", sfx, off, bp, dest);
+    if (spill)
+        strbuf_appendf(sb, "    mov%s %s, %s\n", sfx, dest, slot);
+}
+
+/* Store a value to a parameter slot (IR_STORE_PARAM).
+ *
+ *  src1 - value to store
+ *  imm  - parameter index
+ */
+static void emit_store_param(strbuf_t *sb, ir_instr_t *ins,
+                             regalloc_t *ra, int x64)
+{
+    char b1[32];
+    const char *bp = x64 ? "%rbp" : "%ebp";
+    const char *sfx = x64 ? "q" : "l";
+    int off = 8 + ins->imm * (x64 ? 8 : 4);
+    strbuf_appendf(sb, "    mov%s %s, %d(%s)\n", sfx,
+                   loc_str(b1, ra, ins->src1, x64), off, bp);
+}
+
+/* Take the address of a symbol (IR_ADDR).
+ *
+ *  dest - result register
+ *  name - symbol whose address is taken
+ */
+static void emit_addr(strbuf_t *sb, ir_instr_t *ins,
+                      regalloc_t *ra, int x64)
+{
+    char destb[32];
+    char mem[32];
+    const char *sfx = x64 ? "q" : "l";
+    int spill = (ra && ins->dest > 0 && ra->loc[ins->dest] < 0);
+    const char *dest = spill ? regalloc_reg_name(SCRATCH_REG)
+                             : loc_str(destb, ra, ins->dest, x64);
+    const char *slot = loc_str(mem, ra, ins->dest, x64);
+    strbuf_appendf(sb, "    mov%s $%s, %s\n", sfx, ins->name, dest);
+    if (spill)
+        strbuf_appendf(sb, "    mov%s %s, %s\n", sfx, dest, slot);
+}
+
+/* Load from a pointer (IR_LOAD_PTR).
+ *
+ *  src1 - address to read from
+ *  dest - result location
+ */
+static void emit_load_ptr(strbuf_t *sb, ir_instr_t *ins,
+                          regalloc_t *ra, int x64)
+{
+    char b1[32];
+    char destb[32];
+    char mem[32];
+    const char *sfx = x64 ? "q" : "l";
+    int spill = (ra && ins->dest > 0 && ra->loc[ins->dest] < 0);
+    const char *dest = spill ? regalloc_reg_name(SCRATCH_REG)
+                             : loc_str(destb, ra, ins->dest, x64);
+    const char *slot = loc_str(mem, ra, ins->dest, x64);
+    strbuf_appendf(sb, "    mov%s (%s), %s\n", sfx,
+                   loc_str(b1, ra, ins->src1, x64), dest);
+    if (spill)
+        strbuf_appendf(sb, "    mov%s %s, %s\n", sfx, dest, slot);
+}
+
+/* Store through a pointer (IR_STORE_PTR).
+ *
+ *  src1 - pointer
+ *  src2 - value to store
+ */
+static void emit_store_ptr(strbuf_t *sb, ir_instr_t *ins,
+                           regalloc_t *ra, int x64)
+{
+    char b1[32];
+    char b2[32];
+    const char *sfx = x64 ? "q" : "l";
+    strbuf_appendf(sb, "    mov%s %s, (%s)\n", sfx,
+                   loc_str(b1, ra, ins->src2, x64),
+                   loc_str(b2, ra, ins->src1, x64));
+}
+
+/* Load from an indexed symbol (IR_LOAD_IDX).
+ *
+ *  src1 - index value
+ *  name - base symbol
+ *  dest - result
+ */
+static void emit_load_idx(strbuf_t *sb, ir_instr_t *ins,
+                          regalloc_t *ra, int x64)
+{
+    char b1[32];
+    char destb[32];
+    char mem[32];
+    const char *sfx = x64 ? "q" : "l";
+    int spill = (ra && ins->dest > 0 && ra->loc[ins->dest] < 0);
+    const char *dest = spill ? regalloc_reg_name(SCRATCH_REG)
+                             : loc_str(destb, ra, ins->dest, x64);
+    const char *slot = loc_str(mem, ra, ins->dest, x64);
+    strbuf_appendf(sb, "    mov%s %s(,%s,4), %s\n", sfx,
+                   ins->name, loc_str(b1, ra, ins->src1, x64), dest);
+    if (spill)
+        strbuf_appendf(sb, "    mov%s %s, %s\n", sfx, dest, slot);
+}
+
+/* Store to an indexed symbol (IR_STORE_IDX).
+ *
+ *  src1 - index
+ *  src2 - value
+ *  name - base symbol
+ */
+static void emit_store_idx(strbuf_t *sb, ir_instr_t *ins,
+                           regalloc_t *ra, int x64)
+{
+    char b1[32];
+    char b2[32];
+    const char *sfx = x64 ? "q" : "l";
+    strbuf_appendf(sb, "    mov%s %s, %s(,%s,4)\n", sfx,
+                   loc_str(b1, ra, ins->src2, x64),
+                   ins->name,
+                   loc_str(b2, ra, ins->src1, x64));
+}
+
+/* Push an argument (IR_ARG). */
+static void emit_arg(strbuf_t *sb, ir_instr_t *ins,
+                     regalloc_t *ra, int x64)
+{
+    char b1[32];
+    const char *sfx = x64 ? "q" : "l";
+    strbuf_appendf(sb, "    push%s %s\n", sfx,
+                   loc_str(b1, ra, ins->src1, x64));
+}
+
+/* Load address of a string literal (IR_GLOB_STRING). */
+static void emit_glob_string(strbuf_t *sb, ir_instr_t *ins,
+                             regalloc_t *ra, int x64)
+{
+    char destb[32];
+    char mem[32];
+    const char *sfx = x64 ? "q" : "l";
+    int spill = (ra && ins->dest > 0 && ra->loc[ins->dest] < 0);
+    const char *dest = spill ? regalloc_reg_name(SCRATCH_REG)
+                             : loc_str(destb, ra, ins->dest, x64);
+    const char *slot = loc_str(mem, ra, ins->dest, x64);
+    strbuf_appendf(sb, "    mov%s $%s, %s\n", sfx, ins->name, dest);
+    if (spill)
+        strbuf_appendf(sb, "    mov%s %s, %s\n", sfx, dest, slot);
+}
+
 /*
  * Emit x86 for load/store and other memory instructions.
  *
@@ -43,83 +260,42 @@ static const char *loc_str(char buf[32], regalloc_t *ra, int id, int x64)
 void emit_memory_instr(strbuf_t *sb, ir_instr_t *ins,
                        regalloc_t *ra, int x64)
 {
-    char buf1[32];
-    char buf2[32];
-    char destbuf[32];
-    char membuf[32];
-    const char *sfx = x64 ? "q" : "l";
-    const char *bp = x64 ? "%rbp" : "%ebp";
-    int dest_spill = (ra && ins->dest > 0 && ra->loc[ins->dest] < 0);
-    const char *dest_reg = dest_spill ? regalloc_reg_name(SCRATCH_REG)
-                                      : loc_str(destbuf, ra, ins->dest, x64);
-    const char *dest_mem = loc_str(membuf, ra, ins->dest, x64);
-
     switch (ins->op) {
     case IR_CONST:
-        strbuf_appendf(sb, "    mov%s $%lld, %s\n", sfx, ins->imm, dest_reg);
-        if (dest_spill)
-            strbuf_appendf(sb, "    mov%s %s, %s\n", sfx, dest_reg, dest_mem);
+        emit_const(sb, ins, ra, x64);
         break;
     case IR_LOAD:
-        strbuf_appendf(sb, "    mov%s %s, %s\n", sfx, ins->name, dest_reg);
-        if (dest_spill)
-            strbuf_appendf(sb, "    mov%s %s, %s\n", sfx, dest_reg, dest_mem);
+        emit_load(sb, ins, ra, x64);
         break;
     case IR_STORE:
-        strbuf_appendf(sb, "    mov%s %s, %s\n", sfx,
-                       loc_str(buf1, ra, ins->src1, x64),
-                       ins->name);
+        emit_store(sb, ins, ra, x64);
         break;
-    case IR_LOAD_PARAM: {
-        int off = 8 + ins->imm * (x64 ? 8 : 4);
-        strbuf_appendf(sb, "    mov%s %d(%s), %s\n", sfx, off, bp, dest_reg);
-        if (dest_spill)
-            strbuf_appendf(sb, "    mov%s %s, %s\n", sfx, dest_reg, dest_mem);
+    case IR_LOAD_PARAM:
+        emit_load_param(sb, ins, ra, x64);
         break;
-    }
-    case IR_STORE_PARAM: {
-        int off = 8 + ins->imm * (x64 ? 8 : 4);
-        strbuf_appendf(sb, "    mov%s %s, %d(%s)\n", sfx,
-                       loc_str(buf1, ra, ins->src1, x64), off, bp);
+    case IR_STORE_PARAM:
+        emit_store_param(sb, ins, ra, x64);
         break;
-    }
     case IR_ADDR:
-        strbuf_appendf(sb, "    mov%s $%s, %s\n", sfx, ins->name, dest_reg);
-        if (dest_spill)
-            strbuf_appendf(sb, "    mov%s %s, %s\n", sfx, dest_reg, dest_mem);
+        emit_addr(sb, ins, ra, x64);
         break;
     case IR_LOAD_PTR:
-        strbuf_appendf(sb, "    mov%s (%s), %s\n", sfx,
-                       loc_str(buf1, ra, ins->src1, x64), dest_reg);
-        if (dest_spill)
-            strbuf_appendf(sb, "    mov%s %s, %s\n", sfx, dest_reg, dest_mem);
+        emit_load_ptr(sb, ins, ra, x64);
         break;
     case IR_STORE_PTR:
-        strbuf_appendf(sb, "    mov%s %s, (%s)\n", sfx,
-                       loc_str(buf1, ra, ins->src2, x64),
-                       loc_str(buf2, ra, ins->src1, x64));
+        emit_store_ptr(sb, ins, ra, x64);
         break;
     case IR_LOAD_IDX:
-        strbuf_appendf(sb, "    mov%s %s(,%s,4), %s\n", sfx,
-                       ins->name,
-                       loc_str(buf1, ra, ins->src1, x64), dest_reg);
-        if (dest_spill)
-            strbuf_appendf(sb, "    mov%s %s, %s\n", sfx, dest_reg, dest_mem);
+        emit_load_idx(sb, ins, ra, x64);
         break;
     case IR_STORE_IDX:
-        strbuf_appendf(sb, "    mov%s %s, %s(,%s,4)\n", sfx,
-                       loc_str(buf1, ra, ins->src2, x64),
-                       ins->name,
-                       loc_str(buf2, ra, ins->src1, x64));
+        emit_store_idx(sb, ins, ra, x64);
         break;
     case IR_ARG:
-        strbuf_appendf(sb, "    push%s %s\n", sfx,
-                       loc_str(buf1, ra, ins->src1, x64));
+        emit_arg(sb, ins, ra, x64);
         break;
     case IR_GLOB_STRING:
-        strbuf_appendf(sb, "    mov%s $%s, %s\n", sfx, ins->name, dest_reg);
-        if (dest_spill)
-            strbuf_appendf(sb, "    mov%s %s, %s\n", sfx, dest_reg, dest_mem);
+        emit_glob_string(sb, ins, ra, x64);
         break;
     case IR_GLOB_VAR:
         break;
