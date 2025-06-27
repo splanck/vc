@@ -585,25 +585,102 @@ static expr_t *parse_conditional(parser_t *p)
     return cond;
 }
 
+static expr_t *parse_compound_assignment(parser_t *p, expr_t *left,
+                                         token_t *op_tok)
+{
+    /*
+     * a += b -> EXPR_ASSIGN where value is a binary EXPR (a + b)
+     * a[i] -= b -> EXPR_ASSIGN_INDEX with binary value
+     * obj.f *= b -> EXPR_ASSIGN_MEMBER with binary value
+     */
+    if (left->kind != EXPR_IDENT && left->kind != EXPR_INDEX &&
+        left->kind != EXPR_MEMBER) {
+        ast_free_expr(left);
+        return NULL;
+    }
+
+    expr_t *right = parse_assignment(p);
+    if (!right) {
+        if (left->kind == EXPR_IDENT)
+            free(left->ident.name);
+        ast_free_expr(left);
+        return NULL;
+    }
+
+    binop_t bop = BINOP_ADD;
+    switch (op_tok->type) {
+    case TOK_PLUSEQ:  bop = BINOP_ADD;     break;
+    case TOK_MINUSEQ: bop = BINOP_SUB;     break;
+    case TOK_STAREQ:  bop = BINOP_MUL;     break;
+    case TOK_SLASHEQ: bop = BINOP_DIV;     break;
+    case TOK_PERCENTEQ: bop = BINOP_MOD;   break;
+    case TOK_AMPEQ:   bop = BINOP_BITAND;  break;
+    case TOK_PIPEEQ:  bop = BINOP_BITOR;   break;
+    case TOK_CARETEQ: bop = BINOP_BITXOR;  break;
+    case TOK_SHLEQ:   bop = BINOP_SHL;     break;
+    case TOK_SHREQ:   bop = BINOP_SHR;     break;
+    default:
+        ast_free_expr(right);
+        if (left->kind == EXPR_IDENT)
+            free(left->ident.name);
+        ast_free_expr(left);
+        return NULL;
+    }
+
+    expr_t *lhs_copy = clone_expr(left);
+    if (!lhs_copy) {
+        ast_free_expr(left);
+        ast_free_expr(right);
+        return NULL;
+    }
+
+    right = ast_make_binary(bop, lhs_copy, right,
+                            op_tok->line, op_tok->column);
+
+    if (left->kind == EXPR_IDENT) {
+        char *name = left->ident.name;
+        free(left);
+        left = ast_make_assign(name, right, op_tok->line, op_tok->column);
+        free(name);
+    } else if (left->kind == EXPR_INDEX) {
+        expr_t *arr = left->index.array;
+        expr_t *idx = left->index.index;
+        free(left);
+        left = ast_make_assign_index(arr, idx, right,
+                                    op_tok->line, op_tok->column);
+    } else {
+        expr_t *obj = left->member.object;
+        char *mem = left->member.member;
+        int via_ptr = left->member.via_ptr;
+        free(left);
+        left = ast_make_assign_member(obj, mem, right, via_ptr,
+                                      op_tok->line, op_tok->column);
+        free(mem);
+    }
+
+    return left;
+}
+
 /* Assignment has the lowest precedence and recurses to itself for chained
  * assignments. */
 static expr_t *parse_assignment(parser_t *p)
 {
+    /*
+     * a = b -> EXPR_ASSIGN (or INDEX/MEMBER variants)
+     * recurses for chained assignments
+     */
     expr_t *left = parse_conditional(p);
     if (!left)
         return NULL;
 
-    if (match(p, TOK_ASSIGN) || match(p, TOK_PLUSEQ) || match(p, TOK_MINUSEQ) ||
-        match(p, TOK_STAREQ) || match(p, TOK_SLASHEQ) ||
-        match(p, TOK_PERCENTEQ) || match(p, TOK_AMPEQ) ||
-        match(p, TOK_PIPEEQ) || match(p, TOK_CARETEQ) ||
-        match(p, TOK_SHLEQ) || match(p, TOK_SHREQ)) {
+    if (match(p, TOK_ASSIGN)) {
         token_t *op_tok = &p->tokens[p->pos - 1];
         if (left->kind != EXPR_IDENT && left->kind != EXPR_INDEX &&
             left->kind != EXPR_MEMBER) {
             ast_free_expr(left);
             return NULL;
         }
+
         expr_t *right = parse_assignment(p);
         if (!right) {
             if (left->kind == EXPR_IDENT)
@@ -611,32 +688,7 @@ static expr_t *parse_assignment(parser_t *p)
             ast_free_expr(left);
             return NULL;
         }
-        binop_t bop = BINOP_ADD;
-        int compound = 1;
-        switch (op_tok->type) {
-        case TOK_ASSIGN: compound = 0; break;
-        case TOK_PLUSEQ: bop = BINOP_ADD; break;
-        case TOK_MINUSEQ: bop = BINOP_SUB; break;
-        case TOK_STAREQ: bop = BINOP_MUL; break;
-        case TOK_SLASHEQ: bop = BINOP_DIV; break;
-        case TOK_PERCENTEQ: bop = BINOP_MOD; break;
-        case TOK_AMPEQ: bop = BINOP_BITAND; break;
-        case TOK_PIPEEQ: bop = BINOP_BITOR; break;
-        case TOK_CARETEQ: bop = BINOP_BITXOR; break;
-        case TOK_SHLEQ: bop = BINOP_SHL; break;
-        case TOK_SHREQ: bop = BINOP_SHR; break;
-        default: compound = 0; break;
-        }
-        if (compound) {
-            expr_t *lhs_copy = clone_expr(left);
-            if (!lhs_copy) {
-                ast_free_expr(left);
-                ast_free_expr(right);
-                return NULL;
-            }
-            right = ast_make_binary(bop, lhs_copy, right,
-                                   op_tok->line, op_tok->column);
-        }
+
         if (left->kind == EXPR_IDENT) {
             char *name = left->ident.name;
             free(left);
@@ -657,7 +709,15 @@ static expr_t *parse_assignment(parser_t *p)
                                           op_tok->line, op_tok->column);
             free(mem);
         }
+    } else if (match(p, TOK_PLUSEQ) || match(p, TOK_MINUSEQ) ||
+               match(p, TOK_STAREQ) || match(p, TOK_SLASHEQ) ||
+               match(p, TOK_PERCENTEQ) || match(p, TOK_AMPEQ) ||
+               match(p, TOK_PIPEEQ) || match(p, TOK_CARETEQ) ||
+               match(p, TOK_SHLEQ) || match(p, TOK_SHREQ)) {
+        token_t *op_tok = &p->tokens[p->pos - 1];
+        left = parse_compound_assignment(p, left, op_tok);
     }
+
     return left;
 }
 
