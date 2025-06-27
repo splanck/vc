@@ -212,18 +212,19 @@ static int handle_struct_init(stmt_t *stmt, symbol_t *sym, symtable_t *vars, ir_
  * aggregate types and inserts the symbol into the table.
  * Returns the inserted symbol or NULL on failure.
  */
-static symbol_t *register_var_symbol(stmt_t *stmt, symtable_t *vars)
+/*
+ * Compute layout information for an aggregate variable.  Struct and
+ * union members are assigned offsets and the resulting element size is
+ * stored back into the declaration.
+ */
+static void compute_var_layout(stmt_t *stmt)
 {
-    char ir_name_buf[32];
-    const char *ir_name = stmt->var_decl.name;
-    if (stmt->var_decl.is_static)
-        ir_name = label_format("__static", label_next_id(), ir_name_buf);
-
     if (stmt->var_decl.type == TYPE_UNION) {
         size_t max = layout_union_members(stmt->var_decl.members,
-                                         stmt->var_decl.member_count);
+                                          stmt->var_decl.member_count);
         stmt->var_decl.elem_size = max;
     }
+
     if (stmt->var_decl.type == TYPE_STRUCT) {
         size_t total = layout_struct_members(
             (struct_member_t *)stmt->var_decl.members,
@@ -231,11 +232,16 @@ static symbol_t *register_var_symbol(stmt_t *stmt, symtable_t *vars)
         if (stmt->var_decl.member_count || stmt->var_decl.tag)
             stmt->var_decl.elem_size = total;
     }
-    if (stmt->var_decl.is_const && !stmt->var_decl.init &&
-        !stmt->var_decl.init_list) {
-        error_set(stmt->line, stmt->column);
-        return NULL;
-    }
+}
+
+/*
+ * Insert the variable into the given symbol table using the provided
+ * IR name.  If successful the inserted symbol is returned, otherwise
+ * NULL is returned.
+ */
+static symbol_t *insert_var_symbol(stmt_t *stmt, symtable_t *vars,
+                                   const char *ir_name)
+{
     if (!symtable_add(vars, stmt->var_decl.name, ir_name,
                       stmt->var_decl.type,
                       stmt->var_decl.array_size,
@@ -244,16 +250,36 @@ static symbol_t *register_var_symbol(stmt_t *stmt, symtable_t *vars)
                       stmt->var_decl.is_register,
                       stmt->var_decl.is_const,
                       stmt->var_decl.is_volatile,
-                      stmt->var_decl.is_restrict)) {
-        error_set(stmt->line, stmt->column);
+                      stmt->var_decl.is_restrict))
         return NULL;
-    }
 
     symbol_t *sym = symtable_lookup(vars, stmt->var_decl.name);
     if (stmt->var_decl.init_list && stmt->var_decl.type == TYPE_ARRAY &&
         stmt->var_decl.array_size == 0) {
         stmt->var_decl.array_size = stmt->var_decl.init_count;
         sym->array_size = stmt->var_decl.array_size;
+    }
+
+    return sym;
+}
+
+static symbol_t *register_var_symbol(stmt_t *stmt, symtable_t *vars)
+{
+    char ir_name_buf[32];
+    const char *ir_name = stmt->var_decl.name;
+    if (stmt->var_decl.is_static)
+        ir_name = label_format("__static", label_next_id(), ir_name_buf);
+
+    compute_var_layout(stmt);
+    if (stmt->var_decl.is_const && !stmt->var_decl.init &&
+        !stmt->var_decl.init_list) {
+        error_set(stmt->line, stmt->column);
+        return NULL;
+    }
+    symbol_t *sym = insert_var_symbol(stmt, vars, ir_name);
+    if (!sym) {
+        error_set(stmt->line, stmt->column);
+        return NULL;
     }
 
     return sym;
