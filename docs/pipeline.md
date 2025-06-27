@@ -1,5 +1,24 @@
 # vc Documentation
 
+See the [documentation index](index.md) for a list of all available pages.
+
+## Table of Contents
+
+- [Pipeline Overview](#pipeline-overview)
+- [Modules](#modules)
+  - [preprocessor](#preprocessor)
+  - [lexer](#lexer)
+  - [parser](#parser)
+  - [semantic](#semantic)
+  - [ir](#ir)
+  - [opt](#opt)
+  - [regalloc](#regalloc)
+  - [codegen](#codegen)
+- [Optimization Passes](#optimization-passes)
+  - [Constant folding](#constant-folding)
+  - [Constant propagation](#constant-propagation)
+  - [Dead code elimination](#dead-code-elimination)
+
 This document describes the compilation pipeline, the role of each module
 and the language features currently supported. Recent updates add basic
 support for floating-point types and operations, along with preliminary

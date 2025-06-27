@@ -1,5 +1,13 @@
 # Development Roadmap
 
+See the [documentation index](index.md) for a list of all available pages.
+
+## Table of Contents
+
+- [Planned Compiler Phases](#planned-compiler-phases)
+- [Initial Language Features](#initial-language-features)
+- [Compatibility Goals](#compatibility-goals)
+
 This document outlines the planned phases of the `vc` compiler and the
 initial features targeted for early development. It also summarizes the
 compatibility goals for NetBSD and other supported systems.

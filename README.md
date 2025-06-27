@@ -42,7 +42,9 @@ vc --dump-asm source.c
 
 ## Documentation
 
-- [Documentation index](docs/index.md)
+The [documentation index](docs/index.md) provides an overview of all available
+pages. Key documents include:
+
 - [Compiler architecture](docs/architecture.md)
 - [Compilation pipeline](docs/pipeline.md)
 - [Command-line options](docs/command_line.md)

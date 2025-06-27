@@ -1,5 +1,14 @@
 # Building vc
 
+See the [documentation index](index.md) for a list of all available pages.
+
+## Table of Contents
+
+- [Requirements](#requirements)
+- [Build options](#build-options)
+- [Additional build steps](#additional-build-steps)
+- [Running the test suite](#running-the-test-suite)
+
 `vc` targets POSIX systems with a focus on NetBSD. Building on other BSD
 variants such as FreeBSD or OpenBSD should work with little or no
 modification.
