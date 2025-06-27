@@ -62,37 +62,36 @@ void symtable_init(symtable_t *table)
     table->globals = NULL;
 }
 
+/*
+ * Free a singly linked list of symbols.
+ *
+ * Ownership of the list and each contained symbol is transferred to
+ * this helper.  All dynamically allocated fields within every symbol
+ * are released.
+ */
+static void free_symbol_list(symbol_t *sym)
+{
+    while (sym) {
+        symbol_t *next = sym->next;
+        free(sym->name);
+        free(sym->ir_name);
+        for (size_t i = 0; i < sym->member_count; i++)
+            free(sym->members[i].name);
+        free(sym->members);
+        for (size_t i = 0; i < sym->struct_member_count; i++)
+            free(sym->struct_members[i].name);
+        free(sym->struct_members);
+        free(sym->param_types);
+        free(sym);
+        sym = next;
+    }
+}
+
 /* Free all symbols stored in the table and reset it to an empty state. */
 void symtable_free(symtable_t *table)
 {
-    symbol_t *sym = table->head;
-    while (sym) {
-        symbol_t *next = sym->next;
-        free(sym->name);
-        for (size_t i = 0; i < sym->member_count; i++)
-            free(sym->members[i].name);
-        free(sym->members);
-        for (size_t i = 0; i < sym->struct_member_count; i++)
-            free(sym->struct_members[i].name);
-        free(sym->struct_members);
-        free(sym->param_types);
-        free(sym);
-        sym = next;
-    }
-    sym = table->globals;
-    while (sym) {
-        symbol_t *next = sym->next;
-        free(sym->name);
-        for (size_t i = 0; i < sym->member_count; i++)
-            free(sym->members[i].name);
-        free(sym->members);
-        for (size_t i = 0; i < sym->struct_member_count; i++)
-            free(sym->struct_members[i].name);
-        free(sym->struct_members);
-        free(sym->param_types);
-        free(sym);
-        sym = next;
-    }
+    free_symbol_list(table->head);
+    free_symbol_list(table->globals);
     table->head = NULL;
     table->globals = NULL;
 }
