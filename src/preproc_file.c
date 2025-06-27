@@ -1,8 +1,14 @@
 #define _POSIX_C_SOURCE 200809L
 /*
- * File reading and directive processing for the preprocessor.
+ * Preprocessor module for vc.
  *
- * Part of vc under the BSD 2-Clause license.
+ * This file drives reading source text and performing directive
+ * processing.  It works with the helpers in `preproc_macros.c`
+ * and `preproc_expr.c` to expand macros and evaluate conditional
+ * expressions, forming a small stand-alone preprocessor used by
+ * the compiler.
+ *
+ * Part of vc under the BSD 2-Clause Simplified License.
  * See LICENSE for details.
  */
 
