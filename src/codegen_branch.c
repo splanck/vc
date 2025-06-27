@@ -11,6 +11,7 @@
 
 extern int export_syms;
 
+/* Return the register or stack location string for `id`. */
 static const char *loc_str(char buf[32], regalloc_t *ra, int id, int x64)
 {
     if (!ra || id <= 0)
@@ -25,6 +26,7 @@ static const char *loc_str(char buf[32], regalloc_t *ra, int id, int x64)
     return buf;
 }
 
+/* Emit jumps, calls and other branch instructions. */
 void emit_branch_instr(strbuf_t *sb, ir_instr_t *ins,
                        regalloc_t *ra, int x64)
 {

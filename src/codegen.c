@@ -20,6 +20,7 @@
 
 int export_syms = 0;
 
+/* Set whether assembly symbols should be exported. */
 void codegen_set_export(int flag)
 {
     export_syms = flag;
@@ -27,6 +28,7 @@ void codegen_set_export(int flag)
 
 
 
+/* Dispatch an IR instruction to the appropriate emitter. */
 static void emit_instr(strbuf_t *sb, ir_instr_t *ins, regalloc_t *ra, int x64)
 {
     switch (ins->op) {

@@ -13,6 +13,7 @@
 
 #define SCRATCH_REG 0
 
+/* Format the location of operand `id` for assembly output. */
 static const char *loc_str(char buf[32], regalloc_t *ra, int id, int x64)
 {
     if (!ra || id <= 0)
@@ -28,6 +29,7 @@ static const char *loc_str(char buf[32], regalloc_t *ra, int id, int x64)
 }
 
 /* small helpers for the individual arithmetic ops */
+/* Add a scaled index to a pointer operand. */
 static void emit_ptr_add(strbuf_t *sb, ir_instr_t *ins,
                          regalloc_t *ra, int x64)
 {
@@ -45,6 +47,7 @@ static void emit_ptr_add(strbuf_t *sb, ir_instr_t *ins,
                    loc_str(b2, ra, ins->dest, x64));
 }
 
+/* Compute the difference between two pointers. */
 static void emit_ptr_diff(strbuf_t *sb, ir_instr_t *ins,
                           regalloc_t *ra, int x64)
 {
@@ -64,6 +67,7 @@ static void emit_ptr_diff(strbuf_t *sb, ir_instr_t *ins,
                    loc_str(b2, ra, ins->dest, x64));
 }
 
+/* Generate a basic float binary operation using SSE. */
 static void emit_float_binop(strbuf_t *sb, ir_instr_t *ins,
                              regalloc_t *ra, int x64, const char *op)
 {
@@ -82,6 +86,7 @@ static void emit_float_binop(strbuf_t *sb, ir_instr_t *ins,
                        loc_str(b2, ra, ins->dest, x64));
 }
 
+/* Generate a long double binary operation using the x87 FPU. */
 static void emit_long_float_binop(strbuf_t *sb, ir_instr_t *ins,
                                   regalloc_t *ra, int x64, const char *op)
 {
@@ -93,6 +98,7 @@ static void emit_long_float_binop(strbuf_t *sb, ir_instr_t *ins,
     strbuf_appendf(sb, "    fstpt %s\n", loc_str(b2, ra, ins->dest, x64));
 }
 
+/* Handle basic integer arithmetic operations. */
 static void emit_int_arith(strbuf_t *sb, ir_instr_t *ins,
                            regalloc_t *ra, int x64, const char *op)
 {
@@ -112,6 +118,7 @@ static void emit_int_arith(strbuf_t *sb, ir_instr_t *ins,
         strbuf_appendf(sb, "    mov%s %s, %s\n", sfx, dest_reg, dest_mem);
 }
 
+/* Generate code for signed integer division. */
 static void emit_div(strbuf_t *sb, ir_instr_t *ins,
                      regalloc_t *ra, int x64)
 {
@@ -130,6 +137,7 @@ static void emit_div(strbuf_t *sb, ir_instr_t *ins,
                        loc_str(b2, ra, ins->dest, x64));
 }
 
+/* Generate code for the modulus operation. */
 static void emit_mod(strbuf_t *sb, ir_instr_t *ins,
                      regalloc_t *ra, int x64)
 {
@@ -150,6 +158,7 @@ static void emit_mod(strbuf_t *sb, ir_instr_t *ins,
                        loc_str(b2, ra, ins->dest, x64));
 }
 
+/* Generate left or right shift instructions. */
 static void emit_shift(strbuf_t *sb, ir_instr_t *ins,
                        regalloc_t *ra, int x64, const char *op)
 {
@@ -166,6 +175,7 @@ static void emit_shift(strbuf_t *sb, ir_instr_t *ins,
                    loc_str(b2, ra, ins->dest, x64));
 }
 
+/* Handle bitwise AND/OR/XOR operations. */
 static void emit_bitwise(strbuf_t *sb, ir_instr_t *ins,
                          regalloc_t *ra, int x64, const char *op)
 {
@@ -180,6 +190,7 @@ static void emit_bitwise(strbuf_t *sb, ir_instr_t *ins,
                    loc_str(b2, ra, ins->dest, x64));
 }
 
+/* Emit comparison operations producing boolean results. */
 static void emit_cmp(strbuf_t *sb, ir_instr_t *ins,
                      regalloc_t *ra, int x64)
 {
@@ -207,6 +218,7 @@ static void emit_cmp(strbuf_t *sb, ir_instr_t *ins,
                    "%al", loc_str(b2, ra, ins->dest, x64));
 }
 
+/* Emit short-circuiting logical AND. */
 static void emit_logand(strbuf_t *sb, ir_instr_t *ins,
                         regalloc_t *ra, int x64)
 {
@@ -239,6 +251,7 @@ static void emit_logand(strbuf_t *sb, ir_instr_t *ins,
     strbuf_appendf(sb, "%s:\n", end);
 }
 
+/* Emit short-circuiting logical OR. */
 static void emit_logor(strbuf_t *sb, ir_instr_t *ins,
                        regalloc_t *ra, int x64)
 {
@@ -271,6 +284,7 @@ static void emit_logor(strbuf_t *sb, ir_instr_t *ins,
     strbuf_appendf(sb, "%s:\n", end);
 }
 
+/* Top-level dispatcher for arithmetic instructions. */
 void emit_arith_instr(strbuf_t *sb, ir_instr_t *ins,
                       regalloc_t *ra, int x64)
 {
