@@ -1,4 +1,9 @@
-/* Semantic global and function validation implementation. */
+/*
+ * Global and function semantic validation.
+ *
+ * Part of vc under the BSD 2-Clause license.
+ * See LICENSE for details.
+ */
 
 #include <stdlib.h>
 #include <string.h>
@@ -15,6 +20,7 @@
 #include "error.h"
 #include <limits.h>
 
+/* Lay out union members and return the size of the largest member. */
 size_t layout_union_members(union_member_t *members, size_t count)
 {
     size_t off = 0;
@@ -39,6 +45,8 @@ size_t layout_struct_members(struct_member_t *members, size_t count)
     }
     return off;
 }
+
+/* Validate a function definition against its declaration and body. */
 int check_func(func_t *func, symtable_t *funcs, symtable_t *globals,
                ir_builder_t *ir)
 {
@@ -89,6 +97,7 @@ int check_func(func_t *func, symtable_t *funcs, symtable_t *globals,
     return ok;
 }
 
+/* Add enumeration constants and optional tag to the global symbol table. */
 static int check_enum_decl_global(stmt_t *decl, symtable_t *globals)
 {
     int next = 0;
@@ -112,6 +121,7 @@ static int check_enum_decl_global(stmt_t *decl, symtable_t *globals)
     return 1;
 }
 
+/* Register a struct type globally and compute its total size. */
 static int check_struct_decl_global(stmt_t *decl, symtable_t *globals)
 {
     size_t total = layout_struct_members(decl->struct_decl.members,
@@ -129,6 +139,7 @@ static int check_struct_decl_global(stmt_t *decl, symtable_t *globals)
     return 1;
 }
 
+/* Register a union type globally after laying out its members. */
 static int check_union_decl_global(stmt_t *decl, symtable_t *globals)
 {
     layout_union_members(decl->union_decl.members, decl->union_decl.count);
@@ -141,6 +152,7 @@ static int check_union_decl_global(stmt_t *decl, symtable_t *globals)
     return 1;
 }
 
+/* Process a global variable declaration and emit initialization IR. */
 static int check_var_decl_global(stmt_t *decl, symtable_t *globals,
                                  ir_builder_t *ir)
 {
