@@ -59,6 +59,52 @@ static void free_const_tracking(const_track_t *ct)
     }
 }
 
+/* Handle constant propagation through an IR_STORE instruction */
+static void handle_store(const_track_t *ct, ir_instr_t *ins)
+{
+    var_const_t *v = ct->vars;
+    int max_id = ct->max_id;
+    while (v && strcmp(v->name, ins->name) != 0)
+        v = v->next;
+    if (!v) {
+        v = calloc(1, sizeof(*v));
+        if (!v) {
+            opt_error("out of memory");
+            return;
+        }
+        v->name = ins->name;
+        v->next = ct->vars;
+        ct->vars = v;
+    }
+    if (!ins->is_volatile && ins->src1 < max_id && ct->is_const[ins->src1]) {
+        v->known = 1;
+        v->value = ct->values[ins->src1];
+    } else {
+        v->known = 0;
+    }
+}
+
+/* Handle constant propagation through an IR_LOAD instruction */
+static void handle_load(const_track_t *ct, ir_instr_t *ins)
+{
+    var_const_t *v = ct->vars;
+    int max_id = ct->max_id;
+    while (v && strcmp(v->name, ins->name) != 0)
+        v = v->next;
+    if (!ins->is_volatile && v && v->known) {
+        free(ins->name);
+        ins->name = NULL;
+        ins->op = IR_CONST;
+        ins->imm = v->value;
+        if (ins->dest >= 0 && ins->dest < max_id) {
+            ct->is_const[ins->dest] = 1;
+            ct->values[ins->dest] = v->value;
+        }
+    } else if (ins->dest >= 0 && ins->dest < max_id) {
+        ct->is_const[ins->dest] = 0;
+    }
+}
+
 /* Update constant tracking information for a single instruction */
 static void propagate_through_instruction(const_track_t *ct, ir_instr_t *ins)
 {
@@ -70,46 +116,12 @@ static void propagate_through_instruction(const_track_t *ct, ir_instr_t *ins)
             ct->values[ins->dest] = ins->imm;
         }
         break;
-    case IR_STORE: {
-        var_const_t *v = ct->vars;
-        while (v && strcmp(v->name, ins->name) != 0)
-            v = v->next;
-        if (!v) {
-            v = calloc(1, sizeof(*v));
-            if (!v) {
-                opt_error("out of memory");
-                break;
-            }
-            v->name = ins->name;
-            v->next = ct->vars;
-            ct->vars = v;
-        }
-        if (!ins->is_volatile && ins->src1 < max_id && ct->is_const[ins->src1]) {
-            v->known = 1;
-            v->value = ct->values[ins->src1];
-        } else {
-            v->known = 0;
-        }
+    case IR_STORE:
+        handle_store(ct, ins);
         break;
-    }
-    case IR_LOAD: {
-        var_const_t *v = ct->vars;
-        while (v && strcmp(v->name, ins->name) != 0)
-            v = v->next;
-        if (!ins->is_volatile && v && v->known) {
-            free(ins->name);
-            ins->name = NULL;
-            ins->op = IR_CONST;
-            ins->imm = v->value;
-            if (ins->dest >= 0 && ins->dest < max_id) {
-                ct->is_const[ins->dest] = 1;
-                ct->values[ins->dest] = v->value;
-            }
-        } else if (ins->dest >= 0 && ins->dest < max_id) {
-            ct->is_const[ins->dest] = 0;
-        }
+    case IR_LOAD:
+        handle_load(ct, ins);
         break;
-    }
     case IR_STORE_PTR:
     case IR_STORE_IDX:
     case IR_CALL:
@@ -152,7 +164,19 @@ static void propagate_through_instruction(const_track_t *ct, ir_instr_t *ins)
     }
 }
 
-/* Propagate constants from stores to subsequent loads */
+/* Traverse all instructions applying store/load propagation */
+static void process_instructions(ir_builder_t *ir, const_track_t *ct)
+{
+    for (ir_instr_t *ins = ir->head; ins; ins = ins->next)
+        propagate_through_instruction(ct, ins);
+}
+
+/* Top level constant propagation pass */
+/*
+ * Step 1: initialize constant tracking tables
+ * Step 2: process store/load instructions
+ * Step 3: free tracking tables
+ */
 void propagate_load_consts(ir_builder_t *ir)
 {
     if (!ir)
@@ -162,8 +186,7 @@ void propagate_load_consts(ir_builder_t *ir)
     if (!init_const_tracking(&ct, ir))
         return;
 
-    for (ir_instr_t *ins = ir->head; ins; ins = ins->next)
-        propagate_through_instruction(&ct, ins);
+    process_instructions(ir, &ct);
 
     free_const_tracking(&ct);
 }
