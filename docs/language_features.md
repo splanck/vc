@@ -418,6 +418,9 @@ Compile with:
 vc -o switch.s switch.c
 ```
 
+Only one `default` label may appear within the switch block. If provided,
+its statement executes when none of the `case` values match.
+
 ### Logical operators
 ```c
 /* logical.c */

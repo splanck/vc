@@ -154,6 +154,56 @@ stmt_t *parser_parse_for_stmt(parser_t *p)
                         kw_tok->line, kw_tok->column);
 }
 
+/* Parse the list of case/default clauses inside a switch block. */
+static int parse_switch_cases(parser_t *p, switch_case_t **cases,
+                              size_t *count, stmt_t **default_body)
+{
+    vector_t cases_v;
+    vector_init(&cases_v, sizeof(switch_case_t));
+    *default_body = NULL;
+    while (!match(p, TOK_RBRACE)) {
+        if (match(p, TOK_KW_CASE)) {
+            expr_t *val = parser_parse_expr(p);
+            if (!val || !match(p, TOK_COLON)) {
+                ast_free_expr(val);
+                goto error;
+            }
+            stmt_t *body = parser_parse_stmt(p);
+            if (!body) {
+                ast_free_expr(val);
+                goto error;
+            }
+            switch_case_t tmp = { val, body };
+            if (!vector_push(&cases_v, &tmp)) {
+                ast_free_expr(val);
+                ast_free_stmt(body);
+                goto error;
+            }
+        } else if (match(p, TOK_KW_DEFAULT)) {
+            if (*default_body)
+                goto error;
+            if (!match(p, TOK_COLON))
+                goto error;
+            *default_body = parser_parse_stmt(p);
+            if (!*default_body)
+                goto error;
+        } else {
+            goto error;
+        }
+    }
+    *cases = (switch_case_t *)cases_v.data;
+    *count = cases_v.count;
+    return 1;
+error:
+    for (size_t i = 0; i < cases_v.count; i++) {
+        switch_case_t *c = &((switch_case_t *)cases_v.data)[i];
+        ast_free_expr(c->expr);
+        ast_free_stmt(c->body);
+    }
+    vector_free(&cases_v);
+    return 0;
+}
+
 /* Parse a switch statement starting at the 'switch' keyword. */
 stmt_t *parser_parse_switch_stmt(parser_t *p)
 {
@@ -171,58 +221,25 @@ stmt_t *parser_parse_switch_stmt(parser_t *p)
         ast_free_expr(expr);
         return NULL;
     }
-    vector_t cases_v;
-    vector_init(&cases_v, sizeof(switch_case_t));
+    switch_case_t *cases = NULL;
+    size_t case_count = 0;
     stmt_t *default_body = NULL;
-    while (!match(p, TOK_RBRACE)) {
-        if (match(p, TOK_KW_CASE)) {
-            expr_t *val = parser_parse_expr(p);
-            if (!val || !match(p, TOK_COLON)) {
-                ast_free_expr(val);
-                goto error_switch;
-            }
-            stmt_t *body = parser_parse_stmt(p);
-            if (!body) {
-                ast_free_expr(val);
-                goto error_switch;
-            }
-            switch_case_t tmp = { val, body };
-            if (!vector_push(&cases_v, &tmp)) {
-                ast_free_expr(val);
-                ast_free_stmt(body);
-                goto error_switch;
-            }
-        } else if (match(p, TOK_KW_DEFAULT)) {
-            if (default_body) {
-                goto error_switch;
-            }
-            if (!match(p, TOK_COLON))
-                goto error_switch;
-            default_body = parser_parse_stmt(p);
-            if (!default_body)
-                goto error_switch;
-        } else {
-            goto error_switch;
+    if (!parse_switch_cases(p, &cases, &case_count, &default_body)) {
+        ast_free_expr(expr);
+        return NULL;
+    }
+    stmt_t *stmt = ast_make_switch(expr, cases, case_count, default_body,
+                                   kw_tok->line, kw_tok->column);
+    if (!stmt) {
+        for (size_t i = 0; i < case_count; i++) {
+            ast_free_expr(cases[i].expr);
+            ast_free_stmt(cases[i].body);
         }
+        free(cases);
+        ast_free_expr(expr);
+        ast_free_stmt(default_body);
+        return NULL;
     }
-    {
-        size_t count = cases_v.count;
-        switch_case_t *cases = (switch_case_t *)cases_v.data;
-        stmt_t *stmt = ast_make_switch(expr, cases, count, default_body,
-                                      kw_tok->line, kw_tok->column);
-        if (!stmt)
-            goto error_switch;
-        return stmt;
-    }
-error_switch:
-    for (size_t i = 0; i < cases_v.count; i++) {
-        switch_case_t *c = &((switch_case_t *)cases_v.data)[i];
-        ast_free_expr(c->expr);
-        ast_free_stmt(c->body);
-    }
-    free(cases_v.data);
-    ast_free_expr(expr);
-    ast_free_stmt(default_body);
-    return NULL;
+    return stmt;
 }
 
