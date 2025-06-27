@@ -1,6 +1,11 @@
 /*
  * Intermediate representation builder.
  *
+ * The routines in this file append instructions to an ir_builder_t and
+ * generate value identifiers used as operands.  Each helper corresponds
+ * to a single IR opcode and may allocate strings or other data owned by
+ * the builder.
+ *
  * Part of vc under the BSD 2-Clause license.
  * See LICENSE for details.
  */

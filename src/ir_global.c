@@ -1,6 +1,10 @@
 /*
  * Global variable and structure IR builders.
  *
+ * These helpers emit IR directives that describe global data such as
+ * variables, arrays and aggregates.  The emitted instructions are
+ * appended to an ir_builder_t and later consumed by the code generator.
+ *
  * Part of vc under the BSD 2-Clause license.
  * See LICENSE for details.
  */

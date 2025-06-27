@@ -1,6 +1,10 @@
 /*
  * Utilities for printing IR for debugging.
  *
+ * The dump helpers walk the instruction list and produce a textual
+ * representation.  Register allocation is run to annotate spilled
+ * values with their stack slots.
+ *
  * Part of vc under the BSD 2-Clause license.
  * See LICENSE for details.
  */
