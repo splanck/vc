@@ -260,6 +260,66 @@ static symbol_t *register_var_symbol(stmt_t *stmt, symtable_t *vars)
 }
 
 /*
+ * Emit IR for a static initializer using a constant expression.
+ * Handles scalars and aggregates placed in the global data section.
+ */
+static int emit_static_initializer(stmt_t *stmt, symbol_t *sym,
+                                   symtable_t *vars, ir_builder_t *ir)
+{
+    long long cval;
+    if (!eval_const_expr(stmt->var_decl.init, vars, &cval)) {
+        error_set(stmt->var_decl.init->line, stmt->var_decl.init->column);
+        return 0;
+    }
+    if (stmt->var_decl.type == TYPE_UNION)
+        ir_build_glob_union(ir, sym->ir_name, (int)sym->elem_size, 1);
+    else if (stmt->var_decl.type == TYPE_STRUCT)
+        ir_build_glob_struct(ir, sym->ir_name, (int)sym->struct_total_size, 1);
+    else
+        ir_build_glob_var(ir, sym->ir_name, cval, 1);
+    return 1;
+}
+
+/*
+ * Emit IR for a dynamic initializer evaluated at runtime.
+ * The expression is checked for type compatibility and then stored.
+ */
+static int emit_dynamic_initializer(stmt_t *stmt, symbol_t *sym,
+                                    symtable_t *vars, symtable_t *funcs,
+                                    ir_builder_t *ir)
+{
+    ir_value_t val;
+    type_kind_t vt = check_expr(stmt->var_decl.init, vars, funcs, ir, &val);
+    if (!(((is_intlike(stmt->var_decl.type) && is_intlike(vt)) ||
+           (is_floatlike(stmt->var_decl.type) &&
+            (is_floatlike(vt) || is_intlike(vt)))) ||
+          vt == stmt->var_decl.type)) {
+        error_set(stmt->var_decl.init->line, stmt->var_decl.init->column);
+        return 0;
+    }
+    if (stmt->var_decl.is_volatile)
+        ir_build_store_vol(ir, sym->ir_name, val);
+    else
+        ir_build_store(ir, sym->ir_name, val);
+    return 1;
+}
+
+/*
+ * Emit IR for an initializer list of an aggregate variable.
+ * Dispatches to the array or struct handler as appropriate.
+ */
+static int emit_aggregate_initializer(stmt_t *stmt, symbol_t *sym,
+                                      symtable_t *vars, ir_builder_t *ir)
+{
+    if (stmt->var_decl.type == TYPE_ARRAY)
+        return handle_array_init(stmt, sym, vars, ir);
+    if (stmt->var_decl.type == TYPE_STRUCT)
+        return handle_struct_init(stmt, sym, vars, ir);
+    error_set(stmt->line, stmt->column);
+    return 0;
+}
+
+/*
  * Emit IR for any initializer attached to the variable.
  * Copies aggregate member metadata to the symbol and writes
  * constant or computed values using the IR builder.
@@ -307,47 +367,12 @@ static int emit_var_initializer(stmt_t *stmt, symbol_t *sym,
     }
 
     if (stmt->var_decl.init) {
-        if (stmt->var_decl.is_static) {
-            long long cval;
-            if (!eval_const_expr(stmt->var_decl.init, vars, &cval)) {
-                error_set(stmt->var_decl.init->line, stmt->var_decl.init->column);
-                return 0;
-            }
-            if (stmt->var_decl.type == TYPE_UNION)
-                ir_build_glob_union(ir, sym->ir_name, (int)sym->elem_size, 1);
-            else if (stmt->var_decl.type == TYPE_STRUCT)
-                ir_build_glob_struct(ir, sym->ir_name,
-                                     (int)sym->struct_total_size, 1);
-            else
-                ir_build_glob_var(ir, sym->ir_name, cval, 1);
-        } else {
-            ir_value_t val;
-            type_kind_t vt =
-                check_expr(stmt->var_decl.init, vars, funcs, ir, &val);
-            if (!(((is_intlike(stmt->var_decl.type) && is_intlike(vt)) ||
-                   (is_floatlike(stmt->var_decl.type) &&
-                    (is_floatlike(vt) || is_intlike(vt)))) ||
-                  vt == stmt->var_decl.type)) {
-                error_set(stmt->var_decl.init->line, stmt->var_decl.init->column);
-                return 0;
-            }
-            if (stmt->var_decl.is_volatile)
-                ir_build_store_vol(ir, sym->ir_name, val);
-            else
-                ir_build_store(ir, sym->ir_name, val);
-        }
-    } else if (stmt->var_decl.init_list) {
-        if (stmt->var_decl.type == TYPE_ARRAY) {
-            if (!handle_array_init(stmt, sym, vars, ir))
-                return 0;
-        } else if (stmt->var_decl.type == TYPE_STRUCT) {
-            if (!handle_struct_init(stmt, sym, vars, ir))
-                return 0;
-        } else {
-            error_set(stmt->line, stmt->column);
-            return 0;
-        }
+        if (stmt->var_decl.is_static)
+            return emit_static_initializer(stmt, sym, vars, ir);
+        return emit_dynamic_initializer(stmt, sym, vars, funcs, ir);
     }
+    if (stmt->var_decl.init_list)
+        return emit_aggregate_initializer(stmt, sym, vars, ir);
     return 1;
 }
 
