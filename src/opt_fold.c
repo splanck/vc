@@ -109,6 +109,10 @@ void fold_constants(ir_builder_t *ir)
                 is_const[ins->dest] = 0;
             }
             break;
+        case IR_LFADD: case IR_LFSUB: case IR_LFMUL: case IR_LFDIV:
+            if (ins->dest >= 0 && ins->dest < max_id)
+                is_const[ins->dest] = 0;
+            break;
         case IR_LOAD:
         case IR_LOAD_IDX:
             if (ins->dest >= 0 && ins->dest < max_id)
@@ -126,6 +130,7 @@ void fold_constants(ir_builder_t *ir)
         case IR_STORE_PTR:
         case IR_PTR_ADD:
         case IR_PTR_DIFF:
+        case IR_ALLOCA:
             if (ins->dest >= 0 && ins->dest < max_id)
                 is_const[ins->dest] = 0;
             break;
