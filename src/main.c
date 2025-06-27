@@ -50,6 +50,11 @@ static void run_optimize_stage(ir_builder_t *ir, const opt_config_t *cfg);
 static int run_output_stage(ir_builder_t *ir, const char *output,
                             int dump_ir, int dump_asm, int use_x86_64,
                             int compile);
+static int emit_output_file(ir_builder_t *ir, const char *output,
+                            int use_x86_64, int compile_obj);
+static void cleanup_compile_unit(vector_t *funcs_v, vector_t *globs_v,
+                                 symtable_t *funcs, symtable_t *globals,
+                                 ir_builder_t *ir);
 
 /* Compile one translation unit to the given output path. */
 static int compile_unit(const char *source, const cli_options_t *cli,
@@ -203,7 +208,14 @@ static int run_output_stage(ir_builder_t *ir, const char *output,
         return 1;
     }
 
-    if (compile) {
+    return emit_output_file(ir, output, use_x86_64, compile);
+}
+
+/* Emit assembly or an object file */
+static int emit_output_file(ir_builder_t *ir, const char *output,
+                            int use_x86_64, int compile_obj)
+{
+    if (compile_obj) {
         char tmpname[] = "/tmp/vcXXXXXX";
         int fd = mkstemp(tmpname);
         if (fd < 0) {
@@ -222,7 +234,8 @@ static int run_output_stage(ir_builder_t *ir, const char *output,
 
         char cmd[512];
         const char *arch_flag = use_x86_64 ? "-m64" : "-m32";
-        snprintf(cmd, sizeof(cmd), "cc -x assembler %s -c %s -o %s", arch_flag, tmpname, output);
+        snprintf(cmd, sizeof(cmd), "cc -x assembler %s -c %s -o %s", arch_flag,
+                 tmpname, output);
         int ret = system(cmd);
         unlink(tmpname);
         if (ret != 0) {
@@ -230,16 +243,33 @@ static int run_output_stage(ir_builder_t *ir, const char *output,
             return 0;
         }
         return 1;
-    } else {
-        FILE *outf = fopen(output, "w");
-        if (!outf) {
-            perror("fopen");
-            return 0;
-        }
-        codegen_emit_x86(outf, ir, use_x86_64);
-        fclose(outf);
-        return 1;
     }
+
+    FILE *outf = fopen(output, "w");
+    if (!outf) {
+        perror("fopen");
+        return 0;
+    }
+    codegen_emit_x86(outf, ir, use_x86_64);
+    fclose(outf);
+    return 1;
+}
+
+/* Free resources allocated during compilation */
+static void cleanup_compile_unit(vector_t *funcs_v, vector_t *globs_v,
+                                 symtable_t *funcs, symtable_t *globals,
+                                 ir_builder_t *ir)
+{
+    for (size_t i = 0; i < funcs_v->count; i++)
+        ast_free_func(((func_t **)funcs_v->data)[i]);
+    for (size_t i = 0; i < globs_v->count; i++)
+        ast_free_stmt(((stmt_t **)globs_v->data)[i]);
+    free(funcs_v->data);
+    free(globs_v->data);
+    symtable_free(funcs);
+
+    ir_builder_free(ir);
+    symtable_free(globals);
 }
 
 /* Compile a single translation unit */
@@ -275,14 +305,6 @@ static int compile_unit(const char *source, const cli_options_t *cli,
                                 (stmt_t **)glob_list_v.data, glob_list_v.count,
                                 &funcs, &globals, &ir);
 
-    for (size_t i = 0; i < func_list_v.count; i++)
-        ast_free_func(((func_t **)func_list_v.data)[i]);
-    for (size_t i = 0; i < glob_list_v.count; i++)
-        ast_free_stmt(((stmt_t **)glob_list_v.data)[i]);
-    free(func_list_v.data);
-    free(glob_list_v.data);
-    symtable_free(&funcs);
-
     /* Optimization and output */
     if (ok) {
         run_optimize_stage(&ir, &cli->opt_cfg);
@@ -290,8 +312,7 @@ static int compile_unit(const char *source, const cli_options_t *cli,
                               cli->use_x86_64, compile_obj);
     }
 
-    ir_builder_free(&ir);
-    symtable_free(&globals);
+    cleanup_compile_unit(&func_list_v, &glob_list_v, &funcs, &globals, &ir);
 
     label_reset();
 
