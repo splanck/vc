@@ -154,6 +154,35 @@ stmt_t *parser_parse_for_stmt(parser_t *p)
                         kw_tok->line, kw_tok->column);
 }
 
+/* Parse a single 'case' clause and store result in out. */
+static int parse_single_case(parser_t *p, switch_case_t *out)
+{
+    expr_t *val = parser_parse_expr(p);
+    if (!val || !match(p, TOK_COLON)) {
+        ast_free_expr(val);
+        return 0;
+    }
+    stmt_t *body = parser_parse_stmt(p);
+    if (!body) {
+        ast_free_expr(val);
+        return 0;
+    }
+    out->expr = val;
+    out->body = body;
+    return 1;
+}
+
+/* Parse a 'default' clause and store the resulting statement. */
+static int parse_default_case(parser_t *p, stmt_t **body)
+{
+    if (!match(p, TOK_COLON))
+        return 0;
+    *body = parser_parse_stmt(p);
+    if (!*body)
+        return 0;
+    return 1;
+}
+
 /* Parse the list of case/default clauses inside a switch block. */
 static int parse_switch_cases(parser_t *p, switch_case_t **cases,
                               size_t *count, stmt_t **default_body)
@@ -163,29 +192,16 @@ static int parse_switch_cases(parser_t *p, switch_case_t **cases,
     *default_body = NULL;
     while (!match(p, TOK_RBRACE)) {
         if (match(p, TOK_KW_CASE)) {
-            expr_t *val = parser_parse_expr(p);
-            if (!val || !match(p, TOK_COLON)) {
-                ast_free_expr(val);
+            switch_case_t tmp;
+            if (!parse_single_case(p, &tmp))
                 goto error;
-            }
-            stmt_t *body = parser_parse_stmt(p);
-            if (!body) {
-                ast_free_expr(val);
-                goto error;
-            }
-            switch_case_t tmp = { val, body };
             if (!vector_push(&cases_v, &tmp)) {
-                ast_free_expr(val);
-                ast_free_stmt(body);
+                ast_free_expr(tmp.expr);
+                ast_free_stmt(tmp.body);
                 goto error;
             }
         } else if (match(p, TOK_KW_DEFAULT)) {
-            if (*default_body)
-                goto error;
-            if (!match(p, TOK_COLON))
-                goto error;
-            *default_body = parser_parse_stmt(p);
-            if (!*default_body)
+            if (*default_body || !parse_default_case(p, default_body))
                 goto error;
         } else {
             goto error;
