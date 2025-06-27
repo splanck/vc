@@ -435,80 +435,101 @@ static expr_t *parse_conditional(parser_t *p)
     return cond;
 }
 
-static expr_t *parse_compound_assignment(parser_t *p, expr_t *left,
-                                         token_t *op_tok)
+
+/* Determine if the next token is an assignment operator.  If so the token
+ * is consumed, \p compound is set to 1 for "+=", "-=", etc. and 0 for
+ * "=".  The consumed token is returned or NULL otherwise. */
+static token_t *consume_assign_op(parser_t *p, int *compound)
 {
-    /*
-     * a += b -> EXPR_ASSIGN where value is a binary EXPR (a + b)
-     * a[i] -= b -> EXPR_ASSIGN_INDEX with binary value
-     * obj.f *= b -> EXPR_ASSIGN_MEMBER with binary value
-     */
+    token_t *tok = peek(p);
+    if (!tok)
+        return NULL;
+
+    switch (tok->type) {
+    case TOK_ASSIGN:
+        if (compound)
+            *compound = 0;
+        p->pos++;
+        return tok;
+    case TOK_PLUSEQ: case TOK_MINUSEQ: case TOK_STAREQ: case TOK_SLASHEQ:
+    case TOK_PERCENTEQ: case TOK_AMPEQ:  case TOK_PIPEEQ:  case TOK_CARETEQ:
+    case TOK_SHLEQ:    case TOK_SHREQ:
+        if (compound)
+            *compound = 1;
+        p->pos++;
+        return tok;
+    default:
+        return NULL;
+    }
+}
+
+/* Build the AST node for an assignment using \p left and \p right. The
+ * operator token is provided via \p op_tok and \p compound indicates if it
+ * was a compound operator.  On error all allocated nodes are freed and NULL
+ * is returned. */
+static expr_t *make_assignment(expr_t *left, expr_t *right,
+                               token_t *op_tok, int compound)
+{
     if (left->kind != EXPR_IDENT && left->kind != EXPR_INDEX &&
         left->kind != EXPR_MEMBER) {
         ast_free_expr(left);
-        return NULL;
-    }
-
-    expr_t *right = parse_assignment(p);
-    if (!right) {
-        if (left->kind == EXPR_IDENT)
-            free(left->ident.name);
-        ast_free_expr(left);
-        return NULL;
-    }
-
-    binop_t bop = BINOP_ADD;
-    switch (op_tok->type) {
-    case TOK_PLUSEQ:  bop = BINOP_ADD;     break;
-    case TOK_MINUSEQ: bop = BINOP_SUB;     break;
-    case TOK_STAREQ:  bop = BINOP_MUL;     break;
-    case TOK_SLASHEQ: bop = BINOP_DIV;     break;
-    case TOK_PERCENTEQ: bop = BINOP_MOD;   break;
-    case TOK_AMPEQ:   bop = BINOP_BITAND;  break;
-    case TOK_PIPEEQ:  bop = BINOP_BITOR;   break;
-    case TOK_CARETEQ: bop = BINOP_BITXOR;  break;
-    case TOK_SHLEQ:   bop = BINOP_SHL;     break;
-    case TOK_SHREQ:   bop = BINOP_SHR;     break;
-    default:
-        ast_free_expr(right);
-        if (left->kind == EXPR_IDENT)
-            free(left->ident.name);
-        ast_free_expr(left);
-        return NULL;
-    }
-
-    expr_t *lhs_copy = clone_expr(left);
-    if (!lhs_copy) {
-        ast_free_expr(left);
         ast_free_expr(right);
         return NULL;
     }
 
-    right = ast_make_binary(bop, lhs_copy, right,
-                            op_tok->line, op_tok->column);
+    if (compound) {
+        binop_t bop = BINOP_ADD;
+        switch (op_tok->type) {
+        case TOK_PLUSEQ:  bop = BINOP_ADD;     break;
+        case TOK_MINUSEQ: bop = BINOP_SUB;     break;
+        case TOK_STAREQ:  bop = BINOP_MUL;     break;
+        case TOK_SLASHEQ: bop = BINOP_DIV;     break;
+        case TOK_PERCENTEQ: bop = BINOP_MOD;   break;
+        case TOK_AMPEQ:   bop = BINOP_BITAND;  break;
+        case TOK_PIPEEQ:  bop = BINOP_BITOR;   break;
+        case TOK_CARETEQ: bop = BINOP_BITXOR;  break;
+        case TOK_SHLEQ:   bop = BINOP_SHL;     break;
+        case TOK_SHREQ:   bop = BINOP_SHR;     break;
+        default:
+            ast_free_expr(left);
+            ast_free_expr(right);
+            return NULL;
+        }
 
+        expr_t *lhs_copy = clone_expr(left);
+        if (!lhs_copy) {
+            ast_free_expr(left);
+            ast_free_expr(right);
+            return NULL;
+        }
+
+        right = ast_make_binary(bop, lhs_copy, right,
+                                op_tok->line, op_tok->column);
+    }
+
+    expr_t *res = NULL;
     if (left->kind == EXPR_IDENT) {
         char *name = left->ident.name;
         free(left);
-        left = ast_make_assign(name, right, op_tok->line, op_tok->column);
+        res = ast_make_assign(name, right, op_tok->line, op_tok->column);
         free(name);
     } else if (left->kind == EXPR_INDEX) {
         expr_t *arr = left->index.array;
         expr_t *idx = left->index.index;
         free(left);
-        left = ast_make_assign_index(arr, idx, right,
+        res = ast_make_assign_index(arr, idx, right,
                                     op_tok->line, op_tok->column);
     } else {
         expr_t *obj = left->member.object;
         char *mem = left->member.member;
         int via_ptr = left->member.via_ptr;
         free(left);
-        left = ast_make_assign_member(obj, mem, right, via_ptr,
-                                      op_tok->line, op_tok->column);
+        res = ast_make_assign_member(obj, mem, right, via_ptr,
+                                     op_tok->line, op_tok->column);
         free(mem);
     }
 
-    return left;
+    return res;
 }
 
 /* Assignment has the lowest precedence and recurses to itself for chained
@@ -523,52 +544,18 @@ static expr_t *parse_assignment(parser_t *p)
     if (!left)
         return NULL;
 
-    if (match(p, TOK_ASSIGN)) {
-        token_t *op_tok = &p->tokens[p->pos - 1];
-        if (left->kind != EXPR_IDENT && left->kind != EXPR_INDEX &&
-            left->kind != EXPR_MEMBER) {
-            ast_free_expr(left);
-            return NULL;
-        }
+    int compound = 0;
+    token_t *op_tok = consume_assign_op(p, &compound);
+    if (!op_tok)
+        return left;
 
-        expr_t *right = parse_assignment(p);
-        if (!right) {
-            if (left->kind == EXPR_IDENT)
-                free(left->ident.name);
-            ast_free_expr(left);
-            return NULL;
-        }
-
-        if (left->kind == EXPR_IDENT) {
-            char *name = left->ident.name;
-            free(left);
-            left = ast_make_assign(name, right, op_tok->line, op_tok->column);
-            free(name);
-        } else if (left->kind == EXPR_INDEX) {
-            expr_t *arr = left->index.array;
-            expr_t *idx = left->index.index;
-            free(left);
-            left = ast_make_assign_index(arr, idx, right,
-                                        op_tok->line, op_tok->column);
-        } else {
-            expr_t *obj = left->member.object;
-            char *mem = left->member.member;
-            int via_ptr = left->member.via_ptr;
-            free(left);
-            left = ast_make_assign_member(obj, mem, right, via_ptr,
-                                          op_tok->line, op_tok->column);
-            free(mem);
-        }
-    } else if (match(p, TOK_PLUSEQ) || match(p, TOK_MINUSEQ) ||
-               match(p, TOK_STAREQ) || match(p, TOK_SLASHEQ) ||
-               match(p, TOK_PERCENTEQ) || match(p, TOK_AMPEQ) ||
-               match(p, TOK_PIPEEQ) || match(p, TOK_CARETEQ) ||
-               match(p, TOK_SHLEQ) || match(p, TOK_SHREQ)) {
-        token_t *op_tok = &p->tokens[p->pos - 1];
-        left = parse_compound_assignment(p, left, op_tok);
+    expr_t *right = parse_assignment(p);
+    if (!right) {
+        ast_free_expr(left);
+        return NULL;
     }
 
-    return left;
+    return make_assignment(left, right, op_tok, compound);
 }
 
 /* Entry point that parses the full expression grammar. */
