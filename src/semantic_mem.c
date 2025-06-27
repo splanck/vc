@@ -20,6 +20,41 @@
 #include <limits.h>
 
 /*
+ * Search for a member within a struct or union symbol.  Both struct
+ * and union member lists are scanned for a matching name and the
+ * member's type and offset are returned.  The function returns 1 on
+ * success and 0 if the member is not found.
+ */
+static int find_member(symbol_t *sym, const char *name, type_kind_t *type,
+                       size_t *offset)
+{
+    if (!sym)
+        return 0;
+    if (sym->type == TYPE_UNION) {
+        for (size_t i = 0; i < sym->member_count; i++) {
+            if (strcmp(sym->members[i].name, name) == 0) {
+                if (type)
+                    *type = sym->members[i].type;
+                if (offset)
+                    *offset = sym->members[i].offset;
+                return 1;
+            }
+        }
+    } else if (sym->type == TYPE_STRUCT) {
+        for (size_t i = 0; i < sym->struct_member_count; i++) {
+            if (strcmp(sym->struct_members[i].name, name) == 0) {
+                if (type)
+                    *type = sym->struct_members[i].type;
+                if (offset)
+                    *offset = sym->struct_members[i].offset;
+                return 1;
+            }
+        }
+    }
+    return 0;
+}
+
+/*
  * Validate array indexing and emit a load from the computed element
  * address in the IR.
  */
@@ -148,24 +183,7 @@ type_kind_t check_assign_member_expr(expr_t *expr, symtable_t *vars,
 
     type_kind_t mtype = TYPE_UNKNOWN;
     size_t moff = 0;
-    if (obj_sym->type == TYPE_UNION) {
-        for (size_t i = 0; i < obj_sym->member_count; i++) {
-            if (strcmp(obj_sym->members[i].name, expr->assign_member.member) == 0) {
-                mtype = obj_sym->members[i].type;
-                moff = obj_sym->members[i].offset;
-                break;
-            }
-        }
-    } else {
-        for (size_t i = 0; i < obj_sym->struct_member_count; i++) {
-            if (strcmp(obj_sym->struct_members[i].name, expr->assign_member.member) == 0) {
-                mtype = obj_sym->struct_members[i].type;
-                moff = obj_sym->struct_members[i].offset;
-                break;
-            }
-        }
-    }
-    if (mtype == TYPE_UNKNOWN) {
+    if (!find_member(obj_sym, expr->assign_member.member, &mtype, &moff)) {
         error_set(expr->line, expr->column);
         return TYPE_UNKNOWN;
     }
@@ -233,24 +251,7 @@ type_kind_t check_member_expr(expr_t *expr, symtable_t *vars,
 
     type_kind_t mtype = TYPE_UNKNOWN;
     size_t moff = 0;
-    if (obj_sym->type == TYPE_UNION) {
-        for (size_t i = 0; i < obj_sym->member_count; i++) {
-            if (strcmp(obj_sym->members[i].name, expr->member.member) == 0) {
-                mtype = obj_sym->members[i].type;
-                moff = obj_sym->members[i].offset;
-                break;
-            }
-        }
-    } else {
-        for (size_t i = 0; i < obj_sym->struct_member_count; i++) {
-            if (strcmp(obj_sym->struct_members[i].name, expr->member.member) == 0) {
-                mtype = obj_sym->struct_members[i].type;
-                moff = obj_sym->struct_members[i].offset;
-                break;
-            }
-        }
-    }
-    if (mtype == TYPE_UNKNOWN) {
+    if (!find_member(obj_sym, expr->member.member, &mtype, &moff)) {
         error_set(expr->line, expr->column);
         return TYPE_UNKNOWN;
     }
