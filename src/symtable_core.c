@@ -1,9 +1,22 @@
+/*
+ * Core symbol table helpers.
+ *
+ * Part of vc under the BSD 2-Clause license.
+ * See LICENSE for details.
+ */
+
 #include <stdlib.h>
 #include <string.h>
 #include "symtable.h"
 #include "util.h"
 
-/* Allocate and initialise a new symbol entry */
+/*
+ * Allocate and initialise a new symbol entry.
+ *
+ * The returned symbol is not inserted into any list;
+ * callers add it to either the local `head` list or the
+ * `globals` list.
+ */
 symbol_t *symtable_create_symbol(const char *name, const char *ir_name)
 {
     symbol_t *sym = calloc(1, sizeof(*sym));
@@ -85,8 +98,10 @@ void symtable_free(symtable_t *table)
 }
 
 /*
- * Search the table for a symbol by name.  Local symbols take precedence
- * over globals.  Returns NULL if the name is not present.
+ * Search the table for a symbol by name.
+ *
+ * The local `head` list is searched first followed by the
+ * `globals` list. Returns NULL if the name is not present.
  */
 symbol_t *symtable_lookup(symtable_t *table, const char *name)
 {
