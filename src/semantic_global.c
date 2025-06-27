@@ -20,7 +20,11 @@
 #include "error.h"
 #include <limits.h>
 
-/* Lay out union members and return the size of the largest member. */
+/*
+ * Lay out union members sequentially and return the size of the largest
+ * member.  Offsets are assigned in declaration order so that later code
+ * can address the correct union fields.
+ */
 size_t layout_union_members(union_member_t *members, size_t count)
 {
     size_t off = 0;
@@ -34,8 +38,11 @@ size_t layout_union_members(union_member_t *members, size_t count)
     return max;
 }
 
-/* Compute byte offsets for struct members sequentially and return the
- * total size of the struct. */
+/*
+ * Compute byte offsets for struct members sequentially and return the
+ * total size of the struct.  Each member's offset accumulates the size
+ * of the previous ones.
+ */
 size_t layout_struct_members(struct_member_t *members, size_t count)
 {
     size_t off = 0;
@@ -46,7 +53,11 @@ size_t layout_struct_members(struct_member_t *members, size_t count)
     return off;
 }
 
-/* Validate a function definition against its declaration and body. */
+/*
+ * Validate a function definition against its prior declaration and emit
+ * IR for the body.  Parameter types are checked for consistency, local
+ * variables are allocated and each statement in the body is validated.
+ */
 int check_func(func_t *func, symtable_t *funcs, symtable_t *globals,
                ir_builder_t *ir)
 {
@@ -97,7 +108,11 @@ int check_func(func_t *func, symtable_t *funcs, symtable_t *globals,
     return ok;
 }
 
-/* Add enumeration constants and optional tag to the global symbol table. */
+/*
+ * Add enumeration constants and an optional tag to the global symbol
+ * table.  Each enumerator's constant value is determined and recorded
+ * so that the enumeration can be referenced throughout the program.
+ */
 static int check_enum_decl_global(stmt_t *decl, symtable_t *globals)
 {
     int next = 0;
@@ -121,7 +136,11 @@ static int check_enum_decl_global(stmt_t *decl, symtable_t *globals)
     return 1;
 }
 
-/* Register a struct type globally and compute its total size. */
+/*
+ * Register a struct type globally and compute its total size.  Member
+ * offsets are laid out, the type is inserted into the global symbol
+ * table and its computed size is stored.
+ */
 static int check_struct_decl_global(stmt_t *decl, symtable_t *globals)
 {
     size_t total = layout_struct_members(decl->struct_decl.members,
@@ -139,7 +158,11 @@ static int check_struct_decl_global(stmt_t *decl, symtable_t *globals)
     return 1;
 }
 
-/* Register a union type globally after laying out its members. */
+/*
+ * Register a union type globally after laying out its members.  The
+ * layout helper assigns offsets and the resulting type is stored in the
+ * global symbol table for later use.
+ */
 static int check_union_decl_global(stmt_t *decl, symtable_t *globals)
 {
     layout_union_members(decl->union_decl.members, decl->union_decl.count);
@@ -152,7 +175,11 @@ static int check_union_decl_global(stmt_t *decl, symtable_t *globals)
     return 1;
 }
 
-/* Process a global variable declaration and emit initialization IR. */
+/*
+ * Process a global variable declaration and emit initialization IR.  The
+ * variable is added to the global symbol table and its initializer is
+ * translated into constant data where possible.
+ */
 static int check_var_decl_global(stmt_t *decl, symtable_t *globals,
                                  ir_builder_t *ir)
 {
@@ -296,8 +323,9 @@ static int check_var_decl_global(stmt_t *decl, symtable_t *globals,
 }
 
 /*
- * Validate a global variable declaration and emit the IR needed to
- * initialize it.  Only constant expressions are permitted for globals.
+ * Validate a global declaration and emit the IR needed to initialize
+ * it.  Depending on the kind of declaration the appropriate helper is
+ * invoked.  Only constant expressions are permitted for globals.
  */
 int check_global(stmt_t *decl, symtable_t *globals, ir_builder_t *ir)
 {

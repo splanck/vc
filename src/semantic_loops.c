@@ -15,6 +15,13 @@ extern int check_stmt(stmt_t *stmt, symtable_t *vars, symtable_t *funcs,
                       const char *break_label, const char *continue_label);
 extern void symtable_pop_scope(symtable_t *table, symbol_t *old_head);
 
+/*
+ * Perform semantic checks for a while loop.  The condition is
+ * evaluated first to decide whether the body should execute.  The
+ * function sets up start/end labels, validates the body with the
+ * appropriate break and continue targets and finally emits the back
+ * edge to the loop start.
+ */
 int check_while_stmt(stmt_t *stmt, symtable_t *vars, symtable_t *funcs,
                      label_table_t *labels, ir_builder_t *ir,
                      type_kind_t func_ret_type)
@@ -37,6 +44,12 @@ int check_while_stmt(stmt_t *stmt, symtable_t *vars, symtable_t *funcs,
     return 1;
 }
 
+/*
+ * Perform semantic checks for a do-while loop.  The body executes
+ * once before the condition is tested.  This routine sets up labels
+ * for the loop start, condition check and end, verifies the body and
+ * emits the back edge controlled by the condition expression.
+ */
 int check_do_while_stmt(stmt_t *stmt, symtable_t *vars, symtable_t *funcs,
                         label_table_t *labels, ir_builder_t *ir,
                         type_kind_t func_ret_type)
@@ -62,6 +75,13 @@ int check_do_while_stmt(stmt_t *stmt, symtable_t *vars, symtable_t *funcs,
     return 1;
 }
 
+/*
+ * Perform semantic checks for a for loop.  The initializer is
+ * processed first, then the loop condition is evaluated before each
+ * iteration.  The body is checked with proper break and continue
+ * labels and the increment expression is emitted before jumping back
+ * to the condition.
+ */
 int check_for_stmt(stmt_t *stmt, symtable_t *vars, symtable_t *funcs,
                    label_table_t *labels, ir_builder_t *ir,
                    type_kind_t func_ret_type)

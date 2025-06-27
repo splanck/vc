@@ -20,10 +20,18 @@ extern int check_stmt(stmt_t *stmt, symtable_t *vars, symtable_t *funcs,
                       void *labels, ir_builder_t *ir, type_kind_t func_ret_type,
                       const char *break_label, const char *continue_label);
 
-/* Initialize an empty label table */
+/*
+ * Initialize an empty label table used to map user labels to IR
+ * labels.  Simply sets the head pointer to NULL so entries can be
+ * added later.
+ */
 void label_table_init(label_table_t *t) { t->head = NULL; }
 
-/* Free all memory used by a label table */
+/*
+ * Free all memory used by a label table.  Each entry is removed from
+ * the linked list, its strings are released and finally the table head
+ * is cleared.
+ */
 void label_table_free(label_table_t *t)
 {
     label_entry_t *e = t->head;
@@ -37,7 +45,10 @@ void label_table_free(label_table_t *t)
     t->head = NULL;
 }
 
-/* Return the IR name for label `name` or NULL if absent */
+/*
+ * Look up a label by its user-facing name and return the associated IR
+ * name.  If the label does not exist, NULL is returned.
+ */
 const char *label_table_get(label_table_t *t, const char *name)
 {
     for (label_entry_t *e = t->head; e; e = e->next) {
@@ -47,7 +58,11 @@ const char *label_table_get(label_table_t *t, const char *name)
     return NULL;
 }
 
-/* Get or create a label entry and return its IR name */
+/*
+ * Retrieve the IR name for a user label, creating a new entry if one
+ * does not already exist.  Newly created labels are given a unique IR
+ * identifier and inserted at the head of the list.
+ */
 const char *label_table_get_or_add(label_table_t *t, const char *name)
 {
     const char *ir = label_table_get(t, name);
@@ -64,7 +79,13 @@ const char *label_table_get_or_add(label_table_t *t, const char *name)
     return e->ir_name;
 }
 
-/* Validate a switch statement and emit IR for it */
+/*
+ * Validate a switch statement and emit the corresponding IR.  The
+ * controlling expression is evaluated once, each case value is
+ * compared against it and branches are created to the generated case
+ * labels.  After processing all case bodies and the optional default,
+ * control flows to a common end label.
+ */
 int check_switch_stmt(stmt_t *stmt, symtable_t *vars, symtable_t *funcs,
                       label_table_t *labels, ir_builder_t *ir,
                       type_kind_t func_ret_type)
