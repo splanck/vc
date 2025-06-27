@@ -35,95 +35,103 @@ int parser_is_eof(parser_t *p)
     return !tok || tok->type == TOK_EOF;
 }
 
+/* Lookup table mapping token_type_t values to textual names used in
+ * diagnostics.  The array indices correspond to the enumeration
+ * constants defined in ``token.h''.  Keep this table in sync with the
+ * token_type_t enum when adding new tokens. */
+static const char *token_names[] = {
+    [TOK_EOF] = "end of file",
+    [TOK_IDENT] = "identifier",
+    [TOK_NUMBER] = "number",
+    [TOK_STRING] = "string",
+    [TOK_CHAR] = "character",
+    [TOK_KW_INT] = "\"int\"",
+    [TOK_KW_CHAR] = "\"char\"",
+    [TOK_KW_FLOAT] = "\"float\"",
+    [TOK_KW_DOUBLE] = "\"double\"",
+    [TOK_KW_SHORT] = "\"short\"",
+    [TOK_KW_LONG] = "\"long\"",
+    [TOK_KW_BOOL] = "\"bool\"",
+    [TOK_KW_UNSIGNED] = "\"unsigned\"",
+    [TOK_KW_VOID] = "\"void\"",
+    [TOK_KW_ENUM] = "\"enum\"",
+    [TOK_KW_STRUCT] = "\"struct\"",
+    [TOK_KW_UNION] = "\"union\"",
+    [TOK_KW_TYPEDEF] = "\"typedef\"",
+    [TOK_KW_STATIC] = "\"static\"",
+    [TOK_KW_EXTERN] = "\"extern\"",
+    [TOK_KW_CONST] = "\"const\"",
+    [TOK_KW_VOLATILE] = "\"volatile\"",
+    [TOK_KW_RESTRICT] = "\"restrict\"",
+    [TOK_KW_REGISTER] = "\"register\"",
+    [TOK_KW_INLINE] = "\"inline\"",
+    [TOK_KW_RETURN] = "\"return\"",
+    [TOK_KW_IF] = "\"if\"",
+    [TOK_KW_ELSE] = "\"else\"",
+    [TOK_KW_DO] = "\"do\"",
+    [TOK_KW_WHILE] = "\"while\"",
+    [TOK_KW_FOR] = "\"for\"",
+    [TOK_KW_BREAK] = "\"break\"",
+    [TOK_KW_CONTINUE] = "\"continue\"",
+    [TOK_KW_GOTO] = "\"goto\"",
+    [TOK_KW_SWITCH] = "\"switch\"",
+    [TOK_KW_CASE] = "\"case\"",
+    [TOK_KW_DEFAULT] = "\"default\"",
+    [TOK_KW_SIZEOF] = "\"sizeof\"",
+    [TOK_LPAREN] = "'('",
+    [TOK_RPAREN] = ")",
+    [TOK_LBRACE] = "'{'",
+    [TOK_RBRACE] = "'}'",
+    [TOK_SEMI] = ";",
+    [TOK_COMMA] = ",",
+    [TOK_PLUS] = "+",
+    [TOK_MINUS] = "-",
+    [TOK_DOT] = ".",
+    [TOK_ARROW] = "'->'",
+    [TOK_AMP] = "&",
+    [TOK_STAR] = "*",
+    [TOK_SLASH] = "/",
+    [TOK_PERCENT] = "%",
+    [TOK_PIPE] = "|",
+    [TOK_CARET] = "^",
+    [TOK_SHL] = "'<<'",
+    [TOK_SHR] = "'>>'",
+    [TOK_PLUSEQ] = "+=",
+    [TOK_MINUSEQ] = "-=",
+    [TOK_STAREQ] = "*=",
+    [TOK_SLASHEQ] = "/=",
+    [TOK_PERCENTEQ] = "%=",
+    [TOK_AMPEQ] = "&=",
+    [TOK_PIPEEQ] = "|=",
+    [TOK_CARETEQ] = "^=",
+    [TOK_SHLEQ] = "<<=",
+    [TOK_SHREQ] = ">>=",
+    [TOK_INC] = "++",
+    [TOK_DEC] = "--",
+    [TOK_ASSIGN] = "=",
+    [TOK_EQ] = "==",
+    [TOK_NEQ] = "!=",
+    [TOK_LOGAND] = "&&",
+    [TOK_LOGOR] = "||",
+    [TOK_NOT] = "!",
+    [TOK_LT] = "<",
+    [TOK_GT] = ">",
+    [TOK_LE] = "<=",
+    [TOK_GE] = ">=",
+    [TOK_LBRACKET] = "[",
+    [TOK_RBRACKET] = "]",
+    [TOK_QMARK] = "?",
+    [TOK_COLON] = ":",
+    [TOK_LABEL] = "label",
+    [TOK_UNKNOWN] = "unknown"
+};
+
 /* Map a token type to a human readable name used in error messages */
 static const char *token_name(token_type_t type)
 {
-    switch (type) {
-    case TOK_EOF: return "end of file";
-    case TOK_IDENT: return "identifier";
-    case TOK_NUMBER: return "number";
-    case TOK_STRING: return "string";
-    case TOK_CHAR: return "character";
-    case TOK_KW_INT: return "\"int\"";
-    case TOK_KW_CHAR: return "\"char\"";
-    case TOK_KW_FLOAT: return "\"float\"";
-    case TOK_KW_DOUBLE: return "\"double\"";
-    case TOK_KW_SHORT: return "\"short\"";
-    case TOK_KW_LONG: return "\"long\"";
-    case TOK_KW_BOOL: return "\"bool\"";
-    case TOK_KW_UNSIGNED: return "\"unsigned\"";
-    case TOK_KW_VOID: return "\"void\"";
-    case TOK_KW_ENUM: return "\"enum\"";
-    case TOK_KW_STRUCT: return "\"struct\"";
-    case TOK_KW_UNION: return "\"union\"";
-    case TOK_KW_TYPEDEF: return "\"typedef\"";
-    case TOK_KW_STATIC: return "\"static\"";
-    case TOK_KW_EXTERN: return "\"extern\"";
-    case TOK_KW_CONST: return "\"const\"";
-    case TOK_KW_VOLATILE: return "\"volatile\"";
-    case TOK_KW_RESTRICT: return "\"restrict\"";
-    case TOK_KW_REGISTER: return "\"register\"";
-    case TOK_KW_INLINE: return "\"inline\"";
-    case TOK_KW_RETURN: return "\"return\"";
-    case TOK_KW_IF: return "\"if\"";
-    case TOK_KW_ELSE: return "\"else\"";
-    case TOK_KW_DO: return "\"do\"";
-    case TOK_KW_WHILE: return "\"while\"";
-    case TOK_KW_FOR: return "\"for\"";
-    case TOK_KW_BREAK: return "\"break\"";
-    case TOK_KW_CONTINUE: return "\"continue\"";
-    case TOK_KW_GOTO: return "\"goto\"";
-    case TOK_KW_SWITCH: return "\"switch\"";
-    case TOK_KW_CASE: return "\"case\"";
-    case TOK_KW_DEFAULT: return "\"default\"";
-    case TOK_KW_SIZEOF: return "\"sizeof\"";
-    case TOK_LPAREN: return "'('";
-    case TOK_RPAREN: return ")";
-    case TOK_LBRACE: return "'{'";
-    case TOK_RBRACE: return "'}'";
-    case TOK_SEMI: return ";";
-    case TOK_COMMA: return ",";
-    case TOK_PLUS: return "+";
-    case TOK_MINUS: return "-";
-    case TOK_DOT: return ".";
-    case TOK_ARROW: return "'->'";
-    case TOK_AMP: return "&";
-    case TOK_PIPE: return "|";
-    case TOK_CARET: return "^";
-    case TOK_SHL: return "'<<'";
-    case TOK_SHR: return "'>>'";
-    case TOK_STAR: return "*";
-    case TOK_SLASH: return "/";
-    case TOK_PERCENT: return "%";
-    case TOK_PLUSEQ: return "+=";
-    case TOK_MINUSEQ: return "-=";
-    case TOK_STAREQ: return "*=";
-    case TOK_SLASHEQ: return "/=";
-    case TOK_PERCENTEQ: return "%=";
-    case TOK_AMPEQ: return "&=";
-    case TOK_PIPEEQ: return "|=";
-    case TOK_CARETEQ: return "^=";
-    case TOK_SHLEQ: return "<<=";
-    case TOK_SHREQ: return ">>=";
-    case TOK_INC: return "++";
-    case TOK_DEC: return "--";
-    case TOK_ASSIGN: return "=";
-    case TOK_EQ: return "==";
-    case TOK_NEQ: return "!=";
-    case TOK_LOGAND: return "&&";
-    case TOK_LOGOR: return "||";
-    case TOK_NOT: return "!";
-    case TOK_LT: return "<";
-    case TOK_GT: return ">";
-    case TOK_LE: return "<=";
-    case TOK_GE: return ">=";
-    case TOK_LBRACKET: return "[";
-    case TOK_RBRACKET: return "]";
-    case TOK_QMARK: return "?";
-    case TOK_COLON: return ":";
-    case TOK_LABEL: return "label";
-    case TOK_UNKNOWN: return "unknown";
-    }
+    size_t n = sizeof(token_names) / sizeof(token_names[0]);
+    if (type >= 0 && (size_t)type < n && token_names[type])
+        return token_names[type];
     return "unknown";
 }
 
