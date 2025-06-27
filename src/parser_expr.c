@@ -41,6 +41,7 @@ static expr_t *parse_postfix_expr(parser_t *p);
 static expr_t *parse_base_term(parser_t *p);
 static expr_t *parse_literal(parser_t *p);
 static expr_t *parse_identifier_expr(parser_t *p);
+static expr_t *parse_compound_literal(parser_t *p);
 static expr_t *parse_call_or_postfix(parser_t *p, expr_t *base);
 static int parse_type(parser_t *p, type_kind_t *out_type, size_t *out_size,
                       size_t *elem_size);
@@ -201,6 +202,36 @@ static expr_t *parse_call_or_postfix(parser_t *p, expr_t *base)
 }
 
 /*
+ * Parse a compound literal of the form '(type){...}'.
+ * On success the returned expression represents the temporary object.
+ */
+static expr_t *parse_compound_literal(parser_t *p)
+{
+    size_t save = p->pos;
+    if (!match(p, TOK_LPAREN))
+        return NULL;
+
+    token_t *lp = &p->tokens[p->pos - 1];
+    type_kind_t t; size_t arr_sz; size_t esz;
+
+    if (!parse_type(p, &t, &arr_sz, &esz) || !match(p, TOK_RPAREN) ||
+        !peek(p) || peek(p)->type != TOK_LBRACE) {
+        p->pos = save;
+        return NULL;
+    }
+
+    size_t count = 0;
+    init_entry_t *list = parser_parse_init_list(p, &count);
+    if (!list) {
+        p->pos = save;
+        return NULL;
+    }
+
+    return ast_make_compound(t, arr_sz, esz, NULL, list, count,
+                             lp->line, lp->column);
+}
+
+/*
  * Parse the most basic expression forms: literals, identifiers, function
  * calls and array indexing.  Prefix unary operators are also handled
  * here.  The returned expr_t represents the parsed sub-expression.
@@ -210,27 +241,15 @@ static expr_t *parse_base_term(parser_t *p)
     expr_t *base = parse_literal(p);
     if (!base)
         base = parse_identifier_expr(p);
+    if (!base)
+        base = parse_compound_literal(p);
     if (!base && match(p, TOK_LPAREN)) {
-        token_t *lp = &p->tokens[p->pos - 1];
-        size_t save = p->pos;
-        type_kind_t t; size_t arr_sz; size_t esz;
-        if (parse_type(p, &t, &arr_sz, &esz) && match(p, TOK_RPAREN) &&
-            peek(p) && peek(p)->type == TOK_LBRACE) {
-            size_t count = 0;
-            init_entry_t *list = parser_parse_init_list(p, &count);
-            if (!list)
-                return NULL;
-            base = ast_make_compound(t, arr_sz, esz, NULL, list, count,
-                                     lp->line, lp->column);
-        } else {
-            p->pos = save;
-            expr_t *expr = parse_expression(p);
-            if (!match(p, TOK_RPAREN)) {
-                ast_free_expr(expr);
-                return NULL;
-            }
-            base = expr;
+        expr_t *expr = parse_expression(p);
+        if (!expr || !match(p, TOK_RPAREN)) {
+            ast_free_expr(expr);
+            return NULL;
         }
+        base = expr;
     }
     return base;
 }
