@@ -373,6 +373,62 @@ static int check_if_stmt(stmt_t *stmt, symtable_t *vars, symtable_t *funcs,
 }
 
 
+/*
+ * Handle a return statement. The optional expression is validated
+ * and emitted as the function result. For void functions a zero
+ * constant is returned when no expression is present.
+ */
+static int handle_return_stmt(stmt_t *stmt, symtable_t *vars,
+                              symtable_t *funcs, ir_builder_t *ir,
+                              type_kind_t func_ret_type)
+{
+    if (!stmt->ret.expr) {
+        if (func_ret_type != TYPE_VOID) {
+            error_set(stmt->line, stmt->column);
+            return 0;
+        }
+        ir_value_t zero = ir_build_const(ir, 0);
+        ir_build_return(ir, zero);
+        return 1;
+    }
+    ir_value_t val;
+    if (check_expr(stmt->ret.expr, vars, funcs, ir, &val) == TYPE_UNKNOWN) {
+        error_set(stmt->ret.expr->line, stmt->ret.expr->column);
+        return 0;
+    }
+    ir_build_return(ir, val);
+    return 1;
+}
+
+/*
+ * Handle break and continue statements. The target label must be
+ * provided by the caller. If no valid label is available an error
+ * is reported.
+ */
+static int handle_loop_stmt(stmt_t *stmt, const char *target,
+                            ir_builder_t *ir)
+{
+    if (!target) {
+        error_set(stmt->line, stmt->column);
+        return 0;
+    }
+    ir_build_br(ir, target);
+    return 1;
+}
+
+/*
+ * Handle a label statement. The label name is recorded in the table
+ * and a corresponding IR label is emitted.
+ */
+static int handle_label_stmt(stmt_t *stmt, label_table_t *labels,
+                             ir_builder_t *ir)
+{
+    const char *ir_name = label_table_get_or_add(labels, stmt->label.name);
+    ir_build_label(ir, ir_name);
+    return 1;
+}
+
+
 
 /*
  * Validate a single statement.  Depending on the statement kind this
@@ -392,24 +448,8 @@ int check_stmt(stmt_t *stmt, symtable_t *vars, symtable_t *funcs,
         ir_value_t tmp;
         return check_expr(stmt->expr.expr, vars, funcs, ir, &tmp) != TYPE_UNKNOWN;
     }
-    case STMT_RETURN: {
-        if (!stmt->ret.expr) {
-            if (func_ret_type != TYPE_VOID) {
-                error_set(stmt->line, stmt->column);
-                return 0;
-            }
-            ir_value_t zero = ir_build_const(ir, 0);
-            ir_build_return(ir, zero);
-            return 1;
-        }
-        ir_value_t val;
-        if (check_expr(stmt->ret.expr, vars, funcs, ir, &val) == TYPE_UNKNOWN) {
-            error_set(stmt->ret.expr->line, stmt->ret.expr->column);
-            return 0;
-        }
-        ir_build_return(ir, val);
-        return 1;
-    }
+    case STMT_RETURN:
+        return handle_return_stmt(stmt, vars, funcs, ir, func_ret_type);
     case STMT_IF:
         return check_if_stmt(stmt, vars, funcs, labels, ir, func_ret_type,
                              break_label, continue_label);
@@ -421,30 +461,17 @@ int check_stmt(stmt_t *stmt, symtable_t *vars, symtable_t *funcs,
         return check_for_stmt(stmt, vars, funcs, labels, ir, func_ret_type);
     case STMT_SWITCH:
         return check_switch_stmt(stmt, vars, funcs, labels, ir, func_ret_type);
-    case STMT_LABEL: {
-        const char *ir_name = label_table_get_or_add(labels, stmt->label.name);
-        ir_build_label(ir, ir_name);
-        return 1;
-    }
+    case STMT_LABEL:
+        return handle_label_stmt(stmt, labels, ir);
     case STMT_GOTO: {
         const char *ir_name = label_table_get_or_add(labels, stmt->goto_stmt.name);
         ir_build_br(ir, ir_name);
         return 1;
     }
     case STMT_BREAK:
-        if (!break_label) {
-            error_set(stmt->line, stmt->column);
-            return 0;
-        }
-        ir_build_br(ir, break_label);
-        return 1;
+        return handle_loop_stmt(stmt, break_label, ir);
     case STMT_CONTINUE:
-        if (!continue_label) {
-            error_set(stmt->line, stmt->column);
-            return 0;
-        }
-        ir_build_br(ir, continue_label);
-        return 1;
+        return handle_loop_stmt(stmt, continue_label, ir);
     case STMT_BLOCK: {
         symbol_t *old_head = vars->head;
         for (size_t i = 0; i < stmt->block.count; i++) {
