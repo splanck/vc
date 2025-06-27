@@ -56,9 +56,64 @@ static int process_file(const char *path, vector_t *macros,
                         const vector_t *incdirs);
 
 /*
- * Process one #include directive.  Searches the provided include
- * directories as well as standard paths and recursively processes
- * the chosen file when the current conditional stack is active.
+ * Locate the full path of an include file.
+ *
+ * The search order mirrors traditional compiler behaviour:
+ *   1. When the include uses quotes and a directory for the current file
+ *      is provided, that directory is checked first.
+ *   2. Each path in "incdirs" is consulted in order.
+ *   3. For quoted includes the plain filename is tried relative to the
+ *      working directory.
+ *   4. Finally the built in standard include directories are searched.
+ *
+ * The resulting path is written to "out_path" if found and a pointer to
+ * it is returned.  NULL is returned when the file does not exist in any
+ * of the locations.
+*/
+static const char *find_include_path(const char *fname, char endc,
+                                     const char *dir,
+                                     const vector_t *incdirs,
+                                     char out_path[512])
+{
+    if (endc == '"' && dir) {
+        snprintf(out_path, 512, "%s%s", dir, fname);
+        if (access(out_path, R_OK) == 0)
+            return out_path;
+    }
+
+    for (size_t i = 0; i < incdirs->count; i++) {
+        const char *base = ((const char **)incdirs->data)[i];
+        snprintf(out_path, 512, "%s/%s", base, fname);
+        if (access(out_path, R_OK) == 0)
+            return out_path;
+    }
+
+    if (endc == '<') {
+        for (size_t i = 0; std_include_dirs[i]; i++) {
+            snprintf(out_path, 512, "%s/%s", std_include_dirs[i], fname);
+            if (access(out_path, R_OK) == 0)
+                return out_path;
+        }
+        return NULL;
+    }
+
+    snprintf(out_path, 512, "%s", fname);
+    if (access(out_path, R_OK) == 0)
+        return out_path;
+
+    for (size_t i = 0; std_include_dirs[i]; i++) {
+        snprintf(out_path, 512, "%s/%s", std_include_dirs[i], fname);
+        if (access(out_path, R_OK) == 0)
+            return out_path;
+    }
+
+    return NULL;
+}
+
+/*
+ * Process one #include directive.  The file name is resolved using
+ * find_include_path() and, when the current conditional stack is
+ * active, the referenced file is processed recursively.
  */
 static int handle_include(char *line, const char *dir, vector_t *macros,
                           vector_t *conds, strbuf_t *out,
@@ -76,41 +131,8 @@ static int handle_include(char *line, const char *dir, vector_t *macros,
         char fname[256];
         snprintf(fname, sizeof(fname), "%.*s", (int)len, start + 1);
         char incpath[512];
-        const char *chosen = NULL;
-        if (endc == '"' && dir) {
-            snprintf(incpath, sizeof(incpath), "%s%s", dir, fname);
-            if (access(incpath, R_OK) == 0)
-                chosen = incpath;
-        }
-        if (!chosen) {
-            for (size_t i = 0; i < incdirs->count && !chosen; i++) {
-                const char *base = ((const char **)incdirs->data)[i];
-                snprintf(incpath, sizeof(incpath), "%s/%s", base, fname);
-                if (access(incpath, R_OK) == 0)
-                    chosen = incpath;
-            }
-        }
-        if (!chosen && endc == '<') {
-            for (size_t i = 0; std_include_dirs[i] && !chosen; i++) {
-                snprintf(incpath, sizeof(incpath), "%s/%s",
-                         std_include_dirs[i], fname);
-                if (access(incpath, R_OK) == 0)
-                    chosen = incpath;
-            }
-        }
-        if (!chosen && endc == '"') {
-            snprintf(incpath, sizeof(incpath), "%s", fname);
-            if (access(incpath, R_OK) == 0)
-                chosen = incpath;
-            else {
-                for (size_t i = 0; std_include_dirs[i] && !chosen; i++) {
-                    snprintf(incpath, sizeof(incpath), "%s/%s",
-                             std_include_dirs[i], fname);
-                    if (access(incpath, R_OK) == 0)
-                        chosen = incpath;
-                }
-            }
-        }
+        const char *chosen = find_include_path(fname, endc, dir, incdirs,
+                                               incpath);
         vector_t subconds;
         vector_init(&subconds, sizeof(cond_state_t));
         int ok = 1;
