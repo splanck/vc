@@ -179,18 +179,18 @@ static int check_union_decl_global(stmt_t *decl, symtable_t *globals)
 }
 
 /*
- * Process a global variable declaration and emit initialization IR.  The
- * variable is added to the global symbol table and its initializer is
- * translated into constant data where possible.
+ * Register a global variable in the symbol table.
+ * Layout any aggregate members and copy them to the inserted symbol.
+ * Returns the created symbol or NULL on failure.
  */
-static int check_var_decl_global(stmt_t *decl, symtable_t *globals,
-                                 ir_builder_t *ir)
+static symbol_t *register_global_symbol(stmt_t *decl, symtable_t *globals)
 {
     if (decl->var_decl.type == TYPE_UNION) {
         size_t max = layout_union_members(decl->var_decl.members,
                                           decl->var_decl.member_count);
         decl->var_decl.elem_size = max;
     }
+
     if (decl->var_decl.type == TYPE_STRUCT) {
         size_t total = layout_struct_members(
             (struct_member_t *)decl->var_decl.members,
@@ -198,8 +198,9 @@ static int check_var_decl_global(stmt_t *decl, symtable_t *globals,
         if (decl->var_decl.member_count || decl->var_decl.tag)
             decl->var_decl.elem_size = total;
     }
-    if (!symtable_add_global(globals, decl->var_decl.name, decl->var_decl.name,
-                             decl->var_decl.type,
+
+    if (!symtable_add_global(globals, decl->var_decl.name,
+                             decl->var_decl.name, decl->var_decl.type,
                              decl->var_decl.array_size,
                              decl->var_decl.elem_size,
                              decl->var_decl.is_static,
@@ -208,94 +209,130 @@ static int check_var_decl_global(stmt_t *decl, symtable_t *globals,
                              decl->var_decl.is_volatile,
                              decl->var_decl.is_restrict)) {
         error_set(decl->line, decl->column);
-        return 0;
+        return NULL;
     }
-    symbol_t *gsym = symtable_lookup_global(globals, decl->var_decl.name);
+
+    symbol_t *sym = symtable_lookup_global(globals, decl->var_decl.name);
+
     if (decl->var_decl.init_list && decl->var_decl.type == TYPE_ARRAY &&
         decl->var_decl.array_size == 0) {
         decl->var_decl.array_size = decl->var_decl.init_count;
-        gsym->array_size = decl->var_decl.array_size;
+        sym->array_size = decl->var_decl.array_size;
     }
+
     if (decl->var_decl.type == TYPE_UNION) {
-        gsym->total_size = decl->var_decl.elem_size;
+        sym->total_size = decl->var_decl.elem_size;
         if (decl->var_decl.member_count) {
-            gsym->members = malloc(decl->var_decl.member_count *
-                                   sizeof(*gsym->members));
-            if (!gsym->members)
-                return 0;
-            gsym->member_count = decl->var_decl.member_count;
-            for (size_t i = 0; i < gsym->member_count; i++) {
+            sym->members = malloc(decl->var_decl.member_count *
+                                  sizeof(*sym->members));
+            if (!sym->members)
+                return NULL;
+            sym->member_count = decl->var_decl.member_count;
+            for (size_t i = 0; i < sym->member_count; i++) {
                 union_member_t *m = &decl->var_decl.members[i];
-                gsym->members[i].name = vc_strdup(m->name);
-                gsym->members[i].type = m->type;
-                gsym->members[i].elem_size = m->elem_size;
-                gsym->members[i].offset = m->offset;
+                sym->members[i].name = vc_strdup(m->name);
+                sym->members[i].type = m->type;
+                sym->members[i].elem_size = m->elem_size;
+                sym->members[i].offset = m->offset;
             }
         }
     }
+
     if (decl->var_decl.type == TYPE_STRUCT) {
-        gsym->struct_total_size = decl->var_decl.elem_size;
+        sym->struct_total_size = decl->var_decl.elem_size;
         if (decl->var_decl.member_count) {
-            gsym->struct_members = malloc(decl->var_decl.member_count *
-                                          sizeof(*gsym->struct_members));
-            if (!gsym->struct_members)
-                return 0;
-            gsym->struct_member_count = decl->var_decl.member_count;
-            for (size_t i = 0; i < gsym->struct_member_count; i++) {
+            sym->struct_members = malloc(decl->var_decl.member_count *
+                                         sizeof(*sym->struct_members));
+            if (!sym->struct_members)
+                return NULL;
+            sym->struct_member_count = decl->var_decl.member_count;
+            for (size_t i = 0; i < sym->struct_member_count; i++) {
                 struct_member_t *m =
                     (struct_member_t *)&decl->var_decl.members[i];
-                gsym->struct_members[i].name = vc_strdup(m->name);
-                gsym->struct_members[i].type = m->type;
-                gsym->struct_members[i].elem_size = m->elem_size;
-                gsym->struct_members[i].offset = m->offset;
+                sym->struct_members[i].name = vc_strdup(m->name);
+                sym->struct_members[i].type = m->type;
+                sym->struct_members[i].elem_size = m->elem_size;
+                sym->struct_members[i].offset = m->offset;
             }
         }
     }
+
+    return sym;
+}
+
+/*
+ * Emit IR to initialize a global variable.
+ * Handles arrays, structs, unions and scalars using constant
+ * expressions only. Returns non-zero on success.
+ */
+static int emit_global_initializer(stmt_t *decl, symbol_t *sym,
+                                   symtable_t *globals, ir_builder_t *ir)
+{
     if (decl->var_decl.is_extern)
         return 1;
 
     if (decl->var_decl.type == TYPE_ARRAY) {
         long long *vals;
-        if (!expand_array_initializer(decl->var_decl.init_list, decl->var_decl.init_count, decl->var_decl.array_size, globals, decl->line, decl->column, &vals))
+        if (!expand_array_initializer(decl->var_decl.init_list,
+                                      decl->var_decl.init_count,
+                                      decl->var_decl.array_size, globals,
+                                      decl->line, decl->column, &vals))
             return 0;
-        ir_build_glob_array(ir, decl->var_decl.name, vals, decl->var_decl.array_size, decl->var_decl.is_static);
+        ir_build_glob_array(ir, decl->var_decl.name, vals,
+                            decl->var_decl.array_size,
+                            decl->var_decl.is_static);
         free(vals);
-                return 1;
-    } else {
-        if (decl->var_decl.init_list) {
-            if (decl->var_decl.type == TYPE_STRUCT) {
-                long long *vals;
-                if (!expand_struct_initializer(decl->var_decl.init_list, decl->var_decl.init_count, gsym, globals, decl->line, decl->column, &vals))
-                    return 0;
-                ir_build_glob_struct(ir, decl->var_decl.name, (int)decl->var_decl.elem_size, decl->var_decl.is_static);
-                free(vals);
-                return 1;
-            } else {
-                error_set(decl->line, decl->column);
-                return 0;
-            }
-        }
-        long long value = 0;
-        if (decl->var_decl.init) {
-            if (!eval_const_expr(decl->var_decl.init, globals, &value)) {
-                error_set(decl->var_decl.init->line,
-                          decl->var_decl.init->column);
-                return 0;
-            }
-        }
-        if (decl->var_decl.type == TYPE_UNION)
-            ir_build_glob_union(ir, decl->var_decl.name,
-                               (int)decl->var_decl.elem_size,
-                               decl->var_decl.is_static);
-        else if (decl->var_decl.type == TYPE_STRUCT)
-            ir_build_glob_struct(ir, decl->var_decl.name,
-                                (int)decl->var_decl.elem_size,
-                                decl->var_decl.is_static);
-        else
-            ir_build_glob_var(ir, decl->var_decl.name, value,
-                              decl->var_decl.is_static);
+        return 1;
     }
+
+    if (decl->var_decl.init_list) {
+        if (decl->var_decl.type == TYPE_STRUCT) {
+            long long *vals;
+            if (!expand_struct_initializer(decl->var_decl.init_list,
+                                           decl->var_decl.init_count, sym,
+                                           globals, decl->line,
+                                           decl->column, &vals))
+                return 0;
+            ir_build_glob_struct(ir, decl->var_decl.name,
+                                 (int)decl->var_decl.elem_size,
+                                 decl->var_decl.is_static);
+            free(vals);
+            return 1;
+        }
+        error_set(decl->line, decl->column);
+        return 0;
+    }
+
+    long long value = 0;
+    if (decl->var_decl.init) {
+        if (!eval_const_expr(decl->var_decl.init, globals, &value)) {
+            error_set(decl->var_decl.init->line, decl->var_decl.init->column);
+            return 0;
+        }
+    }
+
+    if (decl->var_decl.type == TYPE_UNION)
+        ir_build_glob_union(ir, decl->var_decl.name,
+                           (int)decl->var_decl.elem_size,
+                           decl->var_decl.is_static);
+    else if (decl->var_decl.type == TYPE_STRUCT)
+        ir_build_glob_struct(ir, decl->var_decl.name,
+                            (int)decl->var_decl.elem_size,
+                            decl->var_decl.is_static);
+    else
+        ir_build_glob_var(ir, decl->var_decl.name, value,
+                          decl->var_decl.is_static);
+
     return 1;
+}
+
+static int check_var_decl_global(stmt_t *decl, symtable_t *globals,
+                                 ir_builder_t *ir)
+{
+    symbol_t *sym = register_global_symbol(decl, globals);
+    if (!sym)
+        return 0;
+    return emit_global_initializer(decl, sym, globals, ir);
 }
 
 /*
