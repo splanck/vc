@@ -466,6 +466,17 @@ static void cleanup_file_resources(char *text, char **lines, char *dir)
     free(dir);
 }
 
+/*
+ * Free all macros stored in a vector.
+ * Each macro's resources are released and the vector itself is freed.
+ */
+static void free_macro_vector(vector_t *v)
+{
+    for (size_t i = 0; i < v->count; i++)
+        macro_free(&((macro_t *)v->data)[i]);
+    vector_free(v);
+}
+
 /* Iterate over the loaded lines and process each one. */
 static int process_all_lines(char **lines, const char *dir,
                              vector_t *macros, vector_t *conds,
@@ -728,9 +739,7 @@ char *preproc_run(const char *path, const vector_t *include_dirs)
     strbuf_init(&out);
     int ok = process_file(path, &macros, &conds, &out, &search_dirs);
     vector_free(&conds);
-    for (size_t i = 0; i < macros.count; i++)
-        macro_free(&((macro_t *)macros.data)[i]);
-    vector_free(&macros);
+    free_macro_vector(&macros);
     for (size_t i = 0; i < search_dirs.count; i++)
         free(((char **)search_dirs.data)[i]);
     vector_free(&search_dirs);
