@@ -41,6 +41,21 @@ static expr_t *parse_logical_and(parser_t *p);
 static expr_t *parse_logical_or(parser_t *p);
 static expr_t *parse_conditional(parser_t *p);
 
+/* Function pointer type used by parse_binop_chain */
+typedef expr_t *(*parse_fn)(parser_t *);
+
+/*
+ * Helper to parse left-associative binary operator chains that share the
+ * same precedence. The 'sub' parser handles the next higher precedence
+ * expression.  'tok_list' contains the tokens that trigger a binary
+ * operation and 'op_list' maps each token to the corresponding binop_t
+ * value.  On allocation failure or parse error the helper frees any
+ * partially built expressions and returns NULL.
+ */
+static expr_t *parse_binop_chain(parser_t *p, parse_fn sub,
+                                 const token_type_t *tok_list,
+                                 const binop_t *op_list, size_t count);
+
 /*
  * Free all expr_t pointers stored in a vector and release the vector
  * memory itself.  This is useful for cleaning up partially parsed
@@ -262,6 +277,43 @@ static expr_t *parse_primary(parser_t *p)
     return parse_prefix_expr(p);
 }
 
+static expr_t *parse_binop_chain(parser_t *p, parse_fn sub,
+                                 const token_type_t *tok_list,
+                                 const binop_t *op_list, size_t count)
+{
+    expr_t *left = sub(p);
+    if (!left)
+        return NULL;
+
+    while (1) {
+        size_t idx;
+        for (idx = 0; idx < count; idx++) {
+            if (match(p, tok_list[idx]))
+                break;
+        }
+        if (idx == count)
+            break;
+
+        token_t *op_tok = &p->tokens[p->pos - 1];
+        expr_t *right = sub(p);
+        if (!right) {
+            ast_free_expr(left);
+            return NULL;
+        }
+
+        expr_t *tmp = ast_make_binary(op_list[idx], left, right,
+                                      op_tok->line, op_tok->column);
+        if (!tmp) {
+            ast_free_expr(left);
+            ast_free_expr(right);
+            return NULL;
+        }
+        left = tmp;
+    }
+
+    return left;
+}
+
 /*
  * Handle multiplication and division.  The function expects that any
  * higher precedence unary/primary expression has already been consumed
@@ -269,293 +321,91 @@ static expr_t *parse_primary(parser_t *p)
  */
 static expr_t *parse_term(parser_t *p)
 {
-    expr_t *left = parse_primary(p);
-    if (!left)
-        return NULL;
-
-    while (1) {
-        if (match(p, TOK_STAR)) {
-            token_t *op_tok = &p->tokens[p->pos - 1];
-            expr_t *right = parse_primary(p);
-            if (!right) {
-                ast_free_expr(left);
-                return NULL;
-            }
-            left = ast_make_binary(BINOP_MUL, left, right,
-                                  op_tok->line, op_tok->column);
-        } else if (match(p, TOK_SLASH)) {
-            token_t *op_tok = &p->tokens[p->pos - 1];
-            expr_t *right = parse_primary(p);
-            if (!right) {
-                ast_free_expr(left);
-                return NULL;
-            }
-            left = ast_make_binary(BINOP_DIV, left, right,
-                                  op_tok->line, op_tok->column);
-        } else if (match(p, TOK_PERCENT)) {
-            token_t *op_tok = &p->tokens[p->pos - 1];
-            expr_t *right = parse_primary(p);
-            if (!right) {
-                ast_free_expr(left);
-                return NULL;
-            }
-            left = ast_make_binary(BINOP_MOD, left, right,
-                                  op_tok->line, op_tok->column);
-        } else {
-            break;
-        }
-    }
-    return left;
+    static const token_type_t toks[] = { TOK_STAR, TOK_SLASH, TOK_PERCENT };
+    static const binop_t ops[] = { BINOP_MUL, BINOP_DIV, BINOP_MOD };
+    return parse_binop_chain(p, parse_primary, toks, ops,
+                             sizeof(toks) / sizeof(toks[0]));
 }
 
 /* Build addition and subtraction expressions. */
 static expr_t *parse_additive(parser_t *p)
 {
-    expr_t *left = parse_term(p);
-    if (!left)
-        return NULL;
-
-    while (1) {
-        if (match(p, TOK_PLUS)) {
-            token_t *op_tok = &p->tokens[p->pos - 1];
-            expr_t *right = parse_term(p);
-            if (!right) {
-                ast_free_expr(left);
-                return NULL;
-            }
-            left = ast_make_binary(BINOP_ADD, left, right,
-                                  op_tok->line, op_tok->column);
-        } else if (match(p, TOK_MINUS)) {
-            token_t *op_tok = &p->tokens[p->pos - 1];
-            expr_t *right = parse_term(p);
-            if (!right) {
-                ast_free_expr(left);
-                return NULL;
-            }
-            left = ast_make_binary(BINOP_SUB, left, right,
-                                  op_tok->line, op_tok->column);
-        } else {
-            break;
-        }
-    }
-    return left;
+    static const token_type_t toks[] = { TOK_PLUS, TOK_MINUS };
+    static const binop_t ops[] = { BINOP_ADD, BINOP_SUB };
+    return parse_binop_chain(p, parse_term, toks, ops,
+                             sizeof(toks) / sizeof(toks[0]));
 }
 
 /* Parse bitwise shift operations '<<' and '>>'. */
 static expr_t *parse_shift(parser_t *p)
 {
-    expr_t *left = parse_additive(p);
-    if (!left)
-        return NULL;
-
-    while (1) {
-        if (match(p, TOK_SHL)) {
-            token_t *op_tok = &p->tokens[p->pos - 1];
-            expr_t *right = parse_additive(p);
-            if (!right) {
-                ast_free_expr(left);
-                return NULL;
-            }
-            left = ast_make_binary(BINOP_SHL, left, right,
-                                  op_tok->line, op_tok->column);
-        } else if (match(p, TOK_SHR)) {
-            token_t *op_tok = &p->tokens[p->pos - 1];
-            expr_t *right = parse_additive(p);
-            if (!right) {
-                ast_free_expr(left);
-                return NULL;
-            }
-            left = ast_make_binary(BINOP_SHR, left, right,
-                                  op_tok->line, op_tok->column);
-        } else {
-            break;
-        }
-    }
-    return left;
+    static const token_type_t toks[] = { TOK_SHL, TOK_SHR };
+    static const binop_t ops[] = { BINOP_SHL, BINOP_SHR };
+    return parse_binop_chain(p, parse_additive, toks, ops,
+                             sizeof(toks) / sizeof(toks[0]));
 }
 
 /* Comparison operators <, >, <= and >=. */
 static expr_t *parse_relational(parser_t *p)
 {
-    expr_t *left = parse_shift(p);
-    if (!left)
-        return NULL;
-
-    while (1) {
-        if (match(p, TOK_LT)) {
-            token_t *op_tok = &p->tokens[p->pos - 1];
-            expr_t *right = parse_additive(p);
-            if (!right) {
-                ast_free_expr(left);
-                return NULL;
-            }
-            left = ast_make_binary(BINOP_LT, left, right,
-                                  op_tok->line, op_tok->column);
-        } else if (match(p, TOK_GT)) {
-            token_t *op_tok = &p->tokens[p->pos - 1];
-            expr_t *right = parse_additive(p);
-            if (!right) {
-                ast_free_expr(left);
-                return NULL;
-            }
-            left = ast_make_binary(BINOP_GT, left, right,
-                                  op_tok->line, op_tok->column);
-        } else if (match(p, TOK_LE)) {
-            token_t *op_tok = &p->tokens[p->pos - 1];
-            expr_t *right = parse_additive(p);
-            if (!right) {
-                ast_free_expr(left);
-                return NULL;
-            }
-            left = ast_make_binary(BINOP_LE, left, right,
-                                  op_tok->line, op_tok->column);
-        } else if (match(p, TOK_GE)) {
-            token_t *op_tok = &p->tokens[p->pos - 1];
-            expr_t *right = parse_additive(p);
-            if (!right) {
-                ast_free_expr(left);
-                return NULL;
-            }
-            left = ast_make_binary(BINOP_GE, left, right,
-                                  op_tok->line, op_tok->column);
-        } else {
-            break;
-        }
-    }
-    return left;
+    static const token_type_t toks[] = { TOK_LT, TOK_GT, TOK_LE, TOK_GE };
+    static const binop_t ops[] = { BINOP_LT, BINOP_GT, BINOP_LE, BINOP_GE };
+    return parse_binop_chain(p, parse_shift, toks, ops,
+                             sizeof(toks) / sizeof(toks[0]));
 }
 
 /* Parse == and != comparisons. */
 static expr_t *parse_equality(parser_t *p)
 {
-    expr_t *left = parse_relational(p);
-    if (!left)
-        return NULL;
-
-    while (1) {
-        if (match(p, TOK_EQ)) {
-            token_t *op_tok = &p->tokens[p->pos - 1];
-            expr_t *right = parse_relational(p);
-            if (!right) {
-                ast_free_expr(left);
-                return NULL;
-            }
-            left = ast_make_binary(BINOP_EQ, left, right,
-                                  op_tok->line, op_tok->column);
-        } else if (match(p, TOK_NEQ)) {
-            token_t *op_tok = &p->tokens[p->pos - 1];
-            expr_t *right = parse_relational(p);
-            if (!right) {
-                ast_free_expr(left);
-                return NULL;
-            }
-            left = ast_make_binary(BINOP_NEQ, left, right,
-                                  op_tok->line, op_tok->column);
-        } else {
-            break;
-        }
-    }
-    return left;
+    static const token_type_t toks[] = { TOK_EQ, TOK_NEQ };
+    static const binop_t ops[] = { BINOP_EQ, BINOP_NEQ };
+    return parse_binop_chain(p, parse_relational, toks, ops,
+                             sizeof(toks) / sizeof(toks[0]));
 }
 
 /* Parse bitwise AND expressions. */
 static expr_t *parse_bitand(parser_t *p)
 {
-    expr_t *left = parse_equality(p);
-    if (!left)
-        return NULL;
-
-    while (match(p, TOK_AMP)) {
-        token_t *op_tok = &p->tokens[p->pos - 1];
-        expr_t *right = parse_equality(p);
-        if (!right) {
-            ast_free_expr(left);
-            return NULL;
-        }
-        left = ast_make_binary(BINOP_BITAND, left, right,
-                              op_tok->line, op_tok->column);
-    }
-    return left;
+    static const token_type_t toks[] = { TOK_AMP };
+    static const binop_t ops[] = { BINOP_BITAND };
+    return parse_binop_chain(p, parse_equality, toks, ops,
+                             sizeof(toks) / sizeof(toks[0]));
 }
 
 /* Parse bitwise XOR expressions. */
 static expr_t *parse_bitxor(parser_t *p)
 {
-    expr_t *left = parse_bitand(p);
-    if (!left)
-        return NULL;
-
-    while (match(p, TOK_CARET)) {
-        token_t *op_tok = &p->tokens[p->pos - 1];
-        expr_t *right = parse_bitand(p);
-        if (!right) {
-            ast_free_expr(left);
-            return NULL;
-        }
-        left = ast_make_binary(BINOP_BITXOR, left, right,
-                              op_tok->line, op_tok->column);
-    }
-    return left;
+    static const token_type_t toks[] = { TOK_CARET };
+    static const binop_t ops[] = { BINOP_BITXOR };
+    return parse_binop_chain(p, parse_bitand, toks, ops,
+                             sizeof(toks) / sizeof(toks[0]));
 }
 
 /* Parse bitwise OR expressions. */
 static expr_t *parse_bitor(parser_t *p)
 {
-    expr_t *left = parse_bitxor(p);
-    if (!left)
-        return NULL;
-
-    while (match(p, TOK_PIPE)) {
-        token_t *op_tok = &p->tokens[p->pos - 1];
-        expr_t *right = parse_bitxor(p);
-        if (!right) {
-            ast_free_expr(left);
-            return NULL;
-        }
-        left = ast_make_binary(BINOP_BITOR, left, right,
-                              op_tok->line, op_tok->column);
-    }
-    return left;
+    static const token_type_t toks[] = { TOK_PIPE };
+    static const binop_t ops[] = { BINOP_BITOR };
+    return parse_binop_chain(p, parse_bitxor, toks, ops,
+                             sizeof(toks) / sizeof(toks[0]));
 }
 
 /* Parse logical AND expressions. */
 static expr_t *parse_logical_and(parser_t *p)
 {
-    expr_t *left = parse_bitor(p);
-    if (!left)
-        return NULL;
-
-    while (match(p, TOK_LOGAND)) {
-        token_t *op_tok = &p->tokens[p->pos - 1];
-        expr_t *right = parse_bitor(p);
-        if (!right) {
-            ast_free_expr(left);
-            return NULL;
-        }
-        left = ast_make_binary(BINOP_LOGAND, left, right,
-                              op_tok->line, op_tok->column);
-    }
-    return left;
+    static const token_type_t toks[] = { TOK_LOGAND };
+    static const binop_t ops[] = { BINOP_LOGAND };
+    return parse_binop_chain(p, parse_bitor, toks, ops,
+                             sizeof(toks) / sizeof(toks[0]));
 }
 
 /* Parse logical OR expressions. */
 static expr_t *parse_logical_or(parser_t *p)
 {
-    expr_t *left = parse_logical_and(p);
-    if (!left)
-        return NULL;
-
-    while (match(p, TOK_LOGOR)) {
-        token_t *op_tok = &p->tokens[p->pos - 1];
-        expr_t *right = parse_logical_and(p);
-        if (!right) {
-            ast_free_expr(left);
-            return NULL;
-        }
-        left = ast_make_binary(BINOP_LOGOR, left, right,
-                              op_tok->line, op_tok->column);
-    }
-    return left;
+    static const token_type_t toks[] = { TOK_LOGOR };
+    static const binop_t ops[] = { BINOP_LOGOR };
+    return parse_binop_chain(p, parse_logical_and, toks, ops,
+                             sizeof(toks) / sizeof(toks[0]));
 }
 
 /* Parse conditional expressions with ?: */
