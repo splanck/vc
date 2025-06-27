@@ -11,11 +11,14 @@
 #include "ir_core.h"
 
 /*
- * Generate a human readable string for the IR. Each instruction is
- * printed on a separate line starting with the opcode name followed by
- * the fields "dest", "src1", "src2", "imm", "name" and "data".  For
- * IR_GLOB_ARRAY the count is printed instead of the generic fields.
- * Caller must free the returned buffer.
+ * Generate a human readable string for the IR.
+ *
+ * Each instruction is printed on a separate line beginning with the
+ * opcode name followed by the common fields "dest", "src1", "src2",
+ * "imm", "name" and "data". For IR_GLOB_ARRAY the element count is
+ * listed instead. Values that were spilled by the register allocator
+ * are annotated with their stack slot.  Caller must free the returned
+ * buffer.
  */
 char *ir_to_string(ir_builder_t *b);
 
