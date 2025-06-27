@@ -1,6 +1,10 @@
 /*
  * Macro handling for the preprocessor.
  *
+ * Defines the `macro_t` structure and helper routines used to store,
+ * expand and query macros.  Expansion occurs line by line and is
+ * recursive so macro bodies may themselves contain macro invocations.
+ *
  * Part of vc under the BSD 2-Clause license.
  * See LICENSE for details.
  */

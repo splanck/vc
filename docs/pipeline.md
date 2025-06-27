@@ -41,8 +41,11 @@ The modules described below implement these steps.
 ## Modules
 
 ### preprocessor
-Expands `#include` directives and simple object-like `#define` macros before lexing.
-Basic conditional directives (`#if`, `#ifdef`, `#ifndef`, `#elif`, `#else` and `#endif`) are supported using simple expression evaluation with the `defined` operator.
+Expands `#include` directives and simple object-like `#define` macros before
+lexing.  Basic conditional directives (`#if`, `#ifdef`, `#ifndef`, `#elif`,
+`#else` and `#endif`) are supported using simple expression evaluation with the
+`defined` operator.  See [preprocessor workflow](preprocessor.md) for a more
+detailed description.
 
 ### lexer
 Translates raw characters into tokens for the parser.

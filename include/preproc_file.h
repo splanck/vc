@@ -1,6 +1,12 @@
 /*
  * File processing entry points for the preprocessor.
  *
+ * The preprocessor reads a source file, handles directives such as
+ * `#include`, `#define`, `#ifdef` and friends and returns the expanded
+ * text.  Included files are processed recursively using the caller
+ * provided search paths.  Macro definitions are collected into a simple
+ * vector and expanded on demand.
+ *
  * Part of vc under the BSD 2-Clause license.
  * See LICENSE for details.
  */

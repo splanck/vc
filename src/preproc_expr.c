@@ -1,5 +1,11 @@
 /*
- * Expression parsing for conditional directives.
+ * Tiny expression parser used by the preprocessor.
+ *
+ * This module implements a very small recursive descent parser for the
+ * arithmetic used in `#if` and related directives.  The grammar supports the
+ * `defined` operator, integer constants and the logical `!`, `&&` and `||`
+ * operators.  Expressions are evaluated to an integer result used to control
+ * conditional blocks during preprocessing.
  *
  * Part of vc under the BSD 2-Clause license.
  * See LICENSE for details.
