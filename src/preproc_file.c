@@ -151,6 +151,23 @@ static int handle_include(char *line, const char *dir, vector_t *macros,
     return 1;
 }
 
+/* Split a comma separated list of parameters and append trimmed names to out */
+static void tokenize_param_list(char *list, vector_t *out)
+{
+    char *tok; char *sp;
+    tok = strtok_r(list, ",", &sp);
+    while (tok) {
+        while (*tok == ' ' || *tok == '\t')
+            tok++;
+        char *end = tok + strlen(tok);
+        while (end > tok && (end[-1] == ' ' || end[-1] == '\t'))
+            end--;
+        char *dup = vc_strndup(tok, (size_t)(end - tok));
+        vector_push(out, &dup);
+        tok = strtok_r(NULL, ",", &sp);
+    }
+}
+
 /*
  * Parse a comma separated parameter list starting at *p.
  *
@@ -158,7 +175,8 @@ static int handle_include(char *line, const char *dir, vector_t *macros,
  * name.  On return the vector "out" contains the parameter names and
  * the returned pointer points to the character following the closing
  * ')', or the first non-whitespace character when no parameter list
- * was present.  The macro name is NUL-terminated by this routine. */
+ * was present.  The macro name is NUL-terminated by this routine.
+ */
 static char *parse_macro_params(char *p, vector_t *out)
 {
     vector_init(out, sizeof(char *));
@@ -169,18 +187,7 @@ static char *parse_macro_params(char *p, vector_t *out)
             p++;
         if (*p == ')') {
             char *plist = vc_strndup(start, (size_t)(p - start));
-            char *tok; char *sp;
-            tok = strtok_r(plist, ",", &sp);
-            while (tok) {
-                while (*tok == ' ' || *tok == '\t')
-                    tok++;
-                char *end = tok + strlen(tok);
-                while (end > tok && (end[-1] == ' ' || end[-1] == '\t'))
-                    end--;
-                char *dup = vc_strndup(tok, (size_t)(end - tok));
-                vector_push(out, &dup);
-                tok = strtok_r(NULL, ",", &sp);
-            }
+            tokenize_param_list(plist, out);
             free(plist);
             p++; /* skip ')' */
         } else {
