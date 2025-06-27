@@ -41,6 +41,21 @@ static expr_t *parse_logical_and(parser_t *p);
 static expr_t *parse_logical_or(parser_t *p);
 static expr_t *parse_conditional(parser_t *p);
 
+/*
+ * Free all expr_t pointers stored in a vector and release the vector
+ * memory itself.  This is useful for cleaning up partially parsed
+ * argument lists on error paths.
+ */
+static void free_expr_vector(vector_t *v);
+
+static void free_expr_vector(vector_t *v)
+{
+    if (!v)
+        return;
+    for (size_t i = 0; i < v->count; i++)
+        ast_free_expr(((expr_t **)v->data)[i]);
+    vector_free(v);
+}
 
 /* Parse numeric, string and character literals. */
 static expr_t *parse_literal(parser_t *p)
@@ -74,23 +89,17 @@ static expr_t *parse_identifier_expr(parser_t *p)
             do {
                 expr_t *arg = parse_expression(p);
                 if (!arg) {
-                    for (size_t i = 0; i < args_v.count; i++)
-                        ast_free_expr(((expr_t **)args_v.data)[i]);
-                    vector_free(&args_v);
+                    free_expr_vector(&args_v);
                     return NULL;
                 }
                 if (!vector_push(&args_v, &arg)) {
                     ast_free_expr(arg);
-                    for (size_t i = 0; i < args_v.count; i++)
-                        ast_free_expr(((expr_t **)args_v.data)[i]);
-                    vector_free(&args_v);
+                    free_expr_vector(&args_v);
                     return NULL;
                 }
             } while (match(p, TOK_COMMA));
             if (!match(p, TOK_RPAREN)) {
-                for (size_t i = 0; i < args_v.count; i++)
-                    ast_free_expr(((expr_t **)args_v.data)[i]);
-                vector_free(&args_v);
+                free_expr_vector(&args_v);
                 return NULL;
             }
         }
