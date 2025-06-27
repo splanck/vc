@@ -1,6 +1,11 @@
 /*
  * Emitters for arithmetic IR instructions.
  *
+ * Functions in this file translate high level arithmetic operations to
+ * x86 assembly after register allocation.  Helpers choose the correct
+ * register names and instruction suffixes depending on whether the
+ * 32-bit or 64-bit backend is requested via the `x64` flag.
+ *
  * Part of vc under the BSD 2-Clause license.
  * See LICENSE for details.
  */
@@ -284,7 +289,14 @@ static void emit_logor(strbuf_t *sb, ir_instr_t *ins,
     strbuf_appendf(sb, "%s:\n", end);
 }
 
-/* Top-level dispatcher for arithmetic instructions. */
+/*
+ * Top-level dispatcher for arithmetic instructions.
+ *
+ * `ra` contains the locations assigned by the register allocator and is
+ * used to decide whether a result must be written back to memory.  The
+ * `x64` flag selects between 32- and 64-bit instruction forms and register
+ * names.
+ */
 void emit_arith_instr(strbuf_t *sb, ir_instr_t *ins,
                       regalloc_t *ra, int x64)
 {

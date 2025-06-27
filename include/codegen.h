@@ -1,6 +1,11 @@
 /*
  * Interfaces for generating assembly from IR.
  *
+ * The public code generation API converts the intermediate representation
+ * into x86 assembly.  Each routine accepts a flag selecting 32- or
+ * 64-bit output so that the caller may target either variant of the
+ * architecture.
+ *
  * Part of vc under the BSD 2-Clause license.
  * See LICENSE for details.
  */
@@ -14,23 +19,29 @@
 /*
  * Emit the full x86 assembly for `ir` to `out`.
  *
- * The function first outputs any IR global directives under a `.data`
- * section. The instruction stream is then translated to x86 using the
- * register allocator and written after an optional `.text` directive.
- * Pass a non-zero `x86_64` to produce 64-bit instructions.
+ * Global directives such as string literals are written first under a
+ * `.data` section.  The instruction stream is then lowered via the
+ * register allocator and printed after an optional `.text` header.
+ * Passing a non-zero `x86_64` enables 64-bit register names and pointer
+ * sizes.
  */
 void codegen_emit_x86(FILE *out, ir_builder_t *ir, int x86_64);
 
 /*
  * Convert the IR to an assembly string.
  *
- * Only the instruction stream is returned. Global data directives are
- * omitted. The caller owns the returned buffer and must free it. Use
- * `x86_64` to choose between 32- and 64-bit code generation.
+ * Only the instruction stream is returned; global data is omitted.  The
+ * caller owns the returned buffer and must free it.  The `x86_64` flag
+ * selects whether 32- or 64-bit mnemonics are produced.
  */
 char *codegen_ir_to_string(ir_builder_t *ir, int x86_64);
 
-/* Set whether function symbols should be exported */
+/*
+ * Set whether function symbols should be exported.
+ *
+ * When enabled, the generated assembly marks each function with `.globl`
+ * so that it is visible to the linker.
+ */
 void codegen_set_export(int flag);
 
 #endif /* VC_CODEGEN_H */
