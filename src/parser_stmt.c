@@ -26,6 +26,9 @@ stmt_t *parser_parse_for_stmt(parser_t *p);
 stmt_t *parser_parse_switch_stmt(parser_t *p);
 
 static stmt_t *parse_block(parser_t *p);
+static stmt_t *parse_declaration_stmt(parser_t *p);
+static stmt_t *parse_jump_stmt(parser_t *p);
+static stmt_t *parse_flow_stmt(parser_t *p);
 stmt_t *parser_parse_stmt(parser_t *p);
 
 /* Parse a "{...}" block recursively collecting inner statements. */
@@ -57,32 +60,19 @@ static stmt_t *parse_block(parser_t *p)
     return ast_make_block(stmts, count, lb_tok->line, lb_tok->column);
 }
 
-
-
-
-/*
- * Parse a single statement at the current position.  This function
- * delegates to the specific helpers for declarations, control flow
- * constructs and expression statements.  It returns the constructed
- * stmt_t or NULL on failure.
- */
-stmt_t *parser_parse_stmt(parser_t *p)
+/* Parse a variable or type declaration statement if present. */
+static stmt_t *parse_declaration_stmt(parser_t *p)
 {
     token_t *tok = peek(p);
-    if (tok && tok->type == TOK_LBRACE)
-        return parse_block(p);
+    if (!tok)
+        return NULL;
 
-    if (match(p, TOK_LABEL)) {
-        token_t *lbl = &p->tokens[p->pos - 1];
-        return ast_make_label(lbl->lexeme, lbl->line, lbl->column);
-    }
-
-    tok = peek(p);
     size_t save = p->pos;
     int has_static = match(p, TOK_KW_STATIC);
     int has_reg = match(p, TOK_KW_REGISTER);
     int has_const = match(p, TOK_KW_CONST);
     int has_vol = match(p, TOK_KW_VOLATILE);
+
     if (match(p, TOK_KW_ENUM)) {
         token_t *next = peek(p);
         if (next && next->type == TOK_LBRACE) {
@@ -92,7 +82,8 @@ stmt_t *parser_parse_stmt(parser_t *p)
         } else if (next && next->type == TOK_IDENT) {
             p->pos++;
             token_t *after = peek(p);
-            if (!has_static && !has_reg && !has_const && !has_vol && after && after->type == TOK_LBRACE) {
+            if (!has_static && !has_reg && !has_const && !has_vol && after &&
+                after->type == TOK_LBRACE) {
                 p->pos = save;
                 match(p, TOK_KW_ENUM);
                 return parser_parse_enum_decl(p);
@@ -103,6 +94,7 @@ stmt_t *parser_parse_stmt(parser_t *p)
             p->pos = save;
         }
     }
+
     if (match(p, TOK_KW_STRUCT)) {
         token_t *next = peek(p);
         if (next && next->type == TOK_LBRACE) {
@@ -111,7 +103,8 @@ stmt_t *parser_parse_stmt(parser_t *p)
         } else if (next && next->type == TOK_IDENT) {
             p->pos++;
             token_t *after = peek(p);
-            if (!has_static && !has_reg && !has_const && !has_vol && after && after->type == TOK_LBRACE) {
+            if (!has_static && !has_reg && !has_const && !has_vol && after &&
+                after->type == TOK_LBRACE) {
                 p->pos = save;
                 return parser_parse_struct_decl(p);
             }
@@ -128,7 +121,8 @@ stmt_t *parser_parse_stmt(parser_t *p)
         } else if (next && next->type == TOK_IDENT) {
             p->pos++;
             token_t *after = peek(p);
-            if (!has_static && !has_reg && !has_const && !has_vol && after && after->type == TOK_LBRACE) {
+            if (!has_static && !has_reg && !has_const && !has_vol && after &&
+                after->type == TOK_LBRACE) {
                 p->pos = save;
                 return parser_parse_union_decl(p);
             }
@@ -140,6 +134,7 @@ stmt_t *parser_parse_stmt(parser_t *p)
     } else {
         p->pos = save;
     }
+
     if (tok && tok->type == TOK_KW_STATIC)
         return parser_parse_var_decl(p);
     if (tok && tok->type == TOK_KW_REGISTER)
@@ -154,7 +149,12 @@ stmt_t *parser_parse_stmt(parser_t *p)
                 tok->type == TOK_KW_BOOL || tok->type == TOK_KW_UNSIGNED)) {
         return parser_parse_var_decl(p);
     }
+    return NULL;
+}
 
+/* Parse return, break, continue and goto statements. */
+static stmt_t *parse_jump_stmt(parser_t *p)
+{
     if (match(p, TOK_KW_RETURN)) {
         token_t *kw_tok = &p->tokens[p->pos - 1];
         expr_t *expr = NULL;
@@ -194,18 +194,61 @@ stmt_t *parser_parse_stmt(parser_t *p)
         return ast_make_goto(name, kw_tok->line, kw_tok->column);
     }
 
-    tok = peek(p);
-    if (tok && tok->type == TOK_KW_IF)
+    return NULL;
+}
+
+/* Dispatch to control flow helpers for if/while/do/for/switch. */
+static stmt_t *parse_flow_stmt(parser_t *p)
+{
+    token_t *tok = peek(p);
+    if (!tok)
+        return NULL;
+
+    if (tok->type == TOK_KW_IF)
         return parser_parse_if_stmt(p);
-    if (tok && tok->type == TOK_KW_WHILE)
+    if (tok->type == TOK_KW_WHILE)
         return parser_parse_while_stmt(p);
-    if (tok && tok->type == TOK_KW_DO)
+    if (tok->type == TOK_KW_DO)
         return parser_parse_do_while_stmt(p);
-    if (tok && tok->type == TOK_KW_FOR)
+    if (tok->type == TOK_KW_FOR)
         return parser_parse_for_stmt(p);
-    if (tok && tok->type == TOK_KW_SWITCH)
+    if (tok->type == TOK_KW_SWITCH)
         return parser_parse_switch_stmt(p);
 
+    return NULL;
+}
+
+
+
+
+/*
+ * Parse a single statement at the current position.  This function
+ * delegates to the specific helpers for declarations, control flow
+ * constructs and expression statements.  It returns the constructed
+ * stmt_t or NULL on failure.
+ */
+stmt_t *parser_parse_stmt(parser_t *p)
+{
+    token_t *tok = peek(p);
+    if (tok && tok->type == TOK_LBRACE)
+        return parse_block(p);
+
+    if (match(p, TOK_LABEL)) {
+        token_t *lbl = &p->tokens[p->pos - 1];
+        return ast_make_label(lbl->lexeme, lbl->line, lbl->column);
+    }
+
+    stmt_t *s = parse_declaration_stmt(p);
+    if (s)
+        return s;
+
+    s = parse_jump_stmt(p);
+    if (s)
+        return s;
+
+    s = parse_flow_stmt(p);
+    if (s)
+        return s;
 
     expr_t *expr = parser_parse_expr(p);
     if (!expr || !match(p, TOK_SEMI)) {
