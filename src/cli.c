@@ -81,6 +81,53 @@ static int push_source(cli_options_t *opts, const char *src)
 }
 
 /*
+ * Add an include directory to "opts->include_dirs". Returns 0 on success
+ * and 1 on out-of-memory failure.
+ */
+static int add_include_dir(cli_options_t *opts, const char *dir)
+{
+    if (!vector_push(&opts->include_dirs, &dir)) {
+        fprintf(stderr, "Out of memory\n");
+        return 1;
+    }
+    return 0;
+}
+
+/*
+ * Set the optimization level and toggle individual passes accordingly.
+ */
+static void set_opt_level(cli_options_t *opts, const char *level)
+{
+    opts->opt_cfg.opt_level = atoi(level);
+    if (opts->opt_cfg.opt_level <= 0) {
+        opts->opt_cfg.fold_constants = 0;
+        opts->opt_cfg.dead_code = 0;
+        opts->opt_cfg.const_prop = 0;
+    } else {
+        opts->opt_cfg.fold_constants = 1;
+        opts->opt_cfg.dead_code = 1;
+        opts->opt_cfg.const_prop = 1;
+    }
+}
+
+/*
+ * Parse and set the language standard string. Returns 0 on success and 1
+ * on unknown standard.
+ */
+static int set_standard(cli_options_t *opts, const char *std)
+{
+    if (strcmp(std, "c99") == 0)
+        opts->std = STD_C99;
+    else if (strcmp(std, "gnu99") == 0)
+        opts->std = STD_GNU99;
+    else {
+        fprintf(stderr, "Unknown standard '%s'\n", std);
+        return 1;
+    }
+    return 0;
+}
+
+/*
  * Handle a single getopt option.  "opt" is the value returned by
  * getopt_long(), "arg" is the option argument if any and "prog" is used for
  * help output.  Returns 0 on success and 1 on error.  The function may exit
@@ -103,22 +150,11 @@ static int handle_option(int opt, const char *arg, const char *prog,
         opts->compile = 1;
         break;
     case 'I':
-        if (!vector_push(&opts->include_dirs, &arg)) {
-            fprintf(stderr, "Out of memory\n");
+        if (add_include_dir(opts, arg))
             return 1;
-        }
         break;
     case 'O':
-        opts->opt_cfg.opt_level = atoi(arg);
-        if (opts->opt_cfg.opt_level <= 0) {
-            opts->opt_cfg.fold_constants = 0;
-            opts->opt_cfg.dead_code = 0;
-            opts->opt_cfg.const_prop = 0;
-        } else {
-            opts->opt_cfg.fold_constants = 1;
-            opts->opt_cfg.dead_code = 1;
-            opts->opt_cfg.const_prop = 1;
-        }
+        set_opt_level(opts, arg);
         break;
     case 1:
         opts->opt_cfg.fold_constants = 0;
@@ -146,14 +182,8 @@ static int handle_option(int opt, const char *arg, const char *prog,
         opts->link = 1;
         break;
     case 8:
-        if (strcmp(arg, "c99") == 0)
-            opts->std = STD_C99;
-        else if (strcmp(arg, "gnu99") == 0)
-            opts->std = STD_GNU99;
-        else {
-            fprintf(stderr, "Unknown standard '%s'\n", arg);
+        if (set_standard(opts, arg))
             return 1;
-        }
         break;
     default:
         print_usage(prog);
