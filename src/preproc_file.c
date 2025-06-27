@@ -337,6 +337,75 @@ static void handle_pragma(char *line, vector_t *conds, strbuf_t *out)
     }
 }
 
+/* Small helpers used by process_file */
+static int process_include_line(char *line, const char *dir, vector_t *macros,
+                                vector_t *conds, strbuf_t *out,
+                                const vector_t *incdirs)
+{
+    return handle_include(line, dir, macros, conds, out, incdirs);
+}
+
+static int process_line_directive(char *line, vector_t *conds, strbuf_t *out)
+{
+    char *p = line + 5;
+    while (*p == ' ' || *p == '\t')
+        p++;
+    char *start = p;
+    while (isdigit((unsigned char)*p))
+        p++;
+    int lineno = atoi(start);
+    while (*p == ' ' || *p == '\t')
+        p++;
+    char *fname = NULL;
+    if (*p == '"') {
+        p++;
+        char *fstart = p;
+        while (*p && *p != '"')
+            p++;
+        if (*p == '"')
+            fname = vc_strndup(fstart, (size_t)(p - fstart));
+    }
+    if (stack_active(conds)) {
+        strbuf_appendf(out, "# %d", lineno);
+        if (fname)
+            strbuf_appendf(out, " \"%s\"", fname);
+        strbuf_append(out, "\n");
+    }
+    free(fname);
+    return 1;
+}
+
+static int process_define_line(char *line, vector_t *macros, vector_t *conds)
+{
+    return handle_define(line, macros, conds);
+}
+
+static int process_undef_line(char *line, vector_t *macros, vector_t *conds)
+{
+    char *n = line + 6;
+    while (*n == ' ' || *n == '\t')
+        n++;
+    char *id = n;
+    while (isalnum((unsigned char)*n) || *n == '_')
+        n++;
+    *n = '\0';
+    if (stack_active(conds))
+        remove_macro(macros, id);
+    return 1;
+}
+
+static int process_pragma_line(char *line, vector_t *conds, strbuf_t *out)
+{
+    handle_pragma(line, conds, out);
+    return 1;
+}
+
+static int process_conditional_line(char *line, vector_t *macros, vector_t *conds)
+{
+    handle_conditional(line, macros, conds);
+    return 1;
+}
+
 /*
  * Core file processing routine.  Reads the file, handles directives
  * and macro expansion line by line, writing the preprocessed result
@@ -361,61 +430,22 @@ static int process_file(const char *path, vector_t *macros,
     while (line) {
         while (*line == ' ' || *line == '\t')
             line++;
+        int ok = 1;
         if (strncmp(line, "#include", 8) == 0 &&
             (line[8] == ' ' || line[8] == '\t')) {
-            if (!handle_include(line, dir, macros, conds, out, incdirs)) {
-                free(text);
-                free(dir);
-                return 0;
-            }
+            ok = process_include_line(line, dir, macros, conds, out, incdirs);
         } else if (strncmp(line, "#line", 5) == 0 &&
                    isspace((unsigned char)line[5])) {
-            char *p = line + 5;
-            while (*p == ' ' || *p == '\t')
-                p++;
-            char *start = p;
-            while (isdigit((unsigned char)*p))
-                p++;
-            int lineno = atoi(start);
-            while (*p == ' ' || *p == '\t')
-                p++;
-            char *fname = NULL;
-            if (*p == '"') {
-                p++;
-                char *fstart = p;
-                while (*p && *p != '"')
-                    p++;
-                if (*p == '"')
-                    fname = vc_strndup(fstart, (size_t)(p - fstart));
-            }
-            if (stack_active(conds)) {
-                strbuf_appendf(out, "# %d", lineno);
-                if (fname)
-                    strbuf_appendf(out, " \"%s\"", fname);
-                strbuf_append(out, "\n");
-            }
-            free(fname);
+            ok = process_line_directive(line, conds, out);
         } else if (strncmp(line, "#define", 7) == 0 &&
                    (line[7] == ' ' || line[7] == '\t')) {
-            if (!handle_define(line, macros, conds)) {
-                free(text);
-                free(dir);
-                return 0;
-            }
+            ok = process_define_line(line, macros, conds);
         } else if (strncmp(line, "#undef", 6) == 0 &&
                    isspace((unsigned char)line[6])) {
-            char *n = line + 6;
-            while (*n == ' ' || *n == '\t')
-                n++;
-            char *id = n;
-            while (isalnum((unsigned char)*n) || *n == '_')
-                n++;
-            *n = '\0';
-            if (stack_active(conds))
-                remove_macro(macros, id);
+            ok = process_undef_line(line, macros, conds);
         } else if (strncmp(line, "#pragma", 7) == 0 &&
                    isspace((unsigned char)line[7])) {
-            handle_pragma(line, conds, out);
+            ok = process_pragma_line(line, conds, out);
         } else if (strncmp(line, "#", 1) == 0 &&
                    (strncmp(line, "#ifdef", 6) == 0 ||
                     strncmp(line, "#ifndef", 7) == 0 ||
@@ -423,7 +453,7 @@ static int process_file(const char *path, vector_t *macros,
                     strncmp(line, "#elif", 5) == 0 ||
                     strncmp(line, "#else", 5) == 0 ||
                     strncmp(line, "#endif", 6) == 0)) {
-            handle_conditional(line, macros, conds);
+            ok = process_conditional_line(line, macros, conds);
         } else {
             if (stack_active(conds)) {
                 strbuf_t tmp;
@@ -433,6 +463,11 @@ static int process_file(const char *path, vector_t *macros,
                 strbuf_append(out, tmp.data);
                 strbuf_free(&tmp);
             }
+        }
+        if (!ok) {
+            free(text);
+            free(dir);
+            return 0;
         }
         line = strtok_r(NULL, "\n", &saveptr);
     }
