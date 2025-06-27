@@ -76,6 +76,13 @@ static int compile_source_obj(const char *source, const cli_options_t *cli,
 static int run_link_command(const vector_t *objs, const char *output,
                             int use_x86_64);
 
+/* Write the entry stub assembly to a temporary file. */
+static int write_startup_asm(int use_x86_64, char **out_path);
+
+/* Assemble the stub into an object file. */
+static int assemble_startup_obj(const char *asm_path, int use_x86_64,
+                               char **out_path);
+
 /* Create an object file containing the entry stub for linking. */
 static int create_startup_object(int use_x86_64, char **out_path);
 
@@ -357,8 +364,8 @@ static int compile_unit(const char *source, const cli_options_t *cli,
     return ok;
 }
 
-/* Create object file with program entry point */
-static int create_startup_object(int use_x86_64, char **out_path)
+/* Write the entry stub assembly to a temporary file. */
+static int write_startup_asm(int use_x86_64, char **out_path)
 {
     char asmname[] = "/tmp/vcstubXXXXXX";
     int asmfd = mkstemp(asmname);
@@ -373,33 +380,56 @@ static int create_startup_object(int use_x86_64, char **out_path)
         unlink(asmname);
         return 0;
     }
-    if (use_x86_64)
+    if (use_x86_64) {
         fputs(".globl _start\n_start:\n    call main\n    mov %rax, %rdi\n    mov $60, %rax\n    syscall\n", stub);
-    else
+    } else {
         fputs(".globl _start\n_start:\n    call main\n    mov %eax, %ebx\n    mov $1, %eax\n    int $0x80\n", stub);
+    }
     fclose(stub);
 
+    *out_path = vc_strdup(asmname);
+    return 1;
+}
+
+/* Assemble the entry stub into an object file. */
+static int assemble_startup_obj(const char *asm_path, int use_x86_64,
+                               char **out_path)
+{
     char objname[] = "/tmp/vcobjXXXXXX";
     int objfd = mkstemp(objname);
     if (objfd < 0) {
         perror("mkstemp");
-        unlink(asmname);
         return 0;
     }
     close(objfd);
+
     char cmd[512];
     const char *arch_flag = use_x86_64 ? "-m64" : "-m32";
     snprintf(cmd, sizeof(cmd), "cc -x assembler %s -c %s -o %s", arch_flag,
-             asmname, objname);
+             asm_path, objname);
     int ret = system(cmd);
-    unlink(asmname);
     if (ret != 0) {
         fprintf(stderr, "cc failed\n");
         unlink(objname);
         return 0;
     }
+
     *out_path = vc_strdup(objname);
     return 1;
+}
+
+/* Create object file with program entry point */
+static int create_startup_object(int use_x86_64, char **out_path)
+{
+    char *asmfile = NULL;
+    int ok = write_startup_asm(use_x86_64, &asmfile);
+    if (ok)
+        ok = assemble_startup_obj(asmfile, use_x86_64, out_path);
+    if (asmfile) {
+        unlink(asmfile);
+        free(asmfile);
+    }
+    return ok;
 }
 
 /* Compile a single source file to a temporary object. */
