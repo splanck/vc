@@ -1,6 +1,10 @@
 /*
  * Expression evaluation used by the preprocessor.
  *
+ * Provides `eval_expr` which parses and evaluates the limited boolean
+ * expressions permitted in conditional directives.  Evaluation uses the
+ * currently defined macros to resolve the `defined` operator.
+ *
  * Part of vc under the BSD 2-Clause license.
  * See LICENSE for details.
  */

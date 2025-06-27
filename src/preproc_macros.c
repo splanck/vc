@@ -2,6 +2,11 @@
 /*
  * Macro table management and expansion logic.
  *
+ * This module stores macro definitions and performs textual replacement
+ * during preprocessing.  Macros may be object-like or take parameters,
+ * supporting the `#` stringize and `##` token pasting operators.  Macro
+ * bodies are expanded recursively so definitions can reference other macros.
+ *
  * Part of vc under the BSD 2-Clause license.
  * See LICENSE for details.
  */

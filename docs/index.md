@@ -11,6 +11,8 @@ provides an overview of all available documentation.
   tests.
 - [Compilation pipeline](pipeline.md) – detailed description of each stage of
   compilation.
+- [Preprocessor workflow](preprocessor.md) – how macros and directives are
+  handled before lexing.
 - [Supported language features](language_features.md) – syntax and semantics
   currently implemented.
 - [Command-line usage](command_line.md) – available options and example

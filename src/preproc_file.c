@@ -6,7 +6,9 @@
  * processing.  It works with the helpers in `preproc_macros.c`
  * and `preproc_expr.c` to expand macros and evaluate conditional
  * expressions, forming a small stand-alone preprocessor used by
- * the compiler.
+ * the compiler.  The core routine `process_file` reads input one
+ * line at a time, handles `#include`, `#define`, conditional blocks
+ * and macro expansion, and writes the final text to a buffer.
  *
  * Part of vc under the BSD 2-Clause Simplified License.
  * See LICENSE for details.
