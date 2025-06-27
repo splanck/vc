@@ -18,6 +18,7 @@
 /* Forward declaration from parser_decl.c */
 stmt_t *parser_parse_var_decl(parser_t *p);
 
+/* Parse an if statement starting at the 'if' keyword. */
 stmt_t *parser_parse_if_stmt(parser_t *p)
 {
     if (!match(p, TOK_KW_IF))
@@ -48,6 +49,7 @@ stmt_t *parser_parse_if_stmt(parser_t *p)
                        kw_tok->line, kw_tok->column);
 }
 
+/* Parse a while loop beginning with the 'while' keyword. */
 stmt_t *parser_parse_while_stmt(parser_t *p)
 {
     if (!match(p, TOK_KW_WHILE))
@@ -68,6 +70,7 @@ stmt_t *parser_parse_while_stmt(parser_t *p)
     return ast_make_while(cond, body, kw_tok->line, kw_tok->column);
 }
 
+/* Parse a do-while loop starting at the 'do' keyword. */
 stmt_t *parser_parse_do_while_stmt(parser_t *p)
 {
     if (!match(p, TOK_KW_DO))
@@ -98,6 +101,7 @@ stmt_t *parser_parse_do_while_stmt(parser_t *p)
     return ast_make_do_while(cond, body, kw_tok->line, kw_tok->column);
 }
 
+/* Parse a for loop beginning with the 'for' keyword. */
 stmt_t *parser_parse_for_stmt(parser_t *p)
 {
     if (!match(p, TOK_KW_FOR))
@@ -150,6 +154,7 @@ stmt_t *parser_parse_for_stmt(parser_t *p)
                         kw_tok->line, kw_tok->column);
 }
 
+/* Parse a switch statement starting at the 'switch' keyword. */
 stmt_t *parser_parse_switch_stmt(parser_t *p)
 {
     if (!match(p, TOK_KW_SWITCH))

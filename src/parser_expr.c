@@ -175,6 +175,7 @@ static expr_t *parse_base_term(parser_t *p)
     return base;
 }
 
+/* Apply any postfix operators to a base term. */
 static expr_t *parse_postfix_expr(parser_t *p)
 {
     expr_t *base = parse_base_term(p);
@@ -183,6 +184,7 @@ static expr_t *parse_postfix_expr(parser_t *p)
     return parse_call_or_postfix(p, base);
 }
 
+/* Handle prefix unary operators before a primary expression. */
 static expr_t *parse_prefix_expr(parser_t *p)
 {
     token_t *tok = peek(p);
@@ -245,6 +247,7 @@ static expr_t *parse_prefix_expr(parser_t *p)
     return parse_postfix_expr(p);
 }
 
+/* Wrapper to start prefix expression parsing. */
 static expr_t *parse_primary(parser_t *p)
 {
     return parse_prefix_expr(p);
