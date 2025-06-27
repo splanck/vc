@@ -11,6 +11,7 @@
 
 #define SCRATCH_REG 0
 
+/* Format the register or stack location for operand `id`. */
 static const char *loc_str(char buf[32], regalloc_t *ra, int id, int x64)
 {
     if (!ra || id <= 0)
@@ -25,6 +26,7 @@ static const char *loc_str(char buf[32], regalloc_t *ra, int id, int x64)
     return buf;
 }
 
+/* Emit x86 for load/store and other memory instructions. */
 void emit_memory_instr(strbuf_t *sb, ir_instr_t *ins,
                        regalloc_t *ra, int x64)
 {
