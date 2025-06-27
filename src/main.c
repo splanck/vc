@@ -46,6 +46,13 @@ static int run_semantic_stage(func_t **func_list, size_t fcount,
                               stmt_t **glob_list, size_t gcount,
                               symtable_t *funcs, symtable_t *globals,
                               ir_builder_t *ir);
+static int register_function_prototypes(func_t **func_list, size_t fcount,
+                                        symtable_t *funcs);
+static int check_global_decls(stmt_t **glob_list, size_t gcount,
+                              symtable_t *globals, ir_builder_t *ir);
+static int check_function_defs(func_t **func_list, size_t fcount,
+                               symtable_t *funcs, symtable_t *globals,
+                               ir_builder_t *ir);
 static void run_optimize_stage(ir_builder_t *ir, const opt_config_t *cfg);
 static int run_output_stage(ir_builder_t *ir, const char *output,
                             int dump_ir, int dump_asm, int use_x86_64,
@@ -137,16 +144,10 @@ static int run_parse_stage(token_t *toks, size_t count,
     return ok;
 }
 
-/* Perform semantic analysis and IR generation */
-static int run_semantic_stage(func_t **func_list, size_t fcount,
-                              stmt_t **glob_list, size_t gcount,
-                              symtable_t *funcs, symtable_t *globals,
-                              ir_builder_t *ir)
+/* Register function prototypes and definitions in the symbol table */
+static int register_function_prototypes(func_t **func_list, size_t fcount,
+                                        symtable_t *funcs)
 {
-    symtable_init(globals);
-    ir_builder_init(ir);
-    int ok = 1;
-
     for (size_t i = 0; i < fcount; i++) {
         symbol_t *existing = symtable_lookup(funcs, func_list[i]->name);
         if (existing) {
@@ -156,9 +157,8 @@ static int run_semantic_stage(func_t **func_list, size_t fcount,
                 if (existing->param_types[j] != func_list[i]->param_types[j])
                     mismatch = 1;
             if (mismatch) {
-                ok = 0;
                 error_set(0, 0);
-                break;
+                return 0;
             }
             existing->is_prototype = 0;
         } else {
@@ -169,20 +169,49 @@ static int run_semantic_stage(func_t **func_list, size_t fcount,
                               0);
         }
     }
+    return 1;
+}
 
-    for (size_t i = 0; i < gcount && ok; i++) {
+/* Validate and emit IR for global declarations */
+static int check_global_decls(stmt_t **glob_list, size_t gcount,
+                              symtable_t *globals, ir_builder_t *ir)
+{
+    for (size_t i = 0; i < gcount; i++) {
         if (!check_global(glob_list[i], globals, ir)) {
             error_print("Semantic error");
-            ok = 0;
+            return 0;
         }
     }
+    return 1;
+}
 
-    for (size_t i = 0; i < fcount && ok; i++) {
+/* Validate function definitions and build IR for each body */
+static int check_function_defs(func_t **func_list, size_t fcount,
+                               symtable_t *funcs, symtable_t *globals,
+                               ir_builder_t *ir)
+{
+    for (size_t i = 0; i < fcount; i++) {
         if (!check_func(func_list[i], funcs, globals, ir)) {
             error_print("Semantic error");
-            ok = 0;
+            return 0;
         }
     }
+    return 1;
+}
+
+/* Perform semantic analysis and IR generation */
+static int run_semantic_stage(func_t **func_list, size_t fcount,
+                              stmt_t **glob_list, size_t gcount,
+                              symtable_t *funcs, symtable_t *globals,
+                              ir_builder_t *ir)
+{
+    symtable_init(globals);
+    ir_builder_init(ir);
+    int ok = register_function_prototypes(func_list, fcount, funcs);
+    if (ok)
+        ok = check_global_decls(glob_list, gcount, globals, ir);
+    if (ok)
+        ok = check_function_defs(func_list, fcount, funcs, globals, ir);
 
     return ok;
 }
