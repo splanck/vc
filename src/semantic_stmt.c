@@ -207,12 +207,12 @@ static int handle_struct_init(stmt_t *stmt, symbol_t *sym, symtable_t *vars, ir_
     return 1;
 }
 /*
- * Validate a variable declaration and generate initialization IR.  The
- * symbol is added to the current scope, any struct or union layout is
- * recorded and the optional initializer is expanded into IR.
+ * Register the variable symbol in the current scope.
+ * Handles static name mangling, computes layout information for
+ * aggregate types and inserts the symbol into the table.
+ * Returns the inserted symbol or NULL on failure.
  */
-static int check_var_decl_stmt(stmt_t *stmt, symtable_t *vars,
-                               symtable_t *funcs, ir_builder_t *ir)
+static symbol_t *register_var_symbol(stmt_t *stmt, symtable_t *vars)
 {
     char ir_name_buf[32];
     const char *ir_name = stmt->var_decl.name;
@@ -234,7 +234,7 @@ static int check_var_decl_stmt(stmt_t *stmt, symtable_t *vars,
     if (stmt->var_decl.is_const && !stmt->var_decl.init &&
         !stmt->var_decl.init_list) {
         error_set(stmt->line, stmt->column);
-        return 0;
+        return NULL;
     }
     if (!symtable_add(vars, stmt->var_decl.name, ir_name,
                       stmt->var_decl.type,
@@ -246,7 +246,7 @@ static int check_var_decl_stmt(stmt_t *stmt, symtable_t *vars,
                       stmt->var_decl.is_volatile,
                       stmt->var_decl.is_restrict)) {
         error_set(stmt->line, stmt->column);
-        return 0;
+        return NULL;
     }
 
     symbol_t *sym = symtable_lookup(vars, stmt->var_decl.name);
@@ -256,6 +256,19 @@ static int check_var_decl_stmt(stmt_t *stmt, symtable_t *vars,
         sym->array_size = stmt->var_decl.array_size;
     }
 
+    return sym;
+}
+
+/*
+ * Emit IR for any initializer attached to the variable.
+ * Copies aggregate member metadata to the symbol and writes
+ * constant or computed values using the IR builder.
+ * Returns non-zero on success.
+ */
+static int emit_var_initializer(stmt_t *stmt, symbol_t *sym,
+                                symtable_t *vars, symtable_t *funcs,
+                                ir_builder_t *ir)
+{
     if (stmt->var_decl.type == TYPE_UNION) {
         sym->total_size = stmt->var_decl.elem_size;
         if (stmt->var_decl.member_count) {
@@ -336,6 +349,15 @@ static int check_var_decl_stmt(stmt_t *stmt, symtable_t *vars,
         }
     }
     return 1;
+}
+
+static int check_var_decl_stmt(stmt_t *stmt, symtable_t *vars,
+                               symtable_t *funcs, ir_builder_t *ir)
+{
+    symbol_t *sym = register_var_symbol(stmt, vars);
+    if (!sym)
+        return 0;
+    return emit_var_initializer(stmt, sym, vars, funcs, ir);
 }
 /*
  * Perform semantic checking and emit IR for an if/else statement.  The
