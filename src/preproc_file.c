@@ -415,6 +415,31 @@ static char *read_file_lines(const char *path, char ***out_lines)
     return text;
 }
 
+/* Load the contents of "path" into a line array and determine the
+ * directory component of the path.  The text buffer backing the lines
+ * is returned via *out_text and must be freed by the caller along with
+ * the line array and directory string.  Returns non-zero on success. */
+static int load_file_lines(const char *path, char ***out_lines,
+                           char **out_dir, char **out_text)
+{
+    char **lines;
+    char *text = read_file_lines(path, &lines);
+    if (!text)
+        return 0;
+
+    char *dir = NULL;
+    const char *slash = strrchr(path, '/');
+    if (slash) {
+        size_t len = (size_t)(slash - path) + 1;
+        dir = vc_strndup(path, len);
+    }
+
+    *out_lines = lines;
+    *out_dir = dir;
+    *out_text = text;
+    return 1;
+}
+
 /* Process one line of input.  Leading whitespace is skipped before
  * dispatching to the directive handlers. */
 static int process_line(char *line, const char *dir, vector_t *macros,
@@ -432,6 +457,18 @@ static void cleanup_file_resources(char *text, char **lines, char *dir)
     free(lines);
     free(text);
     free(dir);
+}
+
+/* Iterate over the loaded lines and process each one. */
+static int process_all_lines(char **lines, const char *dir,
+                             vector_t *macros, vector_t *conds,
+                             strbuf_t *out, const vector_t *incdirs)
+{
+    for (size_t i = 0; lines[i]; i++) {
+        if (!process_line(lines[i], dir, macros, conds, out, incdirs))
+            return 0;
+    }
+    return 1;
 }
 /* Process a single #include directive and recursively handle the file. */
 static int process_include(char *line, const char *dir, vector_t *macros,
@@ -571,24 +608,13 @@ static int process_file(const char *path, vector_t *macros,
                         const vector_t *incdirs)
 {
     char **lines;
-    char *text = read_file_lines(path, &lines);
-    if (!text)
+    char *dir;
+    char *text;
+
+    if (!load_file_lines(path, &lines, &dir, &text))
         return 0;
 
-    char *dir = NULL;
-    const char *slash = strrchr(path, '/');
-    if (slash) {
-        size_t len = (size_t)(slash - path) + 1;
-        dir = vc_strndup(path, len);
-    }
-
-    int ok = 1;
-    for (size_t i = 0; lines[i]; i++) {
-        if (!process_line(lines[i], dir, macros, conds, out, incdirs)) {
-            ok = 0;
-            break;
-        }
-    }
+    int ok = process_all_lines(lines, dir, macros, conds, out, incdirs);
 
     cleanup_file_resources(text, lines, dir);
     return ok;
