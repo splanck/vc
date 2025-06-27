@@ -338,13 +338,15 @@ static void handle_pragma(char *line, vector_t *conds, strbuf_t *out)
 }
 
 /* Small helpers used by process_file */
-static int process_include_line(char *line, const char *dir, vector_t *macros,
-                                vector_t *conds, strbuf_t *out,
-                                const vector_t *incdirs)
+/* Process a single #include directive and recursively handle the file. */
+static int process_include(char *line, const char *dir, vector_t *macros,
+                           vector_t *conds, strbuf_t *out,
+                           const vector_t *incdirs)
 {
     return handle_include(line, dir, macros, conds, out, incdirs);
 }
 
+/* Apply a #line directive to adjust reported line numbers. */
 static int process_line_directive(char *line, vector_t *conds, strbuf_t *out)
 {
     char *p = line + 5;
@@ -375,12 +377,14 @@ static int process_line_directive(char *line, vector_t *conds, strbuf_t *out)
     return 1;
 }
 
-static int process_define_line(char *line, vector_t *macros, vector_t *conds)
+/* Parse and store a macro from a #define directive. */
+static int process_define(char *line, vector_t *macros, vector_t *conds)
 {
     return handle_define(line, macros, conds);
 }
 
-static int process_undef_line(char *line, vector_t *macros, vector_t *conds)
+/* Remove a macro defined earlier when #undef is seen. */
+static int process_undef(char *line, vector_t *macros, vector_t *conds)
 {
     char *n = line + 6;
     while (*n == ' ' || *n == '\t')
@@ -394,12 +398,14 @@ static int process_undef_line(char *line, vector_t *macros, vector_t *conds)
     return 1;
 }
 
+/* Copy a #pragma line into the output when active. */
 static int process_pragma_line(char *line, vector_t *conds, strbuf_t *out)
 {
     handle_pragma(line, conds, out);
     return 1;
 }
 
+/* Update conditional state based on #if/#else/#endif directives. */
 static int process_conditional_line(char *line, vector_t *macros, vector_t *conds)
 {
     handle_conditional(line, macros, conds);
@@ -433,16 +439,16 @@ static int process_file(const char *path, vector_t *macros,
         int ok = 1;
         if (strncmp(line, "#include", 8) == 0 &&
             (line[8] == ' ' || line[8] == '\t')) {
-            ok = process_include_line(line, dir, macros, conds, out, incdirs);
+            ok = process_include(line, dir, macros, conds, out, incdirs);
         } else if (strncmp(line, "#line", 5) == 0 &&
                    isspace((unsigned char)line[5])) {
             ok = process_line_directive(line, conds, out);
         } else if (strncmp(line, "#define", 7) == 0 &&
                    (line[7] == ' ' || line[7] == '\t')) {
-            ok = process_define_line(line, macros, conds);
+            ok = process_define(line, macros, conds);
         } else if (strncmp(line, "#undef", 6) == 0 &&
                    isspace((unsigned char)line[6])) {
-            ok = process_undef_line(line, macros, conds);
+            ok = process_undef(line, macros, conds);
         } else if (strncmp(line, "#pragma", 7) == 0 &&
                    isspace((unsigned char)line[7])) {
             ok = process_pragma_line(line, conds, out);
