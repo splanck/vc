@@ -413,6 +413,24 @@ static int process_conditional_line(char *line, vector_t *macros, vector_t *cond
 }
 
 /*
+ * Expand a regular text line and append it to the output when the current
+ * conditional stack is active.
+ */
+static int process_text_line(char *line, vector_t *macros,
+                             vector_t *conds, strbuf_t *out)
+{
+    if (stack_active(conds)) {
+        strbuf_t tmp;
+        strbuf_init(&tmp);
+        expand_line(line, macros, &tmp);
+        strbuf_append(&tmp, "\n");
+        strbuf_append(out, tmp.data);
+        strbuf_free(&tmp);
+    }
+    return 1;
+}
+
+/*
  * Core file processing routine.  Reads the file, handles directives
  * and macro expansion line by line, writing the preprocessed result
  * to the output buffer.
@@ -461,14 +479,7 @@ static int process_file(const char *path, vector_t *macros,
                     strncmp(line, "#endif", 6) == 0)) {
             ok = process_conditional_line(line, macros, conds);
         } else {
-            if (stack_active(conds)) {
-                strbuf_t tmp;
-                strbuf_init(&tmp);
-                expand_line(line, macros, &tmp);
-                strbuf_append(&tmp, "\n");
-                strbuf_append(out, tmp.data);
-                strbuf_free(&tmp);
-            }
+            ok = process_text_line(line, macros, conds, out);
         }
         if (!ok) {
             free(text);
