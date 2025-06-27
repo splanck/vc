@@ -58,6 +58,12 @@ static int compile_unit(const char *source, const cli_options_t *cli,
 /* Create an object file containing the entry stub for linking. */
 static int create_startup_object(int use_x86_64, char **out_path);
 
+/* Run only the preprocessor stage on each input source. */
+static int run_preprocessor(const cli_options_t *cli);
+
+/* Link multiple object files into the final executable. */
+static int link_sources(const cli_options_t *cli);
+
 /* Tokenize the preprocessed source file */
 static int run_tokenize_stage(const char *source, const vector_t *incdirs,
                               char **out_src, token_t **out_toks,
@@ -337,10 +343,89 @@ static int create_startup_object(int use_x86_64, char **out_path)
     return 1;
 }
 
+/* Run the preprocessor and print the result. */
+static int run_preprocessor(const cli_options_t *cli)
+{
+    for (size_t i = 0; i < cli->sources.count; i++) {
+        const char *src = ((const char **)cli->sources.data)[i];
+        char *text = preproc_run(src, &cli->include_dirs);
+        if (!text) {
+            perror("preproc_run");
+            return 1;
+        }
+        printf("%s", text);
+        free(text);
+    }
+    return 0;
+}
+
+/* Compile all sources and link them into the final executable. */
+static int link_sources(const cli_options_t *cli)
+{
+    int ok = 1;
+    vector_t objs;
+    vector_init(&objs, sizeof(char *));
+    for (size_t i = 0; i < cli->sources.count && ok; i++) {
+        const char *src = ((const char **)cli->sources.data)[i];
+        char objname[] = "/tmp/vcobjXXXXXX";
+        int fd = mkstemp(objname);
+        if (fd < 0) {
+            perror("mkstemp");
+            ok = 0;
+            break;
+        }
+        close(fd);
+        ok = compile_unit(src, cli, objname, 1);
+        if (ok) {
+            char *dup = vc_strdup(objname);
+            if (!vector_push(&objs, &dup)) {
+                fprintf(stderr, "Out of memory\n");
+                ok = 0;
+            }
+        }
+        if (!ok)
+            unlink(objname);
+    }
+
+    char *stubobj = NULL;
+    if (ok)
+        ok = create_startup_object(cli->use_x86_64, &stubobj);
+    if (ok) {
+        vector_push(&objs, &stubobj);
+        size_t cmd_len = 64;
+        for (size_t i = 0; i < objs.count; i++)
+            cmd_len += strlen(((char **)objs.data)[i]) + 1;
+        cmd_len += strlen(cli->output) + 1;
+        char *cmd = vc_alloc_or_exit(cmd_len + 32);
+        const char *arch_flag = cli->use_x86_64 ? "-m64" : "-m32";
+        snprintf(cmd, cmd_len + 32, "cc %s", arch_flag);
+        for (size_t i = 0; i < objs.count; i++) {
+            strcat(cmd, " ");
+            strcat(cmd, ((char **)objs.data)[i]);
+        }
+        strcat(cmd, " -nostdlib -o ");
+        strcat(cmd, cli->output);
+        int ret = system(cmd);
+        if (ret != 0) {
+            fprintf(stderr, "cc failed\n");
+            ok = 0;
+        }
+        free(cmd);
+    }
+
+    for (size_t i = 0; i < objs.count; i++) {
+        unlink(((char **)objs.data)[i]);
+        free(((char **)objs.data)[i]);
+    }
+    free(objs.data);
+
+    return ok;
+}
+
 /*
- * Program entry point. Parses command line options and drives the
- * compilation stages for each input file. Handles linking when the
- * --link option is used.
+ * Program entry point. Parses command line options and coordinates the
+ * preprocessing, compilation and linking stages. The preprocessor and
+ * linker logic are delegated to helper functions.
  */
 int main(int argc, char **argv)
 {
@@ -354,78 +439,13 @@ int main(int argc, char **argv)
     }
 
     /* Only run the preprocessor when -E/--preprocess is supplied */
-    if (cli.preprocess) {
-        for (size_t i = 0; i < cli.sources.count; i++) {
-            const char *src = ((const char **)cli.sources.data)[i];
-            char *text = preproc_run(src, &cli.include_dirs);
-            if (!text) {
-                perror("preproc_run");
-                return 1;
-            }
-            printf("%s", text);
-            free(text);
-        }
-        return 0;
-    }
+    if (cli.preprocess)
+        return run_preprocessor(&cli);
 
     int ok = 1;
 
     if (cli.link) {
-        vector_t objs;
-        vector_init(&objs, sizeof(char *));
-        for (size_t i = 0; i < cli.sources.count && ok; i++) {
-            const char *src = ((const char **)cli.sources.data)[i];
-            char objname[] = "/tmp/vcobjXXXXXX";
-            int fd = mkstemp(objname);
-            if (fd < 0) {
-                perror("mkstemp");
-                ok = 0;
-                break;
-            }
-            close(fd);
-            ok = compile_unit(src, &cli, objname, 1);
-            if (ok) {
-                char *dup = vc_strdup(objname);
-                if (!vector_push(&objs, &dup)) {
-                    fprintf(stderr, "Out of memory\n");
-                    ok = 0;
-                }
-            }
-            if (!ok)
-                unlink(objname);
-        }
-
-        char *stubobj = NULL;
-        if (ok)
-            ok = create_startup_object(cli.use_x86_64, &stubobj);
-        if (ok) {
-            vector_push(&objs, &stubobj);
-            size_t cmd_len = 64;
-            for (size_t i = 0; i < objs.count; i++)
-                cmd_len += strlen(((char **)objs.data)[i]) + 1;
-            cmd_len += strlen(cli.output) + 1;
-            char *cmd = vc_alloc_or_exit(cmd_len + 32);
-            const char *arch_flag = cli.use_x86_64 ? "-m64" : "-m32";
-            snprintf(cmd, cmd_len + 32, "cc %s", arch_flag);
-            for (size_t i = 0; i < objs.count; i++) {
-                strcat(cmd, " ");
-                strcat(cmd, ((char **)objs.data)[i]);
-            }
-            strcat(cmd, " -nostdlib -o ");
-            strcat(cmd, cli.output);
-            int ret = system(cmd);
-            if (ret != 0) {
-                fprintf(stderr, "cc failed\n");
-                ok = 0;
-            }
-            free(cmd);
-        }
-
-        for (size_t i = 0; i < objs.count; i++) {
-            unlink(((char **)objs.data)[i]);
-            free(((char **)objs.data)[i]);
-        }
-        free(objs.data);
+        ok = link_sources(&cli);
     } else {
         const char *src = ((const char **)cli.sources.data)[0];
         ok = compile_unit(src, &cli, cli.output, cli.compile);
