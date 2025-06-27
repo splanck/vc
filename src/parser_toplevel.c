@@ -208,6 +208,83 @@ static int parse_func_prototype(parser_t *p, symtable_t *funcs, const char *name
  * identifier.  On success the parser is positioned after the terminating
  * semicolon and the created declaration stored in out_global.  The function
  * returns zero and restores the start position on syntax errors. */
+/* Parse an optional array size suffix after a variable name.  The parser
+ * position is left after the closing ']' or unchanged if no brackets are
+ * present.  On syntax errors the parser position is restored to start and
+ * zero is returned. */
+static int parse_array_size(parser_t *p, type_kind_t *type, size_t *arr_size,
+                            expr_t **size_expr)
+{
+    size_t start = p->pos;
+    *arr_size = 0;
+    *size_expr = NULL;
+
+    if (match(p, TOK_LBRACKET)) {
+        if (match(p, TOK_RBRACKET)) {
+            *type = TYPE_ARRAY;
+        } else {
+            *size_expr = parser_parse_expr(p);
+            if (!*size_expr || !match(p, TOK_RBRACKET)) {
+                ast_free_expr(*size_expr);
+                p->pos = start;
+                return 0;
+            }
+            if ((*size_expr)->kind == EXPR_NUMBER)
+                *arr_size = strtoul((*size_expr)->number.value, NULL, 10);
+            *type = TYPE_ARRAY;
+        }
+    }
+    return 1;
+}
+
+/* Parse an initializer expression or initializer list followed by a
+ * terminating semicolon.  On failure the parser position is restored to
+ * start and any allocated expressions are freed. */
+static int parse_initializer(parser_t *p, type_kind_t type, expr_t **init,
+                             init_entry_t **init_list, size_t *init_count)
+{
+    size_t start = p->pos;
+    *init = NULL;
+    *init_list = NULL;
+    *init_count = 0;
+
+    if (match(p, TOK_ASSIGN)) {
+        if (type == TYPE_ARRAY && peek(p) && peek(p)->type == TOK_LBRACE) {
+            *init_list = parser_parse_init_list(p, init_count);
+            if (!*init_list || !match(p, TOK_SEMI)) {
+                if (*init_list) {
+                    for (size_t i = 0; i < *init_count; i++) {
+                        ast_free_expr((*init_list)[i].index);
+                        ast_free_expr((*init_list)[i].value);
+                        free((*init_list)[i].field);
+                    }
+                    free(*init_list);
+                }
+                p->pos = start;
+                return 0;
+            }
+        } else {
+            *init = parser_parse_expr(p);
+            if (!*init || !match(p, TOK_SEMI)) {
+                ast_free_expr(*init);
+                p->pos = start;
+                return 0;
+            }
+        }
+    } else {
+        if (!match(p, TOK_SEMI)) {
+            p->pos = start;
+            return 0;
+        }
+    }
+    return 1;
+}
+
+/* Parse a global variable after its name.  This routine delegates parsing of
+ * the optional array size and initializer to helpers so it mostly manages
+ * control flow and error recovery.  The parser must start immediately after
+ * the identifier.  On success out_global receives the declaration and the
+ * parser is positioned after the terminating semicolon. */
 static int parse_global_var_init(parser_t *p, const char *name, type_kind_t type,
                                  size_t elem_size, int is_static, int is_register,
                                  int is_extern, int is_const, int is_volatile,
@@ -215,85 +292,36 @@ static int parse_global_var_init(parser_t *p, const char *name, type_kind_t type
                                  stmt_t **out_global)
 {
     size_t start = p->pos;
-    size_t arr_size = 0;
-    expr_t *size_expr = NULL;
+    size_t arr_size;
+    expr_t *size_expr;
 
-    token_t *tok = peek(p);
-    if (tok && tok->type == TOK_LBRACKET) {
-        p->pos++; /* '[' */
-        if (match(p, TOK_RBRACKET)) {
-            type = TYPE_ARRAY;
-        } else {
-            size_expr = parser_parse_expr(p);
-            if (!size_expr || !match(p, TOK_RBRACKET)) {
-                ast_free_expr(size_expr);
-                p->pos = start;
-                return 0;
-            }
-            if (size_expr->kind == EXPR_NUMBER)
-                arr_size = strtoul(size_expr->number.value, NULL, 10);
-            type = TYPE_ARRAY;
-        }
-        tok = peek(p);
+    if (!parse_array_size(p, &type, &arr_size, &size_expr))
+        goto fail;
+
+    if (type == TYPE_VOID) {
+        ast_free_expr(size_expr);
+        goto fail;
     }
 
-    if (tok && tok->type == TOK_SEMI) {
-        if (type == TYPE_VOID) {
-            p->pos = start;
-            return 0;
-        }
-        p->pos++;
-        if (out_global)
-            *out_global = ast_make_var_decl(name, type, arr_size, size_expr,
-                                           elem_size, is_static, is_register,
-                                           is_extern, is_const, is_volatile,
-                                           is_restrict, NULL, NULL, 0,
-                                           NULL, NULL, 0,
-                                           line, column);
-        return 1;
+    expr_t *init;
+    init_entry_t *init_list;
+    size_t init_count;
+
+    if (!parse_initializer(p, type, &init, &init_list, &init_count)) {
+        ast_free_expr(size_expr);
+        goto fail;
     }
 
-    if (tok && tok->type == TOK_ASSIGN) {
-        if (type == TYPE_VOID) {
-            p->pos = start;
-            return 0;
-        }
-        p->pos++; /* '=' */
-        expr_t *init = NULL;
-        init_entry_t *init_list = NULL;
-        size_t init_count = 0;
-        if (type == TYPE_ARRAY && peek(p) && peek(p)->type == TOK_LBRACE) {
-            init_list = parser_parse_init_list(p, &init_count);
-            if (!init_list || !match(p, TOK_SEMI)) {
-                if (init_list) {
-                    for (size_t i = 0; i < init_count; i++) {
-                        ast_free_expr(init_list[i].index);
-                        ast_free_expr(init_list[i].value);
-                        free(init_list[i].field);
-                    }
-                    free(init_list);
-                }
-                p->pos = start;
-                return 0;
-            }
-        } else {
-            init = parser_parse_expr(p);
-            if (!init || !match(p, TOK_SEMI)) {
-                ast_free_expr(init);
-                p->pos = start;
-                return 0;
-            }
-        }
-        if (out_global)
-            *out_global = ast_make_var_decl(name, type, arr_size, size_expr,
-                                           elem_size, is_static, is_register,
-                                           is_extern, is_const, is_volatile,
-                                           is_restrict, init, init_list,
-                                           init_count, NULL, NULL, 0,
-                                           line, column);
-        return 1;
-    }
+    if (out_global)
+        *out_global = ast_make_var_decl(name, type, arr_size, size_expr,
+                                        elem_size, is_static, is_register,
+                                        is_extern, is_const, is_volatile,
+                                        is_restrict, init, init_list,
+                                        init_count, NULL, NULL, 0,
+                                        line, column);
+    return 1;
 
+fail:
     p->pos = start;
     return 0;
 }
