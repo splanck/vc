@@ -1,6 +1,11 @@
 /*
  * Expression tree cloning helpers.
  *
+ * This interface provides ``clone_expr'' which performs a deep copy of an
+ * expression node tree as defined in ``ast.h''.  Each node of the AST is
+ * allocated dynamically and linked together via pointers, so cloning must
+ * recursively duplicate every referenced node.
+ *
  * Part of vc under the BSD 2-Clause license.
  * See LICENSE for details.
  */

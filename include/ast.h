@@ -1,6 +1,14 @@
 /*
  * AST node definitions for the compiler.
  *
+ * The abstract syntax tree is built from a small set of node
+ * structures.  Every expression or statement node begins with a
+ * ``kind'' tag along with source line and column information.  The
+ * remainder of each node is stored in a union so that only the fields
+ * relevant to a particular kind are allocated.  Helper functions in
+ * ``ast_expr.h'' and ``ast_stmt.h'' allocate and initialise these
+ * nodes while maintaining this tagged union layout.
+ *
  * Part of vc under the BSD 2-Clause license.
  * See LICENSE for details.
  */
