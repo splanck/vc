@@ -15,6 +15,7 @@
 #include "semantic_switch.h"
 #include "consteval.h"
 #include "semantic_expr.h"
+#include "semantic_init.h"
 #include "symtable.h"
 #include "ir_global.h"
 #include "util.h"
@@ -254,53 +255,26 @@ static int check_var_decl_global(stmt_t *decl, symtable_t *globals,
         return 1;
 
     if (decl->var_decl.type == TYPE_ARRAY) {
-        size_t count = decl->var_decl.array_size;
-        long long *vals = calloc(count, sizeof(long long));
-        if (!vals)
+        long long *vals;
+        if (!expand_array_initializer(decl->var_decl.init_list, decl->var_decl.init_count, decl->var_decl.array_size, globals, decl->line, decl->column, &vals))
             return 0;
-        size_t init_count = decl->var_decl.init_count;
-        if (init_count > count) {
-            free(vals);
-            error_set(decl->line, decl->column);
-            return 0;
-        }
-        size_t cur = 0;
-        for (size_t i = 0; i < init_count; i++) {
-            init_entry_t *ent = &decl->var_decl.init_list[i];
-            size_t idx = cur;
-            if (ent->kind == INIT_INDEX) {
-                long long cidx;
-                if (!eval_const_expr(ent->index, globals, &cidx) ||
-                    cidx < 0 || (size_t)cidx >= count) {
-                    free(vals);
-                    error_set(ent->index->line, ent->index->column);
-                    return 0;
-                }
-                idx = (size_t)cidx;
-                cur = idx;
-            } else if (ent->kind == INIT_FIELD) {
-                free(vals);
-                error_set(decl->line, decl->column);
-                return 0;
-            }
-            long long val;
-            if (!eval_const_expr(ent->value, globals, &val)) {
-                free(vals);
-                error_set(ent->value->line, ent->value->column);
-                return 0;
-            }
-            if (idx >= count) {
-                free(vals);
-                error_set(decl->line, decl->column);
-                return 0;
-            }
-            vals[idx] = val;
-            cur = idx + 1;
-        }
-        ir_build_glob_array(ir, decl->var_decl.name, vals, count,
-                           decl->var_decl.is_static);
+        ir_build_glob_array(ir, decl->var_decl.name, vals, decl->var_decl.array_size, decl->var_decl.is_static);
         free(vals);
+                return 1;
     } else {
+        if (decl->var_decl.init_list) {
+            if (decl->var_decl.type == TYPE_STRUCT) {
+                long long *vals;
+                if (!expand_struct_initializer(decl->var_decl.init_list, decl->var_decl.init_count, gsym, globals, decl->line, decl->column, &vals))
+                    return 0;
+                ir_build_glob_struct(ir, decl->var_decl.name, (int)decl->var_decl.elem_size, decl->var_decl.is_static);
+                free(vals);
+                return 1;
+            } else {
+                error_set(decl->line, decl->column);
+                return 0;
+            }
+        }
         long long value = 0;
         if (decl->var_decl.init) {
             if (!eval_const_expr(decl->var_decl.init, globals, &value)) {

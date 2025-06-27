@@ -15,6 +15,7 @@
 #include "semantic_switch.h"
 #include "consteval.h"
 #include "semantic_expr.h"
+#include "semantic_init.h"
 #include "semantic_global.h"
 #include "ir_global.h"
 #include "symtable.h"
@@ -172,52 +173,13 @@ static void init_struct_member(ir_builder_t *ir, ir_value_t base,
  * at sequential indices or at explicit positions.  The resulting array
  * is then emitted using the appropriate helper.
  */
-static int handle_array_init(stmt_t *stmt, symbol_t *sym, symtable_t *vars,
-                             ir_builder_t *ir)
+static int handle_array_init(stmt_t *stmt, symbol_t *sym, symtable_t *vars, ir_builder_t *ir)
 {
-    if (sym->array_size < stmt->var_decl.init_count) {
-        error_set(stmt->line, stmt->column);
+    long long *vals;
+    if (!expand_array_initializer(stmt->var_decl.init_list, stmt->var_decl.init_count,
+                                  sym->array_size, vars, stmt->line, stmt->column,
+                                  &vals))
         return 0;
-    }
-
-    long long *vals = calloc(sym->array_size, sizeof(long long));
-    if (!vals)
-        return 0;
-
-    size_t cur = 0;
-    for (size_t i = 0; i < stmt->var_decl.init_count; i++) {
-        init_entry_t *ent = &stmt->var_decl.init_list[i];
-        size_t idx = cur;
-        if (ent->kind == INIT_INDEX) {
-            long long cidx;
-            if (!eval_const_expr(ent->index, vars, &cidx) || cidx < 0 ||
-                (size_t)cidx >= sym->array_size) {
-                free(vals);
-                error_set(ent->index->line, ent->index->column);
-                return 0;
-            }
-            idx = (size_t)cidx;
-            cur = idx;
-        } else if (ent->kind == INIT_FIELD) {
-            free(vals);
-            error_set(stmt->line, stmt->column);
-            return 0;
-        }
-        long long val;
-        if (!eval_const_expr(ent->value, vars, &val)) {
-            free(vals);
-            error_set(ent->value->line, ent->value->column);
-            return 0;
-        }
-        if (idx >= sym->array_size) {
-            free(vals);
-            error_set(stmt->line, stmt->column);
-            return 0;
-        }
-        vals[idx] = val;
-        cur = idx + 1;
-    }
-
     if (stmt->var_decl.is_static)
         init_static_array(ir, sym->ir_name, vals, sym->array_size);
     else
@@ -232,53 +194,16 @@ static int handle_array_init(stmt_t *stmt, symbol_t *sym, symtable_t *vars,
  * values are stored into the computed member addresses of the struct
  * variable.
  */
-static int handle_struct_init(stmt_t *stmt, symbol_t *sym, symtable_t *vars,
-                              ir_builder_t *ir)
+static int handle_struct_init(stmt_t *stmt, symbol_t *sym, symtable_t *vars, ir_builder_t *ir)
 {
-    if (!sym->struct_member_count) {
-        error_set(stmt->line, stmt->column);
+    long long *vals;
+    if (!expand_struct_initializer(stmt->var_decl.init_list, stmt->var_decl.init_count,
+                                   sym, vars, stmt->line, stmt->column, &vals))
         return 0;
-    }
-
     ir_value_t base = ir_build_addr(ir, sym->ir_name);
-    size_t cur = 0;
-    for (size_t i = 0; i < stmt->var_decl.init_count; i++) {
-        init_entry_t *ent = &stmt->var_decl.init_list[i];
-        size_t off = 0;
-        size_t mi = cur;
-        if (ent->kind == INIT_FIELD) {
-            int found = 0;
-            for (size_t j = 0; j < sym->struct_member_count; j++) {
-                if (strcmp(sym->struct_members[j].name, ent->field) == 0) {
-                    off = sym->struct_members[j].offset;
-                    mi = j;
-                    found = 1;
-                    break;
-                }
-            }
-            if (!found) {
-                error_set(stmt->line, stmt->column);
-                return 0;
-            }
-            cur = mi;
-        } else if (ent->kind == INIT_SIMPLE) {
-            if (cur >= sym->struct_member_count) {
-                error_set(stmt->line, stmt->column);
-                return 0;
-            }
-            off = sym->struct_members[cur].offset;
-        } else {
-            error_set(stmt->line, stmt->column);
-            return 0;
-        }
-        long long val;
-        if (!eval_const_expr(ent->value, vars, &val)) {
-            error_set(ent->value->line, ent->value->column);
-            return 0;
-        }
-        init_struct_member(ir, base, off, val);
-        cur = mi + 1;
-    }
+    for (size_t i = 0; i < sym->struct_member_count; i++)
+        init_struct_member(ir, base, sym->struct_members[i].offset, vals[i]);
+    free(vals);
     return 1;
 }
 /*
