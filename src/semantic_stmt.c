@@ -23,7 +23,11 @@
 
 
 
-/* Remove all symbols added after old_head from the table. */
+/*
+ * Remove all symbols added after old_head from the table.  Each entry
+ * beyond the saved head is popped off the list and its memory is
+ * released, effectively restoring the previous scope.
+ */
 void symtable_pop_scope(symtable_t *table, symbol_t *old_head)
 {
     while (table->head != old_head) {
@@ -34,7 +38,11 @@ void symtable_pop_scope(symtable_t *table, symbol_t *old_head)
         free(sym);
     }
 }
-/* Validate an enum declaration and register its members. */
+/*
+ * Validate an enum declaration and register its members.  Constant
+ * values are evaluated, enumerators are inserted into the symbol
+ * table sequentially and an optional tag is recorded.
+ */
 static int check_enum_decl_stmt(stmt_t *stmt, symtable_t *vars)
 {
     int next = 0;
@@ -57,7 +65,11 @@ static int check_enum_decl_stmt(stmt_t *stmt, symtable_t *vars)
         symtable_add_enum_tag(vars, stmt->enum_decl.tag);
     return 1;
 }
-/* Validate a struct declaration and store layout information. */
+/*
+ * Validate a struct declaration and store layout information.  Member
+ * offsets are calculated, the type is registered in the symbol table
+ * and the total size is recorded for later use.
+ */
 static int check_struct_decl_stmt(stmt_t *stmt, symtable_t *vars)
 {
     size_t total = layout_struct_members(stmt->struct_decl.members,
@@ -73,7 +85,11 @@ static int check_struct_decl_stmt(stmt_t *stmt, symtable_t *vars)
         stype->struct_total_size = total;
     return 1;
 }
-/* Validate a union declaration and record its size. */
+/*
+ * Validate a union declaration and record its size.  Member offsets are
+ * calculated and the type is inserted into the symbol table so that
+ * later references know the union layout.
+ */
 static int check_union_decl_stmt(stmt_t *stmt, symtable_t *vars)
 {
     size_t max = layout_union_members(stmt->union_decl.members,
@@ -87,7 +103,11 @@ static int check_union_decl_stmt(stmt_t *stmt, symtable_t *vars)
     }
     return 1;
 }
-/* Register a typedef alias in the symbol table. */
+/*
+ * Register a typedef alias in the symbol table.  The alias name and
+ * type information are stored so that future declarations can refer to
+ * the typedef.
+ */
 static int check_typedef_stmt(stmt_t *stmt, symtable_t *vars)
 {
     if (!symtable_add_typedef(vars, stmt->typedef_decl.name,
@@ -101,14 +121,22 @@ static int check_typedef_stmt(stmt_t *stmt, symtable_t *vars)
 }
 
 /* Helpers for variable initialization */
-/* Emit IR for a static array initialized with constant values. */
+/*
+ * Emit IR for a static array initialized with constant values.  The
+ * array contents are provided up front and written directly to the
+ * global data section.
+ */
 static void init_static_array(ir_builder_t *ir, const char *name,
                               const long long *vals, size_t count)
 {
     ir_build_glob_array(ir, name, vals, count, 1);
 }
 
-/* Store constant values into a dynamic array variable. */
+/*
+ * Store constant values into a dynamic array variable.  Each element is
+ * written with either a volatile or normal store depending on the
+ * declaration.
+ */
 static void init_dynamic_array(ir_builder_t *ir, const char *name,
                                const long long *vals, size_t count,
                                int is_volatile)
@@ -123,7 +151,11 @@ static void init_dynamic_array(ir_builder_t *ir, const char *name,
     }
 }
 
-/* Store a constant initializer into a struct field. */
+/*
+ * Store a constant initializer into a struct field.  The address of the
+ * field is computed using the provided base pointer and offset and the
+ * constant value is written through that pointer.
+ */
 static void init_struct_member(ir_builder_t *ir, ir_value_t base,
                                size_t off, long long val)
 {
@@ -132,7 +164,12 @@ static void init_struct_member(ir_builder_t *ir, ir_value_t base,
     ir_value_t valv = ir_build_const(ir, val);
     ir_build_store_ptr(ir, addr, valv);
 }
-/* Expand an initializer list for an array variable. */
+/*
+ * Expand an initializer list for an array variable.  The initializer
+ * entries are evaluated, converted to constant values and stored either
+ * at sequential indices or at explicit positions.  The resulting array
+ * is then emitted using the appropriate helper.
+ */
 static int handle_array_init(stmt_t *stmt, symbol_t *sym, symtable_t *vars,
                              ir_builder_t *ir)
 {
@@ -187,7 +224,12 @@ static int handle_array_init(stmt_t *stmt, symbol_t *sym, symtable_t *vars,
     free(vals);
     return 1;
 }
-/* Expand an initializer list for a struct variable. */
+/*
+ * Expand an initializer list for a struct variable.  Each provided
+ * initializer assigns to the next field or to a named field.  Constant
+ * values are stored into the computed member addresses of the struct
+ * variable.
+ */
 static int handle_struct_init(stmt_t *stmt, symbol_t *sym, symtable_t *vars,
                               ir_builder_t *ir)
 {
@@ -237,7 +279,11 @@ static int handle_struct_init(stmt_t *stmt, symbol_t *sym, symtable_t *vars,
     }
     return 1;
 }
-/* Validate a variable declaration and generate initialization IR. */
+/*
+ * Validate a variable declaration and generate initialization IR.  The
+ * symbol is added to the current scope, any struct or union layout is
+ * recorded and the optional initializer is expanded into IR.
+ */
 static int check_var_decl_stmt(stmt_t *stmt, symtable_t *vars,
                                symtable_t *funcs, ir_builder_t *ir)
 {
@@ -364,7 +410,12 @@ static int check_var_decl_stmt(stmt_t *stmt, symtable_t *vars,
     }
     return 1;
 }
-/* Perform semantic checking and emit IR for an if/else statement. */
+/*
+ * Perform semantic checking and emit IR for an if/else statement.  The
+ * condition expression is evaluated and used to branch to either the
+ * then or else part.  Both branches are validated and finally control
+ * converges at a common end label.
+ */
 static int check_if_stmt(stmt_t *stmt, symtable_t *vars, symtable_t *funcs,
                          label_table_t *labels, ir_builder_t *ir,
                          type_kind_t func_ret_type,
@@ -397,8 +448,10 @@ static int check_if_stmt(stmt_t *stmt, symtable_t *vars, symtable_t *funcs,
 
 
 /*
- * Validate a single statement.  Loop labels are used for 'break' and
- * 'continue' targets.  Returns non-zero on success.
+ * Validate a single statement.  Depending on the statement kind this
+ * routine dispatches to the appropriate helper.  Loop labels provide
+ * targets for break and continue statements.  Emits IR as a side
+ * effect and returns non-zero on success.
  */
 int check_stmt(stmt_t *stmt, symtable_t *vars, symtable_t *funcs,
                void *label_tab, ir_builder_t *ir, type_kind_t func_ret_type,
