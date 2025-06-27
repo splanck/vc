@@ -128,69 +128,151 @@ static int set_standard(cli_options_t *opts, const char *std)
 }
 
 /*
- * Handle a single getopt option.  "opt" is the value returned by
+ * Individual option handlers used by handle_option().  Each returns 0 on
+ * success or 1 on error.  Some handlers terminate the process directly when
+ * the option requests help or version information.
+ */
+static int handle_help(const char *arg, const char *prog, cli_options_t *opts)
+{
+    (void)arg; (void)opts;
+    print_usage(prog);
+    exit(0);
+}
+
+static int handle_version(const char *arg, const char *prog, cli_options_t *opts)
+{
+    (void)arg; (void)prog; (void)opts;
+    printf("vc version %s\n", VERSION);
+    exit(0);
+}
+
+static int set_output_path(const char *arg, const char *prog, cli_options_t *opts)
+{
+    (void)prog;
+    opts->output = (char *)arg;
+    return 0;
+}
+
+static int enable_compile(const char *arg, const char *prog, cli_options_t *opts)
+{
+    (void)arg; (void)prog;
+    opts->compile = 1;
+    return 0;
+}
+
+static int add_include(const char *arg, const char *prog, cli_options_t *opts)
+{
+    (void)prog;
+    return add_include_dir(opts, arg);
+}
+
+static int set_level(const char *arg, const char *prog, cli_options_t *opts)
+{
+    (void)prog;
+    set_opt_level(opts, arg);
+    return 0;
+}
+
+static int disable_fold(const char *arg, const char *prog, cli_options_t *opts)
+{
+    (void)arg; (void)prog;
+    opts->opt_cfg.fold_constants = 0;
+    return 0;
+}
+
+static int disable_dce(const char *arg, const char *prog, cli_options_t *opts)
+{
+    (void)arg; (void)prog;
+    opts->opt_cfg.dead_code = 0;
+    return 0;
+}
+
+static int enable_x86(const char *arg, const char *prog, cli_options_t *opts)
+{
+    (void)arg; (void)prog;
+    opts->use_x86_64 = 1;
+    return 0;
+}
+
+static int enable_dump(const char *arg, const char *prog, cli_options_t *opts)
+{
+    (void)arg; (void)prog;
+    opts->dump_asm = 1;
+    return 0;
+}
+
+static int disable_cprop(const char *arg, const char *prog, cli_options_t *opts)
+{
+    (void)arg; (void)prog;
+    opts->opt_cfg.const_prop = 0;
+    return 0;
+}
+
+static int enable_dump_ir_opt(const char *arg, const char *prog, cli_options_t *opts)
+{
+    (void)arg; (void)prog;
+    opts->dump_ir = 1;
+    return 0;
+}
+
+static int enable_preproc(const char *arg, const char *prog, cli_options_t *opts)
+{
+    (void)arg; (void)prog;
+    opts->preprocess = 1;
+    return 0;
+}
+
+static int enable_link_opt(const char *arg, const char *prog, cli_options_t *opts)
+{
+    (void)arg; (void)prog;
+    opts->link = 1;
+    return 0;
+}
+
+static int handle_std(const char *arg, const char *prog, cli_options_t *opts)
+{
+    (void)prog;
+    return set_standard(opts, arg);
+}
+
+/*
+ * Handle a single getopt option by dispatching to the appropriate helper
+ * function from a small lookup table. "opt" is the value returned by
  * getopt_long(), "arg" is the option argument if any and "prog" is used for
- * help output.  Returns 0 on success and 1 on error.  The function may exit
- * the process for -h/--help and -v/--version.
+ * help output. Returns 0 on success and 1 on error. The process may exit for
+ * -h/--help and -v/--version.
  */
 static int handle_option(int opt, const char *arg, const char *prog,
                          cli_options_t *opts)
 {
-    switch (opt) {
-    case 'h':
-        print_usage(prog);
-        exit(0);
-    case 'v':
-        printf("vc version %s\n", VERSION);
-        exit(0);
-    case 'o':
-        opts->output = (char *)arg;
-        break;
-    case 'c':
-        opts->compile = 1;
-        break;
-    case 'I':
-        if (add_include_dir(opts, arg))
-            return 1;
-        break;
-    case 'O':
-        set_opt_level(opts, arg);
-        break;
-    case 1:
-        opts->opt_cfg.fold_constants = 0;
-        break;
-    case 2:
-        opts->opt_cfg.dead_code = 0;
-        break;
-    case 3:
-        opts->use_x86_64 = 1;
-        break;
-    case 'S':
-    case 4:
-        opts->dump_asm = 1;
-        break;
-    case 5:
-        opts->opt_cfg.const_prop = 0;
-        break;
-    case 6:
-        opts->dump_ir = 1;
-        break;
-    case 'E':
-        opts->preprocess = 1;
-        break;
-    case 7:
-        opts->link = 1;
-        break;
-    case 8:
-        if (set_standard(opts, arg))
-            return 1;
-        break;
-    default:
-        print_usage(prog);
-        return 1;
+    struct opt_handler { int opt; int (*func)(const char *, const char *, cli_options_t *); };
+    static const struct opt_handler table[] = {
+        {'h', handle_help},
+        {'v', handle_version},
+        {'o', set_output_path},
+        {'c', enable_compile},
+        {'I', add_include},
+        {'O', set_level},
+        {1,   disable_fold},
+        {2,   disable_dce},
+        {3,   enable_x86},
+        {'S', enable_dump},
+        {4,   enable_dump},
+        {5,   disable_cprop},
+        {6,   enable_dump_ir_opt},
+        {'E', enable_preproc},
+        {7,   enable_link_opt},
+        {8,   handle_std},
+        {0,   NULL}
+    };
+
+    for (size_t i = 0; table[i].func; i++) {
+        if (table[i].opt == opt)
+            return table[i].func(arg, prog, opts);
     }
 
-    return 0;
+    print_usage(prog);
+    return 1;
 }
 
 /*
