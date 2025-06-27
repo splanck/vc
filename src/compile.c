@@ -83,6 +83,12 @@ static int assemble_startup_obj(const char *asm_path, int use_x86_64,
 /* Create an object file containing the entry stub for linking. */
 static int create_startup_object(int use_x86_64, char **out_path);
 
+/* Compile all input sources into temporary object files. */
+static int compile_source_files(const cli_options_t *cli, vector_t *objs);
+
+/* Build the startup stub and link all objects into the final executable. */
+static int build_and_link_objects(vector_t *objs, const cli_options_t *cli);
+
 /* Run only the preprocessor stage on each input source. */
 int run_preprocessor(const cli_options_t *cli);
 
@@ -451,6 +457,29 @@ static int compile_source_obj(const char *source, const cli_options_t *cli,
     return 1;
 }
 
+/* Compile all sources to temporary object files. */
+static int compile_source_files(const cli_options_t *cli, vector_t *objs)
+{
+    int ok = 1;
+    vector_init(objs, sizeof(char *));
+
+    for (size_t i = 0; i < cli->sources.count && ok; i++) {
+        const char *src = ((const char **)cli->sources.data)[i];
+        char *obj = NULL;
+        ok = compile_source_obj(src, cli, &obj);
+        if (ok) {
+            if (!vector_push(objs, &obj)) {
+                fprintf(stderr, "Out of memory\n");
+                ok = 0;
+                unlink(obj);
+                free(obj);
+            }
+        }
+    }
+
+    return ok;
+}
+
 /* Construct and run the final cc link command. */
 static int run_link_command(const vector_t *objs, const char *output,
                             int use_x86_64)
@@ -472,6 +501,23 @@ static int run_link_command(const vector_t *objs, const char *output,
     return 1;
 }
 
+/* Create entry stub and link all objects into the final executable. */
+static int build_and_link_objects(vector_t *objs, const cli_options_t *cli)
+{
+    char *stubobj = NULL;
+    int ok = create_startup_object(cli->use_x86_64, &stubobj);
+    if (ok) {
+        if (!vector_push(objs, &stubobj)) {
+            fprintf(stderr, "Out of memory\n");
+            unlink(stubobj);
+            free(stubobj);
+            return 0;
+        }
+        ok = run_link_command(objs, cli->output, cli->use_x86_64);
+    }
+    return ok;
+}
+
 /* Run the preprocessor and print the result. */
 int run_preprocessor(const cli_options_t *cli)
 {
@@ -491,31 +537,11 @@ int run_preprocessor(const cli_options_t *cli)
 /* Compile all sources and link them into the final executable. */
 int link_sources(const cli_options_t *cli)
 {
-    int ok = 1;
     vector_t objs;
-    vector_init(&objs, sizeof(char *));
+    int ok = compile_source_files(cli, &objs);
 
-    for (size_t i = 0; i < cli->sources.count && ok; i++) {
-        const char *src = ((const char **)cli->sources.data)[i];
-        char *obj = NULL;
-        ok = compile_source_obj(src, cli, &obj);
-        if (ok) {
-            if (!vector_push(&objs, &obj)) {
-                fprintf(stderr, "Out of memory\n");
-                ok = 0;
-                unlink(obj);
-                free(obj);
-            }
-        }
-    }
-
-    char *stubobj = NULL;
     if (ok)
-        ok = create_startup_object(cli->use_x86_64, &stubobj);
-    if (ok) {
-        vector_push(&objs, &stubobj);
-        ok = run_link_command(&objs, cli->output, cli->use_x86_64);
-    }
+        ok = build_and_link_objects(&objs, cli);
 
     for (size_t i = 0; i < objs.count; i++) {
         unlink(((char **)objs.data)[i]);
