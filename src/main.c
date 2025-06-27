@@ -60,6 +60,14 @@ static void cleanup_compile_unit(vector_t *funcs_v, vector_t *globs_v,
 static int compile_unit(const char *source, const cli_options_t *cli,
                         const char *output, int compile_obj);
 
+/* Compile one source file into a temporary object file. */
+static int compile_source_obj(const char *source, const cli_options_t *cli,
+                              char **out_path);
+
+/* Build and run the final linker command. */
+static int run_link_command(const vector_t *objs, const char *output,
+                            int use_x86_64);
+
 /* Create an object file containing the entry stub for linking. */
 static int create_startup_object(int use_x86_64, char **out_path);
 
@@ -364,6 +372,56 @@ static int create_startup_object(int use_x86_64, char **out_path)
     return 1;
 }
 
+/* Compile a single source file to a temporary object. */
+static int compile_source_obj(const char *source, const cli_options_t *cli,
+                              char **out_path)
+{
+    char objname[] = "/tmp/vcobjXXXXXX";
+    int fd = mkstemp(objname);
+    if (fd < 0) {
+        perror("mkstemp");
+        return 0;
+    }
+    close(fd);
+
+    int ok = compile_unit(source, cli, objname, 1);
+    if (!ok) {
+        unlink(objname);
+        return 0;
+    }
+
+    *out_path = vc_strdup(objname);
+    return 1;
+}
+
+/* Construct and run the final cc link command. */
+static int run_link_command(const vector_t *objs, const char *output,
+                            int use_x86_64)
+{
+    size_t cmd_len = 64;
+    for (size_t i = 0; i < objs->count; i++)
+        cmd_len += strlen(((char **)objs->data)[i]) + 1;
+    cmd_len += strlen(output) + 1;
+
+    char *cmd = vc_alloc_or_exit(cmd_len + 32);
+    const char *arch_flag = use_x86_64 ? "-m64" : "-m32";
+    snprintf(cmd, cmd_len + 32, "cc %s", arch_flag);
+    for (size_t i = 0; i < objs->count; i++) {
+        strcat(cmd, " ");
+        strcat(cmd, ((char **)objs->data)[i]);
+    }
+    strcat(cmd, " -nostdlib -o ");
+    strcat(cmd, output);
+
+    int ret = system(cmd);
+    free(cmd);
+    if (ret != 0) {
+        fprintf(stderr, "cc failed\n");
+        return 0;
+    }
+    return 1;
+}
+
 /* Run the preprocessor and print the result. */
 static int run_preprocessor(const cli_options_t *cli)
 {
@@ -386,26 +444,19 @@ static int link_sources(const cli_options_t *cli)
     int ok = 1;
     vector_t objs;
     vector_init(&objs, sizeof(char *));
+
     for (size_t i = 0; i < cli->sources.count && ok; i++) {
         const char *src = ((const char **)cli->sources.data)[i];
-        char objname[] = "/tmp/vcobjXXXXXX";
-        int fd = mkstemp(objname);
-        if (fd < 0) {
-            perror("mkstemp");
-            ok = 0;
-            break;
-        }
-        close(fd);
-        ok = compile_unit(src, cli, objname, 1);
+        char *obj = NULL;
+        ok = compile_source_obj(src, cli, &obj);
         if (ok) {
-            char *dup = vc_strdup(objname);
-            if (!vector_push(&objs, &dup)) {
+            if (!vector_push(&objs, &obj)) {
                 fprintf(stderr, "Out of memory\n");
                 ok = 0;
+                unlink(obj);
+                free(obj);
             }
         }
-        if (!ok)
-            unlink(objname);
     }
 
     char *stubobj = NULL;
@@ -413,25 +464,7 @@ static int link_sources(const cli_options_t *cli)
         ok = create_startup_object(cli->use_x86_64, &stubobj);
     if (ok) {
         vector_push(&objs, &stubobj);
-        size_t cmd_len = 64;
-        for (size_t i = 0; i < objs.count; i++)
-            cmd_len += strlen(((char **)objs.data)[i]) + 1;
-        cmd_len += strlen(cli->output) + 1;
-        char *cmd = vc_alloc_or_exit(cmd_len + 32);
-        const char *arch_flag = cli->use_x86_64 ? "-m64" : "-m32";
-        snprintf(cmd, cmd_len + 32, "cc %s", arch_flag);
-        for (size_t i = 0; i < objs.count; i++) {
-            strcat(cmd, " ");
-            strcat(cmd, ((char **)objs.data)[i]);
-        }
-        strcat(cmd, " -nostdlib -o ");
-        strcat(cmd, cli->output);
-        int ret = system(cmd);
-        if (ret != 0) {
-            fprintf(stderr, "cc failed\n");
-            ok = 0;
-        }
-        free(cmd);
+        ok = run_link_command(&objs, cli->output, cli->use_x86_64);
     }
 
     for (size_t i = 0; i < objs.count; i++) {
