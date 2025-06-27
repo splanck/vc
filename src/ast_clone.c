@@ -1,3 +1,10 @@
+/*
+ * Routines for cloning AST expression nodes.
+ *
+ * Part of vc under the BSD 2-Clause license.
+ * See LICENSE for details.
+ */
+
 #include <stdlib.h>
 #include "ast_clone.h"
 #include "ast_expr.h"
@@ -6,26 +13,31 @@
 /* Helper functions for cloning each expression kind. Each returns a newly
  * allocated node on success or NULL on allocation failure. */
 
+/* Duplicate a numeric literal expression node. */
 static expr_t *clone_number(const expr_t *expr)
 {
     return ast_make_number(expr->number.value, expr->line, expr->column);
 }
 
+/* Duplicate an identifier expression node. */
 static expr_t *clone_ident(const expr_t *expr)
 {
     return ast_make_ident(expr->ident.name, expr->line, expr->column);
 }
 
+/* Duplicate a string literal expression node. */
 static expr_t *clone_string(const expr_t *expr)
 {
     return ast_make_string(expr->string.value, expr->line, expr->column);
 }
 
+/* Duplicate a character literal expression node. */
 static expr_t *clone_char(const expr_t *expr)
 {
     return ast_make_char(expr->ch.value, expr->line, expr->column);
 }
 
+/* Clone a unary operation and its operand. */
 static expr_t *clone_unary(const expr_t *expr)
 {
     expr_t *op = clone_expr(expr->unary.operand);
@@ -34,6 +46,7 @@ static expr_t *clone_unary(const expr_t *expr)
     return ast_make_unary(expr->unary.op, op, expr->line, expr->column);
 }
 
+/* Clone a binary operation and its operands. */
 static expr_t *clone_binary(const expr_t *expr)
 {
     expr_t *l = clone_expr(expr->binary.left);
@@ -46,6 +59,7 @@ static expr_t *clone_binary(const expr_t *expr)
     return ast_make_binary(expr->binary.op, l, r, expr->line, expr->column);
 }
 
+/* Clone a conditional expression and its branches. */
 static expr_t *clone_cond(const expr_t *expr)
 {
     expr_t *c = clone_expr(expr->cond.cond);
@@ -60,6 +74,7 @@ static expr_t *clone_cond(const expr_t *expr)
     return ast_make_cond(c, t, e, expr->line, expr->column);
 }
 
+/* Clone an assignment expression. */
 static expr_t *clone_assign(const expr_t *expr)
 {
     expr_t *v = clone_expr(expr->assign.value);
@@ -68,6 +83,7 @@ static expr_t *clone_assign(const expr_t *expr)
     return ast_make_assign(expr->assign.name, v, expr->line, expr->column);
 }
 
+/* Clone an array indexing expression. */
 static expr_t *clone_index(const expr_t *expr)
 {
     expr_t *a = clone_expr(expr->index.array);
@@ -80,6 +96,7 @@ static expr_t *clone_index(const expr_t *expr)
     return ast_make_index(a, i, expr->line, expr->column);
 }
 
+/* Clone an array element assignment. */
 static expr_t *clone_assign_index(const expr_t *expr)
 {
     expr_t *a = clone_expr(expr->assign_index.array);
@@ -94,6 +111,7 @@ static expr_t *clone_assign_index(const expr_t *expr)
     return ast_make_assign_index(a, i, v, expr->line, expr->column);
 }
 
+/* Clone a struct or union member assignment. */
 static expr_t *clone_assign_member(const expr_t *expr)
 {
     expr_t *obj = clone_expr(expr->assign_member.object);
@@ -108,6 +126,7 @@ static expr_t *clone_assign_member(const expr_t *expr)
                                   expr->column);
 }
 
+/* Clone a member access expression. */
 static expr_t *clone_member(const expr_t *expr)
 {
     expr_t *obj = clone_expr(expr->member.object);
@@ -117,6 +136,7 @@ static expr_t *clone_member(const expr_t *expr)
                            expr->line, expr->column);
 }
 
+/* Clone a sizeof expression. */
 static expr_t *clone_sizeof(const expr_t *expr)
 {
     if (expr->sizeof_expr.is_type)
@@ -130,6 +150,7 @@ static expr_t *clone_sizeof(const expr_t *expr)
     return ast_make_sizeof_expr(e, expr->line, expr->column);
 }
 
+/* Clone a function call expression and its arguments. */
 static expr_t *clone_call(const expr_t *expr)
 {
     size_t n = expr->call.arg_count;
@@ -151,6 +172,7 @@ static expr_t *clone_call(const expr_t *expr)
     return ast_make_call(expr->call.name, args, n, expr->line, expr->column);
 }
 
+/* Clone a compound literal expression and its initializer list. */
 static expr_t *clone_complit(const expr_t *expr)
 {
     expr_t *init = clone_expr(expr->compound.init);
@@ -187,6 +209,10 @@ static expr_t *clone_complit(const expr_t *expr)
                              expr->column);
 }
 
+/* Recursively clone an expression tree by dispatching
+ * to the helper functions above. Each clone_* function allocates
+ * new nodes for its children, so the returned tree shares no state
+ * with the original. NULL is returned if any allocation fails. */
 expr_t *clone_expr(const expr_t *expr)
 {
     if (!expr)
