@@ -13,12 +13,17 @@
 #include "symtable.h"
 #include "semantic_switch.h"
 
+/* Check a while loop and emit IR */
 int check_while_stmt(stmt_t *stmt, symtable_t *vars, symtable_t *funcs,
                      label_table_t *labels, ir_builder_t *ir,
                      type_kind_t func_ret_type);
+
+/* Check a do-while loop and emit IR */
 int check_do_while_stmt(stmt_t *stmt, symtable_t *vars, symtable_t *funcs,
                         label_table_t *labels, ir_builder_t *ir,
                         type_kind_t func_ret_type);
+
+/* Check a for loop and emit IR */
 int check_for_stmt(stmt_t *stmt, symtable_t *vars, symtable_t *funcs,
                    label_table_t *labels, ir_builder_t *ir,
                    type_kind_t func_ret_type);
