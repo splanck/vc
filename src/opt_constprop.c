@@ -102,6 +102,7 @@ void propagate_load_consts(ir_builder_t *ir)
         case IR_ADDR:
         case IR_LOAD_PTR:
         case IR_LOAD_IDX:
+        case IR_ALLOCA:
         case IR_STORE_PARAM:
         case IR_RETURN:
         case IR_FUNC_BEGIN:
