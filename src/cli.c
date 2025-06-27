@@ -14,6 +14,10 @@
 
 #define VERSION "0.1.0"
 
+/*
+ * Display a short usage message describing all supported
+ * command line options.
+ */
 static void print_usage(const char *prog)
 {
     printf("Usage: %s [options] <source...>\n", prog);
@@ -35,6 +39,13 @@ static void print_usage(const char *prog)
     printf("  -E, --preprocess     Run only the preprocessor and print the result\n");
 }
 
+/*
+ * Parse argv using getopt_long and fill the cli_options_t structure
+ * with the selected settings. The long_opts table defines the
+ * mapping between short (-o) and long (--output) options. Default
+ * values are initialized before parsing. Returns 0 on success and a
+ * non-zero value on failure.
+ */
 int cli_parse_args(int argc, char **argv, cli_options_t *opts)
 {
     static struct option long_opts[] = {
