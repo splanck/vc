@@ -116,136 +116,173 @@ type_kind_t check_binary(expr_t *left, expr_t *right, symtable_t *vars,
  * Ensures operands are of the correct type and emits IR for the
  * resulting value or address manipulation.
  */
+
+/* Handle pointer dereference operator. */
+static type_kind_t unary_deref(expr_t *opnd, symtable_t *vars,
+                               symtable_t *funcs, ir_builder_t *ir,
+                               ir_value_t *out)
+{
+    ir_value_t addr;
+    if (check_expr(opnd, vars, funcs, ir, &addr) == TYPE_PTR) {
+        if (out)
+            *out = ir_build_load_ptr(ir, addr);
+        return TYPE_INT;
+    }
+    error_set(opnd->line, opnd->column);
+    return TYPE_UNKNOWN;
+}
+
+/* Obtain the address of an identifier operand. */
+static type_kind_t unary_addr(expr_t *opnd, symtable_t *vars,
+                              symtable_t *funcs, ir_builder_t *ir,
+                              ir_value_t *out)
+{
+    (void)funcs;
+    if (opnd->kind != EXPR_IDENT) {
+        error_set(opnd->line, opnd->column);
+        return TYPE_UNKNOWN;
+    }
+    symbol_t *sym = symtable_lookup(vars, opnd->ident.name);
+    if (!sym) {
+        error_set(opnd->line, opnd->column);
+        return TYPE_UNKNOWN;
+    }
+    if (out)
+        *out = ir_build_addr(ir, sym->ir_name);
+    return TYPE_PTR;
+}
+
+/* Negate an integer or floating point operand. */
+static type_kind_t unary_neg(expr_t *opnd, symtable_t *vars,
+                             symtable_t *funcs, ir_builder_t *ir,
+                             ir_value_t *out)
+{
+    ir_value_t val;
+    type_kind_t vt = check_expr(opnd, vars, funcs, ir, &val);
+    if (is_intlike(vt)) {
+        if (out) {
+            ir_value_t zero = ir_build_const(ir, 0);
+            *out = ir_build_binop(ir, IR_SUB, zero, val);
+        }
+        return (vt == TYPE_LLONG || vt == TYPE_ULLONG) ? TYPE_LLONG : TYPE_INT;
+    } else if (is_floatlike(vt)) {
+        if (out) {
+            ir_value_t zero = ir_build_const(ir, 0);
+            ir_op_t op = (vt == TYPE_LDOUBLE) ? IR_LFSUB : IR_FSUB;
+            *out = ir_build_binop(ir, op, zero, val);
+        }
+        return vt;
+    }
+    error_set(opnd->line, opnd->column);
+    return TYPE_UNKNOWN;
+}
+
+/* Logical negation of an integer operand. */
+static type_kind_t unary_not(expr_t *opnd, symtable_t *vars,
+                             symtable_t *funcs, ir_builder_t *ir,
+                             ir_value_t *out)
+{
+    ir_value_t val;
+    if (is_intlike(check_expr(opnd, vars, funcs, ir, &val))) {
+        if (out) {
+            ir_value_t zero = ir_build_const(ir, 0);
+            *out = ir_build_binop(ir, IR_CMPEQ, val, zero);
+        }
+        return TYPE_INT;
+    }
+    error_set(opnd->line, opnd->column);
+    return TYPE_UNKNOWN;
+}
+
+/* Pre/post increment and decrement of an identifier. */
+static type_kind_t unary_incdec(expr_t *expr, symtable_t *vars,
+                                symtable_t *funcs, ir_builder_t *ir,
+                                ir_value_t *out)
+{
+    expr_t *opnd = expr->unary.operand;
+    (void)funcs;
+    if (opnd->kind != EXPR_IDENT) {
+        error_set(opnd->line, opnd->column);
+        return TYPE_UNKNOWN;
+    }
+
+    symbol_t *sym = symtable_lookup(vars, opnd->ident.name);
+    if (!sym || !(is_intlike(sym->type) || is_floatlike(sym->type) ||
+                  sym->type == TYPE_PTR)) {
+        error_set(opnd->line, opnd->column);
+        return TYPE_UNKNOWN;
+    }
+
+    ir_value_t cur = sym->param_index >= 0
+                         ? ir_build_load_param(ir, sym->param_index)
+                         : (sym->is_volatile ? ir_build_load_vol(ir, sym->ir_name)
+                                             : ir_build_load(ir, sym->ir_name));
+
+    if (sym->type == TYPE_PTR) {
+        int esz = sym->elem_size ? (int)sym->elem_size : 4;
+        int step = (expr->unary.op == UNOP_PREDEC ||
+                    expr->unary.op == UNOP_POSTDEC)
+                       ? -1
+                       : 1;
+        ir_value_t idx = ir_build_const(ir, step);
+        ir_value_t upd = ir_build_ptr_add(ir, cur, idx, esz);
+        if (sym->param_index >= 0)
+            ir_build_store_param(ir, sym->param_index, upd);
+        else if (sym->is_volatile)
+            ir_build_store_vol(ir, sym->ir_name, upd);
+        else
+            ir_build_store(ir, sym->ir_name, upd);
+        if (out)
+            *out = (expr->unary.op == UNOP_PREINC ||
+                    expr->unary.op == UNOP_PREDEC)
+                       ? upd
+                       : cur;
+        return TYPE_PTR;
+    }
+
+    ir_value_t one = ir_build_const(ir, 1);
+    ir_op_t ir_op;
+    if (is_floatlike(sym->type))
+        ir_op = (expr->unary.op == UNOP_PREDEC ||
+                 expr->unary.op == UNOP_POSTDEC)
+                    ? (sym->type == TYPE_LDOUBLE ? IR_LFSUB : IR_FSUB)
+                    : (sym->type == TYPE_LDOUBLE ? IR_LFADD : IR_FADD);
+    else
+        ir_op = (expr->unary.op == UNOP_PREDEC ||
+                 expr->unary.op == UNOP_POSTDEC)
+                    ? IR_SUB
+                    : IR_ADD;
+    ir_value_t upd = ir_build_binop(ir, ir_op, cur, one);
+    if (sym->param_index >= 0)
+        ir_build_store_param(ir, sym->param_index, upd);
+    else if (sym->is_volatile)
+        ir_build_store_vol(ir, sym->ir_name, upd);
+    else
+        ir_build_store(ir, sym->ir_name, upd);
+    if (out)
+        *out = (expr->unary.op == UNOP_PREINC ||
+                expr->unary.op == UNOP_PREDEC)
+                   ? upd
+                   : cur;
+    return sym->type;
+}
+
 type_kind_t check_unary_expr(expr_t *expr, symtable_t *vars,
                              symtable_t *funcs, ir_builder_t *ir,
                              ir_value_t *out)
 {
-    expr_t *opnd = expr->unary.operand;
     switch (expr->unary.op) {
-    case UNOP_DEREF: {
-        ir_value_t addr;
-        if (check_expr(opnd, vars, funcs, ir, &addr) == TYPE_PTR) {
-            if (out)
-                *out = ir_build_load_ptr(ir, addr);
-            return TYPE_INT;
-        }
-        error_set(opnd->line, opnd->column);
-        return TYPE_UNKNOWN;
-    }
+    case UNOP_DEREF:
+        return unary_deref(expr->unary.operand, vars, funcs, ir, out);
     case UNOP_ADDR:
-        if (opnd->kind != EXPR_IDENT) {
-            error_set(opnd->line, opnd->column);
-            return TYPE_UNKNOWN;
-        }
-        {
-            symbol_t *sym = symtable_lookup(vars, opnd->ident.name);
-            if (!sym) {
-                error_set(opnd->line, opnd->column);
-                return TYPE_UNKNOWN;
-            }
-            if (out)
-                *out = ir_build_addr(ir, sym->ir_name);
-            return TYPE_PTR;
-        }
-    case UNOP_NEG: {
-        ir_value_t val;
-        type_kind_t vt = check_expr(opnd, vars, funcs, ir, &val);
-        if (is_intlike(vt)) {
-            if (out) {
-                ir_value_t zero = ir_build_const(ir, 0);
-                *out = ir_build_binop(ir, IR_SUB, zero, val);
-            }
-            return vt == TYPE_LLONG || vt == TYPE_ULLONG ? TYPE_LLONG : TYPE_INT;
-        } else if (is_floatlike(vt)) {
-            if (out) {
-                ir_value_t zero = ir_build_const(ir, 0);
-                ir_op_t op = (vt == TYPE_LDOUBLE) ? IR_LFSUB : IR_FSUB;
-                *out = ir_build_binop(ir, op, zero, val);
-            }
-            return vt;
-        }
-        error_set(opnd->line, opnd->column);
-        return TYPE_UNKNOWN;
-    }
-    case UNOP_NOT: {
-        ir_value_t val;
-        if (is_intlike(check_expr(opnd, vars, funcs, ir, &val))) {
-            if (out) {
-                ir_value_t zero = ir_build_const(ir, 0);
-                *out = ir_build_binop(ir, IR_CMPEQ, val, zero);
-            }
-            return TYPE_INT;
-        }
-        error_set(opnd->line, opnd->column);
-        return TYPE_UNKNOWN;
-    }
+        return unary_addr(expr->unary.operand, vars, funcs, ir, out);
+    case UNOP_NEG:
+        return unary_neg(expr->unary.operand, vars, funcs, ir, out);
+    case UNOP_NOT:
+        return unary_not(expr->unary.operand, vars, funcs, ir, out);
     case UNOP_PREINC: case UNOP_PREDEC:
     case UNOP_POSTINC: case UNOP_POSTDEC:
-        if (opnd->kind != EXPR_IDENT) {
-            error_set(opnd->line, opnd->column);
-            return TYPE_UNKNOWN;
-        }
-        {
-            symbol_t *sym = symtable_lookup(vars, opnd->ident.name);
-            if (!sym ||
-                !(is_intlike(sym->type) || is_floatlike(sym->type) ||
-                  sym->type == TYPE_PTR)) {
-                error_set(opnd->line, opnd->column);
-                return TYPE_UNKNOWN;
-            }
-
-            ir_value_t cur = sym->param_index >= 0
-                                 ? ir_build_load_param(ir, sym->param_index)
-                                 : (sym->is_volatile
-                                        ? ir_build_load_vol(ir, sym->ir_name)
-                                        : ir_build_load(ir, sym->ir_name));
-
-            if (sym->type == TYPE_PTR) {
-                int esz = sym->elem_size ? (int)sym->elem_size : 4;
-                int step = (expr->unary.op == UNOP_PREDEC ||
-                            expr->unary.op == UNOP_POSTDEC)
-                               ? -1
-                               : 1;
-                ir_value_t idx = ir_build_const(ir, step);
-                ir_value_t upd = ir_build_ptr_add(ir, cur, idx, esz);
-                if (sym->param_index >= 0)
-                    ir_build_store_param(ir, sym->param_index, upd);
-                else if (sym->is_volatile)
-                    ir_build_store_vol(ir, sym->ir_name, upd);
-                else
-                    ir_build_store(ir, sym->ir_name, upd);
-                if (out)
-                    *out = (expr->unary.op == UNOP_PREINC ||
-                            expr->unary.op == UNOP_PREDEC)
-                               ? upd
-                               : cur;
-                return TYPE_PTR;
-            }
-
-            ir_value_t one = ir_build_const(ir, 1);
-            ir_op_t ir_op;
-            if (is_floatlike(sym->type))
-                ir_op = (expr->unary.op == UNOP_PREDEC ||
-                         expr->unary.op == UNOP_POSTDEC)
-                            ? (sym->type == TYPE_LDOUBLE ? IR_LFSUB : IR_FSUB)
-                            : (sym->type == TYPE_LDOUBLE ? IR_LFADD : IR_FADD);
-            else
-                ir_op = (expr->unary.op == UNOP_PREDEC ||
-                         expr->unary.op == UNOP_POSTDEC) ? IR_SUB : IR_ADD;
-            ir_value_t upd = ir_build_binop(ir, ir_op, cur, one);
-            if (sym->param_index >= 0)
-                ir_build_store_param(ir, sym->param_index, upd);
-            else if (sym->is_volatile)
-                ir_build_store_vol(ir, sym->ir_name, upd);
-            else
-                ir_build_store(ir, sym->ir_name, upd);
-            if (out)
-                *out = (expr->unary.op == UNOP_PREINC ||
-                        expr->unary.op == UNOP_PREDEC)
-                           ? upd
-                           : cur;
-            return sym->type;
-        }
+        return unary_incdec(expr, vars, funcs, ir, out);
     default:
         return TYPE_UNKNOWN;
     }
