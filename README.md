@@ -1,15 +1,23 @@
 # vc
 
-`vc` is a lightweight ANSI C compiler with experimental C99 support. It
-aims to be portable across POSIX systems with a focus on NetBSD.
+## Overview
 
-- [Compiler architecture](docs/architecture.md)
-- [Building vc](docs/building.md)
-- [Documentation index](docs/index.md)
-- [Contributing](CONTRIBUTING.md)
+`vc` is a lightweight ANSI C compiler with experimental C99 support. The
+project aims to be portable across POSIX systems with a focus on NetBSD
+while remaining small and easy to understand. Development is in an
+early stage with the long‑term goal of eventually becoming
+self‑hosting.
 
-Development is in an early stage. See the documents above for more
-information on how the pieces fit together and how to get involved.
+## Installation
+
+To install the compiler, run:
+
+```sh
+make install PREFIX=/usr/local
+```
+
+This installs `vc` under `PREFIX/bin`, the public headers under
+`PREFIX/include/vc`, and the manual page under `PREFIX/share/man/man1`.
 
 ## Usage
 
@@ -32,13 +40,17 @@ pass `--dump-asm`:
 vc --dump-asm source.c
 ```
 
-## Installation
+## Documentation
 
-To install the compiler, run:
+- [Documentation index](docs/index.md)
+- [Compiler architecture](docs/architecture.md)
+- [Compilation pipeline](docs/pipeline.md)
+- [Command-line options](docs/command_line.md)
+- [Supported language features](docs/language_features.md)
+- [Optimization passes](docs/optimization.md)
+- [Building vc](docs/building.md)
+- [Development roadmap](docs/roadmap.md)
 
-```sh
-make install PREFIX=/usr/local
-```
+## Contributing
 
-This installs `vc` under `PREFIX/bin`, the public headers under
-`PREFIX/include/vc`, and the manual page under `PREFIX/share/man/man1`.
+See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
