@@ -260,6 +260,56 @@ static symbol_t *register_var_symbol(stmt_t *stmt, symtable_t *vars)
 }
 
 /*
+ * Copy union member metadata from the parsed declaration to the symbol.
+ * Allocates new member arrays and duplicates names. Returns non-zero on
+ * success.
+ */
+static int copy_union_metadata(symbol_t *sym, union_member_t *members,
+                               size_t count, size_t total)
+{
+    sym->total_size = total;
+    if (!count)
+        return 1;
+    sym->members = malloc(count * sizeof(*sym->members));
+    if (!sym->members)
+        return 0;
+    sym->member_count = count;
+    for (size_t i = 0; i < count; i++) {
+        union_member_t *m = &members[i];
+        sym->members[i].name = vc_strdup(m->name);
+        sym->members[i].type = m->type;
+        sym->members[i].elem_size = m->elem_size;
+        sym->members[i].offset = m->offset;
+    }
+    return 1;
+}
+
+/*
+ * Copy struct member metadata from the parsed declaration to the symbol.
+ * Allocates new member arrays and duplicates names. Returns non-zero on
+ * success.
+ */
+static int copy_struct_metadata(symbol_t *sym, struct_member_t *members,
+                                size_t count, size_t total)
+{
+    sym->struct_total_size = total;
+    if (!count)
+        return 1;
+    sym->struct_members = malloc(count * sizeof(*sym->struct_members));
+    if (!sym->struct_members)
+        return 0;
+    sym->struct_member_count = count;
+    for (size_t i = 0; i < count; i++) {
+        struct_member_t *m = &members[i];
+        sym->struct_members[i].name = vc_strdup(m->name);
+        sym->struct_members[i].type = m->type;
+        sym->struct_members[i].elem_size = m->elem_size;
+        sym->struct_members[i].offset = m->offset;
+    }
+    return 1;
+}
+
+/*
  * Emit IR for a static initializer using a constant expression.
  * Handles scalars and aggregates placed in the global data section.
  */
@@ -330,40 +380,18 @@ static int emit_var_initializer(stmt_t *stmt, symbol_t *sym,
                                 ir_builder_t *ir)
 {
     if (stmt->var_decl.type == TYPE_UNION) {
-        sym->total_size = stmt->var_decl.elem_size;
-        if (stmt->var_decl.member_count) {
-            sym->members = malloc(stmt->var_decl.member_count *
-                                  sizeof(*sym->members));
-            if (!sym->members)
-                return 0;
-            sym->member_count = stmt->var_decl.member_count;
-            for (size_t i = 0; i < sym->member_count; i++) {
-                union_member_t *m = &stmt->var_decl.members[i];
-                sym->members[i].name = vc_strdup(m->name);
-                sym->members[i].type = m->type;
-                sym->members[i].elem_size = m->elem_size;
-                sym->members[i].offset = m->offset;
-            }
-        }
+        if (!copy_union_metadata(sym, stmt->var_decl.members,
+                                 stmt->var_decl.member_count,
+                                 stmt->var_decl.elem_size))
+            return 0;
     }
 
     if (stmt->var_decl.type == TYPE_STRUCT) {
-        sym->struct_total_size = stmt->var_decl.elem_size;
-        if (stmt->var_decl.member_count) {
-            sym->struct_members = malloc(stmt->var_decl.member_count *
-                                         sizeof(*sym->struct_members));
-            if (!sym->struct_members)
-                return 0;
-            sym->struct_member_count = stmt->var_decl.member_count;
-            for (size_t i = 0; i < sym->struct_member_count; i++) {
-                struct_member_t *m =
-                    (struct_member_t *)&stmt->var_decl.members[i];
-                sym->struct_members[i].name = vc_strdup(m->name);
-                sym->struct_members[i].type = m->type;
-                sym->struct_members[i].elem_size = m->elem_size;
-                sym->struct_members[i].offset = m->offset;
-            }
-        }
+        if (!copy_struct_metadata(sym,
+                                  (struct_member_t *)stmt->var_decl.members,
+                                  stmt->var_decl.member_count,
+                                  stmt->var_decl.elem_size))
+            return 0;
     }
 
     if (stmt->var_decl.init) {
