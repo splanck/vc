@@ -253,6 +253,8 @@ the stack 16‑byte aligned.
 
 The `opt` module implements several transformations on the IR. These
 passes run sequentially and may be disabled via command line options.
+Constant propagation executes first, then constant folding and finally
+dead code elimination.
 See [optimization.md](optimization.md) for additional context.
 
 ### Constant folding
