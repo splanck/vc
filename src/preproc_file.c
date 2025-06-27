@@ -431,6 +431,42 @@ static int process_text_line(char *line, vector_t *macros,
 }
 
 /*
+ * Handle a preprocessor directive or regular text line.  Dispatches to the
+ * specific handler for the directive and falls back to text expansion when the
+ * line is not a recognised directive.
+ */
+static int handle_directive(char *line, const char *dir, vector_t *macros,
+                            vector_t *conds, strbuf_t *out,
+                            const vector_t *incdirs)
+{
+    if (strncmp(line, "#include", 8) == 0 &&
+        (line[8] == ' ' || line[8] == '\t')) {
+        return process_include(line, dir, macros, conds, out, incdirs);
+    } else if (strncmp(line, "#line", 5) == 0 &&
+               isspace((unsigned char)line[5])) {
+        return process_line_directive(line, conds, out);
+    } else if (strncmp(line, "#define", 7) == 0 &&
+               (line[7] == ' ' || line[7] == '\t')) {
+        return process_define(line, macros, conds);
+    } else if (strncmp(line, "#undef", 6) == 0 &&
+               isspace((unsigned char)line[6])) {
+        return process_undef(line, macros, conds);
+    } else if (strncmp(line, "#pragma", 7) == 0 &&
+               isspace((unsigned char)line[7])) {
+        return process_pragma_line(line, conds, out);
+    } else if (strncmp(line, "#", 1) == 0 &&
+               (strncmp(line, "#ifdef", 6) == 0 ||
+                strncmp(line, "#ifndef", 7) == 0 ||
+                strncmp(line, "#if", 3) == 0 ||
+                strncmp(line, "#elif", 5) == 0 ||
+                strncmp(line, "#else", 5) == 0 ||
+                strncmp(line, "#endif", 6) == 0)) {
+        return process_conditional_line(line, macros, conds);
+    }
+    return process_text_line(line, macros, conds, out);
+}
+
+/*
  * Core file processing routine.  Reads the file, handles directives
  * and macro expansion line by line, writing the preprocessed result
  * to the output buffer.
@@ -454,33 +490,7 @@ static int process_file(const char *path, vector_t *macros,
     while (line) {
         while (*line == ' ' || *line == '\t')
             line++;
-        int ok = 1;
-        if (strncmp(line, "#include", 8) == 0 &&
-            (line[8] == ' ' || line[8] == '\t')) {
-            ok = process_include(line, dir, macros, conds, out, incdirs);
-        } else if (strncmp(line, "#line", 5) == 0 &&
-                   isspace((unsigned char)line[5])) {
-            ok = process_line_directive(line, conds, out);
-        } else if (strncmp(line, "#define", 7) == 0 &&
-                   (line[7] == ' ' || line[7] == '\t')) {
-            ok = process_define(line, macros, conds);
-        } else if (strncmp(line, "#undef", 6) == 0 &&
-                   isspace((unsigned char)line[6])) {
-            ok = process_undef(line, macros, conds);
-        } else if (strncmp(line, "#pragma", 7) == 0 &&
-                   isspace((unsigned char)line[7])) {
-            ok = process_pragma_line(line, conds, out);
-        } else if (strncmp(line, "#", 1) == 0 &&
-                   (strncmp(line, "#ifdef", 6) == 0 ||
-                    strncmp(line, "#ifndef", 7) == 0 ||
-                    strncmp(line, "#if", 3) == 0 ||
-                    strncmp(line, "#elif", 5) == 0 ||
-                    strncmp(line, "#else", 5) == 0 ||
-                    strncmp(line, "#endif", 6) == 0)) {
-            ok = process_conditional_line(line, macros, conds);
-        } else {
-            ok = process_text_line(line, macros, conds, out);
-        }
+        int ok = handle_directive(line, dir, macros, conds, out, incdirs);
         if (!ok) {
             free(text);
             free(dir);
