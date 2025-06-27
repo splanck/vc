@@ -14,6 +14,12 @@
 #include "ast_stmt.h"
 #include "ast_expr.h"
 
+/* Helper prototypes */
+static int parse_param_list(parser_t *p,
+                            char ***names, type_kind_t **types,
+                            size_t **sizes, int **restrict_flags,
+                            size_t *count);
+static int parse_func_body(parser_t *p, stmt_t ***body, size_t *count);
 /* Initialize the parser with a token array and reset position */
 void parser_init(parser_t *p, token_t *tokens, size_t count)
 {
@@ -149,6 +155,100 @@ void parser_print_error(parser_t *p, const token_type_t *expected,
     error_print(msg);
 }
 
+/* Parse parameter list for a function definition. */
+static int parse_param_list(parser_t *p,
+                            char ***names, type_kind_t **types,
+                            size_t **sizes, int **restrict_flags,
+                            size_t *count)
+{
+    vector_t names_v, types_v, sizes_v, restrict_v;
+    vector_init(&names_v, sizeof(char *));
+    vector_init(&types_v, sizeof(type_kind_t));
+    vector_init(&sizes_v, sizeof(size_t));
+    vector_init(&restrict_v, sizeof(int));
+
+    if (!match(p, TOK_RPAREN)) {
+        do {
+            type_kind_t pt;
+            if (!parse_basic_type(p, &pt)) {
+                vector_free(&names_v);
+                vector_free(&types_v);
+                vector_free(&sizes_v);
+                vector_free(&restrict_v);
+                return 0;
+            }
+            size_t ps = basic_type_size(pt);
+            int is_restrict = 0;
+            if (match(p, TOK_STAR)) {
+                pt = TYPE_PTR;
+                is_restrict = match(p, TOK_KW_RESTRICT);
+            }
+            token_t *ptok = peek(p);
+            if (!ptok || ptok->type != TOK_IDENT) {
+                vector_free(&names_v);
+                vector_free(&types_v);
+                vector_free(&sizes_v);
+                vector_free(&restrict_v);
+                return 0;
+            }
+            p->pos++;
+            char *tmp_name = ptok->lexeme;
+            if (!vector_push(&names_v, &tmp_name) ||
+                !vector_push(&types_v, &pt) ||
+                !vector_push(&sizes_v, &ps) ||
+                !vector_push(&restrict_v, &is_restrict)) {
+                vector_free(&names_v);
+                vector_free(&types_v);
+                vector_free(&sizes_v);
+                vector_free(&restrict_v);
+                return 0;
+            }
+        } while (match(p, TOK_COMMA));
+        if (!match(p, TOK_RPAREN)) {
+            vector_free(&names_v);
+            vector_free(&types_v);
+            vector_free(&sizes_v);
+            vector_free(&restrict_v);
+            return 0;
+        }
+    }
+
+    *names = (char **)names_v.data;
+    *types = (type_kind_t *)types_v.data;
+    *sizes = (size_t *)sizes_v.data;
+    *restrict_flags = (int *)restrict_v.data;
+    *count = names_v.count;
+    return 1;
+}
+
+/* Parse the statements forming the function body. */
+static int parse_func_body(parser_t *p, stmt_t ***body, size_t *count)
+{
+    vector_t body_v;
+    vector_init(&body_v, sizeof(stmt_t *));
+
+    while (!match(p, TOK_RBRACE)) {
+        stmt_t *stmt = parser_parse_stmt(p);
+        if (!stmt) {
+            for (size_t i = 0; i < body_v.count; i++)
+                ast_free_stmt(((stmt_t **)body_v.data)[i]);
+            vector_free(&body_v);
+            return 0;
+        }
+        if (!vector_push(&body_v, &stmt)) {
+            ast_free_stmt(stmt);
+            for (size_t i = 0; i < body_v.count; i++)
+                ast_free_stmt(((stmt_t **)body_v.data)[i]);
+            vector_free(&body_v);
+            return 0;
+        }
+    }
+
+    *body = (stmt_t **)body_v.data;
+    *count = body_v.count;
+    return 1;
+}
+
 /* Parse a full function definition */
 func_t *parser_parse_func(parser_t *p)
 {
@@ -167,100 +267,32 @@ func_t *parser_parse_func(parser_t *p)
     if (!match(p, TOK_LPAREN))
         return NULL;
 
-    vector_t param_names_v, param_types_v, param_sizes_v, param_restrict_v;
-    vector_init(&param_names_v, sizeof(char *));
-    vector_init(&param_types_v, sizeof(type_kind_t));
-    vector_init(&param_sizes_v, sizeof(size_t));
-    vector_init(&param_restrict_v, sizeof(int));
-
-    if (!match(p, TOK_RPAREN)) {
-        do {
-            type_kind_t pt;
-            if (!parse_basic_type(p, &pt)) {
-                vector_free(&param_names_v);
-                vector_free(&param_types_v);
-                vector_free(&param_sizes_v);
-                vector_free(&param_restrict_v);
-                return NULL;
-            }
-            size_t ps = basic_type_size(pt);
-            int is_restrict = 0;
-            if (match(p, TOK_STAR)) {
-                pt = TYPE_PTR;
-                is_restrict = match(p, TOK_KW_RESTRICT);
-            }
-            token_t *ptok = peek(p);
-            if (!ptok || ptok->type != TOK_IDENT) {
-                vector_free(&param_names_v);
-                vector_free(&param_types_v);
-                vector_free(&param_sizes_v);
-                vector_free(&param_restrict_v);
-                return NULL;
-            }
-            p->pos++;
-            char *tmp_name = ptok->lexeme;
-            if (!vector_push(&param_names_v, &tmp_name) ||
-                !vector_push(&param_types_v, &pt) ||
-                !vector_push(&param_sizes_v, &ps) ||
-                !vector_push(&param_restrict_v, &is_restrict)) {
-                vector_free(&param_names_v);
-                vector_free(&param_types_v);
-                vector_free(&param_sizes_v);
-                vector_free(&param_restrict_v);
-                return NULL;
-            }
-        } while (match(p, TOK_COMMA));
-        if (!match(p, TOK_RPAREN)) {
-            vector_free(&param_names_v);
-            vector_free(&param_types_v);
-            vector_free(&param_sizes_v);
-            return NULL;
-        }
-    }
+    char **param_names = NULL;
+    type_kind_t *param_types = NULL;
+    size_t *param_sizes = NULL;
+    int *param_restrict = NULL;
+    size_t pcount = 0;
+    if (!parse_param_list(p, &param_names, &param_types, &param_sizes,
+                          &param_restrict, &pcount))
+        return NULL;
 
     if (!match(p, TOK_LBRACE)) {
-        vector_free(&param_names_v);
-        vector_free(&param_types_v);
-        vector_free(&param_sizes_v);
-        vector_free(&param_restrict_v);
+        free(param_names);
+        free(param_types);
+        free(param_sizes);
+        free(param_restrict);
         return NULL;
     }
 
-    vector_t body_v;
-    vector_init(&body_v, sizeof(stmt_t *));
-
-    while (!match(p, TOK_RBRACE)) {
-        stmt_t *stmt = parser_parse_stmt(p);
-        if (!stmt) {
-            for (size_t i = 0; i < body_v.count; i++)
-                ast_free_stmt(((stmt_t **)body_v.data)[i]);
-            vector_free(&body_v);
-            vector_free(&param_names_v);
-            vector_free(&param_types_v);
-            vector_free(&param_sizes_v);
-            vector_free(&param_restrict_v);
-            return NULL;
-        }
-        if (!vector_push(&body_v, &stmt)) {
-            ast_free_stmt(stmt);
-            for (size_t i = 0; i < body_v.count; i++)
-                ast_free_stmt(((stmt_t **)body_v.data)[i]);
-            vector_free(&body_v);
-            vector_free(&param_names_v);
-            vector_free(&param_types_v);
-            vector_free(&param_sizes_v);
-            vector_free(&param_restrict_v);
-            return NULL;
-        }
+    stmt_t **body = NULL;
+    size_t count = 0;
+    if (!parse_func_body(p, &body, &count)) {
+        free(param_names);
+        free(param_types);
+        free(param_sizes);
+        free(param_restrict);
+        return NULL;
     }
-
-    char **param_names = (char **)param_names_v.data;
-    type_kind_t *param_types = (type_kind_t *)param_types_v.data;
-    size_t *param_sizes = (size_t *)param_sizes_v.data;
-    int *param_restrict = (int *)param_restrict_v.data;
-    size_t pcount = param_names_v.count;
-    stmt_t **body = (stmt_t **)body_v.data;
-    size_t count = body_v.count;
 
     func_t *fn = ast_make_func(name, ret_type,
                                param_names, param_types,
