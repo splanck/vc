@@ -20,7 +20,14 @@ typedef struct {
 /* Print an optimization error message */
 void opt_error(const char *msg);
 
-/* Run optimization passes on the given IR builder */
+/*
+ * Run optimization passes on the given IR builder.
+ *
+ * Passes execute in the following order:
+ * 1. Constant propagation
+ * 2. Constant folding
+ * 3. Dead code elimination
+ */
 void opt_run(ir_builder_t *ir, const opt_config_t *cfg);
 
 #endif /* VC_OPT_H */
