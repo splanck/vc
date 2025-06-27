@@ -12,6 +12,74 @@
 #include "vector.h"
 #include "util.h"
 
+/* Forward declarations */
+static int parse_field_entry(parser_t *p, init_entry_t *out);
+static int parse_index_entry(parser_t *p, init_entry_t *out);
+static int parse_simple_entry(parser_t *p, init_entry_t *out);
+static void free_init_vector(vector_t *v);
+
+static int parse_field_entry(parser_t *p, init_entry_t *out)
+{
+    token_t *id = peek(p);
+    if (!id || id->type != TOK_IDENT)
+        return 0;
+    p->pos++;
+    out->kind = INIT_FIELD;
+    out->field = vc_strdup(id->lexeme);
+    if (!out->field)
+        return 0;
+    if (!match(p, TOK_ASSIGN)) {
+        free(out->field);
+        out->field = NULL;
+        return 0;
+    }
+    out->value = parser_parse_expr(p);
+    if (!out->value) {
+        free(out->field);
+        out->field = NULL;
+        return 0;
+    }
+    return 1;
+}
+
+static int parse_index_entry(parser_t *p, init_entry_t *out)
+{
+    out->kind = INIT_INDEX;
+    out->index = parser_parse_expr(p);
+    if (!out->index || !match(p, TOK_RBRACKET) || !match(p, TOK_ASSIGN)) {
+        ast_free_expr(out->index);
+        out->index = NULL;
+        return 0;
+    }
+    out->value = parser_parse_expr(p);
+    if (!out->value) {
+        ast_free_expr(out->index);
+        out->index = NULL;
+        return 0;
+    }
+    return 1;
+}
+
+static int parse_simple_entry(parser_t *p, init_entry_t *out)
+{
+    out->kind = INIT_SIMPLE;
+    out->value = parser_parse_expr(p);
+    if (!out->value)
+        return 0;
+    return 1;
+}
+
+static void free_init_vector(vector_t *v)
+{
+    init_entry_t *it = (init_entry_t *)v->data;
+    for (size_t i = 0; i < v->count; i++) {
+        ast_free_expr(it[i].index);
+        ast_free_expr(it[i].value);
+        free(it[i].field);
+    }
+    vector_free(v);
+}
+
 /* Parse a brace-enclosed initializer list.
  * The returned array is heap allocated and out_count receives its length.
  * On any syntax or allocation failure the function frees all allocated
@@ -24,80 +92,35 @@ init_entry_t *parser_parse_init_list(parser_t *p, size_t *out_count)
         return NULL;
     vector_t vals_v;
     vector_init(&vals_v, sizeof(init_entry_t));
-    /* Parse comma-separated entries until the closing brace. */
+
     if (!match(p, TOK_RBRACE)) {
         do {
             init_entry_t e = { INIT_SIMPLE, NULL, NULL, NULL };
-            if (match(p, TOK_DOT)) {
-                token_t *id = peek(p);
-                if (!id || id->type != TOK_IDENT) {
-                    vector_free(&vals_v);
-                    return NULL;
-                }
-                p->pos++;
-                e.kind = INIT_FIELD;
-                e.field = vc_strdup(id->lexeme);
-                if (!e.field) {
-                    vector_free(&vals_v);
-                    return NULL;
-                }
-                if (!match(p, TOK_ASSIGN)) {
-                    free(e.field);
-                    vector_free(&vals_v);
-                    return NULL;
-                }
-                e.value = parser_parse_expr(p);
-                if (!e.value) {
-                    free(e.field);
-                    vector_free(&vals_v);
-                    return NULL;
-                }
-            } else if (match(p, TOK_LBRACKET)) {
-                e.kind = INIT_INDEX;
-                e.index = parser_parse_expr(p);
-                if (!e.index || !match(p, TOK_RBRACKET) || !match(p, TOK_ASSIGN)) {
-                    ast_free_expr(e.index);
-                    vector_free(&vals_v);
-                    return NULL;
-                }
-                e.value = parser_parse_expr(p);
-                if (!e.value) {
-                    ast_free_expr(e.index);
-                    vector_free(&vals_v);
-                    return NULL;
-                }
-            } else {
-                e.value = parser_parse_expr(p);
-                if (!e.value) {
-                    vector_free(&vals_v);
-                    return NULL;
-                }
+            int ok = 0;
+
+            if (match(p, TOK_DOT))
+                ok = parse_field_entry(p, &e);
+            else if (match(p, TOK_LBRACKET))
+                ok = parse_index_entry(p, &e);
+            else
+                ok = parse_simple_entry(p, &e);
+
+            if (!ok) {
+                free_init_vector(&vals_v);
+                return NULL;
             }
 
-            /* Attempt to append the parsed entry; free everything on allocation failure. */
             if (!vector_push(&vals_v, &e)) {
                 ast_free_expr(e.index);
                 ast_free_expr(e.value);
                 free(e.field);
-                for (size_t i = 0; i < vals_v.count; i++) {
-                    init_entry_t *it = &((init_entry_t *)vals_v.data)[i];
-                    ast_free_expr(it->index);
-                    ast_free_expr(it->value);
-                    free(it->field);
-                }
-                vector_free(&vals_v);
+                free_init_vector(&vals_v);
                 return NULL;
             }
         } while (match(p, TOK_COMMA));
-        /* Clean up if the list is unterminated. */
+
         if (!match(p, TOK_RBRACE)) {
-            for (size_t i = 0; i < vals_v.count; i++) {
-                init_entry_t *it = &((init_entry_t *)vals_v.data)[i];
-                ast_free_expr(it->index);
-                ast_free_expr(it->value);
-                free(it->field);
-            }
-            vector_free(&vals_v);
+            free_init_vector(&vals_v);
             return NULL;
         }
     }
