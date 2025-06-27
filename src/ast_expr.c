@@ -266,6 +266,7 @@ expr_t *ast_make_call(const char *name, expr_t **args, size_t arg_count,
     return expr;
 }
 
+/* Create a compound literal expression node. */
 expr_t *ast_make_compound(type_kind_t type, size_t array_size,
                           size_t elem_size, expr_t *init,
                           init_entry_t *init_list, size_t init_count,
