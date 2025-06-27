@@ -235,8 +235,7 @@ spills never overwrite active values.
 void regalloc_run(ir_builder_t *ir, regalloc_t *ra) {
     int *last = compute_last_use(ir, ir->next_value_id);
     for each instruction {
-        if (needs_location(dest))
-            allocate_register_or_spill();
+        allocate_location(instr, free_regs, &free_count, ra);
         release_registers_at_last_use();
     }
 }
