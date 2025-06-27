@@ -52,12 +52,25 @@ expr_t *parser_parse_expr(parser_t *p);
 
 /* Parse an initializer list between '{' and '}'.  The number of parsed
  * expressions is stored in out_count. */
+/* Parse an initializer list enclosed in braces and return the entries. */
 init_entry_t *parser_parse_init_list(parser_t *p, size_t *out_count);
+
+/* Parse a variable declaration at either global or local scope. */
 stmt_t *parser_parse_var_decl(parser_t *p);
+
+/* Parse an enum type definition. */
 stmt_t *parser_parse_enum_decl(parser_t *p);
+
+/* Parse a union type definition. */
 stmt_t *parser_parse_union_decl(parser_t *p);
+
+/* Parse a union variable declaration with inline members. */
 stmt_t *parser_parse_union_var_decl(parser_t *p);
+
+/* Parse a struct type definition. */
 stmt_t *parser_parse_struct_decl(parser_t *p);
+
+/* Parse a struct variable declaration with inline members. */
 stmt_t *parser_parse_struct_var_decl(parser_t *p);
 
 #endif /* VC_PARSER_H */
