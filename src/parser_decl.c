@@ -25,6 +25,9 @@ static int parse_decl_specs(parser_t *p, int *is_extern, int *is_static,
                             token_t **kw_tok);
 static int parse_array_suffix(parser_t *p, type_kind_t *type, char **name,
                               size_t *arr_size, expr_t **size_expr);
+static int parse_array_initializer(parser_t *p, init_entry_t **init_list,
+                                   size_t *init_count);
+static int parse_expr_initializer(parser_t *p, expr_t **init);
 static int parse_initializer(parser_t *p, type_kind_t type, expr_t **init,
                              init_entry_t **init_list, size_t *init_count);
 
@@ -110,6 +113,36 @@ static int parse_array_suffix(parser_t *p, type_kind_t *type, char **name,
     return 1;
 }
 
+/* Parse an initializer list for arrays followed by a semicolon. */
+static int parse_array_initializer(parser_t *p, init_entry_t **init_list,
+                                   size_t *init_count)
+{
+    *init_list = parser_parse_init_list(p, init_count);
+    if (!*init_list || !match(p, TOK_SEMI)) {
+        if (*init_list) {
+            for (size_t i = 0; i < *init_count; i++) {
+                ast_free_expr((*init_list)[i].index);
+                ast_free_expr((*init_list)[i].value);
+                free((*init_list)[i].field);
+            }
+            free(*init_list);
+        }
+        return 0;
+    }
+    return 1;
+}
+
+/* Parse a scalar initializer expression followed by a semicolon. */
+static int parse_expr_initializer(parser_t *p, expr_t **init)
+{
+    *init = parser_parse_expr(p);
+    if (!*init || !match(p, TOK_SEMI)) {
+        ast_free_expr(*init);
+        return 0;
+    }
+    return 1;
+}
+
 /* Parse optional initializer and trailing semicolon. */
 static int parse_initializer(parser_t *p, type_kind_t type, expr_t **init,
                              init_entry_t **init_list, size_t *init_count)
@@ -120,24 +153,11 @@ static int parse_initializer(parser_t *p, type_kind_t type, expr_t **init,
 
     if (match(p, TOK_ASSIGN)) {
         if (type == TYPE_ARRAY && peek(p) && peek(p)->type == TOK_LBRACE) {
-            *init_list = parser_parse_init_list(p, init_count);
-            if (!*init_list || !match(p, TOK_SEMI)) {
-                if (*init_list) {
-                    for (size_t i = 0; i < *init_count; i++) {
-                        ast_free_expr((*init_list)[i].index);
-                        ast_free_expr((*init_list)[i].value);
-                        free((*init_list)[i].field);
-                    }
-                    free(*init_list);
-                }
+            if (!parse_array_initializer(p, init_list, init_count))
                 return 0;
-            }
         } else {
-            *init = parser_parse_expr(p);
-            if (!*init || !match(p, TOK_SEMI)) {
-                ast_free_expr(*init);
+            if (!parse_expr_initializer(p, init))
                 return 0;
-            }
         }
     } else {
         if (!match(p, TOK_SEMI))
