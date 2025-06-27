@@ -222,10 +222,12 @@ static int handle_define(char *line, vector_t *macros, vector_t *conds)
     return 1;
 }
 
-/* Push a new state for an #ifdef directive */
-static void cond_push_ifdef(char *line, vector_t *macros, vector_t *conds)
+/* Push a new state for #ifdef/#ifndef directives.  When "neg" is non-zero
+ * the condition is inverted as for #ifndef. */
+static void cond_push_ifdef_common(char *line, vector_t *macros,
+                                   vector_t *conds, int neg)
 {
-    char *n = line + 6;
+    char *n = line + (neg ? 7 : 6);
     while (*n == ' ' || *n == '\t')
         n++;
     char *id = n;
@@ -235,7 +237,8 @@ static void cond_push_ifdef(char *line, vector_t *macros, vector_t *conds)
     cond_state_t st;
     st.parent_active = stack_active(conds);
     st.taken = 0;
-    if (st.parent_active && is_macro_defined(macros, id)) {
+    int defined = is_macro_defined(macros, id);
+    if (st.parent_active && (neg ? !defined : defined)) {
         st.taking = 1;
         st.taken = 1;
     } else {
@@ -244,26 +247,16 @@ static void cond_push_ifdef(char *line, vector_t *macros, vector_t *conds)
     vector_push(conds, &st);
 }
 
+/* Push a new state for an #ifdef directive */
+static void cond_push_ifdef(char *line, vector_t *macros, vector_t *conds)
+{
+    cond_push_ifdef_common(line, macros, conds, 0);
+}
+
 /* Push a new state for an #ifndef directive */
 static void cond_push_ifndef(char *line, vector_t *macros, vector_t *conds)
 {
-    char *n = line + 7;
-    while (*n == ' ' || *n == '\t')
-        n++;
-    char *id = n;
-    while (isalnum((unsigned char)*n) || *n == '_')
-        n++;
-    *n = '\0';
-    cond_state_t st;
-    st.parent_active = stack_active(conds);
-    st.taken = 0;
-    if (st.parent_active && !is_macro_defined(macros, id)) {
-        st.taking = 1;
-        st.taken = 1;
-    } else {
-        st.taking = 0;
-    }
-    vector_push(conds, &st);
+    cond_push_ifdef_common(line, macros, conds, 1);
 }
 
 /* Push a new state for a generic #if expression */
