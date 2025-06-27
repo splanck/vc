@@ -8,14 +8,14 @@
 #include <stdio.h>
 #include "error.h"
 
-/* Stored source location for the next error message */
+/* Stored source location for the next error message. */
 static size_t error_line = 0;
 static size_t error_column = 0;
 
 /*
- * Remember the given source position for use by error_print().  The
- * values are 1-based; a line or column of 0 indicates an unknown
- * position.
+ * Remember the given source position for use by error_print().
+ * The line and column numbers are 1-based; passing 0 for either
+ * value records an unknown location.
  */
 void error_set(size_t line, size_t col)
 {
@@ -26,7 +26,7 @@ void error_set(size_t line, size_t col)
 /*
  * Output "msg" followed by the location previously stored with
  * error_set().  The message is printed to stderr in a
- * "line/column" format.
+ * "line/column" format and is intended for compiler diagnostics.
  */
 void error_print(const char *msg)
 {

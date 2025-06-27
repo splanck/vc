@@ -1,5 +1,10 @@
 /*
- * Unit tests for lexer and parser.
+ * Unit tests for the lexer and parser.
+ *
+ * Each routine below exercises a single feature of the front-end and
+ * reports failures through a very small assertion helper.  The goal is
+ * to keep these tests completely self contained so they can run in any
+ * environment without additional infrastructure.
  *
  * Part of vc under the BSD 2-Clause license.
  * See LICENSE for details.
@@ -14,7 +19,17 @@
 #include "ast_expr.h"
 #include "ast_stmt.h"
 
+/*
+ * Number of failed assertions recorded so far.  The main function prints
+ * a summary based on this counter.
+ */
 static int failures = 0;
+
+/*
+ * Basic assertion macro used by the tests.  When a condition fails the
+ * message is printed along with file and line information and the global
+ * failure count is incremented.
+ */
 #define ASSERT(cond) do { \
     if (!(cond)) { \
         fprintf(stderr, "Assertion failed: %s (%s:%d)\n", #cond, __FILE__, __LINE__); \
@@ -22,6 +37,7 @@ static int failures = 0;
     } \
 } while (0)
 
+/* Verify that a simple declaration is tokenised correctly. */
 static void test_lexer_basic(void)
 {
     const char *src = "int x;";
@@ -35,6 +51,7 @@ static void test_lexer_basic(void)
     lexer_free_tokens(toks, count);
 }
 
+/* Ensure both line and block comments are skipped by the lexer. */
 static void test_lexer_comments(void)
 {
     const char *src =
@@ -59,6 +76,7 @@ static void test_lexer_comments(void)
     lexer_free_tokens(toks, count);
 }
 
+/* Tokenise the percent operator. */
 static void test_lexer_percent(void)
 {
     const char *src = "a % b;";
@@ -68,6 +86,7 @@ static void test_lexer_percent(void)
     lexer_free_tokens(toks, count);
 }
 
+/* Lexer support for new type keywords such as short, long and bool. */
 static void test_lexer_new_types(void)
 {
     const char *src = "short s; long l; bool b; unsigned long long u;";
@@ -81,6 +100,7 @@ static void test_lexer_new_types(void)
     lexer_free_tokens(toks, count);
 }
 
+/* Parse a simple arithmetic expression and verify operator precedence. */
 static void test_parser_expr(void)
 {
     const char *src = "1 + 2 * 3";
@@ -102,6 +122,7 @@ static void test_parser_expr(void)
     lexer_free_tokens(toks, count);
 }
 
+/* Parsing of a return statement with an expression. */
 static void test_parser_stmt_return(void)
 {
     const char *src = "return 5;";
@@ -116,6 +137,7 @@ static void test_parser_stmt_return(void)
     lexer_free_tokens(toks, count);
 }
 
+/* Parsing of a bare "return" statement. */
 static void test_parser_stmt_return_void(void)
 {
     const char *src = "return;";
@@ -130,6 +152,7 @@ static void test_parser_stmt_return_void(void)
     lexer_free_tokens(toks, count);
 }
 
+/* Variable declaration including an initializer. */
 static void test_parser_var_decl_init(void)
 {
     const char *src = "int x = 5;";
@@ -147,6 +170,7 @@ static void test_parser_var_decl_init(void)
     lexer_free_tokens(toks, count);
 }
 
+/* Declaration of a variable with the short type. */
 static void test_parser_short_decl(void)
 {
     const char *src = "short s;";
@@ -160,6 +184,7 @@ static void test_parser_short_decl(void)
     lexer_free_tokens(toks, count);
 }
 
+/* Declaration using the bool type. */
 static void test_parser_bool_decl(void)
 {
     const char *src = "bool b;";
@@ -173,6 +198,7 @@ static void test_parser_bool_decl(void)
     lexer_free_tokens(toks, count);
 }
 
+/* Lexing of the "static" storage class specifier. */
 static void test_lexer_static_kw(void)
 {
     const char *src = "static int x;";
@@ -182,6 +208,7 @@ static void test_lexer_static_kw(void)
     lexer_free_tokens(toks, count);
 }
 
+/* Parsing of a static local variable declaration. */
 static void test_parser_static_local(void)
 {
     const char *src = "static int x;";
@@ -194,6 +221,7 @@ static void test_parser_static_local(void)
     lexer_free_tokens(toks, count);
 }
 
+/* Parse an array declaration with a constant size. */
 static void test_parser_array_decl(void)
 {
     const char *src = "int a[4];";
@@ -210,6 +238,7 @@ static void test_parser_array_decl(void)
     lexer_free_tokens(toks, count);
 }
 
+/* Parse a simple array indexing expression. */
 static void test_parser_index_expr(void)
 {
     const char *src = "a[1]";
@@ -226,6 +255,7 @@ static void test_parser_index_expr(void)
     lexer_free_tokens(toks, count);
 }
 
+/* Unary minus expression parsing. */
 static void test_parser_unary_neg(void)
 {
     const char *src = "-5";
@@ -242,6 +272,7 @@ static void test_parser_unary_neg(void)
     lexer_free_tokens(toks, count);
 }
 
+/* Pointer arithmetic should parse like integer addition. */
 static void test_parser_pointer_arith(void)
 {
     const char *src = "p + 1";
@@ -259,6 +290,7 @@ static void test_parser_pointer_arith(void)
     lexer_free_tokens(toks, count);
 }
 
+/* Modulo operator parsing. */
 static void test_parser_mod(void)
 {
     const char *src = "5 % 2";
@@ -272,6 +304,7 @@ static void test_parser_mod(void)
     lexer_free_tokens(toks, count);
 }
 
+/* Global variable initialization expression parsing. */
 static void test_parser_global_init(void)
 {
     const char *src = "int y = 1 + 2;";
@@ -290,6 +323,7 @@ static void test_parser_global_init(void)
     lexer_free_tokens(toks, count);
 }
 
+/* Unary operator applied to a parenthesised expression. */
 static void test_parser_unary_expr(void)
 {
     const char *src = "-(1 + 2)";
@@ -304,6 +338,7 @@ static void test_parser_unary_expr(void)
     lexer_free_tokens(toks, count);
 }
 
+/* Parse logical and/or expressions with precedence. */
 static void test_parser_logical(void)
 {
     const char *src = "1 && 2 || !0";
@@ -321,6 +356,7 @@ static void test_parser_logical(void)
     lexer_free_tokens(toks, count);
 }
 
+/* Conditional operator parsing (a ? b : c). */
 static void test_parser_conditional(void)
 {
     const char *src = "a ? b : c";
@@ -336,6 +372,7 @@ static void test_parser_conditional(void)
     lexer_free_tokens(toks, count);
 }
 
+/* Lexing of the sizeof keyword. */
 static void test_lexer_sizeof(void)
 {
     const char *src = "sizeof(int)";
@@ -345,6 +382,7 @@ static void test_lexer_sizeof(void)
     lexer_free_tokens(toks, count);
 }
 
+/* Parse a sizeof expression referring to a type. */
 static void test_parser_sizeof(void)
 {
     const char *src = "sizeof(int)";
@@ -359,6 +397,7 @@ static void test_parser_sizeof(void)
     lexer_free_tokens(toks, count);
 }
 
+/* Parsing of a complete function definition. */
 static void test_parser_func(void)
 {
     const char *src = "int main() { return 0; }";
@@ -375,6 +414,7 @@ static void test_parser_func(void)
     lexer_free_tokens(toks, count);
 }
 
+/* Nested block statement parsing. */
 static void test_parser_block(void)
 {
     const char *src = "{ int x; { int y; } }";
@@ -393,6 +433,7 @@ static void test_parser_block(void)
     lexer_free_tokens(toks, count);
 }
 
+/* Verify that line directives influence token line/column fields. */
 static void test_line_directive(void)
 {
     const char *src = "# 5 \"file.c\"\nint x;";
@@ -402,6 +443,10 @@ static void test_line_directive(void)
     lexer_free_tokens(toks, count);
 }
 
+/*
+ * Entry point for the test executable.  Each unit test is run in
+ * sequence and the total number of failures reported at the end.
+ */
 int main(void)
 {
     test_lexer_basic();

@@ -10,7 +10,11 @@
 #include <string.h>
 #include "util.h"
 
-/* Allocate memory or exit on failure */
+/*
+ * Allocate "size" bytes of memory.  If the allocation fails the process
+ * prints an error message and terminates.  The returned block is
+ * uninitialised.
+ */
 void *vc_alloc_or_exit(size_t size)
 {
     void *p = malloc(size);
@@ -21,7 +25,10 @@ void *vc_alloc_or_exit(size_t size)
     return p;
 }
 
-/* Reallocate memory or exit on failure */
+/*
+ * Reallocate a block previously obtained from malloc.  Behaviour mirrors
+ * realloc() except that failure results in program termination.
+ */
 void *vc_realloc_or_exit(void *ptr, size_t size)
 {
     void *p = realloc(ptr, size);
@@ -32,7 +39,7 @@ void *vc_realloc_or_exit(void *ptr, size_t size)
     return p;
 }
 
-/* Duplicate a string using malloc */
+/* Return a newly allocated copy of the given NUL terminated string. */
 char *vc_strdup(const char *s)
 {
     size_t len = strlen(s);
@@ -41,7 +48,7 @@ char *vc_strdup(const char *s)
     return out;
 }
 
-/* Duplicate at most 'n' characters of a string */
+/* Duplicate at most "n" characters of a string. */
 char *vc_strndup(const char *s, size_t n)
 {
     char *out = vc_alloc_or_exit(n + 1);
@@ -50,7 +57,11 @@ char *vc_strndup(const char *s, size_t n)
     return out;
 }
 
-/* Read the entire contents of a file into memory */
+/*
+ * Read the entire contents of a file into a newly allocated buffer.  A
+ * trailing NUL byte is always appended.  The caller must free the
+ * returned pointer with free().  NULL is returned on I/O errors.
+ */
 char *vc_read_file(const char *path)
 {
     FILE *f = fopen(path, "rb");

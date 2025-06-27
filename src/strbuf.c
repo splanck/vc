@@ -12,7 +12,10 @@
 #include "strbuf.h"
 #include "util.h"
 
-/* Initialize a string buffer */
+/*
+ * Initialise an empty string buffer.  The buffer grows automatically as
+ * text is appended.
+ */
 void strbuf_init(strbuf_t *sb)
 {
     if (!sb)
@@ -23,7 +26,7 @@ void strbuf_init(strbuf_t *sb)
     sb->data[0] = '\0';
 }
 
-/* Ensure the buffer can hold at least extra bytes */
+/* Ensure the buffer can hold at least "extra" additional bytes. */
 static void sb_ensure(strbuf_t *sb, size_t extra)
 {
     if (!sb->data || sb->len + extra >= sb->cap) {
@@ -36,7 +39,7 @@ static void sb_ensure(strbuf_t *sb, size_t extra)
     }
 }
 
-/* Append a simple string to the buffer */
+/* Append a simple NUL terminated string to the buffer. */
 void strbuf_append(strbuf_t *sb, const char *text)
 {
     if (!sb || !text)
@@ -49,7 +52,7 @@ void strbuf_append(strbuf_t *sb, const char *text)
     sb->len += l;
 }
 
-/* Append formatted text using printf-style formatting */
+/* Append formatted text using printf-style formatting. */
 void strbuf_appendf(strbuf_t *sb, const char *fmt, ...)
 {
     if (!sb || !fmt)
@@ -73,7 +76,7 @@ void strbuf_appendf(strbuf_t *sb, const char *fmt, ...)
     }
 }
 
-/* Free the memory used by a string buffer */
+/* Free the memory used by a string buffer. */
 void strbuf_free(strbuf_t *sb)
 {
     if (!sb)
