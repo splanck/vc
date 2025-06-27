@@ -1,4 +1,9 @@
-/* Switch statement and label table helpers */
+/*
+ * Switch statement checking and label management helpers.
+ *
+ * Part of vc under the BSD 2-Clause license.
+ * See LICENSE for details.
+ */
 
 #include <stdlib.h>
 #include <string.h>
@@ -15,8 +20,10 @@ extern int check_stmt(stmt_t *stmt, symtable_t *vars, symtable_t *funcs,
                       void *labels, ir_builder_t *ir, type_kind_t func_ret_type,
                       const char *break_label, const char *continue_label);
 
+/* Initialize an empty label table */
 void label_table_init(label_table_t *t) { t->head = NULL; }
 
+/* Free all memory used by a label table */
 void label_table_free(label_table_t *t)
 {
     label_entry_t *e = t->head;
@@ -30,6 +37,7 @@ void label_table_free(label_table_t *t)
     t->head = NULL;
 }
 
+/* Return the IR name for label `name` or NULL if absent */
 const char *label_table_get(label_table_t *t, const char *name)
 {
     for (label_entry_t *e = t->head; e; e = e->next) {
@@ -39,6 +47,7 @@ const char *label_table_get(label_table_t *t, const char *name)
     return NULL;
 }
 
+/* Get or create a label entry and return its IR name */
 const char *label_table_get_or_add(label_table_t *t, const char *name)
 {
     const char *ir = label_table_get(t, name);
@@ -55,6 +64,7 @@ const char *label_table_get_or_add(label_table_t *t, const char *name)
     return e->ir_name;
 }
 
+/* Validate a switch statement and emit IR for it */
 int check_switch_stmt(stmt_t *stmt, symtable_t *vars, symtable_t *funcs,
                       label_table_t *labels, ir_builder_t *ir,
                       type_kind_t func_ret_type)
