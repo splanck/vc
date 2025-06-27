@@ -1,5 +1,7 @@
 /*
  * Semantic analysis and IR generation.
+ * Helper routines validate all expression kinds and build
+ * the corresponding intermediate representation.
  *
  * Part of vc under the BSD 2-Clause license.
  * See LICENSE for details.

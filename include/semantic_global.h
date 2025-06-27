@@ -1,5 +1,7 @@
 /*
  * Global and function semantic validation helpers.
+ * Provides routines that check global declarations and
+ * generate IR for variables and functions.
  *
  * Part of vc under the BSD 2-Clause license.
  * See LICENSE for details.

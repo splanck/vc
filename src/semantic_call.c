@@ -1,5 +1,7 @@
 /*
  * Function call expression semantic helper.
+ * Validates calls against function prototypes and emits the
+ * IR instruction performing the call.
  *
  * Part of vc under the BSD 2-Clause license.
  * See LICENSE for details.
@@ -19,7 +21,8 @@
 
 /*
  * Validate a function call by checking argument types against the
- * function's prototype and emit the call IR instruction.
+ * function's prototype and emit the IR instruction that performs
+ * the call and captures its result.
  */
 type_kind_t check_call_expr(expr_t *expr, symtable_t *vars,
                             symtable_t *funcs, ir_builder_t *ir,

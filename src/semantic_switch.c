@@ -1,5 +1,7 @@
 /*
  * Switch statement checking and label management helpers.
+ * Validates switch constructs and manages label mapping while
+ * generating the branch IR for cases.
  *
  * Part of vc under the BSD 2-Clause license.
  * See LICENSE for details.

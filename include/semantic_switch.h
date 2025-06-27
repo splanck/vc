@@ -1,5 +1,7 @@
 /*
  * Switch statement and label table helpers.
+ * Provides label table utilities and routines for validating
+ * switch statements while emitting the necessary IR branches.
  *
  * Part of vc under the BSD 2-Clause license.
  * See LICENSE for details.

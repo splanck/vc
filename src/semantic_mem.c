@@ -1,5 +1,7 @@
 /*
  * Memory expression semantic helpers.
+ * These routines handle array and struct member access and
+ * emit loads, stores and address computations in IR.
  *
  * Part of vc under the BSD 2-Clause license.
  * See LICENSE for details.

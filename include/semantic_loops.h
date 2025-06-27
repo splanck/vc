@@ -1,5 +1,7 @@
 /*
  * Loop statement semantic helpers.
+ * Functions here check loop constructs and emit the branches
+ * required to implement them in IR.
  *
  * Part of vc under the BSD 2-Clause license.
  * See LICENSE for details.

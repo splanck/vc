@@ -1,5 +1,7 @@
 /*
  * Global and function semantic validation.
+ * Routines verify declarations/definitions and build IR for
+ * global data and function bodies.
  *
  * Part of vc under the BSD 2-Clause license.
  * See LICENSE for details.

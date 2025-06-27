@@ -1,5 +1,7 @@
 /*
  * Arithmetic expression semantic helpers.
+ * These routines validate arithmetic and comparison expressions
+ * and emit the corresponding IR instructions.
  *
  * Part of vc under the BSD 2-Clause license.
  * See LICENSE for details.
@@ -41,8 +43,9 @@ static const ir_op_t binop_to_ir[] = {
 };
 
 /*
- * Perform a binary arithmetic or comparison operation and emit the
- * corresponding IR instructions.
+ * Perform a binary arithmetic or comparison operation.
+ * Operand types are validated and the appropriate IR instruction
+ * is emitted on success.
  */
 type_kind_t check_binary(expr_t *left, expr_t *right, symtable_t *vars,
                          symtable_t *funcs, ir_builder_t *ir,
@@ -109,8 +112,9 @@ type_kind_t check_binary(expr_t *left, expr_t *right, symtable_t *vars,
 }
 
 /*
- * Validate unary arithmetic and pointer operators and produce the
- * appropriate IR for the operation.
+ * Validate unary arithmetic and pointer operators.
+ * Ensures operands are of the correct type and emits IR for the
+ * resulting value or address manipulation.
  */
 type_kind_t check_unary_expr(expr_t *expr, symtable_t *vars,
                              symtable_t *funcs, ir_builder_t *ir,
@@ -250,7 +254,7 @@ type_kind_t check_unary_expr(expr_t *expr, symtable_t *vars,
 /*
  * Validate a binary expression.  Logical operations are handled
  * separately while other operators delegate to check_binary to
- * generate the IR.
+ * verify operand types and emit the IR instruction.
  */
 type_kind_t check_binary_expr(expr_t *expr, symtable_t *vars,
                               symtable_t *funcs, ir_builder_t *ir,
