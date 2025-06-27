@@ -37,6 +37,7 @@ typedef struct {
     int taken;
 } cond_state_t;
 
+/* Return 1 if all conditional states on the stack are active */
 static int stack_active(vector_t *conds)
 {
     for (size_t i = 0; i < conds->count; i++) {
@@ -52,7 +53,11 @@ static int process_file(const char *path, vector_t *macros,
                         vector_t *conds, strbuf_t *out,
                         const vector_t *incdirs);
 
-/* handle a single #include directive */
+/*
+ * Process one #include directive.  Searches the provided include
+ * directories as well as standard paths and recursively processes
+ * the chosen file when the current conditional stack is active.
+ */
 static int handle_include(char *line, const char *dir, vector_t *macros,
                           vector_t *conds, strbuf_t *out,
                           const vector_t *incdirs)
@@ -122,7 +127,11 @@ static int handle_include(char *line, const char *dir, vector_t *macros,
     return 1;
 }
 
-/* handle a single #define directive */
+/*
+ * Parse and store a macro definition from a #define directive.
+ * When the current conditional stack is active, the macro is added
+ * to the macro table for later expansion.
+ */
 static int handle_define(char *line, vector_t *macros, vector_t *conds)
 {
     char *n = line + 7;
@@ -189,7 +198,10 @@ static int handle_define(char *line, vector_t *macros, vector_t *conds)
     return 1;
 }
 
-/* handle conditional directives like #if/#else/#endif */
+/*
+ * Update the conditional state stack for directives such as
+ * #if, #ifdef, #elif, #else and #endif.
+ */
 static void handle_conditional(char *line, vector_t *macros, vector_t *conds)
 {
     if (strncmp(line, "#ifdef", 6) == 0 && isspace((unsigned char)line[6])) {
@@ -276,7 +288,10 @@ static void handle_conditional(char *line, vector_t *macros, vector_t *conds)
     }
 }
 
-/* handle a #pragma directive (currently passed through) */
+/*
+ * Append a #pragma directive to the output when the current
+ * conditional stack is active.  Pragmas are otherwise ignored.
+ */
 static void handle_pragma(char *line, vector_t *conds, strbuf_t *out)
 {
     if (stack_active(conds)) {
@@ -285,6 +300,11 @@ static void handle_pragma(char *line, vector_t *conds, strbuf_t *out)
     }
 }
 
+/*
+ * Core file processing routine.  Reads the file, handles directives
+ * and macro expansion line by line, writing the preprocessed result
+ * to the output buffer.
+ */
 static int process_file(const char *path, vector_t *macros,
                         vector_t *conds, strbuf_t *out,
                         const vector_t *incdirs)
@@ -384,6 +404,10 @@ static int process_file(const char *path, vector_t *macros,
     return 1;
 }
 
+/*
+ * Entry point used by the compiler.  Sets up include search paths,
+ * invokes the file processor and returns the resulting text.
+ */
 char *preproc_run(const char *path, const vector_t *include_dirs)
 {
     vector_t search_dirs;

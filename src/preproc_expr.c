@@ -17,12 +17,14 @@ typedef struct {
     vector_t *macros;
 } expr_ctx_t;
 
+/* Advance the parser position past any spaces or tabs */
 static void skip_ws(expr_ctx_t *ctx)
 {
     while (*ctx->s == ' ' || *ctx->s == '\t')
         ctx->s++;
 }
 
+/* Parse an identifier token from the input and return a new string */
 static char *parse_ident(expr_ctx_t *ctx)
 {
     skip_ws(ctx);
@@ -40,6 +42,10 @@ static char *parse_ident(expr_ctx_t *ctx)
 
 static int parse_expr(expr_ctx_t *ctx);
 
+/*
+ * Parse a primary expression: literals, parentheses or defined().
+ * Returns the integer value of the parsed expression.
+ */
 static int parse_primary(expr_ctx_t *ctx)
 {
     skip_ws(ctx);
@@ -83,6 +89,7 @@ static int parse_primary(expr_ctx_t *ctx)
     }
 }
 
+/* Handle unary negation in the expression grammar */
 static int parse_not(expr_ctx_t *ctx)
 {
     skip_ws(ctx);
@@ -93,6 +100,7 @@ static int parse_not(expr_ctx_t *ctx)
     return parse_primary(ctx);
 }
 
+/* Parse left-associative '&&' operations */
 static int parse_and(expr_ctx_t *ctx)
 {
     int val = parse_not(ctx);
@@ -106,6 +114,7 @@ static int parse_and(expr_ctx_t *ctx)
     return val;
 }
 
+/* Parse left-associative '||' operations */
 static int parse_or(expr_ctx_t *ctx)
 {
     int val = parse_and(ctx);
@@ -119,11 +128,13 @@ static int parse_or(expr_ctx_t *ctx)
     return val;
 }
 
+/* Entry point of the recursive descent parser */
 static int parse_expr(expr_ctx_t *ctx)
 {
     return parse_or(ctx) != 0;
 }
 
+/* Public wrapper used by the preprocessor to evaluate expressions */
 int eval_expr(const char *s, vector_t *macros)
 {
     expr_ctx_t ctx = { s, macros };

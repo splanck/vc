@@ -14,7 +14,11 @@
 #include "vector.h"
 #include "strbuf.h"
 
-/* Free memory for a macro */
+/*
+ * Release all memory associated with a macro definition.
+ * Frees the name string, parameter list and value.  Safe to
+ * call with a NULL pointer.
+ */
 void macro_free(macro_t *m)
 {
     if (!m)
@@ -26,7 +30,10 @@ void macro_free(macro_t *m)
     free(m->value);
 }
 
-/* internal helpers */
+/*
+ * Remove trailing spaces or tabs from a string buffer.
+ * Used when concatenating macro tokens with the ## operator.
+ */
 static void trim_trailing_ws(strbuf_t *sb)
 {
     while (sb->len > 0 &&
@@ -36,6 +43,11 @@ static void trim_trailing_ws(strbuf_t *sb)
     }
 }
 
+/*
+ * Expand parameter references inside a macro body.
+ * Handles substitution, stringification (#) and token pasting (##)
+ * using the provided argument array.
+ */
 static char *expand_params(const char *value, const vector_t *params, char **args)
 {
     strbuf_t sb;
@@ -143,6 +155,11 @@ static char *expand_params(const char *value, const vector_t *params, char **arg
     return out;
 }
 
+/*
+ * Expand all macros found in a single line of input.
+ * Performs recursive expansion so macro bodies may contain other
+ * macros.  Results are appended to the provided output buffer.
+ */
 void expand_line(const char *line, vector_t *macros, strbuf_t *out)
 {
     for (size_t i = 0; line[i];) {
@@ -217,6 +234,10 @@ void expand_line(const char *line, vector_t *macros, strbuf_t *out)
     }
 }
 
+/*
+ * Return non-zero if a macro with the given name exists in the
+ * macro vector.
+ */
 int is_macro_defined(vector_t *macros, const char *name)
 {
     for (size_t i = 0; i < macros->count; i++) {
@@ -227,6 +248,10 @@ int is_macro_defined(vector_t *macros, const char *name)
     return 0;
 }
 
+/*
+ * Delete all macros matching the given name from the macro list.
+ * The order of remaining entries is preserved.
+ */
 void remove_macro(vector_t *macros, const char *name)
 {
     for (size_t i = 0; i < macros->count;) {
