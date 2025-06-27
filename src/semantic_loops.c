@@ -1,4 +1,9 @@
-/* Loop statement semantic helpers */
+/*
+ * Loop statement semantic helpers.
+ *
+ * Part of vc under the BSD 2-Clause license.
+ * See LICENSE for details.
+ */
 
 #include "semantic_loops.h"
 #include "semantic_expr.h"
