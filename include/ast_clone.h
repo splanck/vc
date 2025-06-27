@@ -1,7 +1,7 @@
 /*
  * Expression tree cloning helpers.
  *
- * Part of vc under the BSD 2-Clause license.
+ * Part of the vc project under the BSD 2-Clause Simplified License.
  * See LICENSE for details.
  */
 
