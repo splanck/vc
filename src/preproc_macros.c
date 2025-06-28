@@ -22,15 +22,18 @@
 /* current expansion location for builtin macros */
 static const char *builtin_file = "";
 static size_t builtin_line = 0;
+static size_t builtin_column = 1;
 static const char *builtin_func = NULL;
 
 static const char build_date[] = __DATE__;
 static const char build_time[] = __TIME__;
 
-void preproc_set_location(const char *file, size_t line)
+void preproc_set_location(const char *file, size_t line, size_t column)
 {
-    builtin_file = file ? file : "";
+    if (file)
+        builtin_file = file;
     builtin_line = line;
+    builtin_column = column;
 }
 
 void preproc_set_function(const char *name)
@@ -241,10 +244,10 @@ static void expand_macro_call(macro_t *m, char **args, vector_t *macros,
     strbuf_init(&tmp);
     if (m->params.count) {
         char *body = expand_params(m->value, &m->params, args);
-        expand_line(body, macros, &tmp);
+        expand_line(body, macros, &tmp, builtin_column);
         free(body);
     } else {
-        expand_line(m->value, macros, &tmp);
+        expand_line(m->value, macros, &tmp, builtin_column);
     }
     strbuf_append(out, tmp.data ? tmp.data : "");
     strbuf_free(&tmp);
@@ -264,7 +267,8 @@ static void emit_plain_char(const char *line, size_t *pos, strbuf_t *out)
  * when a macro expansion occurred.
  */
 static int parse_macro_invocation(const char *line, size_t *pos,
-                                  vector_t *macros, strbuf_t *out)
+                                  vector_t *macros, strbuf_t *out,
+                                  size_t column)
 {
     size_t i = *pos;
 
@@ -280,27 +284,33 @@ static int parse_macro_invocation(const char *line, size_t *pos,
     /* handle builtin macros first */
     if (len == 8) {
         if (strncmp(line + i, "__FILE__", 8) == 0) {
+            preproc_set_location(NULL, builtin_line, column);
             strbuf_appendf(out, "\"%s\"", builtin_file);
             *pos = j;
             return 1;
         } else if (strncmp(line + i, "__LINE__", 8) == 0) {
+            preproc_set_location(NULL, builtin_line, column);
             strbuf_appendf(out, "%zu", builtin_line);
             *pos = j;
             return 1;
         } else if (strncmp(line + i, "__DATE__", 8) == 0) {
+            preproc_set_location(NULL, builtin_line, column);
             strbuf_appendf(out, "\"%s\"", build_date);
             *pos = j;
             return 1;
         } else if (strncmp(line + i, "__TIME__", 8) == 0) {
+            preproc_set_location(NULL, builtin_line, column);
             strbuf_appendf(out, "\"%s\"", build_time);
             *pos = j;
             return 1;
         } else if (strncmp(line + i, "__STDC__", 8) == 0) {
+            preproc_set_location(NULL, builtin_line, column);
             strbuf_append(out, "1");
             *pos = j;
             return 1;
         }
     } else if (len == 16 && strncmp(line + i, "__STDC_VERSION__", 16) == 0) {
+        preproc_set_location(NULL, builtin_line, column);
         strbuf_append(out, "199901");
         *pos = j;
         return 1;
@@ -308,6 +318,7 @@ static int parse_macro_invocation(const char *line, size_t *pos,
     for (size_t k = 0; k < macros->count; k++) {
         macro_t *m = &((macro_t *)macros->data)[k];
         if (strlen(m->name) == len && strncmp(m->name, line + i, len) == 0) {
+            preproc_set_location(NULL, builtin_line, column);
             if (m->params.count) {
                 size_t pos2 = j;
                 vector_t args;
@@ -340,10 +351,11 @@ static int parse_macro_invocation(const char *line, size_t *pos,
  * Performs recursive expansion so macro bodies may contain other
  * macros.  Results are appended to the provided output buffer.
  */
-void expand_line(const char *line, vector_t *macros, strbuf_t *out)
+void expand_line(const char *line, vector_t *macros, strbuf_t *out, size_t column)
 {
     for (size_t i = 0; line[i];) {
-        if (!parse_macro_invocation(line, &i, macros, out))
+        size_t col = column ? column : i + 1;
+        if (!parse_macro_invocation(line, &i, macros, out, col))
             emit_plain_char(line, &i, out);
     }
 }

@@ -483,7 +483,7 @@ static int process_all_lines(char **lines, const char *path, const char *dir,
                              strbuf_t *out, const vector_t *incdirs)
 {
     for (size_t i = 0; lines[i]; i++) {
-        preproc_set_location(path, i + 1);
+        preproc_set_location(path, i + 1, 1);
         if (!process_line(lines[i], dir, macros, conds, out, incdirs))
             return 0;
     }
@@ -611,7 +611,7 @@ static int handle_text_line(char *line, const char *dir, vector_t *macros,
     if (stack_active(conds)) {
         strbuf_t tmp;
         strbuf_init(&tmp);
-        expand_line(line, macros, &tmp);
+        expand_line(line, macros, &tmp, 0);
         strbuf_append(&tmp, "\n");
         strbuf_append(out, tmp.data);
         strbuf_free(&tmp);
