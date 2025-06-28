@@ -33,6 +33,7 @@ static void print_usage(const char *prog)
     printf("  -v, --version        Print version information and exit\n");
     printf("  -c, --compile        Assemble to an object file\n");
     printf("      --link           Compile and link to an executable\n");
+    printf("      --obj-dir <dir>  Directory for temporary object files\n");
     printf("      --no-fold        Disable constant folding\n");
     printf("      --no-dce         Disable dead code elimination\n");
     printf("      --no-cprop       Disable constant propagation\n");
@@ -63,6 +64,7 @@ static void init_default_opts(cli_options_t *opts)
     opts->dump_ir = 0;
     opts->preprocess = 0;
     opts->std = STD_C99;
+    opts->obj_dir = "/tmp";
     vector_init(&opts->include_dirs, sizeof(char *));
     vector_init(&opts->sources, sizeof(char *));
 }
@@ -229,6 +231,13 @@ static int enable_link_opt(const char *arg, const char *prog, cli_options_t *opt
     return 0;
 }
 
+static int set_obj_dir_opt(const char *arg, const char *prog, cli_options_t *opts)
+{
+    (void)prog;
+    opts->obj_dir = (char *)arg;
+    return 0;
+}
+
 static int handle_std(const char *arg, const char *prog, cli_options_t *opts)
 {
     (void)prog;
@@ -263,6 +272,7 @@ static int handle_option(int opt, const char *arg, const char *prog,
         {'E', enable_preproc},
         {7,   enable_link_opt},
         {8,   handle_std},
+        {9,   set_obj_dir_opt},
         {0,   NULL}
     };
 
@@ -299,6 +309,7 @@ int cli_parse_args(int argc, char **argv, cli_options_t *opts)
         {"preprocess", no_argument,  0, 'E'},
         {"link", no_argument,        0, 7},
         {"std", required_argument,   0, 8},
+        {"obj-dir", required_argument, 0, 9},
         {0, 0, 0, 0}
     };
 
