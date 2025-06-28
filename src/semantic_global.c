@@ -73,7 +73,8 @@ int check_func(func_t *func, symtable_t *funcs, symtable_t *globals,
         return 0;
     }
     int mismatch = decl->type != func->return_type ||
-                   decl->param_count != func->param_count;
+                   decl->param_count != func->param_count ||
+                   decl->is_variadic != func->is_variadic;
     for (size_t i = 0; i < decl->param_count && !mismatch; i++)
         if (decl->param_types[i] != func->param_types[i])
             mismatch = 1;

@@ -19,6 +19,7 @@ provides an overview of all available documentation.
   invocations.
 - [Optimization passes](optimization.md) – constant folding, propagation and
   dead code elimination.
+- [Variadic functions](vcdoc.md) – using `...` and `<stdarg.h>`.
 - [Development roadmap](roadmap.md) – planned milestones and compatibility
   goals.
 - [Contributing](../CONTRIBUTING.md) – how to submit patches and bug reports.

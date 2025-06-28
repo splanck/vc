@@ -61,6 +61,7 @@ typedef struct {
 
 /* ordered longest to shortest for greedy matching */
 static const punct_entry_t punct_table[] = {
+    { "...", TOK_ELLIPSIS },
     { "<<=", TOK_SHLEQ },
     { ">>=", TOK_SHREQ },
     { "==",  TOK_EQ },

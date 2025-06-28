@@ -345,6 +345,7 @@ struct func {
     size_t *param_elem_sizes;
     int *param_is_restrict;
     size_t param_count;
+    int is_variadic;
     stmt_t **body;
     size_t body_count;
 };

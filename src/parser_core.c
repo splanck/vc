@@ -18,7 +18,7 @@
 static int parse_param_list(parser_t *p,
                             char ***names, type_kind_t **types,
                             size_t **sizes, int **restrict_flags,
-                            size_t *count);
+                            size_t *count, int *is_variadic);
 static int parse_func_body(parser_t *p, stmt_t ***body, size_t *count);
 /* Initialize the parser with a token array and reset position */
 void parser_init(parser_t *p, token_t *tokens, size_t count)
@@ -123,6 +123,7 @@ static const char *token_names[] = {
     [TOK_QMARK] = "?",
     [TOK_COLON] = ":",
     [TOK_LABEL] = "label",
+    [TOK_ELLIPSIS] = "'...'",
     [TOK_UNKNOWN] = "unknown"
 };
 
@@ -167,16 +168,21 @@ void parser_print_error(parser_t *p, const token_type_t *expected,
 static int parse_param_list(parser_t *p,
                             char ***names, type_kind_t **types,
                             size_t **sizes, int **restrict_flags,
-                            size_t *count)
+                            size_t *count, int *is_variadic)
 {
     vector_t names_v, types_v, sizes_v, restrict_v;
     vector_init(&names_v, sizeof(char *));
     vector_init(&types_v, sizeof(type_kind_t));
     vector_init(&sizes_v, sizeof(size_t));
     vector_init(&restrict_v, sizeof(int));
+    *is_variadic = 0;
 
     if (!match(p, TOK_RPAREN)) {
         do {
+            if (match(p, TOK_ELLIPSIS)) {
+                *is_variadic = 1;
+                break;
+            }
             type_kind_t pt;
             if (!parse_basic_type(p, &pt)) {
                 vector_free(&names_v);
@@ -280,8 +286,9 @@ func_t *parser_parse_func(parser_t *p)
     size_t *param_sizes = NULL;
     int *param_restrict = NULL;
     size_t pcount = 0;
+    int is_variadic = 0;
     if (!parse_param_list(p, &param_names, &param_types, &param_sizes,
-                          &param_restrict, &pcount))
+                          &param_restrict, &pcount, &is_variadic))
         return NULL;
 
     if (!match(p, TOK_LBRACE)) {
@@ -305,6 +312,7 @@ func_t *parser_parse_func(parser_t *p)
     func_t *fn = ast_make_func(name, ret_type,
                                param_names, param_types,
                                param_sizes, param_restrict, pcount,
+                               is_variadic,
                                body, count);
     if (!fn) {
         for (size_t i = 0; i < count; i++)

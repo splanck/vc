@@ -12,6 +12,7 @@ See the [documentation index](index.md) for a list of all available pages.
 - [64-bit integers](#64-bit-integers)
 - [Numeric constants](#numeric-constants)
 - [Function calls](#function-calls)
+- [Variadic functions](#variadic-functions)
 - [Loops](#loops)
 - [Pointers](#pointers)
 - [Arrays](#arrays)
@@ -38,6 +39,7 @@ See the [documentation index](index.md) for a list of all available pages.
 - Floating-point types (`float`, `double`, `long double`)
 - `sizeof` operator
 - Global variables
+- Variadic functions using `...`
 - `extern` declarations for globals and function prototypes
 - `break` and `continue` statements
 - Labels and `goto`
@@ -161,6 +163,26 @@ int main() {
 Compile with:
 ```sh
 vc -o call.s call.c
+```
+
+### Variadic functions
+```c
+/* var_args.c */
+#include <stdarg.h>
+int sum(int n, ...) {
+    va_list ap;
+    va_start(ap, n);
+    int t = 0;
+    for (int i = 0; i < n; i++)
+        t += va_arg(ap, int);
+    va_end(ap);
+    return t;
+}
+int main() { return sum(3, 1, 2, 3); }
+```
+Compile with:
+```sh
+vc -o var_args.s var_args.c
 ```
 
 ### Loops

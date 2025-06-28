@@ -166,7 +166,8 @@ static int register_function_prototypes(func_t **func_list, size_t fcount,
         symbol_t *existing = symtable_lookup(funcs, func_list[i]->name);
         if (existing) {
             int mismatch = existing->type != func_list[i]->return_type ||
-                           existing->param_count != func_list[i]->param_count;
+                           existing->param_count != func_list[i]->param_count ||
+                           existing->is_variadic != func_list[i]->is_variadic;
             for (size_t j = 0; j < existing->param_count && !mismatch; j++)
                 if (existing->param_types[j] != func_list[i]->param_types[j])
                     mismatch = 1;
@@ -180,6 +181,7 @@ static int register_function_prototypes(func_t **func_list, size_t fcount,
                               func_list[i]->return_type,
                               func_list[i]->param_types,
                               func_list[i]->param_count,
+                              func_list[i]->is_variadic,
                               0);
         }
     }
