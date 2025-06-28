@@ -331,6 +331,8 @@ struct union_member {
     type_kind_t type;
     size_t elem_size;
     size_t offset;
+    unsigned bit_width;
+    unsigned bit_offset;
 };
 
 struct struct_member {
@@ -338,6 +340,8 @@ struct struct_member {
     type_kind_t type;
     size_t elem_size;
     size_t offset;
+    unsigned bit_width;
+    unsigned bit_offset;
 };
 
 

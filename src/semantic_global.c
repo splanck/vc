@@ -35,6 +35,7 @@ size_t layout_union_members(union_member_t *members, size_t count)
     size_t max = 0;
     for (size_t i = 0; i < count; i++) {
         members[i].offset = off;
+        members[i].bit_offset = 0;
         off += members[i].elem_size;
         if (members[i].elem_size > max)
             max = members[i].elem_size;
@@ -52,6 +53,7 @@ size_t layout_struct_members(struct_member_t *members, size_t count)
     size_t off = 0;
     for (size_t i = 0; i < count; i++) {
         members[i].offset = off;
+        members[i].bit_offset = 0;
         off += members[i].elem_size;
     }
     return off;
@@ -228,6 +230,8 @@ static int copy_union_metadata(symbol_t *sym, union_member_t *members,
         sym->members[i].type = m->type;
         sym->members[i].elem_size = m->elem_size;
         sym->members[i].offset = m->offset;
+        sym->members[i].bit_width = m->bit_width;
+        sym->members[i].bit_offset = m->bit_offset;
     }
     return 1;
 }
@@ -253,6 +257,8 @@ static int copy_struct_metadata(symbol_t *sym, struct_member_t *members,
         sym->struct_members[i].type = m->type;
         sym->struct_members[i].elem_size = m->elem_size;
         sym->struct_members[i].offset = m->offset;
+        sym->struct_members[i].bit_width = m->bit_width;
+        sym->struct_members[i].bit_offset = m->bit_offset;
     }
     return 1;
 }

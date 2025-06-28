@@ -114,6 +114,8 @@ int symtable_add_union(symtable_t *table, const char *tag,
             sym->members[i].type = members[i].type;
             sym->members[i].elem_size = members[i].elem_size;
             sym->members[i].offset = members[i].offset;
+            sym->members[i].bit_width = members[i].bit_width;
+            sym->members[i].bit_offset = members[i].bit_offset;
         }
     }
     sym->member_count = member_count;
@@ -152,6 +154,8 @@ int symtable_add_union_global(symtable_t *table, const char *tag,
             sym->members[i].type = members[i].type;
             sym->members[i].elem_size = members[i].elem_size;
             sym->members[i].offset = members[i].offset;
+            sym->members[i].bit_width = members[i].bit_width;
+            sym->members[i].bit_offset = members[i].bit_offset;
         }
     }
     sym->member_count = member_count;
@@ -207,6 +211,8 @@ int symtable_add_struct(symtable_t *table, const char *tag,
             sym->struct_members[i].type = members[i].type;
             sym->struct_members[i].elem_size = members[i].elem_size;
             sym->struct_members[i].offset = members[i].offset;
+            sym->struct_members[i].bit_width = members[i].bit_width;
+            sym->struct_members[i].bit_offset = members[i].bit_offset;
         }
     }
     sym->struct_member_count = member_count;
@@ -246,6 +252,8 @@ int symtable_add_struct_global(symtable_t *table, const char *tag,
             sym->struct_members[i].type = members[i].type;
             sym->struct_members[i].elem_size = members[i].elem_size;
             sym->struct_members[i].offset = members[i].offset;
+            sym->struct_members[i].bit_width = members[i].bit_width;
+            sym->struct_members[i].bit_offset = members[i].bit_offset;
         }
     }
     sym->struct_member_count = member_count;
