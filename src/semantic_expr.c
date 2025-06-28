@@ -274,20 +274,36 @@ static type_kind_t check_sizeof_expr(expr_t *expr, symtable_t *vars,
                                      ir_value_t *out)
 {
     (void)funcs;
-    int sz = 0;
     if (expr->sizeof_expr.is_type) {
-        sz = sizeof_from_type(expr->sizeof_expr.type,
-                              expr->sizeof_expr.array_size,
-                              expr->sizeof_expr.elem_size);
+        int sz = sizeof_from_type(expr->sizeof_expr.type,
+                                 expr->sizeof_expr.array_size,
+                                 expr->sizeof_expr.elem_size);
+        if (out)
+            *out = ir_build_const(ir, sz);
     } else {
         ir_builder_t tmp; ir_builder_init(&tmp);
         type_kind_t t = check_expr(expr->sizeof_expr.expr, vars, funcs,
                                    &tmp, NULL);
         ir_builder_free(&tmp);
-        sz = sizeof_from_expr(expr->sizeof_expr.expr, t, vars);
+
+        symbol_t *sym = NULL;
+        if (expr->sizeof_expr.expr &&
+            expr->sizeof_expr.expr->kind == EXPR_IDENT)
+            sym = symtable_lookup(vars,
+                                  expr->sizeof_expr.expr->ident.name);
+
+        if (sym && sym->vla_size.id) {
+            ir_value_t eszv = ir_build_const(ir, (int)sym->elem_size);
+            ir_value_t total = ir_build_binop(ir, IR_MUL,
+                                              sym->vla_size, eszv);
+            if (out)
+                *out = total;
+        } else {
+            int sz = sizeof_from_expr(expr->sizeof_expr.expr, t, vars);
+            if (out)
+                *out = ir_build_const(ir, sz);
+        }
     }
-    if (out)
-        *out = ir_build_const(ir, sz);
     return TYPE_INT;
 }
 
