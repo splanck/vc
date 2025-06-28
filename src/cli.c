@@ -103,9 +103,16 @@ static int add_include_dir(cli_options_t *opts, const char *dir)
 /*
  * Set the optimization level and toggle individual passes accordingly.
  */
-static void set_opt_level(cli_options_t *opts, const char *level)
+static int set_opt_level(cli_options_t *opts, const char *level)
 {
-    opts->opt_cfg.opt_level = atoi(level);
+    char *end;
+    long val = strtol(level, &end, 10);
+    if (*end != '\0' || val < 0 || val > 3) {
+        fprintf(stderr, "Invalid optimization level '%s'\n", level);
+        return 1;
+    }
+
+    opts->opt_cfg.opt_level = (int)val;
     if (opts->opt_cfg.opt_level <= 0) {
         opts->opt_cfg.fold_constants = 0;
         opts->opt_cfg.dead_code = 0;
@@ -117,6 +124,8 @@ static void set_opt_level(cli_options_t *opts, const char *level)
         opts->opt_cfg.const_prop = 1;
         opts->opt_cfg.inline_funcs = 1;
     }
+
+    return 0;
 }
 
 /*
@@ -178,8 +187,7 @@ static int add_include(const char *arg, const char *prog, cli_options_t *opts)
 static int set_level(const char *arg, const char *prog, cli_options_t *opts)
 {
     (void)prog;
-    set_opt_level(opts, arg);
-    return 0;
+    return set_opt_level(opts, arg);
 }
 
 static int disable_fold(const char *arg, const char *prog, cli_options_t *opts)

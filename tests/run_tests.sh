@@ -267,6 +267,19 @@ if [ $ret -eq 0 ] || ! grep -q "Unknown standard" "$err"; then
 fi
 rm -f "$std_out" "$err"
 
+# invalid optimization level should fail
+err=$(mktemp)
+out=$(mktemp)
+set +e
+"$BINARY" -O4 -o "$out" "$DIR/fixtures/simple_add.c" 2> "$err"
+ret=$?
+set -e
+if [ $ret -eq 0 ] || ! grep -q "Invalid optimization level" "$err"; then
+    echo "Test invalid_opt_level failed"
+    fail=1
+fi
+rm -f "$out" "$err"
+
 # test reading source from stdin
 stdin_out=$(mktemp)
 cat "$DIR/fixtures/simple_add.c" | "$BINARY" -o "$stdin_out" -
