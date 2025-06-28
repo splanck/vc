@@ -397,6 +397,22 @@ static void test_parser_sizeof(void)
     lexer_free_tokens(toks, count);
 }
 
+/* Parse a simple variadic call expression. */
+static void test_parser_variadic_call(void)
+{
+    const char *src = "foo(1, 2.0)";
+    size_t count = 0;
+    token_t *toks = lexer_tokenize(src, &count);
+    ASSERT(count >= 6);
+    ASSERT(toks[4].type == TOK_NUMBER && strcmp(toks[4].lexeme, "2.0") == 0);
+    parser_t p; parser_init(&p, toks, count);
+    expr_t *expr = parser_parse_expr(&p);
+    ASSERT(expr && expr->kind == EXPR_CALL);
+    ASSERT(expr->call.arg_count == 2);
+    ast_free_expr(expr);
+    lexer_free_tokens(toks, count);
+}
+
 /* Parsing of a complete function definition. */
 static void test_parser_func(void)
 {
@@ -516,6 +532,7 @@ int main(void)
     test_parser_conditional();
     test_lexer_sizeof();
     test_parser_sizeof();
+    test_parser_variadic_call();
     test_parser_func();
     test_parser_block();
     test_parser_bitfield();
