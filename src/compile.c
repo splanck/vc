@@ -33,6 +33,10 @@
 #include "preproc.h"
 #include "compile.h"
 
+/* Active diagnostic context */
+extern const char *error_current_file;
+extern const char *error_current_function;
+
 /* Compilation stage helpers */
 static int run_tokenize_stage(const char *source, const vector_t *incdirs,
                               char **out_src, token_t **out_toks,
@@ -172,7 +176,7 @@ static int register_function_prototypes(func_t **func_list, size_t fcount,
                 if (existing->param_types[j] != func_list[i]->param_types[j])
                     mismatch = 1;
             if (mismatch) {
-                error_set(0, 0);
+                error_set(0, 0, error_current_file, error_current_function);
                 return 0;
             }
             existing->is_prototype = 0;
@@ -329,6 +333,8 @@ static void cleanup_compile_unit(vector_t *funcs_v, vector_t *globs_v,
 int compile_unit(const char *source, const cli_options_t *cli,
                  const char *output, int compile_obj)
 {
+    error_current_file = source ? source : "";
+    error_current_function = NULL;
     label_init();
     codegen_set_export(cli->link);
 

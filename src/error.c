@@ -8,7 +8,13 @@
 #include <stdio.h>
 #include "error.h"
 
+/* Active file and function for diagnostics */
+const char *error_current_file = "";
+const char *error_current_function = NULL;
+
 /* Stored source location for the next error message. */
+static const char *error_file = "";
+static const char *error_func = NULL;
 static size_t error_line = 0;
 static size_t error_column = 0;
 
@@ -17,10 +23,12 @@ static size_t error_column = 0;
  * The line and column numbers are 1-based; passing 0 for either
  * value records an unknown location.
  */
-void error_set(size_t line, size_t col)
+void error_set(size_t line, size_t col, const char *file, const char *func)
 {
     error_line = line;
     error_column = col;
+    error_file = file ? file : error_current_file;
+    error_func = func ? func : error_current_function;
 }
 
 /*
@@ -30,6 +38,11 @@ void error_set(size_t line, size_t col)
  */
 void error_print(const char *msg)
 {
-    fprintf(stderr, "%s at line %zu, column %zu\n", msg, error_line, error_column);
+    if (error_func)
+        fprintf(stderr, "%s:%zu:%zu: %s: %s\n", error_file, error_line, error_column,
+                error_func, msg);
+    else
+        fprintf(stderr, "%s:%zu:%zu: %s\n", error_file, error_line, error_column,
+                msg);
 }
 
