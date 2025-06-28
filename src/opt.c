@@ -10,6 +10,7 @@
 
 /* Pass implementations */
 void propagate_load_consts(ir_builder_t *ir);
+void common_subexpr_elim(ir_builder_t *ir);
 void inline_small_funcs(ir_builder_t *ir);
 void fold_constants(ir_builder_t *ir);
 void dead_code_elim(ir_builder_t *ir);
@@ -27,6 +28,7 @@ void opt_run(ir_builder_t *ir, const opt_config_t *cfg)
     const opt_config_t *c = cfg ? cfg : &def;
     if (c->const_prop)
         propagate_load_consts(ir);
+    common_subexpr_elim(ir);
     if (c->inline_funcs)
         inline_small_funcs(ir);
     if (c->fold_constants)
