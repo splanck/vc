@@ -336,6 +336,13 @@ static int parse_macro_invocation(const char *line, size_t *pos,
             strbuf_append(out, "1");
             *pos = j;
             return 1;
+        } else if (strncmp(line + i, "__func__", 8) == 0) {
+            if (builtin_func) {
+                preproc_set_location(NULL, builtin_line, column);
+                strbuf_appendf(out, "\"%s\"", builtin_func);
+                *pos = j;
+                return 1;
+            }
         }
     } else if (len == 16 && strncmp(line + i, "__STDC_VERSION__", 16) == 0) {
         preproc_set_location(NULL, builtin_line, column);
@@ -396,7 +403,8 @@ int is_macro_defined(vector_t *macros, const char *name)
 {
     if (strcmp(name, "__FILE__") == 0 || strcmp(name, "__LINE__") == 0 ||
         strcmp(name, "__DATE__") == 0 || strcmp(name, "__TIME__") == 0 ||
-        strcmp(name, "__STDC__") == 0 || strcmp(name, "__STDC_VERSION__") == 0)
+        strcmp(name, "__STDC__") == 0 || strcmp(name, "__STDC_VERSION__") == 0 ||
+        strcmp(name, "__func__") == 0)
         return 1;
 
     for (size_t i = 0; i < macros->count; i++) {
