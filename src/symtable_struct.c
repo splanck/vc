@@ -218,8 +218,16 @@ int symtable_add_struct(symtable_t *table, const char *tag,
     sym->struct_member_count = member_count;
     size_t total = 0;
     for (size_t i = 0; i < member_count; i++) {
-        sym->struct_members[i].offset = total;
-        total += members[i].elem_size;
+        size_t end = sym->struct_members[i].offset;
+        if (sym->struct_members[i].bit_width > 0) {
+            unsigned bits = sym->struct_members[i].bit_offset +
+                            sym->struct_members[i].bit_width;
+            end += (bits + 7) / 8;
+        } else {
+            end += sym->struct_members[i].elem_size;
+        }
+        if (end > total)
+            total = end;
     }
     sym->struct_total_size = total;
     sym->next = table->head;
@@ -259,8 +267,16 @@ int symtable_add_struct_global(symtable_t *table, const char *tag,
     sym->struct_member_count = member_count;
     size_t total = 0;
     for (size_t i = 0; i < member_count; i++) {
-        sym->struct_members[i].offset = total;
-        total += members[i].elem_size;
+        size_t end = sym->struct_members[i].offset;
+        if (sym->struct_members[i].bit_width > 0) {
+            unsigned bits = sym->struct_members[i].bit_offset +
+                            sym->struct_members[i].bit_width;
+            end += (bits + 7) / 8;
+        } else {
+            end += sym->struct_members[i].elem_size;
+        }
+        if (end > total)
+            total = end;
     }
     sym->struct_total_size = total;
     sym->next = table->globals;
