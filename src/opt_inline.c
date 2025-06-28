@@ -8,6 +8,7 @@
  * See LICENSE for details.
  */
 
+#define _POSIX_C_SOURCE 200809L
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
@@ -64,13 +65,17 @@ static int collect_funcs(ir_builder_t *ir, inline_func_t **out, size_t *count)
         if (src_file) {
             FILE *f = fopen(src_file, "r");
             if (f) {
-                char buf[256];
-                while (fgets(buf, sizeof(buf), f)) {
+                char *buf = NULL;
+                size_t len = 0;
+                ssize_t nread;
+                while ((nread = getline(&buf, &len, f)) != -1) {
+                    (void)nread; /* unused */
                     if (strstr(buf, "inline") && strstr(buf, ins->name)) {
                         is_inline = 1;
                         break;
                     }
                 }
+                free(buf);
                 fclose(f);
             } else {
                 char msg[256];
