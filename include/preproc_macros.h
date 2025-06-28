@@ -34,4 +34,7 @@ int is_macro_defined(vector_t *macros, const char *name);
 /* Remove all definitions of a macro */
 void remove_macro(vector_t *macros, const char *name);
 
+/* Update builtin macro expansion context */
+void preproc_set_location(const char *file, size_t line);
+
 #endif /* VC_PREPROC_MACROS_H */
