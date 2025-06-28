@@ -77,3 +77,8 @@ file:line:column: function: message
 ```
 
 If an error occurs outside a function, the function portion is omitted.
+
+Macro expansions now track the column where each invocation begins.  When
+an error originates from within a macro body or uses `__FILE__`/`__LINE__`,
+the reported position refers to the invocation site rather than the macro
+definition.

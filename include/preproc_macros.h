@@ -26,7 +26,7 @@ typedef struct {
 void macro_free(macro_t *m);
 
 /* Expand macros in one line */
-void expand_line(const char *line, vector_t *macros, strbuf_t *out);
+void expand_line(const char *line, vector_t *macros, strbuf_t *out, size_t column);
 
 /* Check whether a macro exists */
 int is_macro_defined(vector_t *macros, const char *name);
@@ -35,7 +35,7 @@ int is_macro_defined(vector_t *macros, const char *name);
 void remove_macro(vector_t *macros, const char *name);
 
 /* Update builtin macro expansion context */
-void preproc_set_location(const char *file, size_t line);
+void preproc_set_location(const char *file, size_t line, size_t column);
 
 /* Set the current function name for __func__ expansion */
 void preproc_set_function(const char *name);
