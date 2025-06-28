@@ -53,7 +53,7 @@ static int stack_active(vector_t *conds)
 /* forward declaration for recursive include handling */
 static int process_file(const char *path, vector_t *macros,
                         vector_t *conds, strbuf_t *out,
-                        const vector_t *incdirs);
+                        const vector_t *incdirs, vector_t *stack);
 
 /*
  * Locate the full path of an include file.
@@ -117,7 +117,7 @@ static const char *find_include_path(const char *fname, char endc,
  */
 static int handle_include(char *line, const char *dir, vector_t *macros,
                           vector_t *conds, strbuf_t *out,
-                          const vector_t *incdirs)
+                          const vector_t *incdirs, vector_t *stack)
 {
     char *start = strchr(line, '"');
     char endc = '"';
@@ -137,11 +137,25 @@ static int handle_include(char *line, const char *dir, vector_t *macros,
         vector_init(&subconds, sizeof(cond_state_t));
         int ok = 1;
         if (stack_active(conds)) {
-            if (!chosen ||
-                !process_file(chosen, macros, &subconds, out, incdirs)) {
-                if (!chosen)
-                    perror(fname);
+            if (!chosen) {
+                perror(fname);
                 ok = 0;
+            } else {
+                int cycle = 0;
+                for (size_t i = 0; i < stack->count; i++) {
+                    const char *p = ((const char **)stack->data)[i];
+                    if (strcmp(p, chosen) == 0) {
+                        cycle = 1;
+                        break;
+                    }
+                }
+                if (cycle) {
+                    fprintf(stderr, "Include cycle detected: %s\n", chosen);
+                    ok = 0;
+                } else if (!process_file(chosen, macros, &subconds, out,
+                                         incdirs, stack)) {
+                    ok = 0;
+                }
             }
         }
         vector_free(&subconds);
@@ -395,7 +409,7 @@ static void handle_pragma(char *line, vector_t *conds, strbuf_t *out)
  */
 static int handle_directive(char *line, const char *dir, vector_t *macros,
                             vector_t *conds, strbuf_t *out,
-                            const vector_t *incdirs);
+                            const vector_t *incdirs, vector_t *stack);
 
 static char *read_file_lines(const char *path, char ***out_lines)
 {
@@ -451,11 +465,11 @@ static int load_file_lines(const char *path, char ***out_lines,
  * dispatching to the directive handlers. */
 static int process_line(char *line, const char *dir, vector_t *macros,
                         vector_t *conds, strbuf_t *out,
-                        const vector_t *incdirs)
+                        const vector_t *incdirs, vector_t *stack)
 {
     while (*line == ' ' || *line == '\t')
         line++;
-    return handle_directive(line, dir, macros, conds, out, incdirs);
+    return handle_directive(line, dir, macros, conds, out, incdirs, stack);
 }
 
 /* Free resources allocated by process_file */
@@ -480,11 +494,12 @@ static void free_macro_vector(vector_t *v)
 /* Iterate over the loaded lines and process each one. */
 static int process_all_lines(char **lines, const char *path, const char *dir,
                              vector_t *macros, vector_t *conds,
-                             strbuf_t *out, const vector_t *incdirs)
+                             strbuf_t *out, const vector_t *incdirs,
+                             vector_t *stack)
 {
     for (size_t i = 0; lines[i]; i++) {
         preproc_set_location(path, i + 1, 1);
-        if (!process_line(lines[i], dir, macros, conds, out, incdirs))
+        if (!process_line(lines[i], dir, macros, conds, out, incdirs, stack))
             return 0;
     }
     return 1;
@@ -493,17 +508,19 @@ static int process_all_lines(char **lines, const char *path, const char *dir,
 static int handle_include_directive(char *line, const char *dir,
                                     vector_t *macros, vector_t *conds,
                                     strbuf_t *out,
-                                    const vector_t *incdirs)
+                                    const vector_t *incdirs,
+                                    vector_t *stack)
 {
-    return handle_include(line, dir, macros, conds, out, incdirs);
+    return handle_include(line, dir, macros, conds, out, incdirs, stack);
 }
 
 /* Apply a #line directive to adjust reported line numbers. */
 static int handle_line_directive(char *line, const char *dir, vector_t *macros,
                                  vector_t *conds, strbuf_t *out,
-                                 const vector_t *incdirs)
+                                 const vector_t *incdirs,
+                                 vector_t *stack)
 {
-    (void)dir; (void)macros; (void)incdirs;
+    (void)dir; (void)macros; (void)incdirs; (void)stack;
     char *p = line + 5;
     while (*p == ' ' || *p == '\t')
         p++;
@@ -536,18 +553,20 @@ static int handle_line_directive(char *line, const char *dir, vector_t *macros,
 static int handle_define_directive(char *line, const char *dir,
                                    vector_t *macros, vector_t *conds,
                                    strbuf_t *out,
-                                   const vector_t *incdirs)
+                                   const vector_t *incdirs,
+                                   vector_t *stack)
 {
-    (void)dir; (void)out; (void)incdirs;
+    (void)dir; (void)out; (void)incdirs; (void)stack;
     return handle_define(line, macros, conds);
 }
 
 /* Remove a macro defined earlier when #undef is seen. */
 static int handle_undef_directive(char *line, const char *dir, vector_t *macros,
                                   vector_t *conds, strbuf_t *out,
-                                  const vector_t *incdirs)
+                                  const vector_t *incdirs,
+                                  vector_t *stack)
 {
-    (void)dir; (void)out; (void)incdirs;
+    (void)dir; (void)out; (void)incdirs; (void)stack;
     char *n = line + 6;
     while (*n == ' ' || *n == '\t')
         n++;
@@ -564,9 +583,10 @@ static int handle_undef_directive(char *line, const char *dir, vector_t *macros,
 static int handle_error_directive(char *line, const char *dir,
                                   vector_t *macros, vector_t *conds,
                                   strbuf_t *out,
-                                  const vector_t *incdirs)
+                                  const vector_t *incdirs,
+                                  vector_t *stack)
 {
-    (void)dir; (void)macros; (void)out; (void)incdirs;
+    (void)dir; (void)macros; (void)out; (void)incdirs; (void)stack;
     char *msg = line + 6; /* skip '#error' */
     while (*msg == ' ' || *msg == '\t')
         msg++;
@@ -581,9 +601,10 @@ static int handle_error_directive(char *line, const char *dir,
 static int handle_pragma_directive(char *line, const char *dir,
                                    vector_t *macros, vector_t *conds,
                                    strbuf_t *out,
-                                   const vector_t *incdirs)
+                                   const vector_t *incdirs,
+                                   vector_t *stack)
 {
-    (void)dir; (void)macros; (void)incdirs;
+    (void)dir; (void)macros; (void)incdirs; (void)stack;
     handle_pragma(line, conds, out);
     return 1;
 }
@@ -592,9 +613,10 @@ static int handle_pragma_directive(char *line, const char *dir,
 static int handle_conditional_directive(char *line, const char *dir,
                                         vector_t *macros, vector_t *conds,
                                         strbuf_t *out,
-                                        const vector_t *incdirs)
+                                        const vector_t *incdirs,
+                                        vector_t *stack)
 {
-    (void)dir; (void)out; (void)incdirs;
+    (void)dir; (void)out; (void)incdirs; (void)stack;
     handle_conditional(line, macros, conds);
     return 1;
 }
@@ -605,9 +627,9 @@ static int handle_conditional_directive(char *line, const char *dir,
  */
 static int handle_text_line(char *line, const char *dir, vector_t *macros,
                             vector_t *conds, strbuf_t *out,
-                            const vector_t *incdirs)
+                            const vector_t *incdirs, vector_t *stack)
 {
-    (void)dir; (void)incdirs;
+    (void)dir; (void)incdirs; (void)stack;
     if (stack_active(conds)) {
         strbuf_t tmp;
         strbuf_init(&tmp);
@@ -625,7 +647,7 @@ static int handle_text_line(char *line, const char *dir, vector_t *macros,
  * line is not a recognised directive.
  */
 typedef int (*directive_fn_t)(char *, const char *, vector_t *, vector_t *,
-                              strbuf_t *, const vector_t *);
+                              strbuf_t *, const vector_t *, vector_t *);
 
 enum { SPACE_NONE, SPACE_BLANK, SPACE_ANY };
 
@@ -637,7 +659,7 @@ typedef struct {
 
 static int handle_directive(char *line, const char *dir, vector_t *macros,
                             vector_t *conds, strbuf_t *out,
-                            const vector_t *incdirs)
+                            const vector_t *incdirs, vector_t *stack)
 {
     static const directive_entry_t table[] = {
         {"#include", SPACE_BLANK, handle_include_directive},
@@ -665,11 +687,12 @@ static int handle_directive(char *line, const char *dir, vector_t *macros,
             else if (d->space == SPACE_ANY)
                 ok = isspace((unsigned char)next);
             if (ok)
-                return d->handler(line, dir, macros, conds, out, incdirs);
+                return d->handler(line, dir, macros, conds, out, incdirs,
+                                  stack);
         }
     }
 
-    return handle_text_line(line, dir, macros, conds, out, incdirs);
+    return handle_text_line(line, dir, macros, conds, out, incdirs, stack);
 }
 
 /*
@@ -679,7 +702,7 @@ static int handle_directive(char *line, const char *dir, vector_t *macros,
  */
 static int process_file(const char *path, vector_t *macros,
                         vector_t *conds, strbuf_t *out,
-                        const vector_t *incdirs)
+                        const vector_t *incdirs, vector_t *stack)
 {
     char **lines;
     char *dir;
@@ -688,7 +711,14 @@ static int process_file(const char *path, vector_t *macros,
     if (!load_file_lines(path, &lines, &dir, &text))
         return 0;
 
-    int ok = process_all_lines(lines, path, dir, macros, conds, out, incdirs);
+    char *dup = vc_strdup(path);
+    vector_push(stack, &dup);
+
+    int ok = process_all_lines(lines, path, dir, macros, conds, out, incdirs,
+                               stack);
+
+    free(((char **)stack->data)[stack->count - 1]);
+    stack->count--;
 
     cleanup_file_resources(text, lines, dir);
     return ok;
@@ -742,9 +772,14 @@ char *preproc_run(const char *path, const vector_t *include_dirs)
     vector_init(&macros, sizeof(macro_t));
     vector_t conds;
     vector_init(&conds, sizeof(cond_state_t));
+    vector_t stack;
+    vector_init(&stack, sizeof(char *));
     strbuf_t out;
     strbuf_init(&out);
-    int ok = process_file(path, &macros, &conds, &out, &search_dirs);
+    int ok = process_file(path, &macros, &conds, &out, &search_dirs, &stack);
+    for (size_t i = 0; i < stack.count; i++)
+        free(((char **)stack.data)[i]);
+    vector_free(&stack);
     vector_free(&conds);
     free_macro_vector(&macros);
     for (size_t i = 0; i < search_dirs.count; i++)
