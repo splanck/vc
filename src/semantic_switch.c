@@ -22,6 +22,18 @@ extern int check_stmt(stmt_t *stmt, symtable_t *vars, symtable_t *funcs,
                       void *labels, ir_builder_t *ir, type_kind_t func_ret_type,
                       const char *break_label, const char *continue_label);
 
+/* Helpers for switch statement IR generation */
+static char **emit_case_branches(stmt_t *stmt, symtable_t *vars,
+                                 ir_builder_t *ir, ir_value_t expr_val,
+                                 const char *default_label,
+                                 const char *end_label, int id);
+static int process_switch_body(stmt_t *stmt, symtable_t *vars,
+                               symtable_t *funcs, label_table_t *labels,
+                               ir_builder_t *ir, type_kind_t func_ret_type,
+                               char **case_labels,
+                               const char *default_label,
+                               const char *end_label);
+
 /*
  * Initialize an empty label table used to map user labels to IR
  * labels.  Simply sets the head pointer to NULL so entries can be
@@ -82,6 +94,82 @@ const char *label_table_get_or_add(label_table_t *t, const char *name)
 }
 
 /*
+ * Emit the conditional branches for each case value.  A unique label is
+ * generated for every case and the controlling expression is compared
+ * against the constant case expression.  If a comparison matches the
+ * corresponding case label becomes the branch target.  After all cases
+ * are emitted, control falls through to either the default label or the
+ * common end label when no default is present.
+ */
+static char **emit_case_branches(stmt_t *stmt, symtable_t *vars,
+                                 ir_builder_t *ir, ir_value_t expr_val,
+                                 const char *default_label,
+                                 const char *end_label, int id)
+{
+    size_t count = stmt->switch_stmt.case_count;
+    char **labels = calloc(count, sizeof(char *));
+    if (!labels)
+        return NULL;
+
+    for (size_t i = 0; i < count; i++) {
+        char buf[32];
+        snprintf(buf, sizeof(buf), "L%d_case%zu", id, i);
+        labels[i] = vc_strdup(buf);
+        long long cval;
+        if (!eval_const_expr(stmt->switch_stmt.cases[i].expr, vars, &cval)) {
+            for (size_t j = 0; j <= i; j++)
+                free(labels[j]);
+            free(labels);
+            error_set(stmt->switch_stmt.cases[i].expr->line,
+                      stmt->switch_stmt.cases[i].expr->column);
+            return NULL;
+        }
+        ir_value_t const_val = ir_build_const(ir, cval);
+        ir_value_t cmp = ir_build_binop(ir, IR_CMPEQ, expr_val, const_val);
+        ir_build_bcond(ir, cmp, labels[i]);
+    }
+
+    if (stmt->switch_stmt.default_body)
+        ir_build_br(ir, default_label);
+    else
+        ir_build_br(ir, end_label);
+
+    return labels;
+}
+
+/*
+ * Walk the case bodies and optional default body of a switch statement.
+ * Each case label is placed before its body and execution jumps to the
+ * common end label once a case completes.  The default body executes if
+ * provided after all cases have been processed.
+ */
+static int process_switch_body(stmt_t *stmt, symtable_t *vars,
+                               symtable_t *funcs, label_table_t *labels,
+                               ir_builder_t *ir, type_kind_t func_ret_type,
+                               char **case_labels,
+                               const char *default_label,
+                               const char *end_label)
+{
+    for (size_t i = 0; i < stmt->switch_stmt.case_count; i++) {
+        ir_build_label(ir, case_labels[i]);
+        if (!check_stmt(stmt->switch_stmt.cases[i].body, vars, funcs, labels,
+                        ir, func_ret_type, end_label, NULL))
+            return 0;
+        ir_build_br(ir, end_label);
+    }
+
+    if (stmt->switch_stmt.default_body) {
+        ir_build_label(ir, default_label);
+        if (!check_stmt(stmt->switch_stmt.default_body, vars, funcs, labels, ir,
+                        func_ret_type, end_label, NULL))
+            return 0;
+    }
+
+    ir_build_label(ir, end_label);
+    return 1;
+}
+
+/*
  * Validate a switch statement and emit the corresponding IR.  The
  * controlling expression is evaluated once, each case value is
  * compared against it and branches are created to the generated case
@@ -100,54 +188,20 @@ int check_switch_stmt(stmt_t *stmt, symtable_t *vars, symtable_t *funcs,
     int id = label_next_id();
     label_format_suffix("L", id, "_end", end_label);
     label_format_suffix("L", id, "_default", default_label);
-    char **case_labels = calloc(stmt->switch_stmt.case_count, sizeof(char *));
+
+    /* generate conditional branches to each case */
+    char **case_labels = emit_case_branches(stmt, vars, ir, expr_val,
+                                           default_label, end_label, id);
     if (!case_labels)
         return 0;
-    for (size_t i = 0; i < stmt->switch_stmt.case_count; i++) {
-        char lbl[32];
-        snprintf(lbl, sizeof(lbl), "L%d_case%zu", id, i);
-        case_labels[i] = vc_strdup(lbl);
-        long long cval;
-        if (!eval_const_expr(stmt->switch_stmt.cases[i].expr, vars, &cval)) {
-            for (size_t j = 0; j <= i; j++) free(case_labels[j]);
-            free(case_labels);
-            error_set(stmt->switch_stmt.cases[i].expr->line,
-                      stmt->switch_stmt.cases[i].expr->column);
-            return 0;
-        }
-        ir_value_t const_val = ir_build_const(ir, cval);
-        ir_value_t cmp = ir_build_binop(ir, IR_CMPEQ, expr_val, const_val);
-        ir_build_bcond(ir, cmp, case_labels[i]);
-    }
-    if (stmt->switch_stmt.default_body)
-        ir_build_br(ir, default_label);
-    else
-        ir_build_br(ir, end_label);
-    for (size_t i = 0; i < stmt->switch_stmt.case_count; i++) {
-        ir_build_label(ir, case_labels[i]);
-        if (!check_stmt(stmt->switch_stmt.cases[i].body, vars, funcs, labels, ir,
-                        func_ret_type, end_label, NULL)) {
-            for (size_t j = 0; j < stmt->switch_stmt.case_count; j++)
-                free(case_labels[j]);
-            free(case_labels);
-            return 0;
-        }
-        ir_build_br(ir, end_label);
-    }
-    if (stmt->switch_stmt.default_body) {
-        ir_build_label(ir, default_label);
-        if (!check_stmt(stmt->switch_stmt.default_body, vars, funcs, labels, ir,
-                        func_ret_type, end_label, NULL)) {
-            for (size_t j = 0; j < stmt->switch_stmt.case_count; j++)
-                free(case_labels[j]);
-            free(case_labels);
-            return 0;
-        }
-    }
-    ir_build_label(ir, end_label);
+
+    /* walk the bodies and emit the common end label */
+    int ok = process_switch_body(stmt, vars, funcs, labels, ir, func_ret_type,
+                                 case_labels, default_label, end_label);
+
     for (size_t j = 0; j < stmt->switch_stmt.case_count; j++)
         free(case_labels[j]);
     free(case_labels);
-    return 1;
+    return ok;
 }
 
