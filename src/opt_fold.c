@@ -48,6 +48,22 @@ static int eval_float_op(ir_op_t op, int a, int b)
     return res.i;
 }
 
+/* Evaluate a binary long double op for constant folding */
+static int eval_long_float_op(ir_op_t op, int a, int b)
+{
+    long double fa = (long double)a;
+    long double fb = (long double)b;
+    long double res;
+    switch (op) {
+    case IR_LFADD: res = fa + fb; break;
+    case IR_LFSUB: res = fa - fb; break;
+    case IR_LFMUL: res = fa * fb; break;
+    case IR_LFDIV: res = fb != 0.0L ? fa / fb : 0.0L; break;
+    default:       res = 0.0L; break;
+    }
+    return (int)res;
+}
+
 /* Update destination entry in constant tracking tables */
 static void update_const(ir_instr_t *ins, int val, int cst,
                          int max_id, int *is_const, int *values)
@@ -95,6 +111,24 @@ static void fold_float_instr(ir_instr_t *ins, int max_id,
     }
 }
 
+/* Try folding a long double binary operation */
+static void fold_long_float_instr(ir_instr_t *ins, int max_id,
+                                  int *is_const, int *values)
+{
+    if (ins->src1 < max_id && ins->src2 < max_id &&
+        is_const[ins->src1] && is_const[ins->src2]) {
+        int a = values[ins->src1];
+        int b = values[ins->src2];
+        int result = eval_long_float_op(ins->op, a, b);
+        ins->op = IR_CONST;
+        ins->imm = result;
+        ins->src1 = ins->src2 = 0;
+        update_const(ins, result, 1, max_id, is_const, values);
+    } else {
+        update_const(ins, 0, 0, max_id, is_const, values);
+    }
+}
+
 /* Perform simple constant folding */
 void fold_constants(ir_builder_t *ir)
 {
@@ -126,7 +160,7 @@ void fold_constants(ir_builder_t *ir)
             fold_float_instr(ins, max_id, is_const, values);
             break;
         case IR_LFADD: case IR_LFSUB: case IR_LFMUL: case IR_LFDIV:
-            update_const(ins, 0, 0, max_id, is_const, values);
+            fold_long_float_instr(ins, max_id, is_const, values);
             break;
         case IR_LOAD:
         case IR_LOAD_IDX:

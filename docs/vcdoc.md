@@ -11,3 +11,6 @@ floating-point values as variadic parameters is not supported.
 
 Function pointers can be declared using the familiar `(*name)(...)` syntax
 and invoked just like normal function identifiers.
+
+The optimizer folds long double arithmetic expressions such as `1.0L + 2.0L`
+so they evaluate to constants at compile time.
