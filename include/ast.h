@@ -357,6 +357,7 @@ struct func {
     int is_variadic;
     stmt_t **body;
     size_t body_count;
+    int is_inline;
 };
 
 

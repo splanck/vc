@@ -184,13 +184,16 @@ static int register_function_prototypes(func_t **func_list, size_t fcount,
                 return 0;
             }
             existing->is_prototype = 0;
+            if (func_list[i]->is_inline)
+                existing->is_inline = 1;
         } else {
             symtable_add_func(funcs, func_list[i]->name,
                               func_list[i]->return_type,
                               func_list[i]->param_types,
                               func_list[i]->param_count,
                               func_list[i]->is_variadic,
-                              0);
+                              0,
+                              func_list[i]->is_inline);
         }
     }
     return 1;
@@ -379,6 +382,7 @@ int compile_unit(const char *source, const cli_options_t *cli,
     }
 
     cleanup_compile_unit(&func_list_v, &glob_list_v, &funcs, &globals, &ir);
+    semantic_global_cleanup();
 
     label_reset();
 

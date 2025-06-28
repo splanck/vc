@@ -169,9 +169,10 @@ location of the failure.
 
 Function definitions may also be marked with the `inline` specifier. When
 optimizations are enabled, very small inline functions may be expanded at
-their call sites. The compiler does not yet enforce the one-definition rule
-so multiple identical inline definitions are accepted. When combined with
-`static`, the `static` keyword must appear before `inline`.
+their call sites. The parser now records the `inline` keyword in symbol
+tables so the semantic phase suppresses duplicate external definitions for
+identical inline functions. When combined with `static`, the `static`
+keyword must appear before `inline`.
 
 ### ir
 Defines the IR structures used throughout the rest of the compiler.

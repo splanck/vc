@@ -264,7 +264,7 @@ static int parse_func_body(parser_t *p, stmt_t ***body, size_t *count)
 }
 
 /* Parse a full function definition */
-func_t *parser_parse_func(parser_t *p)
+func_t *parser_parse_func(parser_t *p, int is_inline)
 {
     type_kind_t ret_type;
     if (!parse_basic_type(p, &ret_type))
@@ -313,7 +313,7 @@ func_t *parser_parse_func(parser_t *p)
                                param_names, param_types,
                                param_sizes, param_restrict, pcount,
                                is_variadic,
-                               body, count);
+                               body, count, is_inline);
     if (!fn) {
         for (size_t i = 0; i < count; i++)
             ast_free_stmt(body[i]);

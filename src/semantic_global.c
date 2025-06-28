@@ -24,6 +24,10 @@
 #include "preproc_macros.h"
 #include <limits.h>
 
+/* Track inline functions already emitted */
+static const char **inline_emitted = NULL;
+static size_t inline_emitted_count = 0;
+
 /*
  * Lay out union members sequentially and return the size of the largest
  * member.  Offsets are assigned in declaration order so that later code
@@ -69,6 +73,24 @@ size_t layout_struct_members(struct_member_t *members, size_t count)
     return byte_off;
 }
 
+static int inline_already_emitted(const char *name)
+{
+    for (size_t i = 0; i < inline_emitted_count; i++)
+        if (strcmp(inline_emitted[i], name) == 0)
+            return 1;
+    return 0;
+}
+
+static void mark_inline_emitted(const char *name)
+{
+    const char **tmp = realloc((void *)inline_emitted,
+                               (inline_emitted_count + 1) * sizeof(*tmp));
+    if (!tmp)
+        return;
+    inline_emitted = tmp;
+    inline_emitted[inline_emitted_count++] = name;
+}
+
 /*
  * Validate a function definition against its prior declaration and emit
  * IR for the body.  Parameter types are checked for consistency, local
@@ -87,6 +109,11 @@ int check_func(func_t *func, symtable_t *funcs, symtable_t *globals,
     if (!decl) {
         error_set(0, 0, error_current_file, error_current_function);
         return 0;
+    }
+    if (decl->is_inline && inline_already_emitted(func->name)) {
+        preproc_set_function(NULL);
+        error_current_function = NULL;
+        return 1;
     }
     int mismatch = decl->type != func->return_type ||
                    decl->param_count != func->param_count ||
@@ -125,6 +152,8 @@ int check_func(func_t *func, symtable_t *funcs, symtable_t *globals,
     label_table_free(&labels);
     locals.globals = NULL;
     symtable_free(&locals);
+    if (decl->is_inline)
+        mark_inline_emitted(func->name);
     preproc_set_function(NULL);
     error_current_function = NULL;
     return ok;
@@ -449,5 +478,12 @@ int check_global(stmt_t *decl, symtable_t *globals, ir_builder_t *ir)
     }
 
     return 0;
+}
+
+void semantic_global_cleanup(void)
+{
+    free((void *)inline_emitted);
+    inline_emitted = NULL;
+    inline_emitted_count = 0;
 }
 
