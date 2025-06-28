@@ -183,8 +183,7 @@ static int handle_include(char *line, const char *dir, vector_t *macros,
     char *end = start ? strchr(start + 1, endc) : NULL;
     if (start && end) {
         size_t len = (size_t)(end - start - 1);
-        char fname[256];
-        snprintf(fname, sizeof(fname), "%.*s", (int)len, start + 1);
+        char *fname = vc_strndup(start + 1, len);
         char *incpath = find_include_path(fname, endc, dir, incdirs);
         const char *chosen = incpath;
         vector_t subconds;
@@ -206,6 +205,7 @@ static int handle_include(char *line, const char *dir, vector_t *macros,
         }
         vector_free(&subconds);
         free(incpath);
+        free(fname);
         if (!ok)
             return 0;
     }
