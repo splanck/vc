@@ -50,6 +50,37 @@ static int stack_active(vector_t *conds)
     return 1;
 }
 
+/* Return non-zero when the include stack already contains PATH */
+static int include_stack_contains(vector_t *stack, const char *path)
+{
+    for (size_t i = 0; i < stack->count; i++) {
+        const char *p = ((const char **)stack->data)[i];
+        if (strcmp(p, path) == 0)
+            return 1;
+    }
+    return 0;
+}
+
+/* Duplicate PATH and push it on the include stack */
+static int include_stack_push(vector_t *stack, const char *path)
+{
+    char *dup = vc_strdup(path);
+    if (!vector_push(stack, &dup)) {
+        free(dup);
+        return 0;
+    }
+    return 1;
+}
+
+/* Pop and free the top element from the include stack */
+static void include_stack_pop(vector_t *stack)
+{
+    if (stack->count) {
+        free(((char **)stack->data)[stack->count - 1]);
+        stack->count--;
+    }
+}
+
 /* forward declaration for recursive include handling */
 static int process_file(const char *path, vector_t *macros,
                         vector_t *conds, strbuf_t *out,
@@ -164,15 +195,7 @@ static int handle_include(char *line, const char *dir, vector_t *macros,
                 perror(fname);
                 ok = 0;
             } else {
-                int cycle = 0;
-                for (size_t i = 0; i < stack->count; i++) {
-                    const char *p = ((const char **)stack->data)[i];
-                    if (strcmp(p, chosen) == 0) {
-                        cycle = 1;
-                        break;
-                    }
-                }
-                if (cycle) {
+                if (include_stack_contains(stack, chosen)) {
                     fprintf(stderr, "Include cycle detected: %s\n", chosen);
                     ok = 0;
                 } else if (!process_file(chosen, macros, &subconds, out,
@@ -735,14 +758,15 @@ static int process_file(const char *path, vector_t *macros,
     if (!load_file_lines(path, &lines, &dir, &text))
         return 0;
 
-    char *dup = vc_strdup(path);
-    vector_push(stack, &dup);
+    if (!include_stack_push(stack, path)) {
+        cleanup_file_resources(text, lines, dir);
+        return 0;
+    }
 
     int ok = process_all_lines(lines, path, dir, macros, conds, out, incdirs,
                                stack);
 
-    free(((char **)stack->data)[stack->count - 1]);
-    stack->count--;
+    include_stack_pop(stack);
 
     cleanup_file_resources(text, lines, dir);
     return ok;
