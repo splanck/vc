@@ -51,27 +51,35 @@ type_kind_t check_call_expr(expr_t *expr, symtable_t *vars,
         return TYPE_UNKNOWN;
     }
     ir_value_t *vals = NULL;
+    type_kind_t *atypes = NULL;
     if (expr->call.arg_count) {
         vals = malloc(expr->call.arg_count * sizeof(*vals));
-        if (!vals)
+        atypes = malloc(expr->call.arg_count * sizeof(*atypes));
+        if (!vals || !atypes) {
+            free(vals);
+            free(atypes);
             return TYPE_UNKNOWN;
+        }
     }
     for (size_t i = 0; i < expr->call.arg_count; i++) {
         type_kind_t at = check_expr(expr->call.args[i], vars, funcs, ir,
                                     &vals[i]);
+        atypes[i] = at;
         if (i < expected) {
             type_kind_t pt = ptypes[i];
             if (!(((is_intlike(pt) && is_intlike(at)) ||
                    (is_floatlike(pt) && is_floatlike(at))) || at == pt)) {
                 error_set(expr->call.args[i]->line, expr->call.args[i]->column, error_current_file, error_current_function);
                 free(vals);
+                free(atypes);
                 return TYPE_UNKNOWN;
             }
         }
     }
     for (size_t i = expr->call.arg_count; i > 0; i--)
-        ir_build_arg(ir, vals[i - 1]);
+        ir_build_arg(ir, vals[i - 1], atypes[i - 1]);
     free(vals);
+    free(atypes);
     ir_value_t call_val = via_ptr
         ? ir_build_call_ptr(ir, func_val, expr->call.arg_count)
         : ir_build_call(ir, expr->call.name, expr->call.arg_count);
