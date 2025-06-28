@@ -27,6 +27,9 @@ The compiler supports the following options:
 - `-I`, `--include <dir>` – add directory to the `#include` search path.
 - `-O<N>` – set optimization level (0 disables all passes).
 
+Temporary object and assembly files are written to `/tmp` by default. Use the
+`--obj-dir` option to select a different directory if desired.
+
 Use `vc -o out.s source.c` to compile a file, `vc -c -o out.o source.c` to
 produce an object, `vc --link -o prog main.c util.c` to build an executable
 from multiple sources, or `vc -S source.c` to print the assembly to the

@@ -38,3 +38,12 @@ Macro expansion is recursive so macro bodies may reference other macros.
 Conditional expressions in `#if` directives are parsed by the small recursive
 descent parser in `preproc_expr.c`.  The `defined` operator queries the current
 macro table so feature tests work as expected.
+
+## Standard macros
+
+Several identifiers are predefined by the compiler and expand without needing
+an explicit `#define`:
+
+- `__FILE__` expands to the current source file name as a string literal.
+- `__LINE__` expands to the current line number.
+- `__DATE__` and `__TIME__` expand to the compilation date and time strings.

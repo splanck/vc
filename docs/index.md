@@ -14,12 +14,11 @@ provides an overview of all available documentation.
 - [Preprocessor workflow](preprocessor.md) – how macros and directives are
   handled before lexing.
 - [Supported language features](language_features.md) – syntax and semantics
-  currently implemented.
+  currently implemented, including variadic functions.
 - [Command-line usage](command_line.md) – available options and example
   invocations.
 - [Optimization passes](optimization.md) – constant folding, propagation and
   dead code elimination.
-- [Variadic functions](vcdoc.md) – using `...` and `<stdarg.h>`.
 - [Development roadmap](roadmap.md) – planned milestones and compatibility
   goals.
 - [Contributing](../CONTRIBUTING.md) – how to submit patches and bug reports.

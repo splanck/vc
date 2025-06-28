@@ -168,6 +168,11 @@ vc -o call.s call.c
 ```
 
 ### Variadic functions
+Functions may accept a variable number of arguments by placing `...` at the end
+of the parameter list.  The extra parameters are pushed on the stack and can be
+accessed with the standard `<stdarg.h>` macros.  At present only integer and
+pointer values are handled reliably; passing floating‑point arguments is not
+yet supported.
 ```c
 /* var_args.c */
 #include <stdarg.h>
@@ -278,7 +283,8 @@ vc -o ptr_inc.s ptr_inc.c
 ```
 
 #### Function pointers
-Pointers may reference functions and be called through like normal identifiers.
+Pointers may reference functions and use the standard `(*name)(...)` notation.
+They can be called through just like normal identifiers.
 
 ```c
 /* func_ptr.c */
