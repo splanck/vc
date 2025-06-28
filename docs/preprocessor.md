@@ -49,3 +49,6 @@ an explicit `#define`:
 - `__FILE__` expands to the current source file name as a string literal.
 - `__LINE__` expands to the current line number.
 - `__DATE__` and `__TIME__` expand to the compilation date and time strings.
+- `__STDC__` evaluates to `1` to indicate standard compliance.
+- `__STDC_VERSION__` expands to `199901L` for C99 support.
+- `__func__` yields the enclosing function name as a string literal.
