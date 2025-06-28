@@ -10,6 +10,7 @@
 
 /* Pass implementations */
 void propagate_load_consts(ir_builder_t *ir);
+void inline_small_funcs(ir_builder_t *ir);
 void fold_constants(ir_builder_t *ir);
 void dead_code_elim(ir_builder_t *ir);
 
@@ -22,10 +23,12 @@ void opt_error(const char *msg)
 /* Run enabled optimization passes on the IR */
 void opt_run(ir_builder_t *ir, const opt_config_t *cfg)
 {
-    opt_config_t def = {1, 1, 1, 1};
+    opt_config_t def = {1, 1, 1, 1, 1};
     const opt_config_t *c = cfg ? cfg : &def;
     if (c->const_prop)
         propagate_load_consts(ir);
+    if (c->inline_funcs)
+        inline_small_funcs(ir);
     if (c->fold_constants)
         fold_constants(ir);
     if (c->dead_code)

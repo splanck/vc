@@ -37,6 +37,7 @@ static void print_usage(const char *prog)
     printf("      --no-fold        Disable constant folding\n");
     printf("      --no-dce         Disable dead code elimination\n");
     printf("      --no-cprop       Disable constant propagation\n");
+    printf("      --no-inline      Disable inline expansion\n");
     printf("      --debug          Emit .file/.loc directives\n");
     printf("      --x86-64         Generate 64-bit x86 assembly\n");
     printf("  -S, --dump-asm       Print assembly to stdout and exit\n");
@@ -58,6 +59,7 @@ static void init_default_opts(cli_options_t *opts)
     opts->opt_cfg.fold_constants = 1;
     opts->opt_cfg.dead_code = 1;
     opts->opt_cfg.const_prop = 1;
+    opts->opt_cfg.inline_funcs = 1;
     opts->use_x86_64 = 0;
     opts->compile = 0;
     opts->link = 0;
@@ -107,10 +109,12 @@ static void set_opt_level(cli_options_t *opts, const char *level)
         opts->opt_cfg.fold_constants = 0;
         opts->opt_cfg.dead_code = 0;
         opts->opt_cfg.const_prop = 0;
+        opts->opt_cfg.inline_funcs = 0;
     } else {
         opts->opt_cfg.fold_constants = 1;
         opts->opt_cfg.dead_code = 1;
         opts->opt_cfg.const_prop = 1;
+        opts->opt_cfg.inline_funcs = 1;
     }
 }
 
@@ -212,6 +216,13 @@ static int disable_cprop(const char *arg, const char *prog, cli_options_t *opts)
     return 0;
 }
 
+static int disable_inline_opt(const char *arg, const char *prog, cli_options_t *opts)
+{
+    (void)arg; (void)prog;
+    opts->opt_cfg.inline_funcs = 0;
+    return 0;
+}
+
 static int enable_dump_ir_opt(const char *arg, const char *prog, cli_options_t *opts)
 {
     (void)arg; (void)prog;
@@ -279,6 +290,7 @@ static int handle_option(int opt, const char *arg, const char *prog,
         {5,   disable_cprop},
         {6,   enable_dump_ir_opt},
         {10,  enable_debug_opt},
+        {11,  disable_inline_opt},
         {'E', enable_preproc},
         {7,   enable_link_opt},
         {8,   handle_std},
@@ -315,6 +327,7 @@ int cli_parse_args(int argc, char **argv, cli_options_t *opts)
         {"x86-64", no_argument,       0, 3},
         {"dump-asm", no_argument,     0, 4},
         {"no-cprop", no_argument,     0, 5},
+        {"no-inline", no_argument,   0, 11},
         {"dump-ir", no_argument,      0, 6},
         {"debug", no_argument,       0, 10},
         {"preprocess", no_argument,  0, 'E'},

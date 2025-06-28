@@ -13,7 +13,13 @@ add:
 main:
     pushl %ebp
     movl %esp, %ebp
-    movl $5, %ecx
+    movl $2, %ecx
+    movl $3, %ebx
+    pushl %ebx
+    pushl %ecx
+    call add
+    addl $8, %esp
+    movl %eax, %ecx
     movl %ecx, %eax
     ret
     movl %ebp, %esp
