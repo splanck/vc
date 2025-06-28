@@ -318,6 +318,8 @@ static int copy_union_metadata(symbol_t *sym, union_member_t *members,
         sym->members[i].type = m->type;
         sym->members[i].elem_size = m->elem_size;
         sym->members[i].offset = m->offset;
+        sym->members[i].bit_width = m->bit_width;
+        sym->members[i].bit_offset = m->bit_offset;
     }
     return 1;
 }
@@ -343,6 +345,8 @@ static int copy_struct_metadata(symbol_t *sym, struct_member_t *members,
         sym->struct_members[i].type = m->type;
         sym->struct_members[i].elem_size = m->elem_size;
         sym->struct_members[i].offset = m->offset;
+        sym->struct_members[i].bit_width = m->bit_width;
+        sym->struct_members[i].bit_offset = m->bit_offset;
     }
     return 1;
 }

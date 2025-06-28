@@ -213,11 +213,15 @@ static int parse_member(parser_t *p, int is_union,
         um->type = mt;
         um->elem_size = mem_sz;
         um->offset = 0;
+        um->bit_width = 0;
+        um->bit_offset = 0;
     } else {
         sm->name = name;
         sm->type = mt;
         sm->elem_size = mem_sz;
         sm->offset = 0;
+        sm->bit_width = 0;
+        sm->bit_offset = 0;
     }
 
     return 1;
