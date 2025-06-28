@@ -29,6 +29,10 @@ typedef struct symbol {
     struct_member_t *struct_members; /* for struct declarations */
     size_t struct_member_count;
     size_t struct_total_size;
+    type_kind_t func_ret_type; /* for function pointers */
+    type_kind_t *func_param_types;
+    size_t func_param_count;
+    int func_variadic;
     int is_static;
     int is_register;
     int is_const;

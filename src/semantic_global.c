@@ -305,6 +305,17 @@ static symbol_t *register_global_symbol(stmt_t *decl, symtable_t *globals)
     if (!copy_aggregate_metadata(decl, sym))
         return NULL;
 
+    sym->func_ret_type = decl->var_decl.func_ret_type;
+    sym->func_param_count = decl->var_decl.func_param_count;
+    sym->func_variadic = decl->var_decl.func_variadic;
+    if (decl->var_decl.func_param_count) {
+        sym->func_param_types = malloc(sym->func_param_count * sizeof(type_kind_t));
+        if (!sym->func_param_types)
+            return NULL;
+        for (size_t i = 0; i < sym->func_param_count; i++)
+            sym->func_param_types[i] = decl->var_decl.func_param_types[i];
+    }
+
     return sym;
 }
 

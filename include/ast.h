@@ -250,6 +250,11 @@ struct stmt {
             size_t init_count;
             union_member_t *members;
             size_t member_count;
+            /* function pointer metadata */
+            type_kind_t func_ret_type;
+            type_kind_t *func_param_types;
+            size_t func_param_count;
+            int func_variadic;
         } var_decl;
         struct {
             expr_t *cond;

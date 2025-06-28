@@ -74,6 +74,20 @@ static void emit_call(strbuf_t *sb, ir_instr_t *ins,
                    loc_str(buf, ra, ins->dest, x64));
 }
 
+/* Emit an indirect call instruction (IR_CALL_PTR). */
+static void emit_call_ptr(strbuf_t *sb, ir_instr_t *ins,
+                          regalloc_t *ra, int x64,
+                          const char *sfx, const char *ax, const char *sp)
+{
+    char buf[32];
+    strbuf_appendf(sb, "    call *%s\n", loc_str(buf, ra, ins->src1, x64));
+    if (ins->imm > 0)
+        strbuf_appendf(sb, "    add%s $%d, %s\n", sfx,
+                       ins->imm * (x64 ? 8 : 4), sp);
+    strbuf_appendf(sb, "    mov%s %s, %s\n", sfx, ax,
+                   loc_str(buf, ra, ins->dest, x64));
+}
+
 /* Emit function prologue and epilogue. */
 static void emit_func_frame(strbuf_t *sb, ir_instr_t *ins,
                             regalloc_t *ra, int x64,
@@ -150,6 +164,9 @@ void emit_branch_instr(strbuf_t *sb, ir_instr_t *ins,
         break;
     case IR_CALL:
         emit_call(sb, ins, ra, x64, sfx, ax, sp);
+        break;
+    case IR_CALL_PTR:
+        emit_call_ptr(sb, ins, ra, x64, sfx, ax, sp);
         break;
     case IR_FUNC_BEGIN: case IR_FUNC_END:
         emit_func_frame(sb, ins, ra, x64, sfx, bp, sp);

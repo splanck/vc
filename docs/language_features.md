@@ -275,6 +275,23 @@ Compile with:
 vc -o ptr_inc.s ptr_inc.c
 ```
 
+#### Function pointers
+Pointers may reference functions and be called through like normal identifiers.
+
+```c
+/* func_ptr.c */
+int add(int a, int b) { return a + b; }
+
+int main() {
+    int (*op)(int, int) = add;
+    return op(1, 2);
+}
+```
+Compile with:
+```sh
+vc -o func_ptr.s func_ptr.c
+```
+
 ### Arrays
 ```c
 /* array.c */

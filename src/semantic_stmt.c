@@ -283,6 +283,17 @@ static symbol_t *register_var_symbol(stmt_t *stmt, symtable_t *vars)
         return NULL;
     }
 
+    sym->func_ret_type = stmt->var_decl.func_ret_type;
+    sym->func_param_count = stmt->var_decl.func_param_count;
+    sym->func_variadic = stmt->var_decl.func_variadic;
+    if (stmt->var_decl.func_param_count) {
+        sym->func_param_types = malloc(sym->func_param_count * sizeof(type_kind_t));
+        if (!sym->func_param_types)
+            return NULL;
+        for (size_t i = 0; i < sym->func_param_count; i++)
+            sym->func_param_types[i] = stmt->var_decl.func_param_types[i];
+    }
+
     return sym;
 }
 

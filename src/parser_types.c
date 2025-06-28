@@ -6,6 +6,9 @@
  */
 
 #include "parser_types.h"
+#include "vector.h"
+#include <string.h>
+#include <stdlib.h>
 
 /* Parse a fundamental type specifier possibly prefixed with 'unsigned'. */
 int parse_basic_type(parser_t *p, type_kind_t *out)
@@ -69,5 +72,87 @@ size_t basic_type_size(type_kind_t t)
     default:
         return 4;
     }
+}
+
+/* Attempt to parse a function pointer suffix like '(*name)(int, float)'. */
+int parse_func_ptr_suffix(parser_t *p, char **name,
+                          type_kind_t **param_types, size_t *param_count,
+                          int *is_variadic)
+{
+    size_t start = p->pos;
+    if (!match(p, TOK_LPAREN))
+        return 0;
+    if (!match(p, TOK_STAR)) {
+        p->pos = start;
+        return 0;
+    }
+    token_t *id = peek(p);
+    if (!id || id->type != TOK_IDENT) {
+        p->pos = start;
+        return 0;
+    }
+    p->pos++;
+    if (!match(p, TOK_RPAREN)) {
+        p->pos = start;
+        return 0;
+    }
+    if (!match(p, TOK_LPAREN)) {
+        p->pos = start;
+        return 0;
+    }
+
+    vector_t params_v;
+    vector_init(&params_v, sizeof(type_kind_t));
+    int variadic = 0;
+
+    if (!match(p, TOK_RPAREN)) {
+        do {
+            if (match(p, TOK_ELLIPSIS)) {
+                variadic = 1;
+                break;
+            }
+            type_kind_t pt;
+            if (!parse_basic_type(p, &pt)) {
+                vector_free(&params_v);
+                p->pos = start;
+                return 0;
+            }
+            if (match(p, TOK_STAR)) {
+                pt = TYPE_PTR;
+                match(p, TOK_KW_RESTRICT);
+            }
+            token_t *tmp = peek(p);
+            if (tmp && tmp->type == TOK_IDENT)
+                p->pos++; /* optional name */
+            if (!vector_push(&params_v, &pt)) {
+                vector_free(&params_v);
+                p->pos = start;
+                return 0;
+            }
+        } while (match(p, TOK_COMMA));
+        if (!match(p, TOK_RPAREN)) {
+            vector_free(&params_v);
+            p->pos = start;
+            return 0;
+        }
+    }
+
+    *name = id->lexeme;
+    *param_count = params_v.count;
+    if (params_v.count) {
+        *param_types = malloc(params_v.count * sizeof(type_kind_t));
+        if (!*param_types) {
+            vector_free(&params_v);
+            p->pos = start;
+            return 0;
+        }
+        memcpy(*param_types, params_v.data,
+               params_v.count * sizeof(type_kind_t));
+    } else {
+        *param_types = NULL;
+    }
+    *is_variadic = variadic;
+    vector_free(&params_v);
+    return 1;
 }
 

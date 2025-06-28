@@ -28,14 +28,25 @@ type_kind_t check_call_expr(expr_t *expr, symtable_t *vars,
                             symtable_t *funcs, ir_builder_t *ir,
                             ir_value_t *out)
 {
-    (void)vars;
     symbol_t *fsym = symtable_lookup(funcs, expr->call.name);
+    int via_ptr = 0;
+    ir_value_t func_val;
     if (!fsym) {
-        error_set(expr->line, expr->column);
-        return TYPE_UNKNOWN;
+        fsym = symtable_lookup(vars, expr->call.name);
+        if (!fsym || fsym->type != TYPE_PTR ||
+            fsym->func_ret_type == TYPE_UNKNOWN) {
+            error_set(expr->line, expr->column);
+            return TYPE_UNKNOWN;
+        }
+        via_ptr = 1;
+        func_val = ir_build_load(ir, fsym->ir_name);
     }
-    if ((!fsym->is_variadic && fsym->param_count != expr->call.arg_count) ||
-        (fsym->is_variadic && expr->call.arg_count < fsym->param_count)) {
+    size_t expected = via_ptr ? fsym->func_param_count : fsym->param_count;
+    int variadic = via_ptr ? fsym->func_variadic : fsym->is_variadic;
+    type_kind_t *ptypes = via_ptr ? fsym->func_param_types : fsym->param_types;
+
+    if ((!variadic && expected != expr->call.arg_count) ||
+        (variadic && expr->call.arg_count < expected)) {
         error_set(expr->line, expr->column);
         return TYPE_UNKNOWN;
     }
@@ -48,8 +59,8 @@ type_kind_t check_call_expr(expr_t *expr, symtable_t *vars,
     for (size_t i = 0; i < expr->call.arg_count; i++) {
         type_kind_t at = check_expr(expr->call.args[i], vars, funcs, ir,
                                     &vals[i]);
-        if (i < fsym->param_count) {
-            type_kind_t pt = fsym->param_types[i];
+        if (i < expected) {
+            type_kind_t pt = ptypes[i];
             if (!(((is_intlike(pt) && is_intlike(at)) ||
                    (is_floatlike(pt) && is_floatlike(at))) || at == pt)) {
                 error_set(expr->call.args[i]->line, expr->call.args[i]->column);
@@ -61,10 +72,11 @@ type_kind_t check_call_expr(expr_t *expr, symtable_t *vars,
     for (size_t i = expr->call.arg_count; i > 0; i--)
         ir_build_arg(ir, vals[i - 1]);
     free(vals);
-    ir_value_t call_val = ir_build_call(ir, expr->call.name,
-                                       expr->call.arg_count);
+    ir_value_t call_val = via_ptr
+        ? ir_build_call_ptr(ir, func_val, expr->call.arg_count)
+        : ir_build_call(ir, expr->call.name, expr->call.arg_count);
     if (out)
         *out = call_val;
-    return fsym->type;
+    return via_ptr ? fsym->func_ret_type : fsym->type;
 }
 

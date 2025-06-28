@@ -57,6 +57,7 @@ typedef enum {
     IR_ARG,
     IR_RETURN,
     IR_CALL,
+    IR_CALL_PTR,
     IR_FUNC_BEGIN,
     IR_FUNC_END,
     IR_BR,
@@ -171,6 +172,7 @@ void ir_build_arg(ir_builder_t *b, ir_value_t val);
 
 /* Emit IR_CALL to `name` expecting `arg_count` previously pushed args. */
 ir_value_t ir_build_call(ir_builder_t *b, const char *name, size_t arg_count);
+ir_value_t ir_build_call_ptr(ir_builder_t *b, ir_value_t func, size_t arg_count);
 
 /* Mark the start of a function with IR_FUNC_BEGIN. */
 void ir_build_func_begin(ir_builder_t *b, const char *name);
