@@ -69,6 +69,10 @@ size_t basic_type_size(type_kind_t t)
         return 2;
     case TYPE_INT: case TYPE_UINT: case TYPE_LONG: case TYPE_ULONG:
         return 4;
+    case TYPE_FLOAT:
+        return 4;
+    case TYPE_DOUBLE:
+        return 8;
     case TYPE_LLONG: case TYPE_ULLONG:
         return 8;
     case TYPE_LDOUBLE:
