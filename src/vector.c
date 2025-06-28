@@ -7,6 +7,8 @@
 
 #include <stdlib.h>
 #include <string.h>
+#include <stdio.h>
+#include <stdint.h>
 #include "vector.h"
 #include "util.h"
 
@@ -35,6 +37,10 @@ int vector_push(vector_t *vec, const void *elem)
         return 0;
     if (vec->count >= vec->cap) {
         size_t new_cap = vec->cap ? vec->cap * 2 : 16;
+        if (new_cap > SIZE_MAX / vec->elem_size) {
+            fprintf(stderr, "vc: vector too large\n");
+            exit(1);
+        }
         void *tmp = vc_realloc_or_exit(vec->data, new_cap * vec->elem_size);
         vec->data = tmp;
         vec->cap = new_cap;

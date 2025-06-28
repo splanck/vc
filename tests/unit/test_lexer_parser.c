@@ -18,6 +18,7 @@
 #include "ast.h"
 #include "ast_expr.h"
 #include "ast_stmt.h"
+#include "vector.h"
 
 /*
  * Number of failed assertions recorded so far.  The main function prints
@@ -503,6 +504,22 @@ static void test_lexer_escapes(void)
     lexer_free_tokens(toks, count);
 }
 
+/* Ensure the vector grows correctly for large element counts */
+static void test_vector_large(void)
+{
+    const size_t big_count = 1000000;
+    vector_t v;
+    vector_init(&v, sizeof(int));
+    for (size_t i = 0; i < big_count; i++) {
+        ASSERT(vector_push(&v, &i));
+    }
+    ASSERT(v.count == big_count);
+    for (size_t i = 0; i < big_count; i++) {
+        ASSERT(((int *)v.data)[i] == (int)i);
+    }
+    vector_free(&v);
+}
+
 /*
  * Entry point for the test executable.  Each unit test is run in
  * sequence and the total number of failures reported at the end.
@@ -538,6 +555,7 @@ int main(void)
     test_parser_bitfield();
     test_line_directive();
     test_lexer_escapes();
+    test_vector_large();
     if (failures == 0) {
         printf("All unit tests passed\n");
     } else {
