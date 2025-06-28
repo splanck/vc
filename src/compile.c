@@ -54,9 +54,10 @@ static int check_function_defs(func_t **func_list, size_t fcount,
 static void run_optimize_stage(ir_builder_t *ir, const opt_config_t *cfg);
 static int run_output_stage(ir_builder_t *ir, const char *output,
                             int dump_ir, int dump_asm, int use_x86_64,
-                            int compile);
+                            int compile, const cli_options_t *cli);
 static int emit_output_file(ir_builder_t *ir, const char *output,
-                            int use_x86_64, int compile_obj);
+                            int use_x86_64, int compile_obj,
+                            const cli_options_t *cli);
 static void cleanup_compile_unit(vector_t *funcs_v, vector_t *globs_v,
                                  symtable_t *funcs, symtable_t *globals,
                                  ir_builder_t *ir);
@@ -74,17 +75,20 @@ static int run_link_command(const vector_t *objs, const char *output,
                             int use_x86_64);
 
 /* Write the entry stub assembly to a temporary file. */
-static int write_startup_asm(int use_x86_64, char **out_path);
+static int write_startup_asm(int use_x86_64, const cli_options_t *cli,
+                             char **out_path);
 
 /* Assemble the stub into an object file. */
 static int assemble_startup_obj(const char *asm_path, int use_x86_64,
-                               char **out_path);
+                               const cli_options_t *cli, char **out_path);
 
 /* Create a temporary file and return its descriptor. */
-static int create_temp_file(char template[]);
+static int create_temp_file(const cli_options_t *cli, const char *prefix,
+                            char **out_path);
 
 /* Create an object file containing the entry stub for linking. */
-static int create_startup_object(int use_x86_64, char **out_path);
+static int create_startup_object(const cli_options_t *cli, int use_x86_64,
+                                 char **out_path);
 
 /* Compile all input sources into temporary object files. */
 static int compile_source_files(const cli_options_t *cli, vector_t *objs);
@@ -242,7 +246,7 @@ static void run_optimize_stage(ir_builder_t *ir, const opt_config_t *cfg)
 /* Emit the requested output */
 static int run_output_stage(ir_builder_t *ir, const char *output,
                             int dump_ir, int dump_asm, int use_x86_64,
-                            int compile)
+                            int compile, const cli_options_t *cli)
 {
     if (dump_ir) {
         char *text = ir_to_string(ir);
@@ -261,18 +265,18 @@ static int run_output_stage(ir_builder_t *ir, const char *output,
         return 1;
     }
 
-    return emit_output_file(ir, output, use_x86_64, compile);
+    return emit_output_file(ir, output, use_x86_64, compile, cli);
 }
 
 /* Emit assembly or an object file */
 static int emit_output_file(ir_builder_t *ir, const char *output,
-                            int use_x86_64, int compile_obj)
+                            int use_x86_64, int compile_obj,
+                            const cli_options_t *cli)
 {
     if (compile_obj) {
-        char tmpname[] = "/tmp/vcXXXXXX";
-        int fd = mkstemp(tmpname);
+        char *tmpname = NULL;
+        int fd = create_temp_file(cli, "vc", &tmpname);
         if (fd < 0) {
-            perror("mkstemp");
             return 0;
         }
         FILE *tmpf = fdopen(fd, "w");
@@ -280,6 +284,7 @@ static int emit_output_file(ir_builder_t *ir, const char *output,
             perror("fdopen");
             close(fd);
             unlink(tmpname);
+            free(tmpname);
             return 0;
         }
         codegen_emit_x86(tmpf, ir, use_x86_64);
@@ -291,6 +296,7 @@ static int emit_output_file(ir_builder_t *ir, const char *output,
                  tmpname, output);
         int ret = system(cmd);
         unlink(tmpname);
+        free(tmpname);
         if (ret != 0) {
             fprintf(stderr, "cc failed\n");
             return 0;
@@ -362,7 +368,7 @@ int compile_unit(const char *source, const cli_options_t *cli,
     if (ok) {
         run_optimize_stage(&ir, &cli->opt_cfg);
         ok = run_output_stage(&ir, output, cli->dump_ir, cli->dump_asm,
-                              cli->use_x86_64, compile_obj);
+                              cli->use_x86_64, compile_obj, cli);
     }
 
     cleanup_compile_unit(&func_list_v, &glob_list_v, &funcs, &globals, &ir);
@@ -373,19 +379,31 @@ int compile_unit(const char *source, const cli_options_t *cli,
 }
 
 /* Create a temporary file and return its descriptor. */
-static int create_temp_file(char template[])
+static int create_temp_file(const cli_options_t *cli, const char *prefix,
+                            char **out_path)
 {
-    int fd = mkstemp(template);
-    if (fd < 0)
+    const char *dir = cli->obj_dir ? cli->obj_dir : "/tmp";
+    size_t len = strlen(dir) + strlen(prefix) + 8; /* / prefix XXXXXX \0 */
+    char *tmpl = malloc(len);
+    if (!tmpl)
+        return -1;
+    snprintf(tmpl, len, "%s/%sXXXXXX", dir, prefix);
+    int fd = mkstemp(tmpl);
+    if (fd < 0) {
         perror("mkstemp");
+        free(tmpl);
+        return -1;
+    }
+    *out_path = tmpl;
     return fd;
 }
 
 /* Write the entry stub assembly to a temporary file. */
-static int write_startup_asm(int use_x86_64, char **out_path)
+static int write_startup_asm(int use_x86_64, const cli_options_t *cli,
+                             char **out_path)
 {
-    char asmname[] = "/tmp/vcstubXXXXXX";
-    int asmfd = create_temp_file(asmname);
+    char *asmname = NULL;
+    int asmfd = create_temp_file(cli, "vcstub", &asmname);
     if (asmfd < 0)
         return 0;
     FILE *stub = fdopen(asmfd, "w");
@@ -393,6 +411,7 @@ static int write_startup_asm(int use_x86_64, char **out_path)
         perror("fdopen");
         close(asmfd);
         unlink(asmname);
+        free(asmname);
         return 0;
     }
     if (use_x86_64) {
@@ -402,16 +421,16 @@ static int write_startup_asm(int use_x86_64, char **out_path)
     }
     fclose(stub);
 
-    *out_path = vc_strdup(asmname);
+    *out_path = asmname;
     return 1;
 }
 
 /* Assemble the entry stub into an object file. */
 static int assemble_startup_obj(const char *asm_path, int use_x86_64,
-                               char **out_path)
+                               const cli_options_t *cli, char **out_path)
 {
-    char objname[] = "/tmp/vcobjXXXXXX";
-    int objfd = create_temp_file(objname);
+    char *objname = NULL;
+    int objfd = create_temp_file(cli, "vcobj", &objname);
     if (objfd < 0)
         return 0;
     close(objfd);
@@ -424,20 +443,22 @@ static int assemble_startup_obj(const char *asm_path, int use_x86_64,
     if (ret != 0) {
         fprintf(stderr, "cc failed\n");
         unlink(objname);
+        free(objname);
         return 0;
     }
 
-    *out_path = vc_strdup(objname);
+    *out_path = objname;
     return 1;
 }
 
 /* Create object file with program entry point */
-static int create_startup_object(int use_x86_64, char **out_path)
+static int create_startup_object(const cli_options_t *cli, int use_x86_64,
+                                char **out_path)
 {
     char *asmfile = NULL;
-    int ok = write_startup_asm(use_x86_64, &asmfile);
+    int ok = write_startup_asm(use_x86_64, cli, &asmfile);
     if (ok)
-        ok = assemble_startup_obj(asmfile, use_x86_64, out_path);
+        ok = assemble_startup_obj(asmfile, use_x86_64, cli, out_path);
     if (asmfile) {
         unlink(asmfile);
         free(asmfile);
@@ -449,8 +470,8 @@ static int create_startup_object(int use_x86_64, char **out_path)
 static int compile_source_obj(const char *source, const cli_options_t *cli,
                               char **out_path)
 {
-    char objname[] = "/tmp/vcobjXXXXXX";
-    int fd = create_temp_file(objname);
+    char *objname = NULL;
+    int fd = create_temp_file(cli, "vcobj", &objname);
     if (fd < 0)
         return 0;
     close(fd);
@@ -458,10 +479,11 @@ static int compile_source_obj(const char *source, const cli_options_t *cli,
     int ok = compile_unit(source, cli, objname, 1);
     if (!ok) {
         unlink(objname);
+        free(objname);
         return 0;
     }
 
-    *out_path = vc_strdup(objname);
+    *out_path = objname;
     return 1;
 }
 
@@ -513,7 +535,7 @@ static int run_link_command(const vector_t *objs, const char *output,
 static int build_and_link_objects(vector_t *objs, const cli_options_t *cli)
 {
     char *stubobj = NULL;
-    int ok = create_startup_object(cli->use_x86_64, &stubobj);
+    int ok = create_startup_object(cli, cli->use_x86_64, &stubobj);
     if (ok) {
         if (!vector_push(objs, &stubobj)) {
             fprintf(stderr, "Out of memory\n");

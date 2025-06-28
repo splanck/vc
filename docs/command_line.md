@@ -19,6 +19,7 @@ The compiler supports the following options:
 - `--x86-64` – generate 64‑bit x86 assembly.
 - `-c`, `--compile` – assemble the output into an object file using `cc -c`.
 - `--link` – build an executable by assembling and linking with `cc`.
+- `--obj-dir <path>` – directory for temporary object files.
 - `-S`, `--dump-asm` – print the generated assembly to stdout instead of creating a file.
 - `--dump-ir` – print the IR to stdout before code generation.
 - `--std=<c99|gnu99>` – select the language standard (default is `c99`).

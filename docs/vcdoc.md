@@ -25,3 +25,6 @@ without needing an explicit `#define`:
 - `__LINE__` expands to the current line number.
 - `__DATE__` and `__TIME__` expand to the compilation date and time strings.
 
+Temporary object and assembly files are created in `/tmp` by default.
+Use `--obj-dir <path>` to specify a different directory.
+

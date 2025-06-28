@@ -30,6 +30,7 @@ typedef struct {
     int dump_ir;        /* dump IR to stdout */
     int preprocess;     /* run preprocessor only and print to stdout */
     c_std_t std;        /* language standard */
+    char *obj_dir;      /* directory for temporary object files */
     vector_t include_dirs; /* additional include directories */
     vector_t sources;      /* input source files */
 } cli_options_t;
