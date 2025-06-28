@@ -28,6 +28,9 @@ stmt_t *parser_parse_for_stmt(parser_t *p);
 stmt_t *parser_parse_switch_stmt(parser_t *p);
 
 static stmt_t *parse_block(parser_t *p);
+static stmt_t *parse_tagged_decl(parser_t *p, token_type_t keyword,
+                                 stmt_t *(*decl_fn)(parser_t *),
+                                 stmt_t *(*var_decl_fn)(parser_t *));
 static stmt_t *parse_enum_declaration(parser_t *p);
 static stmt_t *parse_struct_declaration(parser_t *p);
 static stmt_t *parse_union_declaration(parser_t *p);
@@ -66,8 +69,10 @@ static stmt_t *parse_block(parser_t *p)
     return ast_make_block(stmts, count, lb_tok->line, lb_tok->column);
 }
 
-/* Parse an enum declaration or inline enum variable definition. */
-static stmt_t *parse_enum_declaration(parser_t *p)
+/* Common helper for enum/struct/union declarations. */
+static stmt_t *parse_tagged_decl(parser_t *p, token_type_t keyword,
+                                 stmt_t *(*decl_fn)(parser_t *),
+                                 stmt_t *(*var_decl_fn)(parser_t *))
 {
     size_t save = p->pos;
     int has_static = match(p, TOK_KW_STATIC);
@@ -75,7 +80,7 @@ static stmt_t *parse_enum_declaration(parser_t *p)
     int has_const = match(p, TOK_KW_CONST);
     int has_vol = match(p, TOK_KW_VOLATILE);
 
-    if (!match(p, TOK_KW_ENUM)) {
+    if (!match(p, keyword)) {
         p->pos = save;
         return NULL;
     }
@@ -83,16 +88,14 @@ static stmt_t *parse_enum_declaration(parser_t *p)
     token_t *next = peek(p);
     if (next && next->type == TOK_LBRACE) {
         p->pos = save;
-        match(p, TOK_KW_ENUM);
-        return parser_parse_enum_decl(p);
+        return var_decl_fn(p);
     } else if (next && next->type == TOK_IDENT) {
         p->pos++;
         token_t *after = peek(p);
         if (!has_static && !has_reg && !has_const && !has_vol && after &&
             after->type == TOK_LBRACE) {
             p->pos = save;
-            match(p, TOK_KW_ENUM);
-            return parser_parse_enum_decl(p);
+            return decl_fn(p);
         }
         p->pos = save;
         return parser_parse_var_decl(p);
@@ -100,74 +103,30 @@ static stmt_t *parse_enum_declaration(parser_t *p)
 
     p->pos = save;
     return NULL;
+}
+
+/* Parse an enum declaration or inline enum variable definition. */
+static stmt_t *parse_enum_declaration(parser_t *p)
+{
+    return parse_tagged_decl(p, TOK_KW_ENUM,
+                             parser_parse_enum_decl,
+                             parser_parse_enum_decl);
 }
 
 /* Parse a struct declaration or inline struct variable definition. */
 static stmt_t *parse_struct_declaration(parser_t *p)
 {
-    size_t save = p->pos;
-    int has_static = match(p, TOK_KW_STATIC);
-    int has_reg = match(p, TOK_KW_REGISTER);
-    int has_const = match(p, TOK_KW_CONST);
-    int has_vol = match(p, TOK_KW_VOLATILE);
-
-    if (!match(p, TOK_KW_STRUCT)) {
-        p->pos = save;
-        return NULL;
-    }
-
-    token_t *next = peek(p);
-    if (next && next->type == TOK_LBRACE) {
-        p->pos = save;
-        return parser_parse_struct_var_decl(p);
-    } else if (next && next->type == TOK_IDENT) {
-        p->pos++;
-        token_t *after = peek(p);
-        if (!has_static && !has_reg && !has_const && !has_vol && after &&
-            after->type == TOK_LBRACE) {
-            p->pos = save;
-            return parser_parse_struct_decl(p);
-        }
-        p->pos = save;
-        return parser_parse_var_decl(p);
-    }
-
-    p->pos = save;
-    return NULL;
+    return parse_tagged_decl(p, TOK_KW_STRUCT,
+                             parser_parse_struct_decl,
+                             parser_parse_struct_var_decl);
 }
 
 /* Parse a union declaration or inline union variable definition. */
 static stmt_t *parse_union_declaration(parser_t *p)
 {
-    size_t save = p->pos;
-    int has_static = match(p, TOK_KW_STATIC);
-    int has_reg = match(p, TOK_KW_REGISTER);
-    int has_const = match(p, TOK_KW_CONST);
-    int has_vol = match(p, TOK_KW_VOLATILE);
-
-    if (!match(p, TOK_KW_UNION)) {
-        p->pos = save;
-        return NULL;
-    }
-
-    token_t *next = peek(p);
-    if (next && next->type == TOK_LBRACE) {
-        p->pos = save;
-        return parser_parse_union_var_decl(p);
-    } else if (next && next->type == TOK_IDENT) {
-        p->pos++;
-        token_t *after = peek(p);
-        if (!has_static && !has_reg && !has_const && !has_vol && after &&
-            after->type == TOK_LBRACE) {
-            p->pos = save;
-            return parser_parse_union_decl(p);
-        }
-        p->pos = save;
-        return parser_parse_var_decl(p);
-    }
-
-    p->pos = save;
-    return NULL;
+    return parse_tagged_decl(p, TOK_KW_UNION,
+                             parser_parse_union_decl,
+                             parser_parse_union_var_decl);
 }
 
 /*
