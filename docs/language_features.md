@@ -16,6 +16,7 @@ See the [documentation index](index.md) for a list of all available pages.
 - [Loops](#loops)
 - [Pointers](#pointers)
 - [Arrays](#arrays)
+- [Variable length arrays](#variable-length-arrays)
 - [Compound literals](#compound-literals)
 - [sizeof](#sizeof)
 - [Global variables](#global-variables)
@@ -30,6 +31,7 @@ See the [documentation index](index.md) for a list of all available pages.
 - Loop initialization may declare a variable
 - Pointers
 - Arrays
+- Variable length arrays inside functions
 - Compound assignment operators (`+=`, `-=`, `*=`, `/=`, `%=`)
 - Increment and decrement operators (`++`, `--`)
 - Logical operators `&&`, `||` and `!`
@@ -375,6 +377,7 @@ Compile with:
 vc -o array_init.s array_init.c
 ```
 
+#### Variable length arrays
 Variable length arrays may use any runtime expression between the brackets:
 
 ```c
