@@ -315,6 +315,33 @@ void ir_build_store_idx_vol(ir_builder_t *b, const char *name, ir_value_t idx,
     ins->is_volatile = 1;
 }
 
+/* Load a bit-field from `name` shifted by `shift` and masked by `width`. */
+ir_value_t ir_build_bfload(ir_builder_t *b, const char *name,
+                           int shift, int width)
+{
+    ir_instr_t *ins = append_instr(b);
+    if (!ins)
+        return (ir_value_t){0};
+    ins->op = IR_BFLOAD;
+    ins->dest = b->next_value_id++;
+    ins->name = vc_strdup(name ? name : "");
+    ins->imm = ((long long)shift << 32) | (unsigned)width;
+    return (ir_value_t){ins->dest};
+}
+
+/* Store `val` into a bit-field at `name`. */
+void ir_build_bfstore(ir_builder_t *b, const char *name, int shift,
+                      int width, ir_value_t val)
+{
+    ir_instr_t *ins = append_instr(b);
+    if (!ins)
+        return;
+    ins->op = IR_BFSTORE;
+    ins->src1 = val.id;
+    ins->name = vc_strdup(name ? name : "");
+    ins->imm = ((long long)shift << 32) | (unsigned)width;
+}
+
 /* Emit IR_ALLOCA reserving stack space of the given size. */
 ir_value_t ir_build_alloca(ir_builder_t *b, ir_value_t size)
 {

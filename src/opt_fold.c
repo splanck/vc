@@ -164,11 +164,13 @@ void fold_constants(ir_builder_t *ir)
             break;
         case IR_LOAD:
         case IR_LOAD_IDX:
+        case IR_BFLOAD:
             update_const(ins, 0, 0, max_id, is_const, values);
             break;
         case IR_STORE:
         case IR_LOAD_PARAM:
         case IR_STORE_IDX:
+        case IR_BFSTORE:
             update_const(ins, 0, 0, max_id, is_const, values);
             break;
         case IR_STORE_PARAM:

@@ -15,6 +15,7 @@ static int has_side_effect(ir_instr_t *ins)
     case IR_STORE:
     case IR_STORE_PTR:
     case IR_STORE_IDX:
+    case IR_BFSTORE:
     case IR_STORE_PARAM:
     case IR_CALL:
     case IR_CALL_PTR:
@@ -32,6 +33,7 @@ static int has_side_effect(ir_instr_t *ins)
         return 1;
     case IR_LOAD:
     case IR_LOAD_IDX:
+    case IR_BFLOAD:
     case IR_LOAD_PTR:
         return ins->is_volatile || ins->op == IR_LOAD_PTR;
     default:
