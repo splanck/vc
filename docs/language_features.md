@@ -285,6 +285,39 @@ Compile with:
 vc -o ptr_inc.s ptr_inc.c
 ```
 
+Pointer subtraction using a variable offset works the same way:
+
+```c
+/* ptr_var_sub.c */
+int main() {
+    int nums[3] = {1, 2, 3};
+    int i = 2;
+    int *p = nums + i;
+    p = p - i;
+    return *p;
+}
+```
+Compile with:
+```sh
+vc -o ptr_var_sub.s ptr_var_sub.c
+```
+
+Pointers can also be compared when they refer to elements of the same array:
+
+```c
+/* ptr_compare.c */
+int main() {
+    int arr[2];
+    int *p1 = arr;
+    int *p2 = arr + 1;
+    return p1 < p2;
+}
+```
+Compile with:
+```sh
+vc -o ptr_compare.s ptr_compare.c
+```
+
 #### Function pointers
 Pointers may reference functions and use the standard `(*name)(...)` notation.
 They can be called through just like normal identifiers.

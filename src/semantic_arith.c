@@ -106,6 +106,15 @@ type_kind_t check_binary(expr_t *left, expr_t *right, symtable_t *vars,
         if (out)
             *out = ir_build_ptr_diff(ir, lval, rval, (int)esz);
         return TYPE_INT;
+    } else if (lt == TYPE_PTR && rt == TYPE_PTR &&
+               (op == BINOP_EQ || op == BINOP_NEQ ||
+                op == BINOP_LT || op == BINOP_GT ||
+                op == BINOP_LE || op == BINOP_GE)) {
+        if (out) {
+            ir_op_t ir_op = binop_to_ir[op];
+            *out = ir_build_binop(ir, ir_op, lval, rval);
+        }
+        return TYPE_INT;
     }
     error_set(left->line, left->column, error_current_file, error_current_function);
     return TYPE_UNKNOWN;
