@@ -34,8 +34,8 @@ Temporary object and assembly files are written to `/tmp` by default. Use the
 
 Use `vc -o out.s source.c` to compile a file, `vc -c -o out.o source.c` to
 produce an object, `vc --link -o prog main.c util.c` to build an executable
-from multiple sources, or `vc -S source.c` to print the assembly to the
-terminal.
+from multiple sources, `vc -S source.c` to print the assembly to the
+terminal, or pipe code into `vc -o out.s -` to read from standard input.
 
 ## Preprocessor Usage
 

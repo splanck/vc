@@ -108,6 +108,10 @@ Print the generated assembly:
 .PP
 .B vc -S source.c
 .PP
+Read source from standard input:
+.PP
+.B cat prog.c \| vc -o out.s -
+.PP
 Compile a program using pointer increments:
 .PP
 .B vc -o ptr_inc.s ptr_inc.c

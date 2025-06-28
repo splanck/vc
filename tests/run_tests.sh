@@ -267,6 +267,15 @@ if [ $ret -eq 0 ] || ! grep -q "Unknown standard" "$err"; then
 fi
 rm -f "$std_out" "$err"
 
+# test reading source from stdin
+stdin_out=$(mktemp)
+cat "$DIR/fixtures/simple_add.c" | "$BINARY" -o "$stdin_out" -
+if ! diff -u "$DIR/fixtures/simple_add.s" "$stdin_out" > /dev/null; then
+    echo "Test stdin_source failed"
+    fail=1
+fi
+rm -f "$stdin_out"
+
 if [ $fail -eq 0 ]; then
     echo "All tests passed"
 else
