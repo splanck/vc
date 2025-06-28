@@ -15,6 +15,7 @@ typedef struct {
     int fold_constants; /* enable constant folding */
     int dead_code;      /* enable dead code elimination */
     int const_prop;     /* enable store/load constant propagation */
+    int inline_funcs;   /* inline small functions */
 } opt_config_t;
 
 /* Print an optimization error message */
@@ -25,8 +26,9 @@ void opt_error(const char *msg);
  *
  * Passes execute in the following order:
  * 1. Constant propagation
- * 2. Constant folding
- * 3. Dead code elimination
+ * 2. Inline expansion
+ * 3. Constant folding
+ * 4. Dead code elimination
  */
 void opt_run(ir_builder_t *ir, const opt_config_t *cfg);
 

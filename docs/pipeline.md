@@ -167,11 +167,11 @@ must match the previously declared signature.
 Any mismatch results in `error_print` reporting the source
 location of the failure.
 
-Function definitions may also be marked with the `inline` specifier. Inline
-functions are currently treated like regular functions. The compiler does not
-enforce the one-definition rule so multiple identical inline definitions are
-accepted. When combined with `static`, the `static` keyword must appear before
-`inline`.
+Function definitions may also be marked with the `inline` specifier. When
+optimizations are enabled, very small inline functions may be expanded at
+their call sites. The compiler does not yet enforce the one-definition rule
+so multiple identical inline definitions are accepted. When combined with
+`static`, the `static` keyword must appear before `inline`.
 
 ### ir
 Defines the IR structures used throughout the rest of the compiler.

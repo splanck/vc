@@ -3,18 +3,25 @@
 See the [documentation index](index.md) for a list of all available pages.
 
 The optimizer in **vc** operates on the intermediate representation (IR).
-Three passes are currently available and are executed in order:
+Four passes are currently available and are executed in order:
 1. **Constant propagation** – replaces loads of variables whose values are
    known constants with immediate constants.
-2. **Constant folding** – evaluates arithmetic instructions whose operands are
+2. **Inline expansion** – replaces calls to small inline functions with their body.
+3. **Constant folding** – evaluates arithmetic instructions whose operands are
    constants and replaces them with a single constant.
-3. **Dead code elimination** – removes instructions that produce values which
+4. **Dead code elimination** – removes instructions that produce values which
    are never used and have no side effects.
 
 Constant propagation tracks variables written with constants. When a later
 load of such a variable is encountered, it becomes an immediate constant.
 Long-double arithmetic results are propagated when both operands are known
 constants, enabling subsequent folding.
+
+Inline expansion scans for functions consisting of two parameter loads,
+a single arithmetic operation and a return statement. Calls to such
+functions are replaced by the equivalent operation in the caller. This
+reduces call overhead and allows the following passes to fold the
+resulting expression.
 
 Constant folding evaluates arithmetic instructions whose operands are constant
 values, replacing them with a single constant instruction.  Support now

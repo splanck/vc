@@ -202,6 +202,15 @@ if ! grep -q "movl x, %eax" "$cprop_out"; then
 fi
 rm -f "$cprop_out"
 
+# test --no-inline option
+inline_out=$(mktemp)
+"$BINARY" --no-inline -o "$inline_out" "$DIR/fixtures/inline_func.c"
+if ! grep -q "call add" "$inline_out"; then
+    echo "Test no_inline failed"
+    fail=1
+fi
+rm -f "$inline_out"
+
 # test --debug option
 debug_out=$(mktemp)
 "$BINARY" --debug -S "$DIR/fixtures/simple_add.c" > "$debug_out"
