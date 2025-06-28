@@ -111,8 +111,11 @@ static int parse_array_suffix(parser_t *p, type_kind_t *type, char **name,
                 p->pos = save;
                 return 0;
             }
-            if ((*size_expr)->kind == EXPR_NUMBER)
+            if ((*size_expr)->kind == EXPR_NUMBER) {
                 *arr_size = strtoul((*size_expr)->number.value, NULL, 10);
+                ast_free_expr(*size_expr);
+                *size_expr = NULL;
+            }
             *type = TYPE_ARRAY;
         }
     }
