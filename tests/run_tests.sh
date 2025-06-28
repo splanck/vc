@@ -4,6 +4,8 @@ DIR=$(dirname "$0")
 BINARY="$DIR/../vc"
 
 fail=0
+# compile each fixture, including vla.c which exercises
+# variable length array support
 for cfile in $(ls "$DIR"/fixtures/*.c | sort); do
     base=$(basename "$cfile" .c)
 
