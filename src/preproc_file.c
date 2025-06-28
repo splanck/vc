@@ -723,6 +723,21 @@ char *preproc_run(const char *path, const vector_t *include_dirs)
         free(tmp);
     }
 
+    env = getenv("VCINC");
+    if (env && *env) {
+        char *tmp = vc_strdup(env);
+        char *tok; char *sp;
+        tok = strtok_r(tmp, ":", &sp);
+        while (tok) {
+            if (*tok) {
+                char *dup = vc_strdup(tok);
+                vector_push(&search_dirs, &dup);
+            }
+            tok = strtok_r(NULL, ":", &sp);
+        }
+        free(tmp);
+    }
+
     vector_t macros;
     vector_init(&macros, sizeof(macro_t));
     vector_t conds;
