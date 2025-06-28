@@ -144,6 +144,19 @@ if [ $ret -eq 0 ] || ! grep -q "Semantic error" "$err"; then
 fi
 rm -f "$out" "$err"
 
+# negative test for #error directive
+err=$(mktemp)
+out=$(mktemp)
+set +e
+"$BINARY" -o "$out" "$DIR/invalid/preproc_error.c" 2> "$err"
+ret=$?
+set -e
+if [ $ret -eq 0 ] || ! grep -q "Build stopped" "$err"; then
+    echo "Test preproc_error failed"
+    fail=1
+fi
+rm -f "$out" "$err"
+
 # test --dump-asm option
 dump_out=$(mktemp)
 "$BINARY" --dump-asm "$DIR/fixtures/simple_add.c" > "$dump_out"

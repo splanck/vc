@@ -18,6 +18,8 @@ The built-in preprocessor expands \fB#include\fR directives, object-like
 and parameterized macros defined with \fB#define\fR. Macro bodies may be
 expanded recursively. The \fB#\fR operator stringizes a parameter and
 \fB##\fR concatenates two tokens. Macros may be removed with \fB#undef\fR.
+The \fB#error\fR directive prints its message to stderr and aborts
+preprocessing when encountered.
 Several standard identifiers are always defined and expand to context
 information: \fB__FILE__\fR yields the current file name, \fB__LINE__\fR
 the current line number and \fB__DATE__\fR/\fB__TIME__\fR the build date

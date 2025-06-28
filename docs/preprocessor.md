@@ -15,6 +15,8 @@ preprocessor directive is handled immediately:
 - `#define` adds a new macro definition.  Parameterised forms are supported and
   stored in a `macro_t` structure.
 - `#undef` removes existing definitions.
+- `#error` prints the given message to stderr and aborts preprocessing when
+  encountered in an active block.
 - Conditional directives (`#if`, `#ifdef`, `#ifndef`, `#elif`, `#else` and
   `#endif`) manipulate a stack of state objects so nested conditions may be
   evaluated correctly.
