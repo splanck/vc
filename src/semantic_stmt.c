@@ -492,6 +492,17 @@ static int check_var_decl_stmt(stmt_t *stmt, symtable_t *vars,
     symbol_t *sym = register_var_symbol(stmt, vars);
     if (!sym)
         return 0;
+    if (stmt->var_decl.type == TYPE_ARRAY && stmt->var_decl.array_size == 0 &&
+        stmt->var_decl.size_expr) {
+        ir_value_t lenv;
+        if (check_expr(stmt->var_decl.size_expr, vars, funcs, ir, &lenv) ==
+            TYPE_UNKNOWN)
+            return 0;
+        ir_value_t eszv = ir_build_const(ir, (int)stmt->var_decl.elem_size);
+        ir_value_t total = ir_build_binop(ir, IR_MUL, lenv, eszv);
+        sym->vla_addr = ir_build_alloca(ir, total);
+        sym->vla_size = lenv;
+    }
     return emit_var_initializer(stmt, sym, vars, funcs, ir);
 }
 /*
