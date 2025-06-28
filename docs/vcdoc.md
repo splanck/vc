@@ -12,3 +12,7 @@ The preprocessor recognises several identifiers automatically:
 - `__func__` expands to the current function name.
 
 Refer to [preprocessor workflow](preprocessor.md) for further details.
+
+## Variadic functions
+
+Variadic functions now accept `float`, `double` and `long double` arguments in addition to integers and pointers.
