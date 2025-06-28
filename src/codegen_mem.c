@@ -362,6 +362,7 @@ void emit_memory_instr(strbuf_t *sb, ir_instr_t *ins,
         emit_arg(sb, ins, ra, x64);
         break;
     case IR_GLOB_STRING:
+    case IR_GLOB_WSTRING:
         emit_glob_string(sb, ins, ra, x64);
         break;
     case IR_GLOB_VAR:

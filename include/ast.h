@@ -132,9 +132,11 @@ struct expr {
         } ident;
         struct {
             char *value;
+            int is_wide;
         } string;
         struct {
             char value;
+            int is_wide;
         } ch;
         struct {
             unop_t op;

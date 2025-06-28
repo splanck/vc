@@ -137,8 +137,12 @@ static expr_t *parse_literal(parser_t *p)
         return ast_make_number(tok->lexeme, tok->line, tok->column);
     if (match(p, TOK_STRING))
         return ast_make_string(tok->lexeme, tok->line, tok->column);
+    if (match(p, TOK_WIDE_STRING))
+        return ast_make_wstring(tok->lexeme, tok->line, tok->column);
     if (match(p, TOK_CHAR))
         return ast_make_char(tok->lexeme[0], tok->line, tok->column);
+    if (match(p, TOK_WIDE_CHAR))
+        return ast_make_wchar(tok->lexeme[0], tok->line, tok->column);
     return NULL;
 }
 

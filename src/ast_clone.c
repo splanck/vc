@@ -34,12 +34,16 @@ static expr_t *clone_ident(const expr_t *expr)
 /* Duplicate a string literal expression node. */
 static expr_t *clone_string(const expr_t *expr)
 {
+    if (expr->string.is_wide)
+        return ast_make_wstring(expr->string.value, expr->line, expr->column);
     return ast_make_string(expr->string.value, expr->line, expr->column);
 }
 
 /* Duplicate a character literal expression node. */
 static expr_t *clone_char(const expr_t *expr)
 {
+    if (expr->ch.is_wide)
+        return ast_make_wchar(expr->ch.value, expr->line, expr->column);
     return ast_make_char(expr->ch.value, expr->line, expr->column);
 }
 

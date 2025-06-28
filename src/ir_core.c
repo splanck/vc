@@ -13,6 +13,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <stdarg.h>
+#include <string.h>
 #include "ir_core.h"
 #include "label.h"
 #include "strbuf.h"
@@ -104,6 +105,31 @@ ir_value_t ir_build_string(ir_builder_t *b, const char *str)
     char label[32];
     ins->name = vc_strdup(label_format("Lstr", ins->dest, label));
     ins->data = vc_strdup(str ? str : "");
+    return (ir_value_t){ins->dest};
+}
+
+/*
+ * Emit IR_GLOB_WSTRING defining a global wide string literal stored as
+ * an array of integers. A unique label is stored in `name`.
+ */
+ir_value_t ir_build_wstring(ir_builder_t *b, const char *str)
+{
+    ir_instr_t *ins = append_instr(b);
+    if (!ins)
+        return (ir_value_t){0};
+    ins->op = IR_GLOB_WSTRING;
+    ins->dest = b->next_value_id++;
+    char label[32];
+    ins->name = vc_strdup(label_format("LWstr", ins->dest, label));
+    size_t len = strlen(str ? str : "");
+    long long *vals = malloc((len + 1) * sizeof(long long));
+    if (!vals)
+        return (ir_value_t){0};
+    for (size_t i = 0; i < len; i++)
+        vals[i] = (unsigned char)str[i];
+    vals[len] = 0;
+    ins->imm = (long long)(len + 1);
+    ins->data = (char *)vals;
     return (ir_value_t){ins->dest};
 }
 
