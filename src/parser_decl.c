@@ -21,6 +21,7 @@
 static int parse_decl_specs(parser_t *p, int *is_extern, int *is_static,
                             int *is_register, int *is_const, int *is_volatile,
                             int *is_restrict, type_kind_t *type,
+                            type_kind_t *base_type,
                             char **tag_name, size_t *elem_size,
                             token_t **kw_tok);
 static int parse_array_suffix(parser_t *p, type_kind_t *type, char **name,
@@ -45,6 +46,7 @@ static void free_parsed_members(vector_t *v, int is_union);
 static int parse_decl_specs(parser_t *p, int *is_extern, int *is_static,
                             int *is_register, int *is_const, int *is_volatile,
                             int *is_restrict, type_kind_t *type,
+                            type_kind_t *base_type,
                             char **tag_name, size_t *elem_size,
                             token_t **kw_tok)
 {
@@ -68,10 +70,14 @@ static int parse_decl_specs(parser_t *p, int *is_extern, int *is_static,
         if (!*tag_name)
             return 0;
         *type = TYPE_UNION;
+        if (base_type)
+            *base_type = *type;
     } else {
         if (!parse_basic_type(p, type))
             return 0;
         *elem_size = basic_type_size(*type);
+        if (base_type)
+            *base_type = *type;
     }
 
     *is_restrict = 0;
@@ -270,15 +276,27 @@ stmt_t *parser_parse_var_decl(parser_t *p)
     size_t elem_size = 0;
     token_t *kw_tok = NULL;
 
+    type_kind_t base_type;
     if (!parse_decl_specs(p, &is_extern, &is_static, &is_register,
                           &is_const, &is_volatile, &is_restrict, &t,
-                          &tag_name, &elem_size, &kw_tok))
+                          &base_type, &tag_name, &elem_size, &kw_tok))
         return NULL;
 
     char *name;
     size_t arr_size;
     expr_t *size_expr;
-    if (!parse_array_suffix(p, &t, &name, &arr_size, &size_expr)) {
+    type_kind_t *param_types = NULL;
+    size_t param_count = 0;
+    int variadic = 0;
+    type_kind_t func_ret_type = TYPE_UNKNOWN;
+
+    if (t == TYPE_PTR && parse_func_ptr_suffix(p, &name,
+                                               &param_types, &param_count,
+                                               &variadic)) {
+        arr_size = 0;
+        size_expr = NULL;
+        func_ret_type = base_type;
+    } else if (!parse_array_suffix(p, &t, &name, &arr_size, &size_expr)) {
         free(tag_name);
         return NULL;
     }
@@ -289,6 +307,7 @@ stmt_t *parser_parse_var_decl(parser_t *p)
     if (!parse_initializer(p, t, &init, &init_list, &init_count)) {
         ast_free_expr(size_expr);
         free(tag_name);
+        free(param_types);
         return NULL;
     }
 
@@ -298,8 +317,15 @@ stmt_t *parser_parse_var_decl(parser_t *p)
                                     init, init_list, init_count,
                                     tag_name, NULL, 0,
                                     kw_tok->line, kw_tok->column);
-    if (!res)
+    if (!res) {
         free(tag_name);
+        free(param_types);
+    } else {
+        res->var_decl.func_ret_type = func_ret_type;
+        res->var_decl.func_param_types = param_types;
+        res->var_decl.func_param_count = param_count;
+        res->var_decl.func_variadic = variadic;
+    }
     return res;
 }
 

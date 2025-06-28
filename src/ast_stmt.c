@@ -87,6 +87,10 @@ stmt_t *ast_make_var_decl(const char *name, type_kind_t type, size_t array_size,
     stmt->var_decl.init_count = init_count;
     stmt->var_decl.members = members;
     stmt->var_decl.member_count = member_count;
+    stmt->var_decl.func_ret_type = TYPE_UNKNOWN;
+    stmt->var_decl.func_param_types = NULL;
+    stmt->var_decl.func_param_count = 0;
+    stmt->var_decl.func_variadic = 0;
     return stmt;
 }
 
@@ -405,6 +409,7 @@ static void free_var_decl_stmt(stmt_t *stmt)
     for (size_t i = 0; i < stmt->var_decl.member_count; i++)
         free(stmt->var_decl.members[i].name);
     free(stmt->var_decl.members);
+    free(stmt->var_decl.func_param_types);
 }
 
 static void free_if_stmt(stmt_t *stmt)

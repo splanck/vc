@@ -50,6 +50,10 @@ symbol_t *symtable_create_symbol(const char *name, const char *ir_name)
     sym->struct_members = NULL;
     sym->struct_member_count = 0;
     sym->struct_total_size = 0;
+    sym->func_ret_type = TYPE_UNKNOWN;
+    sym->func_param_types = NULL;
+    sym->func_param_count = 0;
+    sym->func_variadic = 0;
     sym->is_restrict = 0;
     sym->is_register = 0;
     sym->is_variadic = 0;
@@ -83,6 +87,7 @@ static void free_symbol_list(symbol_t *sym)
             free(sym->struct_members[i].name);
         free(sym->struct_members);
         free(sym->param_types);
+        free(sym->func_param_types);
         free(sym);
         sym = next;
     }

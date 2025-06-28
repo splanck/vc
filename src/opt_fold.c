@@ -156,7 +156,7 @@ void fold_constants(ir_builder_t *ir)
         case IR_GLOB_STRUCT:
             update_const(ins, 0, 0, max_id, is_const, values);
             break;
-        case IR_CALL: case IR_FUNC_BEGIN: case IR_FUNC_END: case IR_ARG:
+        case IR_CALL: case IR_CALL_PTR: case IR_FUNC_BEGIN: case IR_FUNC_END: case IR_ARG:
             update_const(ins, 0, 0, max_id, is_const, values);
             break;
         case IR_BCOND: case IR_LABEL: case IR_BR:

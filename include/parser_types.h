@@ -16,5 +16,10 @@ int parse_basic_type(parser_t *p, type_kind_t *out);
 /* Return the size in bytes of a basic type. */
 size_t basic_type_size(type_kind_t t);
 
+/* Try to parse a function pointer declaration suffix. */
+int parse_func_ptr_suffix(parser_t *p, char **name,
+                          type_kind_t **param_types, size_t *param_count,
+                          int *is_variadic);
+
 #endif /* VC_PARSER_TYPES_H */
 
