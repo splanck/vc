@@ -19,6 +19,19 @@
 #include "vector.h"
 #include "strbuf.h"
 
+/* current expansion location for builtin macros */
+static const char *builtin_file = "";
+static size_t builtin_line = 0;
+
+static const char build_date[] = __DATE__;
+static const char build_time[] = __TIME__;
+
+void preproc_set_location(const char *file, size_t line)
+{
+    builtin_file = file ? file : "";
+    builtin_line = line;
+}
+
 /*
  * Release all memory associated with a macro definition.
  * Frees the name string, parameter list and value.  Safe to
@@ -257,6 +270,27 @@ static int parse_macro_invocation(const char *line, size_t *pos,
         j++;
 
     size_t len = j - i;
+
+    /* handle builtin macros first */
+    if (len == 8) {
+        if (strncmp(line + i, "__FILE__", 8) == 0) {
+            strbuf_appendf(out, "\"%s\"", builtin_file);
+            *pos = j;
+            return 1;
+        } else if (strncmp(line + i, "__LINE__", 8) == 0) {
+            strbuf_appendf(out, "%zu", builtin_line);
+            *pos = j;
+            return 1;
+        } else if (strncmp(line + i, "__DATE__", 8) == 0) {
+            strbuf_appendf(out, "\"%s\"", build_date);
+            *pos = j;
+            return 1;
+        } else if (strncmp(line + i, "__TIME__", 8) == 0) {
+            strbuf_appendf(out, "\"%s\"", build_time);
+            *pos = j;
+            return 1;
+        }
+    }
     for (size_t k = 0; k < macros->count; k++) {
         macro_t *m = &((macro_t *)macros->data)[k];
         if (strlen(m->name) == len && strncmp(m->name, line + i, len) == 0) {
@@ -306,6 +340,10 @@ void expand_line(const char *line, vector_t *macros, strbuf_t *out)
  */
 int is_macro_defined(vector_t *macros, const char *name)
 {
+    if (strcmp(name, "__FILE__") == 0 || strcmp(name, "__LINE__") == 0 ||
+        strcmp(name, "__DATE__") == 0 || strcmp(name, "__TIME__") == 0)
+        return 1;
+
     for (size_t i = 0; i < macros->count; i++) {
         macro_t *m = &((macro_t *)macros->data)[i];
         if (strcmp(m->name, name) == 0)
