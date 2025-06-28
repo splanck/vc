@@ -489,16 +489,20 @@ static int process_all_lines(char **lines, const char *dir,
     return 1;
 }
 /* Process a single #include directive and recursively handle the file. */
-static int process_include(char *line, const char *dir, vector_t *macros,
-                           vector_t *conds, strbuf_t *out,
-                           const vector_t *incdirs)
+static int handle_include_directive(char *line, const char *dir,
+                                    vector_t *macros, vector_t *conds,
+                                    strbuf_t *out,
+                                    const vector_t *incdirs)
 {
     return handle_include(line, dir, macros, conds, out, incdirs);
 }
 
 /* Apply a #line directive to adjust reported line numbers. */
-static int process_line_directive(char *line, vector_t *conds, strbuf_t *out)
+static int handle_line_directive(char *line, const char *dir, vector_t *macros,
+                                 vector_t *conds, strbuf_t *out,
+                                 const vector_t *incdirs)
 {
+    (void)dir; (void)macros; (void)incdirs;
     char *p = line + 5;
     while (*p == ' ' || *p == '\t')
         p++;
@@ -528,14 +532,21 @@ static int process_line_directive(char *line, vector_t *conds, strbuf_t *out)
 }
 
 /* Parse and store a macro from a #define directive. */
-static int process_define(char *line, vector_t *macros, vector_t *conds)
+static int handle_define_directive(char *line, const char *dir,
+                                   vector_t *macros, vector_t *conds,
+                                   strbuf_t *out,
+                                   const vector_t *incdirs)
 {
+    (void)dir; (void)out; (void)incdirs;
     return handle_define(line, macros, conds);
 }
 
 /* Remove a macro defined earlier when #undef is seen. */
-static int process_undef(char *line, vector_t *macros, vector_t *conds)
+static int handle_undef_directive(char *line, const char *dir, vector_t *macros,
+                                  vector_t *conds, strbuf_t *out,
+                                  const vector_t *incdirs)
 {
+    (void)dir; (void)out; (void)incdirs;
     char *n = line + 6;
     while (*n == ' ' || *n == '\t')
         n++;
@@ -549,15 +560,23 @@ static int process_undef(char *line, vector_t *macros, vector_t *conds)
 }
 
 /* Copy a #pragma line into the output when active. */
-static int process_pragma_line(char *line, vector_t *conds, strbuf_t *out)
+static int handle_pragma_directive(char *line, const char *dir,
+                                   vector_t *macros, vector_t *conds,
+                                   strbuf_t *out,
+                                   const vector_t *incdirs)
 {
+    (void)dir; (void)macros; (void)incdirs;
     handle_pragma(line, conds, out);
     return 1;
 }
 
 /* Update conditional state based on #if/#else/#endif directives. */
-static int process_conditional_line(char *line, vector_t *macros, vector_t *conds)
+static int handle_conditional_directive(char *line, const char *dir,
+                                        vector_t *macros, vector_t *conds,
+                                        strbuf_t *out,
+                                        const vector_t *incdirs)
 {
+    (void)dir; (void)out; (void)incdirs;
     handle_conditional(line, macros, conds);
     return 1;
 }
@@ -566,9 +585,11 @@ static int process_conditional_line(char *line, vector_t *macros, vector_t *cond
  * Expand a regular text line and append it to the output when the current
  * conditional stack is active.
  */
-static int process_text_line(char *line, vector_t *macros,
-                             vector_t *conds, strbuf_t *out)
+static int handle_text_line(char *line, const char *dir, vector_t *macros,
+                            vector_t *conds, strbuf_t *out,
+                            const vector_t *incdirs)
 {
+    (void)dir; (void)incdirs;
     if (stack_active(conds)) {
         strbuf_t tmp;
         strbuf_init(&tmp);
@@ -590,54 +611,6 @@ typedef int (*directive_fn_t)(char *, const char *, vector_t *, vector_t *,
 
 enum { SPACE_NONE, SPACE_BLANK, SPACE_ANY };
 
-static int wrap_line_directive(char *line, const char *dir, vector_t *macros,
-                               vector_t *conds, strbuf_t *out,
-                               const vector_t *incdirs)
-{
-    (void)dir; (void)macros; (void)incdirs;
-    return process_line_directive(line, conds, out);
-}
-
-static int wrap_define(char *line, const char *dir, vector_t *macros,
-                       vector_t *conds, strbuf_t *out,
-                       const vector_t *incdirs)
-{
-    (void)dir; (void)out; (void)incdirs;
-    return process_define(line, macros, conds);
-}
-
-static int wrap_undef(char *line, const char *dir, vector_t *macros,
-                      vector_t *conds, strbuf_t *out,
-                      const vector_t *incdirs)
-{
-    (void)dir; (void)out; (void)incdirs;
-    return process_undef(line, macros, conds);
-}
-
-static int wrap_pragma(char *line, const char *dir, vector_t *macros,
-                       vector_t *conds, strbuf_t *out,
-                       const vector_t *incdirs)
-{
-    (void)dir; (void)macros; (void)incdirs;
-    return process_pragma_line(line, conds, out);
-}
-
-static int wrap_conditional(char *line, const char *dir, vector_t *macros,
-                            vector_t *conds, strbuf_t *out,
-                            const vector_t *incdirs)
-{
-    (void)dir; (void)out; (void)incdirs;
-    return process_conditional_line(line, macros, conds);
-}
-
-static int wrap_text(char *line, const char *dir, vector_t *macros,
-                     vector_t *conds, strbuf_t *out,
-                     const vector_t *incdirs)
-{
-    (void)dir; (void)incdirs;
-    return process_text_line(line, macros, conds, out);
-}
-
 typedef struct {
     const char    *name;
     int            space;
@@ -649,17 +622,17 @@ static int handle_directive(char *line, const char *dir, vector_t *macros,
                             const vector_t *incdirs)
 {
     static const directive_entry_t table[] = {
-        {"#include", SPACE_BLANK, process_include},
-        {"#line",    SPACE_ANY,   wrap_line_directive},
-        {"#define",  SPACE_BLANK, wrap_define},
-        {"#undef",   SPACE_ANY,   wrap_undef},
-        {"#pragma",  SPACE_ANY,   wrap_pragma},
-        {"#ifdef",   SPACE_ANY,   wrap_conditional},
-        {"#ifndef",  SPACE_ANY,   wrap_conditional},
-        {"#if",      SPACE_ANY,   wrap_conditional},
-        {"#elif",    SPACE_ANY,   wrap_conditional},
-        {"#else",    SPACE_NONE,  wrap_conditional},
-        {"#endif",   SPACE_NONE,  wrap_conditional}
+        {"#include", SPACE_BLANK, handle_include_directive},
+        {"#line",    SPACE_ANY,   handle_line_directive},
+        {"#define",  SPACE_BLANK, handle_define_directive},
+        {"#undef",   SPACE_ANY,   handle_undef_directive},
+        {"#pragma",  SPACE_ANY,   handle_pragma_directive},
+        {"#ifdef",   SPACE_ANY,   handle_conditional_directive},
+        {"#ifndef",  SPACE_ANY,   handle_conditional_directive},
+        {"#if",      SPACE_ANY,   handle_conditional_directive},
+        {"#elif",    SPACE_ANY,   handle_conditional_directive},
+        {"#else",    SPACE_NONE,  handle_conditional_directive},
+        {"#endif",   SPACE_NONE,  handle_conditional_directive}
     };
 
     for (size_t i = 0; i < sizeof(table)/sizeof(table[0]); i++) {
@@ -677,7 +650,7 @@ static int handle_directive(char *line, const char *dir, vector_t *macros,
         }
     }
 
-    return wrap_text(line, dir, macros, conds, out, incdirs);
+    return handle_text_line(line, dir, macros, conds, out, incdirs);
 }
 
 /*
