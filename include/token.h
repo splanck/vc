@@ -95,6 +95,7 @@ typedef enum {
     TOK_QMARK,
     TOK_COLON,
     TOK_LABEL,
+    TOK_ELLIPSIS,
     TOK_UNKNOWN
 } token_type_t;
 

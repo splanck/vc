@@ -153,9 +153,14 @@ static int parse_func_prototype(parser_t *p, symtable_t *funcs, const char *name
 
     vector_t param_types_v;
     vector_init(&param_types_v, sizeof(type_kind_t));
+    int is_variadic = 0;
 
     if (!match(p, TOK_RPAREN)) {
         do {
+            if (match(p, TOK_ELLIPSIS)) {
+                is_variadic = 1;
+                break;
+            }
             type_kind_t pt;
             if (!parse_basic_type(p, &pt)) {
                 vector_free(&param_types_v);
@@ -187,7 +192,7 @@ static int parse_func_prototype(parser_t *p, symtable_t *funcs, const char *name
         p->pos++; /* ';' */
         symtable_add_func(funcs, name, ret_type,
                          (type_kind_t *)param_types_v.data,
-                         param_types_v.count, 1);
+                         param_types_v.count, is_variadic, 1);
         vector_free(&param_types_v);
         return 1;
     } else if (after && after->type == TOK_LBRACE) {

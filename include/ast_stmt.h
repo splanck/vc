@@ -72,7 +72,7 @@ stmt_t *ast_make_block(stmt_t **stmts, size_t count,
 func_t *ast_make_func(const char *name, type_kind_t ret_type,
                       char **param_names, type_kind_t *param_types,
                       size_t *param_elem_sizes, int *param_is_restrict,
-                      size_t param_count,
+                      size_t param_count, int is_variadic,
                       stmt_t **body, size_t body_count);
 
 /* Recursively free a statement tree. */

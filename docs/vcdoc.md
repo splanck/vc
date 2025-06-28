@@ -1,0 +1,10 @@
+# Variadic Functions
+
+See the [documentation index](index.md) for a list of all available pages.
+
+Functions can be declared with a trailing `...` in the parameter list to
+accept a variable number of arguments. The extra arguments are pushed on
+the stack and may be accessed using the standard `<stdarg.h>` macros.
+
+Only integer and pointer arguments are currently reliable; passing
+floating-point values as variadic parameters is not supported.

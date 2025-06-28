@@ -34,7 +34,8 @@ type_kind_t check_call_expr(expr_t *expr, symtable_t *vars,
         error_set(expr->line, expr->column);
         return TYPE_UNKNOWN;
     }
-    if (fsym->param_count != expr->call.arg_count) {
+    if ((!fsym->is_variadic && fsym->param_count != expr->call.arg_count) ||
+        (fsym->is_variadic && expr->call.arg_count < fsym->param_count)) {
         error_set(expr->line, expr->column);
         return TYPE_UNKNOWN;
     }
@@ -47,12 +48,14 @@ type_kind_t check_call_expr(expr_t *expr, symtable_t *vars,
     for (size_t i = 0; i < expr->call.arg_count; i++) {
         type_kind_t at = check_expr(expr->call.args[i], vars, funcs, ir,
                                     &vals[i]);
-        type_kind_t pt = fsym->param_types[i];
-        if (!(((is_intlike(pt) && is_intlike(at)) ||
-               (is_floatlike(pt) && is_floatlike(at))) || at == pt)) {
-            error_set(expr->call.args[i]->line, expr->call.args[i]->column);
-            free(vals);
-            return TYPE_UNKNOWN;
+        if (i < fsym->param_count) {
+            type_kind_t pt = fsym->param_types[i];
+            if (!(((is_intlike(pt) && is_intlike(at)) ||
+                   (is_floatlike(pt) && is_floatlike(at))) || at == pt)) {
+                error_set(expr->call.args[i]->line, expr->call.args[i]->column);
+                free(vals);
+                return TYPE_UNKNOWN;
+            }
         }
     }
     for (size_t i = expr->call.arg_count; i > 0; i--)

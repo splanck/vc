@@ -41,7 +41,7 @@ int symtable_add_global(symtable_t *table, const char *name, const char *ir_name
  */
 int symtable_add_func(symtable_t *table, const char *name, type_kind_t ret_type,
                       type_kind_t *param_types, size_t param_count,
-                      int is_prototype)
+                      int is_variadic, int is_prototype)
 {
     if (symtable_lookup(table, name))
         return 0;
@@ -50,6 +50,7 @@ int symtable_add_func(symtable_t *table, const char *name, type_kind_t ret_type,
         return 0;
     sym->type = ret_type;
     sym->param_count = param_count;
+    sym->is_variadic = is_variadic;
     if (param_count) {
         sym->param_types = malloc(param_count * sizeof(*sym->param_types));
         if (!sym->param_types) {

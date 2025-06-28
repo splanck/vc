@@ -330,7 +330,7 @@ stmt_t *ast_make_block(stmt_t **stmts, size_t count,
 func_t *ast_make_func(const char *name, type_kind_t ret_type,
                       char **param_names, type_kind_t *param_types,
                       size_t *param_elem_sizes, int *param_is_restrict,
-                      size_t param_count,
+                      size_t param_count, int is_variadic,
                       stmt_t **body, size_t body_count)
 {
     func_t *fn = malloc(sizeof(*fn));
@@ -343,6 +343,7 @@ func_t *ast_make_func(const char *name, type_kind_t ret_type,
     }
     fn->return_type = ret_type;
     fn->param_count = param_count;
+    fn->is_variadic = is_variadic;
     fn->param_names = malloc(param_count * sizeof(*fn->param_names));
     fn->param_types = malloc(param_count * sizeof(*fn->param_types));
     fn->param_elem_sizes = malloc(param_count * sizeof(*fn->param_elem_sizes));
