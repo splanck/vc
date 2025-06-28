@@ -11,3 +11,12 @@ floating-point values as variadic parameters is not supported.
 
 Function pointers can be declared using the familiar `(*name)(...)` syntax
 and invoked just like normal function identifiers.
+
+## Standard Preprocessor Macros
+
+The built-in preprocessor defines four special identifiers that are replaced
+without needing an explicit `#define`:
+
+- `__FILE__` expands to the current source file name as a string literal.
+- `__LINE__` expands to the current line number.
+- `__DATE__` and `__TIME__` expand to the compilation date and time strings.

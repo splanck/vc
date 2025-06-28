@@ -478,11 +478,12 @@ static void free_macro_vector(vector_t *v)
 }
 
 /* Iterate over the loaded lines and process each one. */
-static int process_all_lines(char **lines, const char *dir,
+static int process_all_lines(char **lines, const char *path, const char *dir,
                              vector_t *macros, vector_t *conds,
                              strbuf_t *out, const vector_t *incdirs)
 {
     for (size_t i = 0; lines[i]; i++) {
+        preproc_set_location(path, i + 1);
         if (!process_line(lines[i], dir, macros, conds, out, incdirs))
             return 0;
     }
@@ -669,7 +670,7 @@ static int process_file(const char *path, vector_t *macros,
     if (!load_file_lines(path, &lines, &dir, &text))
         return 0;
 
-    int ok = process_all_lines(lines, dir, macros, conds, out, incdirs);
+    int ok = process_all_lines(lines, path, dir, macros, conds, out, incdirs);
 
     cleanup_file_resources(text, lines, dir);
     return ok;
