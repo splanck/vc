@@ -92,6 +92,15 @@ if ! diff -u "$DIR/fixtures/include_env.s" "$env_out"; then
 fi
 rm -f "$env_out"
 
+# verify VCINC include search
+inc_env_out=$(mktemp)
+VCINC="$DIR/includes" "$BINARY" -o "$inc_env_out" "$DIR/fixtures/include_search.c"
+if ! diff -u "$DIR/fixtures/include_search.s" "$inc_env_out"; then
+    echo "Test include_vcinc failed"
+    fail=1
+fi
+rm -f "$inc_env_out"
+
 # negative test for parse error message
 err=$(mktemp)
 out=$(mktemp)
