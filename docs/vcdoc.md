@@ -11,3 +11,7 @@ floating-point values as variadic parameters is not supported.
 
 Function pointers can be declared using the familiar `(*name)(...)` syntax
 and invoked just like normal function identifiers.
+
+Character and string literals understand standard C escape sequences. This
+includes `\n`, `\t`, `\r`, `\b`, `\f`, `\v` as well as octal forms like
+`\123` and hexadecimal forms such as `\x7F`.
