@@ -197,6 +197,17 @@ static int parse_member(parser_t *p, int is_union,
             return 0;
         mt = TYPE_ARRAY;
     }
+
+    unsigned bit_width = 0;
+    if (match(p, TOK_COLON)) {
+        if (mt == TYPE_ARRAY)
+            return 0;
+        token_t *num = peek(p);
+        if (!num || num->type != TOK_NUMBER)
+            return 0;
+        p->pos++;
+        bit_width = strtoul(num->lexeme, NULL, 10);
+    }
     if (!match(p, TOK_SEMI))
         return 0;
 
@@ -213,14 +224,14 @@ static int parse_member(parser_t *p, int is_union,
         um->type = mt;
         um->elem_size = mem_sz;
         um->offset = 0;
-        um->bit_width = 0;
+        um->bit_width = bit_width;
         um->bit_offset = 0;
     } else {
         sm->name = name;
         sm->type = mt;
         sm->elem_size = mem_sz;
         sm->offset = 0;
-        sm->bit_width = 0;
+        sm->bit_width = bit_width;
         sm->bit_offset = 0;
     }
 

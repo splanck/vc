@@ -47,8 +47,12 @@ int parse_basic_type(parser_t *p, type_kind_t *out)
         (void)is_unsigned;
         t = TYPE_ENUM;
     } else {
-        p->pos = save;
-        return 0;
+        if (is_unsigned) {
+            t = TYPE_UINT;
+        } else {
+            p->pos = save;
+            return 0;
+        }
     }
     if (out)
         *out = t;

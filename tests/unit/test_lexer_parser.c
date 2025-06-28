@@ -433,6 +433,23 @@ static void test_parser_block(void)
     lexer_free_tokens(toks, count);
 }
 
+/* Parsing of a simple bit-field within a struct. */
+static void test_parser_bitfield(void)
+{
+    const char *src = "struct S { unsigned f : 1; };";
+    size_t count = 0;
+    token_t *toks = lexer_tokenize(src, &count);
+    parser_t p; parser_init(&p, toks, count);
+    stmt_t *stmt = parser_parse_struct_decl(&p);
+    ASSERT(stmt);
+    ASSERT(stmt->kind == STMT_STRUCT_DECL);
+    ASSERT(stmt->struct_decl.count == 1);
+    ASSERT(strcmp(stmt->struct_decl.members[0].name, "f") == 0);
+    ASSERT(stmt->struct_decl.members[0].bit_width == 1);
+    ast_free_stmt(stmt);
+    lexer_free_tokens(toks, count);
+}
+
 /* Verify that line directives influence token line/column fields. */
 static void test_line_directive(void)
 {
@@ -501,6 +518,7 @@ int main(void)
     test_parser_sizeof();
     test_parser_func();
     test_parser_block();
+    test_parser_bitfield();
     test_line_directive();
     test_lexer_escapes();
     if (failures == 0) {
