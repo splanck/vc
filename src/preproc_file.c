@@ -560,6 +560,23 @@ static int handle_undef_directive(char *line, const char *dir, vector_t *macros,
     return 1;
 }
 
+/* Emit an error message and abort preprocessing when active. */
+static int handle_error_directive(char *line, const char *dir,
+                                  vector_t *macros, vector_t *conds,
+                                  strbuf_t *out,
+                                  const vector_t *incdirs)
+{
+    (void)dir; (void)macros; (void)out; (void)incdirs;
+    char *msg = line + 6; /* skip '#error' */
+    while (*msg == ' ' || *msg == '\t')
+        msg++;
+    if (stack_active(conds)) {
+        fprintf(stderr, "%s\n", *msg ? msg : "preprocessor error");
+        return 0;
+    }
+    return 1;
+}
+
 /* Copy a #pragma line into the output when active. */
 static int handle_pragma_directive(char *line, const char *dir,
                                    vector_t *macros, vector_t *conds,
@@ -627,6 +644,7 @@ static int handle_directive(char *line, const char *dir, vector_t *macros,
         {"#line",    SPACE_ANY,   handle_line_directive},
         {"#define",  SPACE_BLANK, handle_define_directive},
         {"#undef",   SPACE_ANY,   handle_undef_directive},
+        {"#error",   SPACE_ANY,   handle_error_directive},
         {"#pragma",  SPACE_ANY,   handle_pragma_directive},
         {"#ifdef",   SPACE_ANY,   handle_conditional_directive},
         {"#ifndef",  SPACE_ANY,   handle_conditional_directive},
