@@ -76,8 +76,16 @@ type_kind_t check_call_expr(expr_t *expr, symtable_t *vars,
             }
         }
     }
-    for (size_t i = expr->call.arg_count; i > 0; i--)
-        ir_build_arg(ir, vals[i - 1], atypes[i - 1]);
+    for (size_t i = expr->call.arg_count; i > 0; i--) {
+        size_t idx = i - 1;
+        type_kind_t at = atypes[idx];
+        if (idx >= expected &&
+            (at == TYPE_FLOAT || at == TYPE_DOUBLE || at == TYPE_LDOUBLE)) {
+            ir_build_arg(ir, vals[idx], at);
+        } else {
+            ir_build_arg(ir, vals[idx], at);
+        }
+    }
     free(vals);
     free(atypes);
     ir_value_t call_val = via_ptr
