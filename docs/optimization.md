@@ -29,6 +29,9 @@ functions are replaced by the equivalent operation in the caller. This
 reduces call overhead and allows the following passes to fold the
 resulting expression.
 
+If the optimizer cannot open the source file referenced by a candidate
+function, a warning is printed and the call remains non-inline.
+
 Constant folding evaluates arithmetic instructions whose operands are constant
 values, replacing them with a single constant instruction.  Support now
 includes the long double operations `IR_LFADD`, `IR_LFSUB`, `IR_LFMUL` and

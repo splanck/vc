@@ -72,6 +72,13 @@ static int collect_funcs(ir_builder_t *ir, inline_func_t **out, size_t *count)
                     }
                 }
                 fclose(f);
+            } else {
+                char msg[256];
+                snprintf(msg, sizeof(msg),
+                         "could not open %s for inline check; "
+                         "treating %s as non-inline",
+                         src_file, ins->name);
+                opt_error(msg);
             }
         }
         if (!is_inline) {
