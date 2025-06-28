@@ -14,6 +14,7 @@
 #include <stdio.h>
 #include "codegen_mem.h"
 #include "regalloc_x86.h"
+#include "ast.h"
 
 #define SCRATCH_REG 0
 
@@ -289,9 +290,25 @@ static void emit_arg(strbuf_t *sb, ir_instr_t *ins,
                      regalloc_t *ra, int x64)
 {
     char b1[32];
-    const char *sfx = x64 ? "q" : "l";
-    strbuf_appendf(sb, "    push%s %s\n", sfx,
-                   loc_str(b1, ra, ins->src1, x64));
+    const char *sp = x64 ? "%rsp" : "%esp";
+    type_kind_t t = (type_kind_t)ins->imm;
+    if (t == TYPE_FLOAT) {
+        strbuf_appendf(sb, "    sub $4, %s\n", sp);
+        strbuf_appendf(sb, "    movd %s, %%xmm0\n", loc_str(b1, ra, ins->src1, x64));
+        strbuf_appendf(sb, "    movss %%xmm0, (%s)\n", sp);
+    } else if (t == TYPE_DOUBLE) {
+        strbuf_appendf(sb, "    sub $8, %s\n", sp);
+        strbuf_appendf(sb, "    movq %s, %%xmm0\n", loc_str(b1, ra, ins->src1, x64));
+        strbuf_appendf(sb, "    movsd %%xmm0, (%s)\n", sp);
+    } else if (t == TYPE_LDOUBLE) {
+        strbuf_appendf(sb, "    sub $10, %s\n", sp);
+        strbuf_appendf(sb, "    fldt %s\n", loc_str(b1, ra, ins->src1, x64));
+        strbuf_appendf(sb, "    fstpt (%s)\n", sp);
+    } else {
+        const char *sfx = x64 ? "q" : "l";
+        strbuf_appendf(sb, "    push%s %s\n", sfx,
+                       loc_str(b1, ra, ins->src1, x64));
+    }
 }
 
 /* Load address of a string literal (IR_GLOB_STRING). */
