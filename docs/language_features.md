@@ -44,6 +44,7 @@ See the [documentation index](index.md) for a list of all available pages.
 - `break` and `continue` statements
 - Labels and `goto`
 - `struct` and `union` objects with member assignments
+- Bit-field members using `type name : width`
 - Object-like and multi-parameter `#define` macros with recursive expansion
 - `#undef` to remove a previously defined macro
 - Conditional preprocessing directives (`#if`, `#ifdef`, `#ifndef`, `#elif`, `#else`, `#endif`)
@@ -589,6 +590,31 @@ int main() {
 Compile with:
 ```sh
 vc -o union_char.s union_char.c
+```
+
+### Bit-fields
+
+Bit-field members have the syntax `type name : width;`. Consecutive fields of
+the same type share storage and are packed starting from the least significant
+bits of the underlying type. When the combined width exceeds that type's size,
+a new storage unit is allocated. A field declared with width `0` forces the next
+bit-field to begin in a new unit.
+
+```c
+/* bitfield_example.c */
+struct Flags {
+    unsigned a : 1;
+    unsigned b : 2;
+    unsigned pad : 5;
+};
+int main() {
+    struct Flags f = {1, 3, 0};
+    return f.a + f.b;
+}
+```
+Compile with:
+```sh
+vc -o bitfield_example.s bitfield_example.c
 ```
 
 ### Labels and goto
