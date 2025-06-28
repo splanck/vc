@@ -44,6 +44,7 @@ See the [documentation index](index.md) for a list of all available pages.
 - `break` and `continue` statements
 - Labels and `goto`
 - `struct` and `union` objects with member assignments
+- `typedef` declarations creating type aliases
 - Bit-field members using `type name : width`
 - Object-like and multi-parameter `#define` macros with recursive expansion
 - `#undef` to remove a previously defined macro
@@ -590,6 +591,20 @@ int main() {
 Compile with:
 ```sh
 vc -o union_char.s union_char.c
+```
+
+### Typedef declarations
+```c
+/* typedef_example.c */
+typedef struct Point { int x; int y; } Point;
+int main() {
+    Point p = {1, 2};
+    return p.x + p.y;
+}
+```
+Compile with:
+```sh
+vc -o typedef_example.s typedef_example.c
 ```
 
 ### Bit-fields
