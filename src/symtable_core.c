@@ -57,6 +57,7 @@ symbol_t *symtable_create_symbol(const char *name, const char *ir_name)
     sym->is_restrict = 0;
     sym->is_register = 0;
     sym->is_variadic = 0;
+    sym->is_inline = 0;
     return sym;
 }
 

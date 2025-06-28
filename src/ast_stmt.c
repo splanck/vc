@@ -335,7 +335,8 @@ func_t *ast_make_func(const char *name, type_kind_t ret_type,
                       char **param_names, type_kind_t *param_types,
                       size_t *param_elem_sizes, int *param_is_restrict,
                       size_t param_count, int is_variadic,
-                      stmt_t **body, size_t body_count)
+                      stmt_t **body, size_t body_count,
+                      int is_inline)
 {
     func_t *fn = malloc(sizeof(*fn));
     if (!fn)
@@ -380,6 +381,7 @@ func_t *ast_make_func(const char *name, type_kind_t ret_type,
     }
     fn->body = body;
     fn->body_count = body_count;
+    fn->is_inline = is_inline;
     return fn;
 }
 

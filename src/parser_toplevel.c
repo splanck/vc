@@ -146,7 +146,7 @@ static int parse_typedef_decl(parser_t *p, size_t start_pos, stmt_t **out)
  * parser position is left unchanged. */
 static int parse_func_prototype(parser_t *p, symtable_t *funcs, const char *name,
                                 type_kind_t ret_type, size_t spec_pos,
-                                func_t **out_func)
+                                int is_inline, func_t **out_func)
 {
     size_t start = p->pos; /* at '(' */
     p->pos++; /* consume '(' */
@@ -192,14 +192,15 @@ static int parse_func_prototype(parser_t *p, symtable_t *funcs, const char *name
         p->pos++; /* ';' */
         symtable_add_func(funcs, name, ret_type,
                          (type_kind_t *)param_types_v.data,
-                         param_types_v.count, is_variadic, 1);
+                         param_types_v.count, is_variadic, 1,
+                         is_inline);
         vector_free(&param_types_v);
         return 1;
     } else if (after && after->type == TOK_LBRACE) {
         vector_free(&param_types_v);
         p->pos = spec_pos;
         if (out_func)
-            *out_func = parser_parse_func(p);
+            *out_func = parser_parse_func(p, is_inline);
         return out_func ? *out_func != NULL : 0;
     }
 
@@ -351,7 +352,7 @@ fail:
 /* Helper to parse a function definition or variable declaration */
 static int parse_function_or_var(parser_t *p, symtable_t *funcs,
                                  int is_extern, int is_static, int is_register,
-                                 int is_const, int is_volatile,
+                                 int is_const, int is_volatile, int is_inline,
                                  size_t spec_pos, size_t line, size_t column,
                                  func_t **out_func, stmt_t **out_global)
 {
@@ -377,7 +378,7 @@ static int parse_function_or_var(parser_t *p, symtable_t *funcs,
     token_t *next_tok = peek(p);
     if (next_tok && next_tok->type == TOK_LPAREN)
         return parse_func_prototype(p, funcs, id->lexeme, t, spec_pos,
-                                    out_func);
+                                    is_inline, out_func);
 
     return parse_global_var_init(p, id->lexeme, t, elem_size, is_static,
                                  is_register, is_extern, is_const,
@@ -396,7 +397,7 @@ int parser_parse_toplevel(parser_t *p, symtable_t *funcs,
     int is_extern = match(p, TOK_KW_EXTERN);
     int is_static = match(p, TOK_KW_STATIC);
     int is_register = match(p, TOK_KW_REGISTER);
-    match(p, TOK_KW_INLINE);
+    int is_inline = match(p, TOK_KW_INLINE);
     int is_const = match(p, TOK_KW_CONST);
     int is_volatile = match(p, TOK_KW_VOLATILE);
     size_t spec_pos = p->pos;
@@ -419,7 +420,7 @@ int parser_parse_toplevel(parser_t *p, symtable_t *funcs,
 
     p->pos = spec_pos;
     return parse_function_or_var(p, funcs, is_extern, is_static, is_register,
-                                 is_const, is_volatile, spec_pos,
+                                 is_const, is_volatile, is_inline, spec_pos,
                                  tok->line, tok->column,
                                  out_func, out_global);
 }

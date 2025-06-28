@@ -41,7 +41,7 @@ int symtable_add_global(symtable_t *table, const char *name, const char *ir_name
  */
 int symtable_add_func(symtable_t *table, const char *name, type_kind_t ret_type,
                       type_kind_t *param_types, size_t param_count,
-                      int is_variadic, int is_prototype)
+                      int is_variadic, int is_prototype, int is_inline)
 {
     if (symtable_lookup(table, name))
         return 0;
@@ -65,6 +65,7 @@ int symtable_add_func(symtable_t *table, const char *name, type_kind_t ret_type,
     sym->next = table->head;
     table->head = sym;
     sym->is_prototype = is_prototype;
+    sym->is_inline = is_inline;
     return 1;
 }
 
