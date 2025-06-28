@@ -18,6 +18,7 @@
 #include "label.h"
 #include "strbuf.h"
 #include "util.h"
+#include "ast.h"
 
 
 /*
@@ -422,14 +423,17 @@ ir_value_t ir_build_logor(ir_builder_t *b, ir_value_t left, ir_value_t right)
     return (ir_value_t){ins->dest};
 }
 
-/* Emit IR_ARG to push an argument value for a call. */
-void ir_build_arg(ir_builder_t *b, ir_value_t val)
+/* Emit IR_ARG to push an argument value for a call. The argument's
+ * type kind is stored in the instruction's imm field for later
+ * optimisations or code generation. */
+void ir_build_arg(ir_builder_t *b, ir_value_t val, type_kind_t type)
 {
     ir_instr_t *ins = append_instr(b);
     if (!ins)
         return;
     ins->op = IR_ARG;
     ins->src1 = val.id;
+    ins->imm = (long long)type;
 }
 
 /* Emit IR_RETURN using the supplied value id. */
