@@ -27,6 +27,16 @@ void ir_builder_init(ir_builder_t *b)
 {
     b->head = b->tail = NULL;
     b->next_value_id = 1;
+    b->cur_file = "";
+    b->cur_line = 0;
+    b->cur_column = 0;
+}
+
+void ir_builder_set_loc(ir_builder_t *b, const char *file, size_t line, size_t column)
+{
+    b->cur_file = file ? file : "";
+    b->cur_line = line;
+    b->cur_column = column;
 }
 
 /* Free all instructions owned by the builder. */
@@ -54,6 +64,9 @@ static ir_instr_t *append_instr(ir_builder_t *b)
     ins->name = NULL;
     ins->data = NULL;
     ins->is_volatile = 0;
+    ins->file = b->cur_file;
+    ins->line = b->cur_line;
+    ins->column = b->cur_column;
     if (!b->head)
         b->head = ins;
     else

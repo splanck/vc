@@ -29,6 +29,7 @@ typedef struct {
     int dump_asm;       /* dump assembly to stdout (-S/--dump-asm) */
     int dump_ir;        /* dump IR to stdout */
     int preprocess;     /* run preprocessor only and print to stdout */
+    int debug;          /* emit debug directives */
     c_std_t std;        /* language standard */
     char *obj_dir;      /* directory for temporary object files */
     vector_t include_dirs; /* additional include directories */

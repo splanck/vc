@@ -769,6 +769,7 @@ int check_stmt(stmt_t *stmt, symtable_t *vars, symtable_t *funcs,
     label_table_t *labels = (label_table_t *)label_tab;
     if (!stmt)
         return 0;
+    ir_builder_set_loc(ir, error_current_file, stmt->line, stmt->column);
     switch (stmt->kind) {
     case STMT_EXPR:
         return check_expr_stmt(stmt, vars, funcs, ir);

@@ -26,6 +26,7 @@
 #include "codegen_branch.h"
 
 int export_syms = 0;
+static int debug_info = 0;
 
 /*
  * Enable or disable symbol export.
@@ -37,6 +38,12 @@ int export_syms = 0;
 void codegen_set_export(int flag)
 {
     export_syms = flag;
+}
+
+/* Enable or disable emission of debug info */
+void codegen_set_debug(int flag)
+{
+    debug_info = flag;
 }
 
 
@@ -99,8 +106,13 @@ char *codegen_ir_to_string(ir_builder_t *ir, int x64)
 
     strbuf_t sb;
     strbuf_init(&sb);
-    for (ir_instr_t *ins = ir->head; ins; ins = ins->next)
+    if (debug_info && ir->head && ir->head->file)
+        strbuf_appendf(&sb, ".file 1 \"%s\"\n", ir->head->file);
+    for (ir_instr_t *ins = ir->head; ins; ins = ins->next) {
+        if (debug_info && ins->file && ins->line)
+            strbuf_appendf(&sb, ".loc 1 %zu %zu\n", ins->line, ins->column);
         emit_instr(&sb, ins, &ra, x64);
+    }
 
     regalloc_free(&ra);
     return sb.data; /* caller takes ownership */

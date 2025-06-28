@@ -16,6 +16,7 @@ The compiler supports the following options:
 - `--no-fold` – disable constant folding.
 - `--no-dce` – disable dead code elimination.
 - `--no-cprop` – disable constant propagation.
+- `--debug` – emit `.file` and `.loc` directives in the assembly output.
 - `--x86-64` – generate 64‑bit x86 assembly.
 - `-c`, `--compile` – assemble the output into an object file using `cc -c`.
 - `--link` – build an executable by assembling and linking with `cc`.
