@@ -133,9 +133,11 @@ static void propagate_through_instruction(const_track_t *ct, ir_instr_t *ins)
         }
         break;
     case IR_STORE:
+    case IR_BFSTORE:
         handle_store(ct, ins);
         break;
     case IR_LOAD:
+    case IR_BFLOAD:
         handle_load(ct, ins);
         break;
     case IR_STORE_PTR:

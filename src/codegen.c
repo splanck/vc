@@ -62,6 +62,7 @@ static void emit_instr(strbuf_t *sb, ir_instr_t *ins, regalloc_t *ra, int x64)
     case IR_LOAD_PARAM: case IR_STORE_PARAM:
     case IR_ADDR: case IR_LOAD_PTR: case IR_STORE_PTR:
     case IR_LOAD_IDX: case IR_STORE_IDX:
+    case IR_BFLOAD: case IR_BFSTORE:
     case IR_ARG: case IR_GLOB_STRING:
     case IR_GLOB_VAR: case IR_GLOB_ARRAY:
     case IR_GLOB_UNION: case IR_GLOB_STRUCT:

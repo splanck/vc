@@ -237,6 +237,53 @@ static void emit_store_idx(strbuf_t *sb, ir_instr_t *ins,
                    loc_str(b2, ra, ins->src1, x64));
 }
 
+/* Load a bit-field value (IR_BFLOAD). */
+static void emit_bfload(strbuf_t *sb, ir_instr_t *ins,
+                        regalloc_t *ra, int x64)
+{
+    char destb[32];
+    char mem[32];
+    const char *sfx = x64 ? "q" : "l";
+    int spill = (ra && ins->dest > 0 && ra->loc[ins->dest] < 0);
+    const char *dest = spill ? regalloc_reg_name(SCRATCH_REG)
+                             : loc_str(destb, ra, ins->dest, x64);
+    const char *slot = loc_str(mem, ra, ins->dest, x64);
+    unsigned shift = (unsigned)(ins->imm >> 32);
+    unsigned width = (unsigned)(ins->imm & 0xffffffffu);
+    unsigned long long mask = (width == 64) ? 0xffffffffffffffffULL
+                                            : ((1ULL << width) - 1ULL);
+    emit_move_with_spill(sb, sfx, ins->name, dest, slot, 0);
+    if (shift)
+        strbuf_appendf(sb, "    shr%s $%u, %s\n", sfx, shift, dest);
+    strbuf_appendf(sb, "    and%s $%llu, %s\n", sfx, mask, dest);
+    if (spill)
+        strbuf_appendf(sb, "    mov%s %s, %s\n", sfx, dest, slot);
+}
+
+/* Store a value into a bit-field (IR_BFSTORE). */
+static void emit_bfstore(strbuf_t *sb, ir_instr_t *ins,
+                         regalloc_t *ra, int x64)
+{
+    char bval[32];
+    const char *sfx = x64 ? "q" : "l";
+    unsigned shift = (unsigned)(ins->imm >> 32);
+    unsigned width = (unsigned)(ins->imm & 0xffffffffu);
+    unsigned long long mask = (width == 64) ? 0xffffffffffffffffULL
+                                            : ((1ULL << width) - 1ULL);
+    unsigned long long clear = ~((unsigned long long)mask << shift);
+    const char *scratch = regalloc_reg_name(SCRATCH_REG);
+
+    strbuf_appendf(sb, "    mov%s %s, %s\n", sfx, ins->name, scratch);
+    strbuf_appendf(sb, "    and%s $%llu, %s\n", sfx, clear, scratch);
+    strbuf_appendf(sb, "    mov%s %s, %s\n", sfx,
+                   loc_str(bval, ra, ins->src1, x64), x64 ? "%rcx" : "%ecx");
+    strbuf_appendf(sb, "    and%s $%llu, %s\n", sfx, mask, x64 ? "%rcx" : "%ecx");
+    if (shift)
+        strbuf_appendf(sb, "    shl%s $%u, %s\n", sfx, shift, x64 ? "%rcx" : "%ecx");
+    strbuf_appendf(sb, "    or%s %s, %s\n", sfx, x64 ? "%rcx" : "%ecx", scratch);
+    strbuf_appendf(sb, "    mov%s %s, %s\n", sfx, scratch, ins->name);
+}
+
 /* Push an argument (IR_ARG). */
 static void emit_arg(strbuf_t *sb, ir_instr_t *ins,
                      regalloc_t *ra, int x64)
@@ -304,6 +351,12 @@ void emit_memory_instr(strbuf_t *sb, ir_instr_t *ins,
         break;
     case IR_STORE_IDX:
         emit_store_idx(sb, ins, ra, x64);
+        break;
+    case IR_BFLOAD:
+        emit_bfload(sb, ins, ra, x64);
+        break;
+    case IR_BFSTORE:
+        emit_bfstore(sb, ins, ra, x64);
         break;
     case IR_ARG:
         emit_arg(sb, ins, ra, x64);
