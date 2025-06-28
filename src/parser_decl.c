@@ -36,8 +36,8 @@ static int parse_member_list(parser_t *p, int is_union, vector_t *members_v);
 /* Parse a sequence of union members enclosed in braces. */
 static int parse_union_members(parser_t *p, vector_t *members_v);
 /* Parse a single struct/union member and return it through out parameters. */
-static int parse_single_member(parser_t *p, int is_union,
-                               union_member_t *um, struct_member_t *sm);
+static int parse_member(parser_t *p, int is_union,
+                        union_member_t *um, struct_member_t *sm);
 /* Free names for partially parsed member vectors. */
 static void free_parsed_members(vector_t *v, int is_union);
 
@@ -167,8 +167,8 @@ static int parse_initializer(parser_t *p, type_kind_t type, expr_t **init,
 }
 
 /* Parse a single struct or union member. */
-static int parse_single_member(parser_t *p, int is_union,
-                               union_member_t *um, struct_member_t *sm)
+static int parse_member(parser_t *p, int is_union,
+                        union_member_t *um, struct_member_t *sm)
 {
     type_kind_t mt;
     if (!parse_basic_type(p, &mt))
@@ -240,7 +240,7 @@ static int parse_member_list(parser_t *p, int is_union, vector_t *members_v)
     while (!match(p, TOK_RBRACE)) {
         union_member_t um;
         struct_member_t sm;
-        if (!parse_single_member(p, is_union, &um, &sm))
+        if (!parse_member(p, is_union, &um, &sm))
             goto fail;
         if (is_union) {
             if (!vector_push(members_v, &um)) {
@@ -515,33 +515,10 @@ stmt_t *parser_parse_struct_decl(parser_t *p)
     vector_init(&members_v, sizeof(struct_member_t));
     int ok = 0;
     while (!match(p, TOK_RBRACE)) {
-        type_kind_t mt;
-        if (!parse_basic_type(p, &mt))
+        union_member_t dum;
+        struct_member_t m;
+        if (!parse_member(p, 0, &dum, &m))
             goto fail;
-        size_t elem_size = basic_type_size(mt);
-        if (match(p, TOK_STAR))
-            mt = TYPE_PTR;
-        token_t *id = peek(p);
-        if (!id || id->type != TOK_IDENT)
-            goto fail;
-        p->pos++;
-        size_t arr_size = 0;
-        if (match(p, TOK_LBRACKET)) {
-            token_t *num = peek(p);
-            if (!num || num->type != TOK_NUMBER)
-                goto fail;
-            p->pos++;
-            arr_size = strtoul(num->lexeme, NULL, 10);
-            if (!match(p, TOK_RBRACKET))
-                goto fail;
-            mt = TYPE_ARRAY;
-        }
-        if (!match(p, TOK_SEMI))
-            goto fail;
-        size_t mem_sz = elem_size;
-        if (mt == TYPE_ARRAY)
-            mem_sz *= arr_size;
-        struct_member_t m = { vc_strdup(id->lexeme), mt, mem_sz, 0 };
         if (!vector_push(&members_v, &m)) {
             free(m.name);
             goto fail;
