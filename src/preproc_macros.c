@@ -231,6 +231,62 @@ static void expand_macro_call(macro_t *m, char **args, vector_t *macros,
     strbuf_free(&tmp);
 }
 
+/* Emit a literal character and advance the input index. */
+static void emit_plain_char(const char *line, size_t *pos, strbuf_t *out)
+{
+    strbuf_appendf(out, "%c", line[*pos]);
+    (*pos)++;
+}
+
+/*
+ * Attempt to parse and expand a macro invocation starting at *pos.
+ * On success the resulting text is appended to "out" and *pos is
+ * updated to the index following the macro call.  Returns non-zero
+ * when a macro expansion occurred.
+ */
+static int parse_macro_invocation(const char *line, size_t *pos,
+                                  vector_t *macros, strbuf_t *out)
+{
+    size_t i = *pos;
+
+    if (!isalpha((unsigned char)line[i]) && line[i] != '_')
+        return 0;
+
+    size_t j = i + 1;
+    while (isalnum((unsigned char)line[j]) || line[j] == '_')
+        j++;
+
+    size_t len = j - i;
+    for (size_t k = 0; k < macros->count; k++) {
+        macro_t *m = &((macro_t *)macros->data)[k];
+        if (strlen(m->name) == len && strncmp(m->name, line + i, len) == 0) {
+            if (m->params.count) {
+                size_t pos2 = j;
+                vector_t args;
+                if (parse_macro_args(line, &pos2, &args) &&
+                    args.count == m->params.count) {
+                    expand_macro_call(m, (char **)args.data, macros, out);
+                    for (size_t t = 0; t < args.count; t++)
+                        free(((char **)args.data)[t]);
+                    vector_free(&args);
+                    *pos = pos2;
+                    return 1;
+                }
+                for (size_t t = 0; t < args.count; t++)
+                    free(((char **)args.data)[t]);
+                vector_free(&args);
+            } else {
+                expand_macro_call(m, NULL, macros, out);
+                *pos = j;
+                return 1;
+            }
+            break;
+        }
+    }
+
+    return 0;
+}
+
 /*
  * Expand all macros found in a single line of input.
  * Performs recursive expansion so macro bodies may contain other
@@ -239,44 +295,8 @@ static void expand_macro_call(macro_t *m, char **args, vector_t *macros,
 void expand_line(const char *line, vector_t *macros, strbuf_t *out)
 {
     for (size_t i = 0; line[i];) {
-        int replaced = 0;
-        if (isalpha((unsigned char)line[i]) || line[i] == '_') {
-            size_t j = i + 1;
-            while (isalnum((unsigned char)line[j]) || line[j] == '_')
-                j++;
-            size_t len = j - i;
-            for (size_t k = 0; k < macros->count; k++) {
-                macro_t *m = &((macro_t *)macros->data)[k];
-                if (strlen(m->name) == len && strncmp(m->name, line + i, len) == 0) {
-                    if (m->params.count) {
-                        size_t pos = j;
-                        vector_t args;
-                        if (parse_macro_args(line, &pos, &args) &&
-                            args.count == m->params.count) {
-                            expand_macro_call(m, (char **)args.data, macros, out);
-                            for (size_t t = 0; t < args.count; t++)
-                                free(((char **)args.data)[t]);
-                            vector_free(&args);
-                            i = pos;
-                            replaced = 1;
-                            break;
-                        }
-                        for (size_t t = 0; t < args.count; t++)
-                            free(((char **)args.data)[t]);
-                        vector_free(&args);
-                    } else {
-                        expand_macro_call(m, NULL, macros, out);
-                        i = j;
-                        replaced = 1;
-                        break;
-                    }
-                }
-            }
-        }
-        if (!replaced) {
-            strbuf_appendf(out, "%c", line[i]);
-            i++;
-        }
+        if (!parse_macro_invocation(line, &i, macros, out))
+            emit_plain_char(line, &i, out);
     }
 }
 
