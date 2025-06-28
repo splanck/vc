@@ -21,6 +21,7 @@
 #include "util.h"
 #include "label.h"
 #include "error.h"
+#include "preproc_macros.h"
 #include <limits.h>
 
 /*
@@ -68,6 +69,7 @@ int check_func(func_t *func, symtable_t *funcs, symtable_t *globals,
         return 0;
 
     error_current_function = func->name;
+    preproc_set_function(func->name);
 
     symbol_t *decl = symtable_lookup(funcs, func->name);
     if (!decl) {
@@ -111,6 +113,7 @@ int check_func(func_t *func, symtable_t *funcs, symtable_t *globals,
     label_table_free(&labels);
     locals.globals = NULL;
     symtable_free(&locals);
+    preproc_set_function(NULL);
     error_current_function = NULL;
     return ok;
 }

@@ -37,4 +37,7 @@ void remove_macro(vector_t *macros, const char *name);
 /* Update builtin macro expansion context */
 void preproc_set_location(const char *file, size_t line);
 
+/* Set the current function name for __func__ expansion */
+void preproc_set_function(const char *name);
+
 #endif /* VC_PREPROC_MACROS_H */

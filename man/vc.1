@@ -23,7 +23,9 @@ preprocessing when encountered.
 Several standard identifiers are always defined and expand to context
 information: \fB__FILE__\fR yields the current file name, \fB__LINE__\fR
 the current line number and \fB__DATE__\fR/\fB__TIME__\fR the build date
-and time.
+and time. Additional built-ins include \fB__STDC__\fR (1),
+\fB__STDC_VERSION__\fR (199901L) and \fB__func__\fR which expands to
+the enclosing function name.
 Conditional
 directives (\fB#if\fR, \fB#ifdef\fR, \fB#ifndef\fR, \fB#elif\fR, \fB#else\fR
 and \fB#endif\fR) are supported using expression evaluation with the

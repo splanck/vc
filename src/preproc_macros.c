@@ -22,6 +22,7 @@
 /* current expansion location for builtin macros */
 static const char *builtin_file = "";
 static size_t builtin_line = 0;
+static const char *builtin_func = NULL;
 
 static const char build_date[] = __DATE__;
 static const char build_time[] = __TIME__;
@@ -30,6 +31,11 @@ void preproc_set_location(const char *file, size_t line)
 {
     builtin_file = file ? file : "";
     builtin_line = line;
+}
+
+void preproc_set_function(const char *name)
+{
+    builtin_func = name;
 }
 
 /*
@@ -289,7 +295,15 @@ static int parse_macro_invocation(const char *line, size_t *pos,
             strbuf_appendf(out, "\"%s\"", build_time);
             *pos = j;
             return 1;
+        } else if (strncmp(line + i, "__STDC__", 8) == 0) {
+            strbuf_append(out, "1");
+            *pos = j;
+            return 1;
         }
+    } else if (len == 16 && strncmp(line + i, "__STDC_VERSION__", 16) == 0) {
+        strbuf_append(out, "199901");
+        *pos = j;
+        return 1;
     }
     for (size_t k = 0; k < macros->count; k++) {
         macro_t *m = &((macro_t *)macros->data)[k];
@@ -341,7 +355,8 @@ void expand_line(const char *line, vector_t *macros, strbuf_t *out)
 int is_macro_defined(vector_t *macros, const char *name)
 {
     if (strcmp(name, "__FILE__") == 0 || strcmp(name, "__LINE__") == 0 ||
-        strcmp(name, "__DATE__") == 0 || strcmp(name, "__TIME__") == 0)
+        strcmp(name, "__DATE__") == 0 || strcmp(name, "__TIME__") == 0 ||
+        strcmp(name, "__STDC__") == 0 || strcmp(name, "__STDC_VERSION__") == 0)
         return 1;
 
     for (size_t i = 0; i < macros->count; i++) {

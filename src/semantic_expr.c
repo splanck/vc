@@ -76,6 +76,11 @@ static type_kind_t check_ident_expr(expr_t *expr, symtable_t *vars,
     (void)funcs;
     symbol_t *sym = symtable_lookup(vars, expr->ident.name);
     if (!sym) {
+        if (strcmp(expr->ident.name, "__func__") == 0) {
+            if (out)
+                *out = ir_build_string(ir, error_current_function ? error_current_function : "");
+            return TYPE_PTR;
+        }
         error_set(expr->line, expr->column, error_current_file, error_current_function);
         return TYPE_UNKNOWN;
     }
