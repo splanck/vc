@@ -107,7 +107,7 @@ type_kind_t check_binary(expr_t *left, expr_t *right, symtable_t *vars,
             *out = ir_build_ptr_diff(ir, lval, rval, (int)esz);
         return TYPE_INT;
     }
-    error_set(left->line, left->column);
+    error_set(left->line, left->column, error_current_file, error_current_function);
     return TYPE_UNKNOWN;
 }
 
@@ -128,7 +128,7 @@ static type_kind_t unary_deref(expr_t *opnd, symtable_t *vars,
             *out = ir_build_load_ptr(ir, addr);
         return TYPE_INT;
     }
-    error_set(opnd->line, opnd->column);
+    error_set(opnd->line, opnd->column, error_current_file, error_current_function);
     return TYPE_UNKNOWN;
 }
 
@@ -139,12 +139,12 @@ static type_kind_t unary_addr(expr_t *opnd, symtable_t *vars,
 {
     (void)funcs;
     if (opnd->kind != EXPR_IDENT) {
-        error_set(opnd->line, opnd->column);
+        error_set(opnd->line, opnd->column, error_current_file, error_current_function);
         return TYPE_UNKNOWN;
     }
     symbol_t *sym = symtable_lookup(vars, opnd->ident.name);
     if (!sym) {
-        error_set(opnd->line, opnd->column);
+        error_set(opnd->line, opnd->column, error_current_file, error_current_function);
         return TYPE_UNKNOWN;
     }
     if (out)
@@ -173,7 +173,7 @@ static type_kind_t unary_neg(expr_t *opnd, symtable_t *vars,
         }
         return vt;
     }
-    error_set(opnd->line, opnd->column);
+    error_set(opnd->line, opnd->column, error_current_file, error_current_function);
     return TYPE_UNKNOWN;
 }
 
@@ -190,7 +190,7 @@ static type_kind_t unary_not(expr_t *opnd, symtable_t *vars,
         }
         return TYPE_INT;
     }
-    error_set(opnd->line, opnd->column);
+    error_set(opnd->line, opnd->column, error_current_file, error_current_function);
     return TYPE_UNKNOWN;
 }
 
@@ -202,14 +202,14 @@ static type_kind_t unary_incdec(expr_t *expr, symtable_t *vars,
     expr_t *opnd = expr->unary.operand;
     (void)funcs;
     if (opnd->kind != EXPR_IDENT) {
-        error_set(opnd->line, opnd->column);
+        error_set(opnd->line, opnd->column, error_current_file, error_current_function);
         return TYPE_UNKNOWN;
     }
 
     symbol_t *sym = symtable_lookup(vars, opnd->ident.name);
     if (!sym || !(is_intlike(sym->type) || is_floatlike(sym->type) ||
                   sym->type == TYPE_PTR)) {
-        error_set(opnd->line, opnd->column);
+        error_set(opnd->line, opnd->column, error_current_file, error_current_function);
         return TYPE_UNKNOWN;
     }
 
@@ -300,11 +300,11 @@ type_kind_t check_binary_expr(expr_t *expr, symtable_t *vars,
     if (expr->binary.op == BINOP_LOGAND || expr->binary.op == BINOP_LOGOR) {
         ir_value_t lval, rval;
         if (!is_intlike(check_expr(expr->binary.left, vars, funcs, ir, &lval))) {
-            error_set(expr->binary.left->line, expr->binary.left->column);
+            error_set(expr->binary.left->line, expr->binary.left->column, error_current_file, error_current_function);
             return TYPE_UNKNOWN;
         }
         if (!is_intlike(check_expr(expr->binary.right, vars, funcs, ir, &rval))) {
-            error_set(expr->binary.right->line, expr->binary.right->column);
+            error_set(expr->binary.right->line, expr->binary.right->column, error_current_file, error_current_function);
             return TYPE_UNKNOWN;
         }
         if (out) {

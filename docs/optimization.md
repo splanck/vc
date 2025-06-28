@@ -13,9 +13,14 @@ Three passes are currently available and are executed in order:
 
 Constant propagation tracks variables written with constants. When a later
 load of such a variable is encountered, it becomes an immediate constant.
+Long-double arithmetic results are propagated when both operands are known
+constants, enabling subsequent folding.
 
 Constant folding evaluates arithmetic instructions whose operands are constant
-values, replacing them with a single constant instruction.
+values, replacing them with a single constant instruction.  Support now
+includes the long double operations `IR_LFADD`, `IR_LFSUB`, `IR_LFMUL` and
+`IR_LFDIV`, allowing their results to be simplified just like other
+arithmetic.
 
 Dead code elimination scans the instruction stream and removes operations that
 have no side effects and whose results are never referenced.

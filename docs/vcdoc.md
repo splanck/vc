@@ -12,6 +12,9 @@ floating-point values as variadic parameters is not supported.
 Function pointers can be declared using the familiar `(*name)(...)` syntax
 and invoked just like normal function identifiers.
 
+The optimizer folds long double arithmetic expressions such as `1.0L + 2.0L`
+so they evaluate to constants at compile time.
+
 Character and string literals understand standard C escape sequences. This
 includes `\n`, `\t`, `\r`, `\b`, `\f`, `\v` as well as octal forms like
 `\123` and hexadecimal forms such as `\x7F`.
@@ -28,3 +31,7 @@ without needing an explicit `#define`:
 Temporary object and assembly files are created in `/tmp` by default.
 Use `--obj-dir <path>` to specify a different directory.
 
+## Diagnostics
+
+Compiler errors are printed using the form `file:line:column: function: message`.
+When no function is active, the function portion is omitted.

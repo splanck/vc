@@ -54,12 +54,12 @@ static int check_enum_decl_stmt(stmt_t *stmt, symtable_t *vars)
         long long val = next;
         if (e->value) {
             if (!eval_const_expr(e->value, vars, &val)) {
-                error_set(e->value->line, e->value->column);
+                error_set(e->value->line, e->value->column, error_current_file, error_current_function);
                 return 0;
             }
         }
         if (!symtable_add_enum(vars, e->name, (int)val)) {
-            error_set(stmt->line, stmt->column);
+            error_set(stmt->line, stmt->column, error_current_file, error_current_function);
             return 0;
         }
         next = (int)val + 1;
@@ -80,7 +80,7 @@ static int check_struct_decl_stmt(stmt_t *stmt, symtable_t *vars)
     if (!symtable_add_struct(vars, stmt->struct_decl.tag,
                              stmt->struct_decl.members,
                              stmt->struct_decl.count)) {
-        error_set(stmt->line, stmt->column);
+        error_set(stmt->line, stmt->column, error_current_file, error_current_function);
         return 0;
     }
     symbol_t *stype = symtable_lookup_struct(vars, stmt->struct_decl.tag);
@@ -101,7 +101,7 @@ static int check_union_decl_stmt(stmt_t *stmt, symtable_t *vars)
     if (!symtable_add_union(vars, stmt->union_decl.tag,
                             stmt->union_decl.members,
                             stmt->union_decl.count)) {
-        error_set(stmt->line, stmt->column);
+        error_set(stmt->line, stmt->column, error_current_file, error_current_function);
         return 0;
     }
     return 1;
@@ -117,7 +117,7 @@ static int check_typedef_stmt(stmt_t *stmt, symtable_t *vars)
                               stmt->typedef_decl.type,
                               stmt->typedef_decl.array_size,
                               stmt->typedef_decl.elem_size)) {
-        error_set(stmt->line, stmt->column);
+        error_set(stmt->line, stmt->column, error_current_file, error_current_function);
         return 0;
     }
     return 1;
@@ -274,12 +274,12 @@ static symbol_t *register_var_symbol(stmt_t *stmt, symtable_t *vars)
     compute_var_layout(stmt);
     if (stmt->var_decl.is_const && !stmt->var_decl.init &&
         !stmt->var_decl.init_list) {
-        error_set(stmt->line, stmt->column);
+        error_set(stmt->line, stmt->column, error_current_file, error_current_function);
         return NULL;
     }
     symbol_t *sym = insert_var_symbol(stmt, vars, ir_name);
     if (!sym) {
-        error_set(stmt->line, stmt->column);
+        error_set(stmt->line, stmt->column, error_current_file, error_current_function);
         return NULL;
     }
 
@@ -356,7 +356,7 @@ static int emit_static_initializer(stmt_t *stmt, symbol_t *sym,
 {
     long long cval;
     if (!eval_const_expr(stmt->var_decl.init, vars, &cval)) {
-        error_set(stmt->var_decl.init->line, stmt->var_decl.init->column);
+        error_set(stmt->var_decl.init->line, stmt->var_decl.init->column, error_current_file, error_current_function);
         return 0;
     }
     if (stmt->var_decl.type == TYPE_UNION)
@@ -382,7 +382,7 @@ static int emit_dynamic_initializer(stmt_t *stmt, symbol_t *sym,
            (is_floatlike(stmt->var_decl.type) &&
             (is_floatlike(vt) || is_intlike(vt)))) ||
           vt == stmt->var_decl.type)) {
-        error_set(stmt->var_decl.init->line, stmt->var_decl.init->column);
+        error_set(stmt->var_decl.init->line, stmt->var_decl.init->column, error_current_file, error_current_function);
         return 0;
     }
     if (stmt->var_decl.is_volatile)
@@ -403,7 +403,7 @@ static int emit_aggregate_initializer(stmt_t *stmt, symbol_t *sym,
         return handle_array_init(stmt, sym, vars, ir);
     if (stmt->var_decl.type == TYPE_STRUCT)
         return handle_struct_init(stmt, sym, vars, ir);
-    error_set(stmt->line, stmt->column);
+    error_set(stmt->line, stmt->column, error_current_file, error_current_function);
     return 0;
 }
 
@@ -537,7 +537,7 @@ static int handle_return_stmt(stmt_t *stmt, symtable_t *vars,
 {
     if (!stmt->ret.expr) {
         if (func_ret_type != TYPE_VOID) {
-            error_set(stmt->line, stmt->column);
+            error_set(stmt->line, stmt->column, error_current_file, error_current_function);
             return 0;
         }
         ir_value_t zero = ir_build_const(ir, 0);
@@ -546,7 +546,7 @@ static int handle_return_stmt(stmt_t *stmt, symtable_t *vars,
     }
     ir_value_t val;
     if (check_expr(stmt->ret.expr, vars, funcs, ir, &val) == TYPE_UNKNOWN) {
-        error_set(stmt->ret.expr->line, stmt->ret.expr->column);
+        error_set(stmt->ret.expr->line, stmt->ret.expr->column, error_current_file, error_current_function);
         return 0;
     }
     ir_build_return(ir, val);
@@ -562,7 +562,7 @@ static int handle_loop_stmt(stmt_t *stmt, const char *target,
                             ir_builder_t *ir)
 {
     if (!target) {
-        error_set(stmt->line, stmt->column);
+        error_set(stmt->line, stmt->column, error_current_file, error_current_function);
         return 0;
     }
     ir_build_br(ir, target);

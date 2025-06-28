@@ -64,23 +64,23 @@ type_kind_t check_index_expr(expr_t *expr, symtable_t *vars,
 {
     (void)funcs;
     if (expr->index.array->kind != EXPR_IDENT) {
-        error_set(expr->line, expr->column);
+        error_set(expr->line, expr->column, error_current_file, error_current_function);
         return TYPE_UNKNOWN;
     }
     symbol_t *sym = symtable_lookup(vars, expr->index.array->ident.name);
     if (!sym || sym->type != TYPE_ARRAY) {
-        error_set(expr->line, expr->column);
+        error_set(expr->line, expr->column, error_current_file, error_current_function);
         return TYPE_UNKNOWN;
     }
     ir_value_t idx_val;
     if (check_expr(expr->index.index, vars, funcs, ir, &idx_val) != TYPE_INT) {
-        error_set(expr->index.index->line, expr->index.index->column);
+        error_set(expr->index.index->line, expr->index.index->column, error_current_file, error_current_function);
         return TYPE_UNKNOWN;
     }
     long long cval;
     if (sym->array_size && eval_const_expr(expr->index.index, vars, &cval)) {
         if (cval < 0 || (size_t)cval >= sym->array_size) {
-            error_set(expr->index.index->line, expr->index.index->column);
+            error_set(expr->index.index->line, expr->index.index->column, error_current_file, error_current_function);
             return TYPE_UNKNOWN;
         }
     }
@@ -101,32 +101,32 @@ type_kind_t check_assign_index_expr(expr_t *expr, symtable_t *vars,
 {
     (void)funcs;
     if (expr->assign_index.array->kind != EXPR_IDENT) {
-        error_set(expr->line, expr->column);
+        error_set(expr->line, expr->column, error_current_file, error_current_function);
         return TYPE_UNKNOWN;
     }
     symbol_t *sym = symtable_lookup(vars, expr->assign_index.array->ident.name);
     if (!sym || sym->type != TYPE_ARRAY) {
-        error_set(expr->line, expr->column);
+        error_set(expr->line, expr->column, error_current_file, error_current_function);
         return TYPE_UNKNOWN;
     }
     if (sym->is_const) {
-        error_set(expr->line, expr->column);
+        error_set(expr->line, expr->column, error_current_file, error_current_function);
         return TYPE_UNKNOWN;
     }
 
     ir_value_t idx_val, val;
     if (check_expr(expr->assign_index.index, vars, funcs, ir, &idx_val) != TYPE_INT) {
-        error_set(expr->assign_index.index->line, expr->assign_index.index->column);
+        error_set(expr->assign_index.index->line, expr->assign_index.index->column, error_current_file, error_current_function);
         return TYPE_UNKNOWN;
     }
     if (check_expr(expr->assign_index.value, vars, funcs, ir, &val) != TYPE_INT) {
-        error_set(expr->assign_index.value->line, expr->assign_index.value->column);
+        error_set(expr->assign_index.value->line, expr->assign_index.value->column, error_current_file, error_current_function);
         return TYPE_UNKNOWN;
     }
     long long cval;
     if (sym->array_size && eval_const_expr(expr->assign_index.index, vars, &cval)) {
         if (cval < 0 || (size_t)cval >= sym->array_size) {
-            error_set(expr->assign_index.index->line, expr->assign_index.index->column);
+            error_set(expr->assign_index.index->line, expr->assign_index.index->column, error_current_file, error_current_function);
             return TYPE_UNKNOWN;
         }
     }
@@ -152,8 +152,7 @@ type_kind_t check_assign_member_expr(expr_t *expr, symtable_t *vars,
     if (expr->assign_member.via_ptr) {
         if (check_expr(expr->assign_member.object, vars, funcs, ir,
                        &base_addr) != TYPE_PTR) {
-            error_set(expr->assign_member.object->line,
-                      expr->assign_member.object->column);
+            error_set(expr->assign_member.object->line, expr->assign_member.object->column, error_current_file, error_current_function);
             return TYPE_UNKNOWN;
         }
         if (expr->assign_member.object->kind == EXPR_IDENT)
@@ -161,14 +160,12 @@ type_kind_t check_assign_member_expr(expr_t *expr, symtable_t *vars,
                                       expr->assign_member.object->ident.name);
     } else {
         if (expr->assign_member.object->kind != EXPR_IDENT) {
-            error_set(expr->assign_member.object->line,
-                      expr->assign_member.object->column);
+            error_set(expr->assign_member.object->line, expr->assign_member.object->column, error_current_file, error_current_function);
             return TYPE_UNKNOWN;
         }
         obj_sym = symtable_lookup(vars, expr->assign_member.object->ident.name);
         if (!obj_sym || (obj_sym->type != TYPE_UNION && obj_sym->type != TYPE_STRUCT)) {
-            error_set(expr->assign_member.object->line,
-                      expr->assign_member.object->column);
+            error_set(expr->assign_member.object->line, expr->assign_member.object->column, error_current_file, error_current_function);
             return TYPE_UNKNOWN;
         }
         base_addr = ir_build_addr(ir, obj_sym->ir_name);
@@ -177,14 +174,14 @@ type_kind_t check_assign_member_expr(expr_t *expr, symtable_t *vars,
     if (!obj_sym ||
         ((obj_sym->type == TYPE_UNION && obj_sym->member_count == 0) ||
          (obj_sym->type == TYPE_STRUCT && obj_sym->struct_member_count == 0))) {
-        error_set(expr->line, expr->column);
+        error_set(expr->line, expr->column, error_current_file, error_current_function);
         return TYPE_UNKNOWN;
     }
 
     type_kind_t mtype = TYPE_UNKNOWN;
     size_t moff = 0;
     if (!find_member(obj_sym, expr->assign_member.member, &mtype, &moff)) {
-        error_set(expr->line, expr->column);
+        error_set(expr->line, expr->column, error_current_file, error_current_function);
         return TYPE_UNKNOWN;
     }
 
@@ -193,7 +190,7 @@ type_kind_t check_assign_member_expr(expr_t *expr, symtable_t *vars,
     if (!(((is_intlike(mtype) && is_intlike(vt)) ||
            (is_floatlike(mtype) && (is_floatlike(vt) || is_intlike(vt)))) ||
           vt == mtype)) {
-        error_set(expr->assign_member.value->line, expr->assign_member.value->column);
+        error_set(expr->assign_member.value->line, expr->assign_member.value->column, error_current_file, error_current_function);
         return TYPE_UNKNOWN;
     }
 
@@ -220,8 +217,7 @@ type_kind_t check_member_expr(expr_t *expr, symtable_t *vars,
     if (expr->member.via_ptr) {
         if (check_expr(expr->member.object, vars, funcs, ir,
                        &base_addr) != TYPE_PTR) {
-            error_set(expr->member.object->line,
-                      expr->member.object->column);
+            error_set(expr->member.object->line, expr->member.object->column, error_current_file, error_current_function);
             return TYPE_UNKNOWN;
         }
         if (expr->member.object->kind == EXPR_IDENT)
@@ -229,14 +225,12 @@ type_kind_t check_member_expr(expr_t *expr, symtable_t *vars,
                                       expr->member.object->ident.name);
     } else {
         if (expr->member.object->kind != EXPR_IDENT) {
-            error_set(expr->member.object->line,
-                      expr->member.object->column);
+            error_set(expr->member.object->line, expr->member.object->column, error_current_file, error_current_function);
             return TYPE_UNKNOWN;
         }
         obj_sym = symtable_lookup(vars, expr->member.object->ident.name);
         if (!obj_sym || (obj_sym->type != TYPE_UNION && obj_sym->type != TYPE_STRUCT)) {
-            error_set(expr->member.object->line,
-                      expr->member.object->column);
+            error_set(expr->member.object->line, expr->member.object->column, error_current_file, error_current_function);
             return TYPE_UNKNOWN;
         }
         base_addr = ir_build_addr(ir, obj_sym->ir_name);
@@ -245,14 +239,14 @@ type_kind_t check_member_expr(expr_t *expr, symtable_t *vars,
     if (!obj_sym ||
         ((obj_sym->type == TYPE_UNION && obj_sym->member_count == 0) ||
          (obj_sym->type == TYPE_STRUCT && obj_sym->struct_member_count == 0))) {
-        error_set(expr->line, expr->column);
+        error_set(expr->line, expr->column, error_current_file, error_current_function);
         return TYPE_UNKNOWN;
     }
 
     type_kind_t mtype = TYPE_UNKNOWN;
     size_t moff = 0;
     if (!find_member(obj_sym, expr->member.member, &mtype, &moff)) {
-        error_set(expr->line, expr->column);
+        error_set(expr->line, expr->column, error_current_file, error_current_function);
         return TYPE_UNKNOWN;
     }
 
