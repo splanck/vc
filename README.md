@@ -40,6 +40,12 @@ pass `--dump-asm`:
 vc --dump-asm source.c
 ```
 
+Enable debug directives with `--debug`:
+
+```sh
+vc --debug -S source.c
+```
+
 ## Documentation
 
 The [documentation index](docs/index.md) provides an overview of all available

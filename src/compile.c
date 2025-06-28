@@ -343,6 +343,7 @@ int compile_unit(const char *source, const cli_options_t *cli,
     error_current_function = NULL;
     label_init();
     codegen_set_export(cli->link);
+    codegen_set_debug(cli->debug);
 
     int ok = 1;
 

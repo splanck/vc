@@ -81,12 +81,18 @@ typedef struct ir_instr {
     char *data;
     int is_volatile;
     struct ir_instr *next;
+    const char *file;
+    size_t line;
+    size_t column;
 } ir_instr_t;
 
 typedef struct {
     ir_instr_t *head;
     ir_instr_t *tail;
     int next_value_id;
+    const char *cur_file;
+    size_t cur_line;
+    size_t cur_column;
 } ir_builder_t;
 
 /*
@@ -94,6 +100,9 @@ typedef struct {
  * next value id generated will start at 1.
  */
 void ir_builder_init(ir_builder_t *b);
+
+/* Set the location used by subsequently emitted instructions */
+void ir_builder_set_loc(ir_builder_t *b, const char *file, size_t line, size_t column);
 
 /* Release all memory owned by the builder, including instruction nodes. */
 void ir_builder_free(ir_builder_t *b);

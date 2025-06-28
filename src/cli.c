@@ -37,6 +37,7 @@ static void print_usage(const char *prog)
     printf("      --no-fold        Disable constant folding\n");
     printf("      --no-dce         Disable dead code elimination\n");
     printf("      --no-cprop       Disable constant propagation\n");
+    printf("      --debug          Emit .file/.loc directives\n");
     printf("      --x86-64         Generate 64-bit x86 assembly\n");
     printf("  -S, --dump-asm       Print assembly to stdout and exit\n");
     printf("      --dump-ir        Print IR to stdout and exit\n");
@@ -63,6 +64,7 @@ static void init_default_opts(cli_options_t *opts)
     opts->dump_asm = 0;
     opts->dump_ir = 0;
     opts->preprocess = 0;
+    opts->debug = 0;
     opts->std = STD_C99;
     opts->obj_dir = "/tmp";
     vector_init(&opts->include_dirs, sizeof(char *));
@@ -217,6 +219,13 @@ static int enable_dump_ir_opt(const char *arg, const char *prog, cli_options_t *
     return 0;
 }
 
+static int enable_debug_opt(const char *arg, const char *prog, cli_options_t *opts)
+{
+    (void)arg; (void)prog;
+    opts->debug = 1;
+    return 0;
+}
+
 static int enable_preproc(const char *arg, const char *prog, cli_options_t *opts)
 {
     (void)arg; (void)prog;
@@ -269,6 +278,7 @@ static int handle_option(int opt, const char *arg, const char *prog,
         {4,   enable_dump},
         {5,   disable_cprop},
         {6,   enable_dump_ir_opt},
+        {10,  enable_debug_opt},
         {'E', enable_preproc},
         {7,   enable_link_opt},
         {8,   handle_std},
@@ -306,6 +316,7 @@ int cli_parse_args(int argc, char **argv, cli_options_t *opts)
         {"dump-asm", no_argument,     0, 4},
         {"no-cprop", no_argument,     0, 5},
         {"dump-ir", no_argument,      0, 6},
+        {"debug", no_argument,       0, 10},
         {"preprocess", no_argument,  0, 'E'},
         {"link", no_argument,        0, 7},
         {"std", required_argument,   0, 8},

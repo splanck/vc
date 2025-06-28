@@ -202,6 +202,15 @@ if ! grep -q "movl x, %eax" "$cprop_out"; then
 fi
 rm -f "$cprop_out"
 
+# test --debug option
+debug_out=$(mktemp)
+"$BINARY" --debug -S "$DIR/fixtures/simple_add.c" > "$debug_out"
+if ! grep -q "\.file" "$debug_out"; then
+    echo "Test debug_option failed"
+    fail=1
+fi
+rm -f "$debug_out"
+
 # test -c/--compile option
 obj_out=$(mktemp --suffix=.o)
 "$BINARY" -c -o "$obj_out" "$DIR/fixtures/simple_add.c"

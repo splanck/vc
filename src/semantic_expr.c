@@ -292,6 +292,7 @@ type_kind_t check_expr(expr_t *expr, symtable_t *vars, symtable_t *funcs,
 {
     if (!expr)
         return TYPE_UNKNOWN;
+    ir_builder_set_loc(ir, error_current_file, expr->line, expr->column);
     switch (expr->kind) {
     case EXPR_NUMBER:
         return check_number_expr(expr, vars, funcs, ir, out);

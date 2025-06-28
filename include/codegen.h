@@ -44,4 +44,7 @@ char *codegen_ir_to_string(ir_builder_t *ir, int x86_64);
  */
 void codegen_set_export(int flag);
 
+/* Toggle emission of .file and .loc directives */
+void codegen_set_debug(int flag);
+
 #endif /* VC_CODEGEN_H */
