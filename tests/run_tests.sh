@@ -166,6 +166,19 @@ if [ $ret -eq 0 ] || ! grep -q "Build stopped" "$err"; then
 fi
 rm -f "$out" "$err"
 
+# negative test for include cycle detection
+err=$(mktemp)
+out=$(mktemp)
+set +e
+"$BINARY" -o "$out" "$DIR/invalid/include_cycle.c" 2> "$err"
+ret=$?
+set -e
+if [ $ret -eq 0 ] || ! grep -q "Include cycle detected" "$err"; then
+    echo "Test include_cycle failed"
+    fail=1
+fi
+rm -f "$out" "$err"
+
 # test --dump-asm option
 dump_out=$(mktemp)
 "$BINARY" --dump-asm "$DIR/fixtures/simple_add.c" > "$dump_out"
