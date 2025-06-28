@@ -14,7 +14,7 @@ CORE_SRC = src/main.c src/compile.c src/cli.c src/lexer.c src/ast_expr.c src/ast
            src/preproc_macros.c src/preproc_expr.c src/preproc_file.c
 
 # Optional optimization sources
-OPT_SRC = src/opt.c src/opt_constprop.c src/opt_fold.c src/opt_dce.c src/opt_inline.c
+OPT_SRC = src/opt.c src/opt_constprop.c src/opt_cse.c src/opt_fold.c src/opt_dce.c src/opt_inline.c
 # Additional sources can be specified by the user
 EXTRA_SRC ?=
 # Final source list
@@ -191,6 +191,9 @@ src/opt_constprop.o: src/opt_constprop.c $(HDR)
 
 src/opt_fold.o: src/opt_fold.c $(HDR)
 	$(CC) $(CFLAGS) $(OPTFLAGS) -Iinclude -c src/opt_fold.c -o src/opt_fold.o
+
+src/opt_cse.o: src/opt_cse.c $(HDR)
+	$(CC) $(CFLAGS) $(OPTFLAGS) -Iinclude -c src/opt_cse.c -o src/opt_cse.o
 
 src/opt_dce.o: src/opt_dce.c $(HDR)
 	$(CC) $(CFLAGS) $(OPTFLAGS) -Iinclude -c src/opt_dce.c -o src/opt_dce.o

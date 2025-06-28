@@ -26,9 +26,10 @@ void opt_error(const char *msg);
  *
  * Passes execute in the following order:
  * 1. Constant propagation
- * 2. Inline expansion
- * 3. Constant folding
- * 4. Dead code elimination
+ * 2. Common subexpression elimination
+ * 3. Inline expansion
+ * 4. Constant folding
+ * 5. Dead code elimination
  */
 void opt_run(ir_builder_t *ir, const opt_config_t *cfg);
 
