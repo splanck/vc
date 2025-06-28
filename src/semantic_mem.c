@@ -93,10 +93,17 @@ type_kind_t check_index_expr(expr_t *expr, symtable_t *vars,
             return TYPE_UNKNOWN;
         }
     }
-    if (out)
-        *out = sym->is_volatile
-                 ? ir_build_load_idx_vol(ir, sym->ir_name, idx_val)
-                 : ir_build_load_idx(ir, sym->ir_name, idx_val);
+    if (out) {
+        if (sym->vla_addr.id) {
+            int esz = sym->elem_size ? (int)sym->elem_size : 4;
+            ir_value_t addr = ir_build_ptr_add(ir, sym->vla_addr, idx_val, esz);
+            *out = ir_build_load_ptr(ir, addr);
+        } else {
+            *out = sym->is_volatile
+                     ? ir_build_load_idx_vol(ir, sym->ir_name, idx_val)
+                     : ir_build_load_idx(ir, sym->ir_name, idx_val);
+        }
+    }
     return TYPE_INT;
 }
 
@@ -139,10 +146,15 @@ type_kind_t check_assign_index_expr(expr_t *expr, symtable_t *vars,
             return TYPE_UNKNOWN;
         }
     }
-    if (sym->is_volatile)
+    if (sym->vla_addr.id) {
+        int esz = sym->elem_size ? (int)sym->elem_size : 4;
+        ir_value_t addr = ir_build_ptr_add(ir, sym->vla_addr, idx_val, esz);
+        ir_build_store_ptr(ir, addr, val);
+    } else if (sym->is_volatile) {
         ir_build_store_idx_vol(ir, sym->ir_name, idx_val, val);
-    else
+    } else {
         ir_build_store_idx(ir, sym->ir_name, idx_val, val);
+    }
     if (out)
         *out = val;
     return TYPE_INT;
