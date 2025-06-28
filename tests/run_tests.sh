@@ -253,14 +253,22 @@ if ! od -An -t x1 "$obj_out" | head -n 1 | grep -q "7f 45 4c 46"; then
 fi
 rm -f "$obj_out"
 
-# test --link option
-exe_out=$(mktemp)
-"$BINARY" --x86-64 --link -o "$exe_out" "$DIR/fixtures/simple_add.c"
-if ! od -An -t x1 "$exe_out" | head -n 1 | grep -q "7f 45 4c 46"; then
-    echo "Test link_option failed"
+# test --link option with spaces and semicolons in output path
+link_tmpdir=$(mktemp -d)
+exe_space="$link_tmpdir/out with space"
+"$BINARY" --x86-64 --link -o "$exe_space" "$DIR/fixtures/simple_add.c"
+if ! od -An -t x1 "$exe_space" | head -n 1 | grep -q "7f 45 4c 46"; then
+    echo "Test link_option_space failed"
     fail=1
 fi
-rm -f "$exe_out"
+exe_semi="$link_tmpdir/out;semi"
+"$BINARY" --x86-64 --link -o "$exe_semi" "$DIR/fixtures/simple_add.c"
+if ! od -An -t x1 "$exe_semi" | head -n 1 | grep -q "7f 45 4c 46"; then
+    echo "Test link_option_semi failed"
+    fail=1
+fi
+rm -f "$exe_space" "$exe_semi"
+rmdir "$link_tmpdir"
 
 # test --std option
 std_out=$(mktemp)
