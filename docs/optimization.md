@@ -21,6 +21,8 @@ values, replacing them with a single constant instruction.  Support now
 includes the long double operations `IR_LFADD`, `IR_LFSUB`, `IR_LFMUL` and
 `IR_LFDIV`, allowing their results to be simplified just like other
 arithmetic.
+For example, an expression such as `1.0L + 2.0L` is folded to a single
+constant at compile time.
 
 Dead code elimination scans the instruction stream and removes operations that
 have no side effects and whose results are never referenced.
