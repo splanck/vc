@@ -26,7 +26,8 @@
  * success and 0 if the member is not found.
  */
 static int find_member(symbol_t *sym, const char *name, type_kind_t *type,
-                       size_t *offset)
+                       size_t *offset, unsigned *bit_width,
+                       unsigned *bit_offset)
 {
     if (!sym)
         return 0;
@@ -37,6 +38,10 @@ static int find_member(symbol_t *sym, const char *name, type_kind_t *type,
                     *type = sym->members[i].type;
                 if (offset)
                     *offset = sym->members[i].offset;
+                if (bit_width)
+                    *bit_width = sym->members[i].bit_width;
+                if (bit_offset)
+                    *bit_offset = sym->members[i].bit_offset;
                 return 1;
             }
         }
@@ -47,6 +52,10 @@ static int find_member(symbol_t *sym, const char *name, type_kind_t *type,
                     *type = sym->struct_members[i].type;
                 if (offset)
                     *offset = sym->struct_members[i].offset;
+                if (bit_width)
+                    *bit_width = sym->struct_members[i].bit_width;
+                if (bit_offset)
+                    *bit_offset = sym->struct_members[i].bit_offset;
                 return 1;
             }
         }
@@ -180,26 +189,50 @@ type_kind_t check_assign_member_expr(expr_t *expr, symtable_t *vars,
 
     type_kind_t mtype = TYPE_UNKNOWN;
     size_t moff = 0;
-    if (!find_member(obj_sym, expr->assign_member.member, &mtype, &moff)) {
+    unsigned mbw = 0, mbo = 0;
+    if (!find_member(obj_sym, expr->assign_member.member, &mtype, &moff,
+                     &mbw, &mbo)) {
         error_set(expr->line, expr->column, error_current_file, error_current_function);
         return TYPE_UNKNOWN;
     }
 
     ir_value_t val;
     type_kind_t vt = check_expr(expr->assign_member.value, vars, funcs, ir, &val);
-    if (!(((is_intlike(mtype) && is_intlike(vt)) ||
-           (is_floatlike(mtype) && (is_floatlike(vt) || is_intlike(vt)))) ||
-          vt == mtype)) {
+    if (mbw > 0) {
+        if (!is_intlike(vt)) {
+            error_set(expr->assign_member.value->line, expr->assign_member.value->column,
+                      error_current_file, error_current_function);
+            return TYPE_UNKNOWN;
+        }
+    } else if (!(((is_intlike(mtype) && is_intlike(vt)) ||
+                  (is_floatlike(mtype) && (is_floatlike(vt) || is_intlike(vt)))) ||
+                 vt == mtype)) {
         error_set(expr->assign_member.value->line, expr->assign_member.value->column, error_current_file, error_current_function);
         return TYPE_UNKNOWN;
     }
 
     ir_value_t idx = ir_build_const(ir, (int)moff);
     ir_value_t addr = ir_build_ptr_add(ir, base_addr, idx, 1);
-    ir_build_store_ptr(ir, addr, val);
-    if (out)
-        *out = val;
-    return mtype;
+    if (mbw > 0) {
+        ir_value_t word = ir_build_load_ptr(ir, addr);
+        unsigned mask_bits = (mbw == 32) ? 0xFFFFFFFFu : ((1u << mbw) - 1u);
+        ir_value_t maskv = ir_build_const(ir, (int)mask_bits);
+        ir_value_t clear_mask = ir_build_const(ir, ~(int)(mask_bits << mbo));
+        word = ir_build_binop(ir, IR_AND, word, clear_mask);
+        ir_value_t new_val = ir_build_binop(ir, IR_AND, val, maskv);
+        if (mbo)
+            new_val = ir_build_binop(ir, IR_SHL, new_val, ir_build_const(ir, (int)mbo));
+        word = ir_build_binop(ir, IR_OR, word, new_val);
+        ir_build_store_ptr(ir, addr, word);
+        if (out)
+            *out = val;
+        return TYPE_INT;
+    } else {
+        ir_build_store_ptr(ir, addr, val);
+        if (out)
+            *out = val;
+        return mtype;
+    }
 }
 
 /*
@@ -245,7 +278,9 @@ type_kind_t check_member_expr(expr_t *expr, symtable_t *vars,
 
     type_kind_t mtype = TYPE_UNKNOWN;
     size_t moff = 0;
-    if (!find_member(obj_sym, expr->member.member, &mtype, &moff)) {
+    unsigned mbw = 0, mbo = 0;
+    if (!find_member(obj_sym, expr->member.member, &mtype, &moff,
+                     &mbw, &mbo)) {
         error_set(expr->line, expr->column, error_current_file, error_current_function);
         return TYPE_UNKNOWN;
     }
@@ -253,9 +288,20 @@ type_kind_t check_member_expr(expr_t *expr, symtable_t *vars,
     if (out) {
         ir_value_t idx = ir_build_const(ir, (int)moff);
         ir_value_t addr = ir_build_ptr_add(ir, base_addr, idx, 1);
-        *out = ir_build_load_ptr(ir, addr);
+        ir_value_t word = ir_build_load_ptr(ir, addr);
+        if (mbw > 0) {
+            if (mbo)
+                word = ir_build_binop(ir, IR_SHR, word,
+                                      ir_build_const(ir, (int)mbo));
+            unsigned mask_bits = (mbw == 32) ? 0xFFFFFFFFu : ((1u << mbw) - 1u);
+            ir_value_t maskv = ir_build_const(ir, (int)mask_bits);
+            word = ir_build_binop(ir, IR_AND, word, maskv);
+            *out = word;
+        } else {
+            *out = word;
+        }
     }
-    return mtype;
+    return (mbw > 0) ? TYPE_INT : mtype;
 }
 
 /*
