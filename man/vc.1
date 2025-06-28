@@ -11,7 +11,7 @@ It processes input through lexical analysis, parsing, semantic analysis,
 optional optimizations, register allocation and code generation.
 The resulting assembly can be written to a file or printed to stdout.
 Supported constructs include arrays (with variable length support, size inference from initializer lists and designated initializers using \fB[index]\fR or \fB.member\fR designators), pointer arithmetic (including pointer subtraction and pointer increments), loops (\fBfor\fR, \fBwhile\fR and \fBdo\fR\~\fBwhile\fR), global variable declarations, external declarations using \fBextern\fR, floating-point variables including \fBlong double\fR, the
-\fBchar\fR type, support for 64-bit integer constants including hexadecimal and octal literals, string literals usable as \fBchar\fR pointers with standard escape sequences such as \n, \t, \r, \b, \f, \v and numeric forms like \e123 or \ex7F, complete \fBstruct\fR and \fBunion\fR declarations with bit-field members, enum variables, the
+\fBchar\fR type, support for 64-bit integer constants including hexadecimal and octal literals, string literals usable as \fBchar\fR pointers with standard escape sequences such as \n, \t, \r, \b, \f, \v and numeric forms like \e123 or \ex7F, complete \fBstruct\fR and \fBunion\fR declarations with bit-field members, enum variables, typedef declarations, the
 \fBconst\fR (which requires an initializer), \fBvolatile\fR and \fBrestrict\fR and \fBregister\fR qualifiers, and the \fBbreak\fR and \fBcontinue\fR statements, \fBswitch\fR with \fBcase\fR and \fBdefault\fR labels, variadic functions using \fB...\fR, as well as labels and \fBgoto\fR.
 .PP
 The built-in preprocessor expands \fB#include\fR directives, object-like
