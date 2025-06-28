@@ -28,11 +28,11 @@ into the lexer.
 
 Macros are stored in a simple vector declared in `preproc_macros.h`.  Each
 `macro_t` holds the macro name, an optional parameter list and its body text.
-`expand_line` walks each line character by character replacing identifiers with
-matching macros.  When a macro takes parameters the argument list is parsed and
-substituted using `expand_params`.  That routine now delegates to helper
-functions that perform parameter lookup, handle the `#` stringize operator and
-manage `##` token pasting.
+`expand_line` loops over each character delegating to `parse_macro_invocation`
+for identifiers or `emit_plain_char` otherwise.  The invocation helper parses
+any argument list and calls `expand_macro_call` so expansion remains recursive.
+`expand_params` continues to rely on helper routines that perform parameter
+lookup, handle the `#` stringize operator and manage `##` token pasting.
 Macro expansion is recursive so macro bodies may reference other macros.
 
 Conditional expressions in `#if` directives are parsed by the small recursive
