@@ -76,7 +76,7 @@ static type_kind_t check_ident_expr(expr_t *expr, symtable_t *vars,
     (void)funcs;
     symbol_t *sym = symtable_lookup(vars, expr->ident.name);
     if (!sym) {
-        error_set(expr->line, expr->column);
+        error_set(expr->line, expr->column, error_current_file, error_current_function);
         return TYPE_UNKNOWN;
     }
     if (sym->is_enum_const) {
@@ -111,7 +111,7 @@ static type_kind_t check_cond_expr(expr_t *expr, symtable_t *vars,
 {
     ir_value_t cond_val;
     if (!is_intlike(check_expr(expr->cond.cond, vars, funcs, ir, &cond_val))) {
-        error_set(expr->cond.cond->line, expr->cond.cond->column);
+        error_set(expr->cond.cond->line, expr->cond.cond->column, error_current_file, error_current_function);
         return TYPE_UNKNOWN;
     }
 
@@ -134,7 +134,7 @@ static type_kind_t check_cond_expr(expr_t *expr, symtable_t *vars,
     ir_build_label(ir, endlabel);
 
     if (!(is_intlike(tt) && is_intlike(ft))) {
-        error_set(expr->line, expr->column);
+        error_set(expr->line, expr->column, error_current_file, error_current_function);
         return TYPE_UNKNOWN;
     }
     if (out)
@@ -157,11 +157,11 @@ static type_kind_t check_assign_expr(expr_t *expr, symtable_t *vars,
     ir_value_t val;
     symbol_t *sym = symtable_lookup(vars, expr->assign.name);
     if (!sym) {
-        error_set(expr->line, expr->column);
+        error_set(expr->line, expr->column, error_current_file, error_current_function);
         return TYPE_UNKNOWN;
     }
     if (sym->is_const) {
-        error_set(expr->line, expr->column);
+        error_set(expr->line, expr->column, error_current_file, error_current_function);
         return TYPE_UNKNOWN;
     }
 
@@ -179,7 +179,7 @@ static type_kind_t check_assign_expr(expr_t *expr, symtable_t *vars,
             *out = val;
         return sym->type;
     }
-    error_set(expr->line, expr->column);
+    error_set(expr->line, expr->column, error_current_file, error_current_function);
     return TYPE_UNKNOWN;
 }
 
@@ -324,6 +324,6 @@ type_kind_t check_expr(expr_t *expr, symtable_t *vars, symtable_t *funcs,
     case EXPR_CALL:
         return check_call_expr(expr, vars, funcs, ir, out);
     }
-    error_set(expr->line, expr->column);
+    error_set(expr->line, expr->column, error_current_file, error_current_function);
     return TYPE_UNKNOWN;
 }

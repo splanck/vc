@@ -67,9 +67,11 @@ int check_func(func_t *func, symtable_t *funcs, symtable_t *globals,
     if (!func)
         return 0;
 
+    error_current_function = func->name;
+
     symbol_t *decl = symtable_lookup(funcs, func->name);
     if (!decl) {
-        error_set(0, 0);
+        error_set(0, 0, error_current_file, error_current_function);
         return 0;
     }
     int mismatch = decl->type != func->return_type ||
@@ -79,7 +81,7 @@ int check_func(func_t *func, symtable_t *funcs, symtable_t *globals,
         if (decl->param_types[i] != func->param_types[i])
             mismatch = 1;
     if (mismatch) {
-        error_set(0, 0);
+        error_set(0, 0, error_current_file, error_current_function);
         return 0;
     }
 
@@ -109,6 +111,7 @@ int check_func(func_t *func, symtable_t *funcs, symtable_t *globals,
     label_table_free(&labels);
     locals.globals = NULL;
     symtable_free(&locals);
+    error_current_function = NULL;
     return ok;
 }
 
@@ -125,12 +128,12 @@ static int check_enum_decl_global(stmt_t *decl, symtable_t *globals)
         long long val = next;
         if (e->value) {
             if (!eval_const_expr(e->value, globals, &val)) {
-                error_set(e->value->line, e->value->column);
+                error_set(e->value->line, e->value->column, error_current_file, error_current_function);
                 return 0;
             }
         }
         if (!symtable_add_enum_global(globals, e->name, (int)val)) {
-            error_set(decl->line, decl->column);
+            error_set(decl->line, decl->column, error_current_file, error_current_function);
             return 0;
         }
         next = (int)val + 1;
@@ -152,7 +155,7 @@ static int check_struct_decl_global(stmt_t *decl, symtable_t *globals)
     if (!symtable_add_struct_global(globals, decl->struct_decl.tag,
                                     decl->struct_decl.members,
                                     decl->struct_decl.count)) {
-        error_set(decl->line, decl->column);
+        error_set(decl->line, decl->column, error_current_file, error_current_function);
         return 0;
     }
     symbol_t *stype =
@@ -173,7 +176,7 @@ static int check_union_decl_global(stmt_t *decl, symtable_t *globals)
     if (!symtable_add_union_global(globals, decl->union_decl.tag,
                                    decl->union_decl.members,
                                    decl->union_decl.count)) {
-        error_set(decl->line, decl->column);
+        error_set(decl->line, decl->column, error_current_file, error_current_function);
         return 0;
     }
     return 1;
@@ -290,7 +293,7 @@ static symbol_t *register_global_symbol(stmt_t *decl, symtable_t *globals)
                              decl->var_decl.is_const,
                              decl->var_decl.is_volatile,
                              decl->var_decl.is_restrict)) {
-        error_set(decl->line, decl->column);
+        error_set(decl->line, decl->column, error_current_file, error_current_function);
         return NULL;
     }
 
@@ -358,14 +361,14 @@ static int emit_global_initializer(stmt_t *decl, symbol_t *sym,
             free(vals);
             return 1;
         }
-        error_set(decl->line, decl->column);
+        error_set(decl->line, decl->column, error_current_file, error_current_function);
         return 0;
     }
 
     long long value = 0;
     if (decl->var_decl.init) {
         if (!eval_const_expr(decl->var_decl.init, globals, &value)) {
-            error_set(decl->var_decl.init->line, decl->var_decl.init->column);
+            error_set(decl->var_decl.init->line, decl->var_decl.init->column, error_current_file, error_current_function);
             return 0;
         }
     }
@@ -416,7 +419,7 @@ int check_global(stmt_t *decl, symtable_t *globals, ir_builder_t *ir)
                                          decl->typedef_decl.type,
                                          decl->typedef_decl.array_size,
                                          decl->typedef_decl.elem_size)) {
-            error_set(decl->line, decl->column);
+            error_set(decl->line, decl->column, error_current_file, error_current_function);
             return 0;
         }
         return 1;

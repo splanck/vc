@@ -65,3 +65,15 @@ tests/run.sh
 This script builds the compiler, compiles the unit test harness for the lexer
 and parser, and then runs both the unit tests and the integration tests found
 under `tests/`.
+
+## Improved diagnostics
+
+Error messages produced during compilation now include the source file,
+line and column, and when applicable the current function name.  The
+format is:
+
+```
+file:line:column: function: message
+```
+
+If an error occurs outside a function, the function portion is omitted.

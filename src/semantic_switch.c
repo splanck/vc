@@ -120,8 +120,7 @@ static char **emit_case_branches(stmt_t *stmt, symtable_t *vars,
             for (size_t j = 0; j <= i; j++)
                 free(labels[j]);
             free(labels);
-            error_set(stmt->switch_stmt.cases[i].expr->line,
-                      stmt->switch_stmt.cases[i].expr->column);
+            error_set(stmt->switch_stmt.cases[i].expr->line, stmt->switch_stmt.cases[i].expr->column, error_current_file, error_current_function);
             return NULL;
         }
         ir_value_t const_val = ir_build_const(ir, cval);

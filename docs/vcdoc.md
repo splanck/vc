@@ -28,3 +28,7 @@ without needing an explicit `#define`:
 - `__LINE__` expands to the current line number.
 - `__DATE__` and `__TIME__` expand to the compilation date and time strings.
 
+## Diagnostics
+
+Compiler errors are printed using the form `file:line:column: function: message`.
+When no function is active, the function portion is omitted.
