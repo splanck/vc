@@ -10,6 +10,7 @@
 
 #include <stddef.h>
 #include "ast.h"
+#include "ir_core.h"
 
 /* Symbol table entry */
 typedef struct symbol {
@@ -19,6 +20,8 @@ typedef struct symbol {
     int param_index; /* -1 for locals */
     size_t array_size;
     size_t elem_size;
+    ir_value_t vla_addr; /* base pointer for variable-length arrays */
+    ir_value_t vla_size; /* runtime element count */
     int enum_value;
     int is_enum_const;
     int is_typedef;
