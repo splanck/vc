@@ -5,9 +5,12 @@
  * See LICENSE for details.
  */
 
+#define _POSIX_C_SOURCE 200809L
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <stdint.h>
+#include <sys/types.h>
 #include "util.h"
 
 /*
@@ -69,24 +72,30 @@ char *vc_read_file(const char *path)
         perror(path);
         return NULL;
     }
-    if (fseek(f, 0, SEEK_END) != 0) {
-        perror("fseek");
+    if (fseeko(f, 0, SEEK_END) != 0) {
+        perror("fseeko");
         fclose(f);
         return NULL;
     }
-    long len = ftell(f);
-    if (len < 0) {
-        perror("ftell");
+    off_t len_off = ftello(f);
+    if (len_off < 0) {
+        perror("ftello");
         fclose(f);
         return NULL;
     }
-    if (fseek(f, 0, SEEK_SET) != 0) {
-        perror("fseek");
+    if ((uintmax_t)len_off > SIZE_MAX) {
+        fprintf(stderr, "vc: file too large\n");
         fclose(f);
         return NULL;
     }
-    char *buf = vc_alloc_or_exit((size_t)len + 1);
-    if (fread(buf, 1, (size_t)len, f) != (size_t)len) {
+    if (fseeko(f, 0, SEEK_SET) != 0) {
+        perror("fseeko");
+        fclose(f);
+        return NULL;
+    }
+    size_t len = (size_t)len_off;
+    char *buf = vc_alloc_or_exit(len + 1);
+    if (fread(buf, 1, len, f) != len) {
         perror("fread");
         fclose(f);
         free(buf);
