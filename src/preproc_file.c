@@ -70,43 +70,67 @@ static int process_file(const char *path, vector_t *macros,
  * it is returned.  NULL is returned when the file does not exist in any
  * of the locations.
 */
-static const char *find_include_path(const char *fname, char endc,
-                                     const char *dir,
-                                     const vector_t *incdirs,
-                                     char out_path[512])
+static char *find_include_path(const char *fname, char endc,
+                               const char *dir,
+                               const vector_t *incdirs)
 {
+    size_t fname_len = strlen(fname);
+    size_t max_len = fname_len;
     if (endc == '"' && dir) {
-        snprintf(out_path, 512, "%s%s", dir, fname);
+        size_t len = strlen(dir) + fname_len;
+        if (len > max_len)
+            max_len = len;
+    }
+
+    for (size_t i = 0; i < incdirs->count; i++) {
+        const char *base = ((const char **)incdirs->data)[i];
+        size_t len = strlen(base) + 1 + fname_len;
+        if (len > max_len)
+            max_len = len;
+    }
+
+    for (size_t i = 0; std_include_dirs[i]; i++) {
+        size_t len = strlen(std_include_dirs[i]) + 1 + fname_len;
+        if (len > max_len)
+            max_len = len;
+    }
+
+    char *out_path = vc_alloc_or_exit(max_len + 1);
+
+    if (endc == '"' && dir) {
+        snprintf(out_path, max_len + 1, "%s%s", dir, fname);
         if (access(out_path, R_OK) == 0)
             return out_path;
     }
 
     for (size_t i = 0; i < incdirs->count; i++) {
         const char *base = ((const char **)incdirs->data)[i];
-        snprintf(out_path, 512, "%s/%s", base, fname);
+        snprintf(out_path, max_len + 1, "%s/%s", base, fname);
         if (access(out_path, R_OK) == 0)
             return out_path;
     }
 
     if (endc == '<') {
         for (size_t i = 0; std_include_dirs[i]; i++) {
-            snprintf(out_path, 512, "%s/%s", std_include_dirs[i], fname);
+            snprintf(out_path, max_len + 1, "%s/%s", std_include_dirs[i], fname);
             if (access(out_path, R_OK) == 0)
                 return out_path;
         }
+        free(out_path);
         return NULL;
     }
 
-    snprintf(out_path, 512, "%s", fname);
+    snprintf(out_path, max_len + 1, "%s", fname);
     if (access(out_path, R_OK) == 0)
         return out_path;
 
     for (size_t i = 0; std_include_dirs[i]; i++) {
-        snprintf(out_path, 512, "%s/%s", std_include_dirs[i], fname);
+        snprintf(out_path, max_len + 1, "%s/%s", std_include_dirs[i], fname);
         if (access(out_path, R_OK) == 0)
             return out_path;
     }
 
+    free(out_path);
     return NULL;
 }
 
@@ -130,9 +154,8 @@ static int handle_include(char *line, const char *dir, vector_t *macros,
         size_t len = (size_t)(end - start - 1);
         char fname[256];
         snprintf(fname, sizeof(fname), "%.*s", (int)len, start + 1);
-        char incpath[512];
-        const char *chosen = find_include_path(fname, endc, dir, incdirs,
-                                               incpath);
+        char *incpath = find_include_path(fname, endc, dir, incdirs);
+        const char *chosen = incpath;
         vector_t subconds;
         vector_init(&subconds, sizeof(cond_state_t));
         int ok = 1;
@@ -159,6 +182,7 @@ static int handle_include(char *line, const char *dir, vector_t *macros,
             }
         }
         vector_free(&subconds);
+        free(incpath);
         if (!ok)
             return 0;
     }
