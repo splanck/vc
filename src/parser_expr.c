@@ -52,6 +52,9 @@ static expr_t *parse_logical_and(parser_t *p);
 static expr_t *parse_logical_or(parser_t *p);
 static expr_t *parse_conditional(parser_t *p);
 static int parse_argument_list(parser_t *p, vector_t *out_args);
+static binop_t binop_from_assign(token_type_t type);
+static expr_t *build_assign_expr(expr_t *left, expr_t *right,
+                                 token_t *op_tok);
 
 /* Function pointer type used by parse_binop_chain */
 typedef expr_t *(*parse_fn)(parser_t *);
@@ -603,50 +606,28 @@ static token_t *consume_assign_op(parser_t *p, int *compound)
     }
 }
 
-/* Build the AST node for an assignment using \p left and \p right. The
- * operator token is provided via \p op_tok and \p compound indicates if it
- * was a compound operator.  On error all allocated nodes are freed and NULL
- * is returned. */
-static expr_t *make_assignment(expr_t *left, expr_t *right,
-                               token_t *op_tok, int compound)
+/* Map an assignment token to the corresponding binary operator. */
+static binop_t binop_from_assign(token_type_t type)
 {
-    if (left->kind != EXPR_IDENT && left->kind != EXPR_INDEX &&
-        left->kind != EXPR_MEMBER) {
-        ast_free_expr(left);
-        ast_free_expr(right);
-        return NULL;
+    switch (type) {
+    case TOK_PLUSEQ:   return BINOP_ADD;
+    case TOK_MINUSEQ:  return BINOP_SUB;
+    case TOK_STAREQ:   return BINOP_MUL;
+    case TOK_SLASHEQ:  return BINOP_DIV;
+    case TOK_PERCENTEQ:return BINOP_MOD;
+    case TOK_AMPEQ:    return BINOP_BITAND;
+    case TOK_PIPEEQ:   return BINOP_BITOR;
+    case TOK_CARETEQ:  return BINOP_BITXOR;
+    case TOK_SHLEQ:    return BINOP_SHL;
+    case TOK_SHREQ:    return BINOP_SHR;
+    default:           return (binop_t)-1;
     }
+}
 
-    if (compound) {
-        binop_t bop = BINOP_ADD;
-        switch (op_tok->type) {
-        case TOK_PLUSEQ:  bop = BINOP_ADD;     break;
-        case TOK_MINUSEQ: bop = BINOP_SUB;     break;
-        case TOK_STAREQ:  bop = BINOP_MUL;     break;
-        case TOK_SLASHEQ: bop = BINOP_DIV;     break;
-        case TOK_PERCENTEQ: bop = BINOP_MOD;   break;
-        case TOK_AMPEQ:   bop = BINOP_BITAND;  break;
-        case TOK_PIPEEQ:  bop = BINOP_BITOR;   break;
-        case TOK_CARETEQ: bop = BINOP_BITXOR;  break;
-        case TOK_SHLEQ:   bop = BINOP_SHL;     break;
-        case TOK_SHREQ:   bop = BINOP_SHR;     break;
-        default:
-            ast_free_expr(left);
-            ast_free_expr(right);
-            return NULL;
-        }
-
-        expr_t *lhs_copy = clone_expr(left);
-        if (!lhs_copy) {
-            ast_free_expr(left);
-            ast_free_expr(right);
-            return NULL;
-        }
-
-        right = ast_make_binary(bop, lhs_copy, right,
-                                op_tok->line, op_tok->column);
-    }
-
+/* Create the appropriate assignment expression node based on \p left. */
+static expr_t *build_assign_expr(expr_t *left, expr_t *right,
+                                 token_t *op_tok)
+{
     expr_t *res = NULL;
     if (left->kind == EXPR_IDENT) {
         char *name = left->ident.name;
@@ -670,6 +651,42 @@ static expr_t *make_assignment(expr_t *left, expr_t *right,
     }
 
     return res;
+}
+
+/* Build the AST node for an assignment using \p left and \p right. The
+ * operator token is provided via \p op_tok and \p compound indicates if it
+ * was a compound operator.  On error all allocated nodes are freed and NULL
+ * is returned. */
+static expr_t *make_assignment(expr_t *left, expr_t *right,
+                               token_t *op_tok, int compound)
+{
+    if (left->kind != EXPR_IDENT && left->kind != EXPR_INDEX &&
+        left->kind != EXPR_MEMBER) {
+        ast_free_expr(left);
+        ast_free_expr(right);
+        return NULL;
+    }
+
+    if (compound) {
+        binop_t bop = binop_from_assign(op_tok->type);
+        if (bop == (binop_t)-1) {
+            ast_free_expr(left);
+            ast_free_expr(right);
+            return NULL;
+        }
+
+        expr_t *lhs_copy = clone_expr(left);
+        if (!lhs_copy) {
+            ast_free_expr(left);
+            ast_free_expr(right);
+            return NULL;
+        }
+
+        right = ast_make_binary(bop, lhs_copy, right,
+                                op_tok->line, op_tok->column);
+    }
+
+    return build_assign_expr(left, right, op_tok);
 }
 
 /* Assignment has the lowest precedence and recurses to itself for chained
