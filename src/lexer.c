@@ -12,6 +12,7 @@
 #include "token.h"
 #include "vector.h"
 #include "util.h"
+#include "error.h"
 
 typedef struct {
     const char *kw;
@@ -310,6 +311,13 @@ static void read_char_const(const char *src, size_t *i, size_t *col,
     size_t column = *col;
     (*i)++; /* skip opening quote */
     (*col)++;
+    if (!src[*i]) {
+        error_set(line, column, error_current_file, error_current_function);
+        error_print("Missing closing quote");
+        append_token(tokens, TOK_UNKNOWN, "", 0, line, column);
+        return;
+    }
+
     char value = src[*i];
     if (value == '\\') {
         (*i)++; /* skip backslash */
@@ -318,10 +326,17 @@ static void read_char_const(const char *src, size_t *i, size_t *col,
         (*i)++; /* consume character */
     }
     (*col)++;
-    if (src[*i] == '\'') {
-        (*i)++;
-        (*col)++;
+
+    if (src[*i] != '\'') {
+        error_set(line, column, error_current_file, error_current_function);
+        error_print("Missing closing quote");
+        append_token(tokens, TOK_UNKNOWN, "", 0, line, column);
+        return;
     }
+
+    (*i)++;
+    (*col)++;
+
     char buf[2] = {value, '\0'};
     append_token(tokens, tok_type, buf, 1, line, column);
 }
@@ -355,10 +370,15 @@ static void read_string_lit(const char *src, size_t *i, size_t *col,
     if (src[*i] == '"') {
         (*i)++;
         (*col)++;
-    }
 
-    append_token(tokens, tok_type, buf_v.data, buf_v.count, line, column);
-    vector_free(&buf_v);
+        append_token(tokens, tok_type, buf_v.data, buf_v.count, line, column);
+        vector_free(&buf_v);
+    } else {
+        error_set(line, column, error_current_file, error_current_function);
+        error_print("Missing closing quote");
+        vector_free(&buf_v);
+        append_token(tokens, TOK_UNKNOWN, "", 0, line, column);
+    }
 }
 
 /* Convert punctuation characters to tokens */
