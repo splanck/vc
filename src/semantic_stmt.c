@@ -570,6 +570,179 @@ static int handle_label_stmt(stmt_t *stmt, label_table_t *labels,
     return 1;
 }
 
+/*
+ * Validate an expression statement by evaluating the expression and
+ * discarding the result.
+ */
+static int check_expr_stmt(stmt_t *stmt, symtable_t *vars, symtable_t *funcs,
+                           ir_builder_t *ir)
+{
+    ir_value_t tmp;
+    return check_expr(stmt->expr.expr, vars, funcs, ir, &tmp) != TYPE_UNKNOWN;
+}
+
+/*
+ * Wrapper around the return statement handler used by check_stmt.
+ */
+static int check_return_stmt(stmt_t *stmt, symtable_t *vars, symtable_t *funcs,
+                             ir_builder_t *ir, type_kind_t func_ret_type)
+{
+    return handle_return_stmt(stmt, vars, funcs, ir, func_ret_type);
+}
+
+/*
+ * Wrapper used to validate an if/else statement.
+ */
+static int check_if_stmt_wrapper(stmt_t *stmt, symtable_t *vars,
+                                 symtable_t *funcs, label_table_t *labels,
+                                 ir_builder_t *ir, type_kind_t func_ret_type,
+                                 const char *break_label,
+                                 const char *continue_label)
+{
+    return check_if_stmt(stmt, vars, funcs, labels, ir, func_ret_type,
+                         break_label, continue_label);
+}
+
+/*
+ * Wrapper used to validate a while loop.
+ */
+static int check_while_stmt_wrapper(stmt_t *stmt, symtable_t *vars,
+                                    symtable_t *funcs, label_table_t *labels,
+                                    ir_builder_t *ir,
+                                    type_kind_t func_ret_type)
+{
+    return check_while_stmt(stmt, vars, funcs, labels, ir, func_ret_type);
+}
+
+/*
+ * Wrapper used to validate a do-while loop.
+ */
+static int check_do_while_stmt_wrapper(stmt_t *stmt, symtable_t *vars,
+                                       symtable_t *funcs,
+                                       label_table_t *labels,
+                                       ir_builder_t *ir,
+                                       type_kind_t func_ret_type)
+{
+    return check_do_while_stmt(stmt, vars, funcs, labels, ir, func_ret_type);
+}
+
+/*
+ * Wrapper used to validate a for loop.
+ */
+static int check_for_stmt_wrapper(stmt_t *stmt, symtable_t *vars,
+                                  symtable_t *funcs, label_table_t *labels,
+                                  ir_builder_t *ir,
+                                  type_kind_t func_ret_type)
+{
+    return check_for_stmt(stmt, vars, funcs, labels, ir, func_ret_type);
+}
+
+/*
+ * Wrapper used to validate a switch statement.
+ */
+static int check_switch_stmt_wrapper(stmt_t *stmt, symtable_t *vars,
+                                     symtable_t *funcs,
+                                     label_table_t *labels,
+                                     ir_builder_t *ir,
+                                     type_kind_t func_ret_type)
+{
+    return check_switch_stmt(stmt, vars, funcs, labels, ir, func_ret_type);
+}
+
+/*
+ * Validate a goto statement by resolving the target label and
+ * emitting a branch.
+ */
+static int check_goto_stmt(stmt_t *stmt, label_table_t *labels,
+                           ir_builder_t *ir)
+{
+    const char *ir_name = label_table_get_or_add(labels, stmt->goto_stmt.name);
+    ir_build_br(ir, ir_name);
+    return 1;
+}
+
+/*
+ * Wrapper used to validate a break statement.
+ */
+static int check_break_stmt(stmt_t *stmt, const char *break_label,
+                            ir_builder_t *ir)
+{
+    return handle_loop_stmt(stmt, break_label, ir);
+}
+
+/*
+ * Wrapper used to validate a continue statement.
+ */
+static int check_continue_stmt(stmt_t *stmt, const char *continue_label,
+                               ir_builder_t *ir)
+{
+    return handle_loop_stmt(stmt, continue_label, ir);
+}
+
+/*
+ * Validate a compound statement by recursively checking each contained
+ * statement and restoring the variable scope on exit.
+ */
+static int check_block_stmt_wrapper(stmt_t *stmt, symtable_t *vars,
+                                    symtable_t *funcs, label_table_t *labels,
+                                    ir_builder_t *ir,
+                                    type_kind_t func_ret_type,
+                                    const char *break_label,
+                                    const char *continue_label)
+{
+    symbol_t *old_head = vars->head;
+    for (size_t i = 0; i < stmt->block.count; i++) {
+        if (!check_stmt(stmt->block.stmts[i], vars, funcs, labels, ir,
+                        func_ret_type, break_label, continue_label)) {
+            symtable_pop_scope(vars, old_head);
+            return 0;
+        }
+    }
+    symtable_pop_scope(vars, old_head);
+    return 1;
+}
+
+/*
+ * Wrapper for enum declarations.
+ */
+static int check_enum_decl_stmt_wrapper(stmt_t *stmt, symtable_t *vars)
+{
+    return check_enum_decl_stmt(stmt, vars);
+}
+
+/*
+ * Wrapper for struct declarations.
+ */
+static int check_struct_decl_stmt_wrapper(stmt_t *stmt, symtable_t *vars)
+{
+    return check_struct_decl_stmt(stmt, vars);
+}
+
+/*
+ * Wrapper for union declarations.
+ */
+static int check_union_decl_stmt_wrapper(stmt_t *stmt, symtable_t *vars)
+{
+    return check_union_decl_stmt(stmt, vars);
+}
+
+/*
+ * Wrapper for typedef declarations.
+ */
+static int check_typedef_stmt_wrapper(stmt_t *stmt, symtable_t *vars)
+{
+    return check_typedef_stmt(stmt, vars);
+}
+
+/*
+ * Wrapper for variable declarations.
+ */
+static int check_var_decl_stmt_wrapper(stmt_t *stmt, symtable_t *vars,
+                                       symtable_t *funcs, ir_builder_t *ir)
+{
+    return check_var_decl_stmt(stmt, vars, funcs, ir);
+}
+
 
 
 /*
@@ -586,56 +759,46 @@ int check_stmt(stmt_t *stmt, symtable_t *vars, symtable_t *funcs,
     if (!stmt)
         return 0;
     switch (stmt->kind) {
-    case STMT_EXPR: {
-        ir_value_t tmp;
-        return check_expr(stmt->expr.expr, vars, funcs, ir, &tmp) != TYPE_UNKNOWN;
-    }
+    case STMT_EXPR:
+        return check_expr_stmt(stmt, vars, funcs, ir);
     case STMT_RETURN:
-        return handle_return_stmt(stmt, vars, funcs, ir, func_ret_type);
+        return check_return_stmt(stmt, vars, funcs, ir, func_ret_type);
     case STMT_IF:
-        return check_if_stmt(stmt, vars, funcs, labels, ir, func_ret_type,
-                             break_label, continue_label);
+        return check_if_stmt_wrapper(stmt, vars, funcs, labels, ir, func_ret_type,
+                                     break_label, continue_label);
     case STMT_WHILE:
-        return check_while_stmt(stmt, vars, funcs, labels, ir, func_ret_type);
+        return check_while_stmt_wrapper(stmt, vars, funcs, labels, ir,
+                                        func_ret_type);
     case STMT_DO_WHILE:
-        return check_do_while_stmt(stmt, vars, funcs, labels, ir, func_ret_type);
+        return check_do_while_stmt_wrapper(stmt, vars, funcs, labels, ir,
+                                           func_ret_type);
     case STMT_FOR:
-        return check_for_stmt(stmt, vars, funcs, labels, ir, func_ret_type);
+        return check_for_stmt_wrapper(stmt, vars, funcs, labels, ir, func_ret_type);
     case STMT_SWITCH:
-        return check_switch_stmt(stmt, vars, funcs, labels, ir, func_ret_type);
+        return check_switch_stmt_wrapper(stmt, vars, funcs, labels, ir,
+                                         func_ret_type);
     case STMT_LABEL:
         return handle_label_stmt(stmt, labels, ir);
-    case STMT_GOTO: {
-        const char *ir_name = label_table_get_or_add(labels, stmt->goto_stmt.name);
-        ir_build_br(ir, ir_name);
-        return 1;
-    }
+    case STMT_GOTO:
+        return check_goto_stmt(stmt, labels, ir);
     case STMT_BREAK:
-        return handle_loop_stmt(stmt, break_label, ir);
+        return check_break_stmt(stmt, break_label, ir);
     case STMT_CONTINUE:
-        return handle_loop_stmt(stmt, continue_label, ir);
-    case STMT_BLOCK: {
-        symbol_t *old_head = vars->head;
-        for (size_t i = 0; i < stmt->block.count; i++) {
-            if (!check_stmt(stmt->block.stmts[i], vars, funcs, labels, ir, func_ret_type,
-                            break_label, continue_label)) {
-                symtable_pop_scope(vars, old_head);
-                return 0;
-            }
-        }
-        symtable_pop_scope(vars, old_head);
-        return 1;
-    }
+        return check_continue_stmt(stmt, continue_label, ir);
+    case STMT_BLOCK:
+        return check_block_stmt_wrapper(stmt, vars, funcs, labels, ir,
+                                        func_ret_type, break_label,
+                                        continue_label);
     case STMT_ENUM_DECL:
-        return check_enum_decl_stmt(stmt, vars);
+        return check_enum_decl_stmt_wrapper(stmt, vars);
     case STMT_STRUCT_DECL:
-        return check_struct_decl_stmt(stmt, vars);
+        return check_struct_decl_stmt_wrapper(stmt, vars);
     case STMT_UNION_DECL:
-        return check_union_decl_stmt(stmt, vars);
+        return check_union_decl_stmt_wrapper(stmt, vars);
     case STMT_TYPEDEF:
-        return check_typedef_stmt(stmt, vars);
+        return check_typedef_stmt_wrapper(stmt, vars);
     case STMT_VAR_DECL:
-        return check_var_decl_stmt(stmt, vars, funcs, ir);
+        return check_var_decl_stmt_wrapper(stmt, vars, funcs, ir);
     }
     return 0;
 }
