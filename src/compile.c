@@ -13,6 +13,9 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <string.h>
+#include <errno.h>
+#include <spawn.h>
+#include <sys/wait.h>
 
 #include "util.h"
 #include "cli.h"
@@ -36,6 +39,7 @@
 /* Active diagnostic context */
 extern const char *error_current_file;
 extern const char *error_current_function;
+extern char **environ;
 
 /* Compilation stage helpers */
 static int run_tokenize_stage(const char *source, const vector_t *incdirs,
@@ -77,6 +81,9 @@ static int compile_source_obj(const char *source, const cli_options_t *cli,
 /* Build and run the final linker command. */
 static int run_link_command(const vector_t *objs, const char *output,
                             int use_x86_64);
+
+/* Spawn a command and wait for completion */
+static int run_command(char *const argv[]);
 
 /* Write the entry stub assembly to a temporary file. */
 static int write_startup_asm(int use_x86_64, const cli_options_t *cli,
@@ -355,14 +362,13 @@ static int emit_output_file(ir_builder_t *ir, const char *output,
         codegen_emit_x86(tmpf, ir, use_x86_64);
         fclose(tmpf);
 
-        char cmd[512];
         const char *arch_flag = use_x86_64 ? "-m64" : "-m32";
-        snprintf(cmd, sizeof(cmd), "cc -x assembler %s -c %s -o %s", arch_flag,
-                 tmpname, output);
-        int ret = system(cmd);
+        char *argv[] = {"cc", "-x", "assembler", (char *)arch_flag, "-c",
+                        tmpname, "-o", (char *)output, NULL};
+        int ok = run_command(argv);
         unlink(tmpname);
         free(tmpname);
-        if (ret != 0) {
+        if (!ok) {
             fprintf(stderr, "cc failed\n");
             return 0;
         }
@@ -504,12 +510,11 @@ static int assemble_startup_obj(const char *asm_path, int use_x86_64,
         return 0;
     close(objfd);
 
-    char cmd[512];
     const char *arch_flag = use_x86_64 ? "-m64" : "-m32";
-    snprintf(cmd, sizeof(cmd), "cc -x assembler %s -c %s -o %s", arch_flag,
-             asm_path, objname);
-    int ret = system(cmd);
-    if (ret != 0) {
+    char *argv[] = {"cc", "-x", "assembler", (char *)arch_flag, "-c",
+                    (char *)asm_path, "-o", objname, NULL};
+    int ok = run_command(argv);
+    if (!ok) {
         fprintf(stderr, "cc failed\n");
         unlink(objname);
         free(objname);
@@ -579,21 +584,46 @@ static int compile_source_files(const cli_options_t *cli, vector_t *objs)
     return ok;
 }
 
+/* Spawn a command using posix_spawnp and wait for it to finish. */
+static int run_command(char *const argv[])
+{
+    pid_t pid;
+    int status;
+    int ret = posix_spawnp(&pid, argv[0], NULL, NULL, argv, environ);
+    if (ret != 0) {
+        fprintf(stderr, "posix_spawnp: %s\n", strerror(ret));
+        return 0;
+    }
+    if (waitpid(pid, &status, 0) < 0) {
+        perror("waitpid");
+        return 0;
+    }
+    if (!WIFEXITED(status) || WEXITSTATUS(status) != 0)
+        return 0;
+    return 1;
+}
+
 /* Construct and run the final cc link command. */
 static int run_link_command(const vector_t *objs, const char *output,
                             int use_x86_64)
 {
-    strbuf_t cmd;
-    strbuf_init(&cmd);
     const char *arch_flag = use_x86_64 ? "-m64" : "-m32";
-    strbuf_appendf(&cmd, "cc %s", arch_flag);
-    for (size_t i = 0; i < objs->count; i++)
-        strbuf_appendf(&cmd, " %s", ((char **)objs->data)[i]);
-    strbuf_appendf(&cmd, " -nostdlib -o %s", output);
+    size_t argc = objs->count + 6;
+    char **argv = vc_alloc_or_exit((argc + 1) * sizeof(char *));
 
-    int ret = system(cmd.data);
-    strbuf_free(&cmd);
-    if (ret != 0) {
+    size_t idx = 0;
+    argv[idx++] = "cc";
+    argv[idx++] = (char *)arch_flag;
+    for (size_t i = 0; i < objs->count; i++)
+        argv[idx++] = ((char **)objs->data)[i];
+    argv[idx++] = "-nostdlib";
+    argv[idx++] = "-o";
+    argv[idx++] = (char *)output;
+    argv[idx] = NULL;
+
+    int ok = run_command(argv);
+    free(argv);
+    if (!ok) {
         fprintf(stderr, "cc failed\n");
         return 0;
     }
