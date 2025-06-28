@@ -111,6 +111,64 @@ static int run_tokenize_stage(const char *source, const vector_t *incdirs,
                               char **out_src, token_t **out_toks,
                               size_t *out_count)
 {
+    if (source && strcmp(source, "-") == 0) {
+        char tmpl[] = "/tmp/vcstdinXXXXXX";
+        int fd = mkstemp(tmpl);
+        if (fd < 0) {
+            perror("mkstemp");
+            return 0;
+        }
+        FILE *f = fdopen(fd, "w");
+        if (!f) {
+            perror("fdopen");
+            close(fd);
+            unlink(tmpl);
+            return 0;
+        }
+        char buf[4096];
+        size_t n;
+        while ((n = fread(buf, 1, sizeof(buf), stdin)) > 0) {
+            if (fwrite(buf, 1, n, f) != n) {
+                perror("fwrite");
+                fclose(f);
+                unlink(tmpl);
+                return 0;
+            }
+        }
+        if (ferror(stdin)) {
+            perror("fread");
+            fclose(f);
+            unlink(tmpl);
+            return 0;
+        }
+        fclose(f);
+        source = tmpl;
+        char *stdin_path = strdup(tmpl);
+        if (!stdin_path) {
+            unlink(tmpl);
+            return 0;
+        }
+        char *text = preproc_run(stdin_path, incdirs);
+        unlink(stdin_path);
+        free(stdin_path);
+        if (!text) {
+            perror("preproc_run");
+            return 0;
+        }
+        size_t count = 0;
+        token_t *toks = lexer_tokenize(text, &count);
+        if (!toks) {
+            fprintf(stderr, "Tokenization failed\n");
+            free(text);
+            return 0;
+        }
+        *out_src = text;
+        *out_toks = toks;
+        if (out_count)
+            *out_count = count;
+        return 1;
+    }
+
     char *text = preproc_run(source, incdirs);
     if (!text) {
         perror("preproc_run");

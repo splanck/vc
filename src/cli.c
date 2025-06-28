@@ -43,6 +43,7 @@ static void print_usage(const char *prog)
     printf("  -S, --dump-asm       Print assembly to stdout and exit\n");
     printf("      --dump-ir        Print IR to stdout and exit\n");
     printf("  -E, --preprocess     Run only the preprocessor and print the result\n");
+    printf("  Provide '-' as a source file to read from standard input.\n");
 }
 
 /*
