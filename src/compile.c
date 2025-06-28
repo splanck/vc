@@ -80,6 +80,9 @@ static int write_startup_asm(int use_x86_64, char **out_path);
 static int assemble_startup_obj(const char *asm_path, int use_x86_64,
                                char **out_path);
 
+/* Create a temporary file and return its descriptor. */
+static int create_temp_file(char template[]);
+
 /* Create an object file containing the entry stub for linking. */
 static int create_startup_object(int use_x86_64, char **out_path);
 
@@ -367,15 +370,22 @@ int compile_unit(const char *source, const cli_options_t *cli,
     return ok;
 }
 
+/* Create a temporary file and return its descriptor. */
+static int create_temp_file(char template[])
+{
+    int fd = mkstemp(template);
+    if (fd < 0)
+        perror("mkstemp");
+    return fd;
+}
+
 /* Write the entry stub assembly to a temporary file. */
 static int write_startup_asm(int use_x86_64, char **out_path)
 {
     char asmname[] = "/tmp/vcstubXXXXXX";
-    int asmfd = mkstemp(asmname);
-    if (asmfd < 0) {
-        perror("mkstemp");
+    int asmfd = create_temp_file(asmname);
+    if (asmfd < 0)
         return 0;
-    }
     FILE *stub = fdopen(asmfd, "w");
     if (!stub) {
         perror("fdopen");
@@ -399,11 +409,9 @@ static int assemble_startup_obj(const char *asm_path, int use_x86_64,
                                char **out_path)
 {
     char objname[] = "/tmp/vcobjXXXXXX";
-    int objfd = mkstemp(objname);
-    if (objfd < 0) {
-        perror("mkstemp");
+    int objfd = create_temp_file(objname);
+    if (objfd < 0)
         return 0;
-    }
     close(objfd);
 
     char cmd[512];
@@ -440,11 +448,9 @@ static int compile_source_obj(const char *source, const cli_options_t *cli,
                               char **out_path)
 {
     char objname[] = "/tmp/vcobjXXXXXX";
-    int fd = mkstemp(objname);
-    if (fd < 0) {
-        perror("mkstemp");
+    int fd = create_temp_file(objname);
+    if (fd < 0)
         return 0;
-    }
     close(fd);
 
     int ok = compile_unit(source, cli, objname, 1);
