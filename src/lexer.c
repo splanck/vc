@@ -236,15 +236,69 @@ static void read_number(const char *src, size_t *i, size_t *col,
 }
 
 /* Translate escape sequences within character and string literals */
-static int unescape_char(char c)
+/*
+ * Translate escape sequences within character and string literals. The
+ * index pointer is advanced past the consumed characters.
+ */
+static int unescape_char(const char *src, size_t *i)
 {
+    char c = src[*i];
     switch (c) {
-    case 'n': return '\n';
-    case 't': return '\t';
-    case '\\': return '\\';
-    case '\'': return '\''; /* single quote */
-    case '"': return '"';
-    default: return c;
+    case 'n':
+        (*i)++;
+        return '\n';
+    case 't':
+        (*i)++;
+        return '\t';
+    case 'r':
+        (*i)++;
+        return '\r';
+    case 'b':
+        (*i)++;
+        return '\b';
+    case 'f':
+        (*i)++;
+        return '\f';
+    case 'v':
+        (*i)++;
+        return '\v';
+    case '\\':
+        (*i)++;
+        return '\\';
+    case '\'':
+        (*i)++;
+        return '\''; /* single quote */
+    case '"':
+        (*i)++;
+        return '"';
+    case 'x': { /* hexadecimal */
+        (*i)++; /* skip 'x' */
+        int value = 0;
+        int digits = 0;
+        while (isxdigit((unsigned char)src[*i]) && digits < 2) {
+            char d = src[*i];
+            int hexval = (d >= '0' && d <= '9') ? d - '0' :
+                         (d >= 'a' && d <= 'f') ? d - 'a' + 10 :
+                         (d >= 'A' && d <= 'F') ? d - 'A' + 10 : 0;
+            value = value * 16 + hexval;
+            (*i)++;
+            digits++;
+        }
+        return value;
+    }
+    default:
+        if (c >= '0' && c <= '7') { /* octal */
+            int value = 0;
+            int digits = 0;
+            while (digits < 3 && src[*i] >= '0' && src[*i] <= '7') {
+                value = value * 8 + (src[*i] - '0');
+                (*i)++;
+                digits++;
+            }
+            return value;
+        }
+        (*i)++;
+        return c;
     }
 }
 
@@ -257,10 +311,11 @@ static void read_char_const(const char *src, size_t *i, size_t *col,
     (*col)++;
     char value = src[*i];
     if (value == '\\') {
-        (*i)++;
-        value = (char)unescape_char(src[*i]);
+        (*i)++; /* skip backslash */
+        value = (char)unescape_char(src, i);
+    } else {
+        (*i)++; /* consume character */
     }
-    (*i)++;
     (*col)++;
     if (src[*i] == '\'') {
         (*i)++;
@@ -284,14 +339,15 @@ static void read_string_lit(const char *src, size_t *i, size_t *col,
     while (src[*i] && src[*i] != '"') {
         char c = src[*i];
         if (c == '\\') {
-            (*i)++;
-            c = (char)unescape_char(src[*i]);
+            (*i)++; /* skip backslash */
+            c = (char)unescape_char(src, i);
+        } else {
+            (*i)++; /* consume character */
         }
         if (!vector_push(&buf_v, &c)) {
             vector_free(&buf_v);
             return;
         }
-        (*i)++;
         (*col)++;
     }
     if (src[*i] == '"') {

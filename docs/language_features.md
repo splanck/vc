@@ -50,6 +50,8 @@ See the [documentation index](index.md) for a list of all available pages.
 - 64-bit integer literals and arithmetic when using `long long`
 - Hexadecimal (`0x`) and octal (leading `0`) integer literals
 - String literals which evaluate to a `char *`
+- Character and string literal escapes such as `\n`, `\t`, `\r`, `\b`, `\f`,
+  `\v` along with octal (`\123`) and hexadecimal (`\x7F`) forms
 
 Examples below show how to compile each feature.
 

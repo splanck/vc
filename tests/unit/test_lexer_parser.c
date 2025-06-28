@@ -443,6 +443,33 @@ static void test_line_directive(void)
     lexer_free_tokens(toks, count);
 }
 
+/* Verify escape sequences within character and string literals */
+static void test_lexer_escapes(void)
+{
+    const char *src = "'\\r' '\\b' '\\f' '\\v' '\\123' '\\x7F'";
+    size_t count = 0;
+    token_t *toks = lexer_tokenize(src, &count);
+    ASSERT(toks[0].type == TOK_CHAR && toks[0].lexeme[0] == '\r');
+    ASSERT(toks[1].type == TOK_CHAR && toks[1].lexeme[0] == '\b');
+    ASSERT(toks[2].type == TOK_CHAR && toks[2].lexeme[0] == '\f');
+    ASSERT(toks[3].type == TOK_CHAR && toks[3].lexeme[0] == '\v');
+    ASSERT(toks[4].type == TOK_CHAR && toks[4].lexeme[0] == 'S');
+    ASSERT(toks[5].type == TOK_CHAR && (unsigned char)toks[5].lexeme[0] == 0x7F);
+    lexer_free_tokens(toks, count);
+
+    const char *str_src = "\"\\r\\b\\f\\v\\123\\x7F\"";
+    toks = lexer_tokenize(str_src, &count);
+    ASSERT(toks[0].type == TOK_STRING);
+    ASSERT(strlen(toks[0].lexeme) == 6);
+    ASSERT(toks[0].lexeme[0] == '\r');
+    ASSERT(toks[0].lexeme[1] == '\b');
+    ASSERT(toks[0].lexeme[2] == '\f');
+    ASSERT(toks[0].lexeme[3] == '\v');
+    ASSERT(toks[0].lexeme[4] == 'S');
+    ASSERT((unsigned char)toks[0].lexeme[5] == 0x7F);
+    lexer_free_tokens(toks, count);
+}
+
 /*
  * Entry point for the test executable.  Each unit test is run in
  * sequence and the total number of failures reported at the end.
@@ -475,6 +502,7 @@ int main(void)
     test_parser_func();
     test_parser_block();
     test_line_directive();
+    test_lexer_escapes();
     if (failures == 0) {
         printf("All unit tests passed\n");
     } else {
