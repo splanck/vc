@@ -54,9 +54,12 @@ char *vc_strdup(const char *s)
 /* Duplicate at most "n" characters of a string. */
 char *vc_strndup(const char *s, size_t n)
 {
-    char *out = vc_alloc_or_exit(n + 1);
-    memcpy(out, s, n);
-    out[n] = '\0';
+    size_t len = strlen(s);
+    if (len > n)
+        len = n;
+    char *out = vc_alloc_or_exit(len + 1);
+    memcpy(out, s, len);
+    out[len] = '\0';
     return out;
 }
 
