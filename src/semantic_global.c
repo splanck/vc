@@ -31,12 +31,10 @@
  */
 size_t layout_union_members(union_member_t *members, size_t count)
 {
-    size_t off = 0;
     size_t max = 0;
     for (size_t i = 0; i < count; i++) {
-        members[i].offset = off;
+        members[i].offset = 0;
         members[i].bit_offset = 0;
-        off += members[i].elem_size;
         if (members[i].elem_size > max)
             max = members[i].elem_size;
     }
@@ -50,13 +48,25 @@ size_t layout_union_members(union_member_t *members, size_t count)
  */
 size_t layout_struct_members(struct_member_t *members, size_t count)
 {
-    size_t off = 0;
+    size_t byte_off = 0;
+    unsigned bit_off = 0;
     for (size_t i = 0; i < count; i++) {
-        members[i].offset = off;
-        members[i].bit_offset = 0;
-        off += members[i].elem_size;
+        members[i].offset = byte_off;
+        if (members[i].bit_width > 0) {
+            members[i].bit_offset = bit_off;
+            bit_off += members[i].bit_width;
+            byte_off += bit_off / 8;
+            bit_off %= 8;
+        } else {
+            members[i].bit_offset = 0;
+            if (bit_off)
+                byte_off++, bit_off = 0;
+            byte_off += members[i].elem_size;
+        }
     }
-    return off;
+    if (bit_off)
+        byte_off++;
+    return byte_off;
 }
 
 /*
