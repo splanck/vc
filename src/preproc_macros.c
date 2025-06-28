@@ -212,28 +212,56 @@ static int parse_macro_args(const char *line, size_t *pos, vector_t *out)
     if (line[p] != '(')
         return 0;
     p++; /* skip '(' */
-    size_t start = p;
-    while (line[p] && line[p] != ')')
+    while (line[p] == ' ' || line[p] == '\t')
         p++;
-    if (line[p] != ')')
-        return 0;
-
-    char *argstr = vc_strndup(line + start, p - start);
-    char *tok; char *sp;
-    tok = strtok_r(argstr, ",", &sp);
-    while (tok) {
-        while (*tok == ' ' || *tok == '\t')
-            tok++;
-        char *end = tok + strlen(tok);
-        while (end > tok && (end[-1] == ' ' || end[-1] == '\t'))
-            end--;
-        char *a = vc_strndup(tok, (size_t)(end - tok));
-        vector_push(out, &a);
-        tok = strtok_r(NULL, ",", &sp);
+    if (line[p] == ')') {
+        *pos = p + 1;
+        return 1; /* no arguments */
     }
-    free(argstr);
-    *pos = p + 1;
-    return 1;
+
+    size_t arg_start = p;
+    int nest = 0;
+    for (;; p++) {
+        char c = line[p];
+        if (c == '\0')
+            return 0; /* unmatched '(' */
+        if (c == '(') {
+            nest++;
+            continue;
+        }
+        if (c == ')') {
+            if (nest > 0) {
+                nest--;
+                continue;
+            }
+            size_t a = arg_start;
+            while (a < p && (line[a] == ' ' || line[a] == '\t'))
+                a++;
+            size_t end = p;
+            while (end > a && (line[end - 1] == ' ' || line[end - 1] == '\t'))
+                end--;
+            char *dup = vc_strndup(line + a, end - a);
+            vector_push(out, &dup);
+            *pos = p + 1;
+            return 1;
+        }
+        if (c == ',' && nest == 0) {
+            size_t a = arg_start;
+            while (a < p && (line[a] == ' ' || line[a] == '\t'))
+                a++;
+            size_t end = p;
+            while (end > a && (line[end - 1] == ' ' || line[end - 1] == '\t'))
+                end--;
+            char *dup = vc_strndup(line + a, end - a);
+            vector_push(out, &dup);
+            p++; /* skip ',' */
+            while (line[p] == ' ' || line[p] == '\t')
+                p++;
+            arg_start = p;
+            p--; /* balance for loop increment */
+            continue;
+        }
+    }
 }
 
 /* Expand a macro invocation and append the result to "out". */
