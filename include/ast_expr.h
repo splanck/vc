@@ -21,8 +21,12 @@ expr_t *ast_make_number(const char *value, size_t line, size_t column);
 expr_t *ast_make_ident(const char *name, size_t line, size_t column);
 /* Create a string literal expression. */
 expr_t *ast_make_string(const char *value, size_t line, size_t column);
+/* Create a wide string literal expression. */
+expr_t *ast_make_wstring(const char *value, size_t line, size_t column);
 /* Create a character literal expression. */
 expr_t *ast_make_char(char value, size_t line, size_t column);
+/* Create a wide character literal expression. */
+expr_t *ast_make_wchar(char value, size_t line, size_t column);
 /* Create a binary operation expression. */
 expr_t *ast_make_binary(binop_t op, expr_t *left, expr_t *right,
                         size_t line, size_t column);

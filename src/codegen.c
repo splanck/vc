@@ -63,7 +63,7 @@ static void emit_instr(strbuf_t *sb, ir_instr_t *ins, regalloc_t *ra, int x64)
     case IR_ADDR: case IR_LOAD_PTR: case IR_STORE_PTR:
     case IR_LOAD_IDX: case IR_STORE_IDX:
     case IR_BFLOAD: case IR_BFSTORE:
-    case IR_ARG: case IR_GLOB_STRING:
+    case IR_ARG: case IR_GLOB_STRING: case IR_GLOB_WSTRING:
     case IR_GLOB_VAR: case IR_GLOB_ARRAY:
     case IR_GLOB_UNION: case IR_GLOB_STRUCT:
         emit_memory_instr(sb, ins, ra, x64);
@@ -135,6 +135,7 @@ void codegen_emit_x86(FILE *out, ir_builder_t *ir, int x64)
     int has_data = 0;
     for (ir_instr_t *ins = ir->head; ins; ins = ins->next) {
         if (ins->op == IR_GLOB_VAR || ins->op == IR_GLOB_STRING ||
+            ins->op == IR_GLOB_WSTRING ||
             ins->op == IR_GLOB_ARRAY || ins->op == IR_GLOB_UNION ||
             ins->op == IR_GLOB_STRUCT) {
             if (!has_data) {
@@ -148,6 +149,10 @@ void codegen_emit_x86(FILE *out, ir_builder_t *ir, int x64)
                 fprintf(out, "    %s %lld\n", size_directive, ins->imm);
             } else if (ins->op == IR_GLOB_STRING) {
                 fprintf(out, "    .asciz \"%s\"\n", ins->data);
+            } else if (ins->op == IR_GLOB_WSTRING) {
+                long long *vals = (long long *)ins->data;
+                for (long long i = 0; i < ins->imm; i++)
+                    fprintf(out, "    %s %lld\n", size_directive, vals[i]);
             } else if (ins->op == IR_GLOB_ARRAY) {
                 long long *vals = (long long *)ins->data;
                 for (long long i = 0; i < ins->imm; i++)

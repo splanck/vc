@@ -304,7 +304,8 @@ static int unescape_char(const char *src, size_t *i)
 
 /* Parse a character constant like '\n' or 'a' */
 static void read_char_const(const char *src, size_t *i, size_t *col,
-                            vector_t *tokens, size_t line)
+                            vector_t *tokens, size_t line,
+                            token_type_t tok_type)
 {
     size_t column = *col;
     (*i)++; /* skip opening quote */
@@ -322,12 +323,13 @@ static void read_char_const(const char *src, size_t *i, size_t *col,
         (*col)++;
     }
     char buf[2] = {value, '\0'};
-    append_token(tokens, TOK_CHAR, buf, 1, line, column);
+    append_token(tokens, tok_type, buf, 1, line, column);
 }
 
 /* Parse a double-quoted string literal */
 static void read_string_lit(const char *src, size_t *i, size_t *col,
-                            vector_t *tokens, size_t line)
+                            vector_t *tokens, size_t line,
+                            token_type_t tok_type)
 {
     size_t column = *col;
     (*i)++; /* skip opening quote */
@@ -355,7 +357,7 @@ static void read_string_lit(const char *src, size_t *i, size_t *col,
         (*col)++;
     }
 
-    append_token(tokens, TOK_STRING, buf_v.data, buf_v.count, line, column);
+    append_token(tokens, tok_type, buf_v.data, buf_v.count, line, column);
     vector_free(&buf_v);
 }
 
@@ -416,7 +418,7 @@ static int scan_string(const char *src, size_t *i, size_t *col,
 {
     if (src[*i] != '"')
         return 0;
-    read_string_lit(src, i, col, tokens, line);
+    read_string_lit(src, i, col, tokens, line, TOK_STRING);
     return 1;
 }
 
@@ -425,7 +427,27 @@ static int scan_char(const char *src, size_t *i, size_t *col,
 {
     if (src[*i] != '\'')
         return 0;
-    read_char_const(src, i, col, tokens, line);
+    read_char_const(src, i, col, tokens, line, TOK_CHAR);
+    return 1;
+}
+
+static int scan_wstring(const char *src, size_t *i, size_t *col,
+                        vector_t *tokens, size_t line)
+{
+    if (src[*i] != 'L' || src[*i + 1] != '"')
+        return 0;
+    (*i)++; (*col)++;
+    read_string_lit(src, i, col, tokens, line, TOK_WIDE_STRING);
+    return 1;
+}
+
+static int scan_wchar(const char *src, size_t *i, size_t *col,
+                      vector_t *tokens, size_t line)
+{
+    if (src[*i] != 'L' || src[*i + 1] != '\'')
+        return 0;
+    (*i)++; (*col)++;
+    read_char_const(src, i, col, tokens, line, TOK_WIDE_CHAR);
     return 1;
 }
 
@@ -459,7 +481,9 @@ token_t *lexer_tokenize(const char *src, size_t *out_count)
         if (!src[i])
             break;
         char c = src[i];
-        if (scan_identifier(src, &i, &col, &vec, line) ||
+        if (scan_wstring(src, &i, &col, &vec, line) ||
+            scan_wchar(src, &i, &col, &vec, line) ||
+            scan_identifier(src, &i, &col, &vec, line) ||
             scan_number(src, &i, &col, &vec, line) ||
             scan_string(src, &i, &col, &vec, line) ||
             scan_char(src, &i, &col, &vec, line)) {

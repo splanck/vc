@@ -160,6 +160,7 @@ static void propagate_through_instruction(const_track_t *ct, ir_instr_t *ins)
     case IR_FUNC_BEGIN:
     case IR_FUNC_END:
     case IR_GLOB_STRING:
+    case IR_GLOB_WSTRING:
     case IR_GLOB_VAR:
     case IR_GLOB_ARRAY:
     case IR_GLOB_UNION:

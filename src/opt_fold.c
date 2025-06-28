@@ -186,6 +186,7 @@ void fold_constants(ir_builder_t *ir)
             /* nothing to do */
             break;
         case IR_GLOB_STRING:
+        case IR_GLOB_WSTRING:
         case IR_GLOB_VAR:
         case IR_GLOB_ARRAY:
         case IR_GLOB_UNION:

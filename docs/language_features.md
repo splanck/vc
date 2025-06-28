@@ -54,6 +54,7 @@ See the [documentation index](index.md) for a list of all available pages.
 - String literals which evaluate to a `char *`
 - Character and string literal escapes such as `\n`, `\t`, `\r`, `\b`, `\f`,
   `\v` along with octal (`\123`) and hexadecimal (`\x7F`) forms
+- Wide character and string literals using the `L'c'` and `L"text"` syntax
 
 Examples below show how to compile each feature.
 

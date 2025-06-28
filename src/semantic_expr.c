@@ -47,8 +47,12 @@ static type_kind_t check_string_expr(expr_t *expr, symtable_t *vars,
                                      ir_value_t *out)
 {
     (void)vars; (void)funcs;
-    if (out)
-        *out = ir_build_string(ir, expr->string.value);
+    if (out) {
+        if (expr->string.is_wide)
+            *out = ir_build_wstring(ir, expr->string.value);
+        else
+            *out = ir_build_string(ir, expr->string.value);
+    }
     return TYPE_PTR;
 }
 
@@ -62,7 +66,7 @@ static type_kind_t check_char_expr(expr_t *expr, symtable_t *vars,
     (void)vars; (void)funcs;
     if (out)
         *out = ir_build_const(ir, (int)expr->ch.value);
-    return TYPE_CHAR;
+    return expr->ch.is_wide ? TYPE_INT : TYPE_CHAR;
 }
 
 /*

@@ -50,7 +50,7 @@ expr_t *ast_make_ident(const char *name, size_t line, size_t column)
 }
 
 /* Create a string literal expression node. */
-expr_t *ast_make_string(const char *value, size_t line, size_t column)
+static expr_t *make_string(const char *value, size_t line, size_t column, int is_wide)
 {
     expr_t *expr = malloc(sizeof(*expr));
     if (!expr)
@@ -63,11 +63,22 @@ expr_t *ast_make_string(const char *value, size_t line, size_t column)
         free(expr);
         return NULL;
     }
+    expr->string.is_wide = is_wide;
     return expr;
 }
 
+expr_t *ast_make_string(const char *value, size_t line, size_t column)
+{
+    return make_string(value, line, column, 0);
+}
+
+expr_t *ast_make_wstring(const char *value, size_t line, size_t column)
+{
+    return make_string(value, line, column, 1);
+}
+
 /* Create a character literal expression node. */
-expr_t *ast_make_char(char value, size_t line, size_t column)
+static expr_t *make_char(char value, size_t line, size_t column, int is_wide)
 {
     expr_t *expr = malloc(sizeof(*expr));
     if (!expr)
@@ -76,7 +87,18 @@ expr_t *ast_make_char(char value, size_t line, size_t column)
     expr->line = line;
     expr->column = column;
     expr->ch.value = value;
+    expr->ch.is_wide = is_wide;
     return expr;
+}
+
+expr_t *ast_make_char(char value, size_t line, size_t column)
+{
+    return make_char(value, line, column, 0);
+}
+
+expr_t *ast_make_wchar(char value, size_t line, size_t column)
+{
+    return make_char(value, line, column, 1);
 }
 
 /* Create a binary operation expression node. */
