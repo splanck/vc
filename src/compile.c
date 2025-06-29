@@ -44,7 +44,7 @@ extern char **environ;
 /* Compilation stage helpers */
 static int compile_tokenize(const char *source, const vector_t *incdirs,
                             char **out_src, token_t **out_toks,
-                            size_t *out_count);
+                            size_t *out_count, char **tmp_path);
 static int compile_parse(token_t *toks, size_t count,
                          vector_t *funcs_v, vector_t *globs_v,
                          symtable_t *funcs);
@@ -116,8 +116,11 @@ int link_sources(const cli_options_t *cli);
 /* Tokenize the preprocessed source file */
 static int compile_tokenize(const char *source, const vector_t *incdirs,
                             char **out_src, token_t **out_toks,
-                            size_t *out_count)
+                            size_t *out_count, char **tmp_path)
 {
+    if (tmp_path)
+        *tmp_path = NULL;
+
     if (source && strcmp(source, "-") == 0) {
         char tmpl[] = "/tmp/vcstdinXXXXXX";
         int fd = mkstemp(tmpl);
@@ -149,17 +152,17 @@ static int compile_tokenize(const char *source, const vector_t *incdirs,
             return 0;
         }
         fclose(f);
-        source = tmpl;
         char *stdin_path = strdup(tmpl);
         if (!stdin_path) {
             unlink(tmpl);
             return 0;
         }
+        source = stdin_path;
         char *text = preproc_run(stdin_path, incdirs);
-        unlink(stdin_path);
-        free(stdin_path);
         if (!text) {
             perror("preproc_run");
+            unlink(stdin_path);
+            free(stdin_path);
             return 0;
         }
         size_t count = 0;
@@ -167,12 +170,20 @@ static int compile_tokenize(const char *source, const vector_t *incdirs,
         if (!toks) {
             fprintf(stderr, "Tokenization failed\n");
             free(text);
+            unlink(stdin_path);
+            free(stdin_path);
             return 0;
         }
         *out_src = text;
         *out_toks = toks;
         if (out_count)
             *out_count = count;
+        if (tmp_path)
+            *tmp_path = stdin_path;
+        else {
+            unlink(stdin_path);
+            free(stdin_path);
+        }
         return 1;
     }
 
@@ -430,8 +441,9 @@ int compile_unit(const char *source, const cli_options_t *cli,
     char *src_text = NULL;
     token_t *tokens = NULL;
     size_t tok_count = 0;
+    char *stdin_tmp = NULL;
     ok = compile_tokenize(source, &cli->include_dirs, &src_text,
-                          &tokens, &tok_count);
+                          &tokens, &tok_count, &stdin_tmp);
 
     /* Parsing stage */
     if (ok)
@@ -456,6 +468,11 @@ int compile_unit(const char *source, const cli_options_t *cli,
 
     cleanup_compile_unit(&func_list_v, &glob_list_v, &funcs, &globals, &ir);
     semantic_global_cleanup();
+
+    if (stdin_tmp) {
+        unlink(stdin_tmp);
+        free(stdin_tmp);
+    }
 
     label_reset();
 
