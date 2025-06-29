@@ -113,48 +113,53 @@ int run_preprocessor(const cli_options_t *cli);
 /* Link multiple object files into the final executable. */
 int link_sources(const cli_options_t *cli);
 
+/* Read stdin into a temporary file and return its path. */
+static char *read_stdin_to_file(void);
+
+static char *read_stdin_to_file(void)
+{
+    char tmpl[] = "/tmp/vcstdinXXXXXX";
+    int fd = mkstemp(tmpl);
+    if (fd < 0) {
+        perror("mkstemp");
+        return NULL;
+    }
+    FILE *f = fdopen(fd, "w");
+    if (!f) {
+        perror("fdopen");
+        close(fd);
+        unlink(tmpl);
+        return NULL;
+    }
+    char buf[4096];
+    size_t n;
+    while ((n = fread(buf, 1, sizeof(buf), stdin)) > 0) {
+        if (fwrite(buf, 1, n, f) != n) {
+            perror("fwrite");
+            fclose(f);
+            unlink(tmpl);
+            return NULL;
+        }
+    }
+    if (ferror(stdin)) {
+        perror("fread");
+        fclose(f);
+        unlink(tmpl);
+        return NULL;
+    }
+    fclose(f);
+    return strdup(tmpl);
+}
+
 /* Tokenize the preprocessed source file */
 static int compile_tokenize(const char *source, const vector_t *incdirs,
                             char **out_src, token_t **out_toks,
                             size_t *out_count)
 {
     if (source && strcmp(source, "-") == 0) {
-        char tmpl[] = "/tmp/vcstdinXXXXXX";
-        int fd = mkstemp(tmpl);
-        if (fd < 0) {
-            perror("mkstemp");
+        char *stdin_path = read_stdin_to_file();
+        if (!stdin_path)
             return 0;
-        }
-        FILE *f = fdopen(fd, "w");
-        if (!f) {
-            perror("fdopen");
-            close(fd);
-            unlink(tmpl);
-            return 0;
-        }
-        char buf[4096];
-        size_t n;
-        while ((n = fread(buf, 1, sizeof(buf), stdin)) > 0) {
-            if (fwrite(buf, 1, n, f) != n) {
-                perror("fwrite");
-                fclose(f);
-                unlink(tmpl);
-                return 0;
-            }
-        }
-        if (ferror(stdin)) {
-            perror("fread");
-            fclose(f);
-            unlink(tmpl);
-            return 0;
-        }
-        fclose(f);
-        source = tmpl;
-        char *stdin_path = strdup(tmpl);
-        if (!stdin_path) {
-            unlink(tmpl);
-            return 0;
-        }
         char *text = preproc_run(stdin_path, incdirs);
         unlink(stdin_path);
         free(stdin_path);
