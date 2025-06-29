@@ -1,4 +1,5 @@
 #define _POSIX_C_SOURCE 200809L
+#define _GNU_SOURCE
 /*
  * Preprocessor module for vc.
  *
@@ -52,23 +53,32 @@ static int stack_active(vector_t *conds)
     return 1;
 }
 
-/* Return non-zero when the include stack already contains PATH */
+/* Return non-zero when the include stack already contains PATH.
+ * PATH is first canonicalized with realpath(). */
 static int include_stack_contains(vector_t *stack, const char *path)
 {
+    char *canon = realpath(path, NULL);
+    if (!canon)
+        return 0;
     for (size_t i = 0; i < stack->count; i++) {
         const char *p = ((const char **)stack->data)[i];
-        if (strcmp(p, path) == 0)
+        if (strcmp(p, canon) == 0) {
+            free(canon);
             return 1;
+        }
     }
+    free(canon);
     return 0;
 }
 
-/* Duplicate PATH and push it on the include stack */
+/* Canonicalize PATH and push it on the include stack */
 static int include_stack_push(vector_t *stack, const char *path)
 {
-    char *dup = vc_strdup(path);
-    if (!vector_push(stack, &dup)) {
-        free(dup);
+    char *canon = realpath(path, NULL);
+    if (!canon)
+        canon = vc_strdup(path);
+    if (!vector_push(stack, &canon)) {
+        free(canon);
         return 0;
     }
     return 1;
