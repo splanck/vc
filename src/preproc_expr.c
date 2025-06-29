@@ -13,9 +13,11 @@
 
 #include <ctype.h>
 #include <stdlib.h>
+#include <errno.h>
 #include "preproc_expr.h"
 #include <string.h>
 #include "util.h"
+#include <limits.h>
 
 /* Parser context */
 typedef struct {
@@ -82,12 +84,18 @@ static int parse_primary(expr_ctx_t *ctx)
             ctx->s++;
         return val;
     } else if (isdigit((unsigned char)*ctx->s)) {
-        int val = 0;
-        while (isdigit((unsigned char)*ctx->s)) {
-            val = val * 10 + (*ctx->s - '0');
-            ctx->s++;
+        errno = 0;
+        char *end;
+        long long val = strtoll(ctx->s, &end, 10);
+        if (errno == ERANGE) {
+            val = val < 0 ? LLONG_MIN : LLONG_MAX;
         }
-        return val;
+        ctx->s = end;
+        if (val > INT_MAX)
+            return INT_MAX;
+        if (val < INT_MIN)
+            return INT_MIN;
+        return (int)val;
     } else {
         char *id = parse_ident(ctx);
         free(id);
