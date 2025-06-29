@@ -855,44 +855,67 @@ static void append_env_paths(const char *env, vector_t *search_dirs)
     free(tmp);
 }
 
+/* Collect include search directories from CLI options and environment */
+static void collect_include_dirs(vector_t *search_dirs,
+                                 const vector_t *include_dirs)
+{
+    vector_init(search_dirs, sizeof(char *));
+    for (size_t i = 0; i < include_dirs->count; i++) {
+        const char *s = ((const char **)include_dirs->data)[i];
+        char *dup = vc_strdup(s);
+        vector_push(search_dirs, &dup);
+    }
+
+    append_env_paths(getenv("VCPATH"), search_dirs);
+    append_env_paths(getenv("VCINC"), search_dirs);
+}
+
+/* Initialize the vectors used during preprocessing */
+static void init_preproc_vectors(vector_t *macros, vector_t *conds,
+                                 vector_t *stack, strbuf_t *out)
+{
+    vector_init(macros, sizeof(macro_t));
+    vector_init(conds, sizeof(cond_state_t));
+    vector_init(stack, sizeof(char *));
+    strbuf_init(out);
+}
+
+/* Release vectors and buffers used during preprocessing */
+static void cleanup_preproc_vectors(vector_t *macros, vector_t *conds,
+                                    vector_t *stack, vector_t *search_dirs,
+                                    strbuf_t *out)
+{
+    for (size_t i = 0; i < stack->count; i++)
+        free(((char **)stack->data)[i]);
+    vector_free(stack);
+    vector_free(conds);
+    free_macro_vector(macros);
+    for (size_t i = 0; i < search_dirs->count; i++)
+        free(((char **)search_dirs->data)[i]);
+    vector_free(search_dirs);
+    strbuf_free(out);
+}
+
 /*
  * Entry point used by the compiler.  Sets up include search paths,
  * invokes the file processor and returns the resulting text.
  */
 char *preproc_run(const char *path, const vector_t *include_dirs)
 {
-    vector_t search_dirs;
-    vector_init(&search_dirs, sizeof(char *));
-    for (size_t i = 0; i < include_dirs->count; i++) {
-        const char *s = ((const char **)include_dirs->data)[i];
-        char *dup = vc_strdup(s);
-        vector_push(&search_dirs, &dup);
-    }
-
-    append_env_paths(getenv("VCPATH"), &search_dirs);
-    append_env_paths(getenv("VCINC"), &search_dirs);
-
-    vector_t macros;
-    vector_init(&macros, sizeof(macro_t));
-    vector_t conds;
-    vector_init(&conds, sizeof(cond_state_t));
-    vector_t stack;
-    vector_init(&stack, sizeof(char *));
+    vector_t search_dirs, macros, conds, stack;
     strbuf_t out;
-    strbuf_init(&out);
+
+    collect_include_dirs(&search_dirs, include_dirs);
+    init_preproc_vectors(&macros, &conds, &stack, &out);
+
     int ok = process_file(path, &macros, &conds, &out, &search_dirs, &stack);
-    for (size_t i = 0; i < stack.count; i++)
-        free(((char **)stack.data)[i]);
-    vector_free(&stack);
-    vector_free(&conds);
-    free_macro_vector(&macros);
-    for (size_t i = 0; i < search_dirs.count; i++)
-        free(((char **)search_dirs.data)[i]);
-    vector_free(&search_dirs);
+
     char *res = NULL;
     if (ok)
         res = vc_strdup(out.data ? out.data : "");
-    strbuf_free(&out);
+
+    cleanup_preproc_vectors(&macros, &conds, &stack, &search_dirs, &out);
+
     return res;
 }
 
