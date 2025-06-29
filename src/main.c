@@ -23,16 +23,20 @@
 int main(int argc, char **argv)
 {
     cli_options_t cli;
+    int ret = 1;
+
     if (cli_parse_args(argc, argv, &cli) != 0)
-        return 1;
+        goto cleanup;
 
     if (!cli.link && cli.sources.count != 1) {
         fprintf(stderr, "Error: multiple input files require --link\n");
-        return 1;
+        goto cleanup;
     }
 
-    if (cli.preprocess)
-        return run_preprocessor(&cli);
+    if (cli.preprocess) {
+        ret = run_preprocessor(&cli);
+        goto cleanup;
+    }
 
     int ok = 1;
     if (cli.link) {
@@ -60,5 +64,10 @@ int main(int argc, char **argv)
                    ((const char **)cli.sources.data)[0], cli.output);
     }
 
-    return ok ? 0 : 1;
+    ret = ok ? 0 : 1;
+
+cleanup:
+    vector_free(&cli.sources);
+    vector_free(&cli.include_dirs);
+    return ret;
 }
