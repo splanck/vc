@@ -12,6 +12,8 @@
 #include <stdlib.h>
 #include <getopt.h>
 #include <string.h>
+#include <limits.h>
+#include <errno.h>
 
 #include "cli.h"
 
@@ -105,9 +107,10 @@ static int add_include_dir(cli_options_t *opts, const char *dir)
  */
 static int set_opt_level(cli_options_t *opts, const char *level)
 {
+    errno = 0;
     char *end;
-    long val = strtol(level, &end, 10);
-    if (*end != '\0' || val < 0 || val > 3) {
+    long long val = strtoll(level, &end, 10);
+    if (*end != '\0' || errno != 0 || val < 0 || val > INT_MAX || val > 3) {
         fprintf(stderr, "Invalid optimization level '%s'\n", level);
         return 1;
     }
