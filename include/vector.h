@@ -18,7 +18,7 @@ typedef struct {
     size_t elem_size;
 } vector_t;
 
-/* Initialize vector for elements of given size */
+/* Initialize vector for elements of given size (must be non-zero) */
 void vector_init(vector_t *vec, size_t elem_size);
 
 /* Append an element, returns 0 on failure */

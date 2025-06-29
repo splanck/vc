@@ -14,7 +14,8 @@
 
 /*
  * Prepare a vector to hold elements of "elem_size" bytes.  The vector
- * initially contains zero elements and no allocated storage.
+ * initially contains zero elements and no allocated storage.  The
+ * element size must be non-zero.
  */
 void vector_init(vector_t *vec, size_t elem_size)
 {
@@ -29,11 +30,12 @@ void vector_init(vector_t *vec, size_t elem_size)
 /*
  * Append one element to the end of the vector.  The element data is
  * copied from the memory pointed to by "elem".  The vector grows as
- * needed.  Returns 1 on success and 0 on invalid arguments.
- */
+ * needed.  Returns 1 on success and 0 on invalid arguments.  The push
+ * fails if the vector element size is zero.
+*/
 int vector_push(vector_t *vec, const void *elem)
 {
-    if (!vec || !elem)
+    if (!vec || !elem || vec->elem_size == 0)
         return 0;
     if (vec->count >= vec->cap) {
         size_t new_cap;
