@@ -388,9 +388,12 @@ static int emit_global_initializer(stmt_t *decl, symbol_t *sym,
                                       decl->var_decl.array_size, globals,
                                       decl->line, decl->column, &vals))
             return 0;
-        ir_build_glob_array(ir, decl->var_decl.name, vals,
-                            decl->var_decl.array_size,
-                            decl->var_decl.is_static);
+        if (!ir_build_glob_array(ir, decl->var_decl.name, vals,
+                                 decl->var_decl.array_size,
+                                 decl->var_decl.is_static)) {
+            free(vals);
+            return 0;
+        }
         free(vals);
         return 1;
     }

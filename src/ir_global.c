@@ -47,26 +47,43 @@ void ir_build_glob_var(ir_builder_t *b, const char *name, long long value,
     ins->src1 = is_static;
 }
 
-/* Define a global array `name` with the provided values. */
-void ir_build_glob_array(ir_builder_t *b, const char *name,
-                         const long long *values, size_t count,
-                         int is_static)
+/*
+ * Define a global array `name` with the provided values.  Returns
+ * non-zero on success and zero on allocation failure.
+ */
+int ir_build_glob_array(ir_builder_t *b, const char *name,
+                        const long long *values, size_t count,
+                        int is_static)
 {
     ir_instr_t *ins = append_instr(b);
     if (!ins)
-        return;
+        return 0;
     ins->op = IR_GLOB_ARRAY;
     ins->name = vc_strdup(name ? name : "");
     ins->imm = (long long)count;
     ins->src1 = is_static;
     if (count) {
         long long *vals = malloc(count * sizeof(long long));
-        if (!vals)
-            return;
+        if (!vals) {
+            /* allocation failed: remove appended instruction */
+            ir_instr_t *prev = NULL;
+            for (ir_instr_t *cur = b->head; cur && cur != ins; cur = cur->next)
+                prev = cur;
+            if (prev)
+                prev->next = ins->next;
+            else
+                b->head = ins->next;
+            if (b->tail == ins)
+                b->tail = prev;
+            free(ins->name);
+            free(ins);
+            return 0;
+        }
         for (size_t i = 0; i < count; i++)
             vals[i] = values[i];
         ins->data = (char *)vals;
     }
+    return 1;
 }
 
 /* Begin a global union definition with the given name and size. */
