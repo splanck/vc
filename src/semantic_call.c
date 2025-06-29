@@ -65,6 +65,11 @@ type_kind_t check_call_expr(expr_t *expr, symtable_t *vars,
         type_kind_t at = check_expr(expr->call.args[i], vars, funcs, ir,
                                     &vals[i]);
         atypes[i] = at;
+        if (at == TYPE_UNKNOWN) {
+            free(vals);
+            free(atypes);
+            return TYPE_UNKNOWN;
+        }
         if (i < expected) {
             type_kind_t pt = ptypes[i];
             if (!(((is_intlike(pt) && is_intlike(at)) ||
