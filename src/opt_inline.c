@@ -167,10 +167,11 @@ static int collect_funcs(ir_builder_t *ir, inline_func_t **out, size_t *count)
             } else if (r < 0) {
                 char msg[256];
                 snprintf(msg, sizeof(msg),
-                         "could not open %s for inline check; "
-                         "treating %s as non-inline",
-                         src_file, ins->name);
+                         "could not open %s for inline check", src_file);
                 opt_error(msg);
+                free(*out);
+                *out = NULL;
+                return 0;
             }
         }
         if (!is_inline) {
