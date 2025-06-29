@@ -129,10 +129,10 @@ static int check_typedef_stmt(stmt_t *stmt, symtable_t *vars)
  * array contents are provided up front and written directly to the
  * global data section.
  */
-static void init_static_array(ir_builder_t *ir, const char *name,
-                              const long long *vals, size_t count)
+static int init_static_array(ir_builder_t *ir, const char *name,
+                             const long long *vals, size_t count)
 {
-    ir_build_glob_array(ir, name, vals, count, 1);
+    return ir_build_glob_array(ir, name, vals, count, 1);
 }
 
 /*
@@ -180,8 +180,12 @@ static int handle_array_init(stmt_t *stmt, symbol_t *sym, symtable_t *vars, ir_b
                                   sym->array_size, vars, stmt->line, stmt->column,
                                   &vals))
         return 0;
-    if (stmt->var_decl.is_static)
-        init_static_array(ir, sym->ir_name, vals, sym->array_size);
+    if (stmt->var_decl.is_static) {
+        if (!init_static_array(ir, sym->ir_name, vals, sym->array_size)) {
+            free(vals);
+            return 0;
+        }
+    }
     else
         init_dynamic_array(ir, sym->ir_name, vals, sym->array_size,
                            stmt->var_decl.is_volatile);

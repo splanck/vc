@@ -19,9 +19,10 @@ void ir_build_glob_var(ir_builder_t *b, const char *name, long long value,
  * values are copied into the instruction and `is_static` controls
  * linkage.
  */
-void ir_build_glob_array(ir_builder_t *b, const char *name,
-                         const long long *values, size_t count,
-                         int is_static);
+/* Returns non-zero on success, zero on allocation failure. */
+int ir_build_glob_array(ir_builder_t *b, const char *name,
+                        const long long *values, size_t count,
+                        int is_static);
 
 /* Begin a global union using IR_GLOB_UNION. `size` specifies the type size. */
 void ir_build_glob_union(ir_builder_t *b, const char *name, int size,
