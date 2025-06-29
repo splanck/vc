@@ -741,40 +741,72 @@ typedef struct {
     directive_fn_t handler;
 } directive_entry_t;
 
+typedef struct {
+    size_t start;
+    size_t count;
+} directive_bucket_t;
+
+static const directive_entry_t directive_table[] = {
+    {"#define",  SPACE_BLANK, handle_define_directive},
+    {"#elif",    SPACE_ANY,   handle_conditional_directive},
+    {"#else",    SPACE_NONE,  handle_conditional_directive},
+    {"#endif",   SPACE_NONE,  handle_conditional_directive},
+    {"#error",   SPACE_ANY,   handle_error_directive},
+    {"#ifdef",   SPACE_ANY,   handle_conditional_directive},
+    {"#ifndef",  SPACE_ANY,   handle_conditional_directive},
+    {"#if",      SPACE_ANY,   handle_conditional_directive},
+    {"#include", SPACE_BLANK, handle_include_directive},
+    {"#line",    SPACE_ANY,   handle_line_directive},
+    {"#pragma",  SPACE_ANY,   handle_pragma_directive},
+    {"#undef",   SPACE_ANY,   handle_undef_directive},
+};
+
+static const directive_bucket_t directive_buckets[26] = {
+    ['d' - 'a'] = {0, 1},  /* #define */
+    ['e' - 'a'] = {1, 4},  /* #elif, #else, #endif, #error */
+    ['i' - 'a'] = {5, 4},  /* #ifdef, #ifndef, #if, #include */
+    ['l' - 'a'] = {9, 1},  /* #line */
+    ['p' - 'a'] = {10, 1}, /* #pragma */
+    ['u' - 'a'] = {11, 1}, /* #undef */
+};
+
+static const directive_entry_t *lookup_directive(const char *line)
+{
+    if (line[0] != '#')
+        return NULL;
+
+    char c = line[1];
+    if (c < 'a' || c > 'z')
+        return NULL;
+
+    directive_bucket_t bucket = directive_buckets[c - 'a'];
+    for (size_t i = 0; i < bucket.count; i++) {
+        const directive_entry_t *d = &directive_table[bucket.start + i];
+        size_t len = strlen(d->name);
+        if (strncmp(line, d->name, len) == 0) {
+            char next = line[len];
+            if (d->space == SPACE_BLANK) {
+                if (next == ' ' || next == '\t')
+                    return d;
+            } else if (d->space == SPACE_ANY) {
+                if (isspace((unsigned char)next))
+                    return d;
+            } else {
+                return d;
+            }
+        }
+    }
+
+    return NULL;
+}
+
 static int handle_directive(char *line, const char *dir, vector_t *macros,
                             vector_t *conds, strbuf_t *out,
                             const vector_t *incdirs, vector_t *stack)
 {
-    static const directive_entry_t table[] = {
-        {"#include", SPACE_BLANK, handle_include_directive},
-        {"#line",    SPACE_ANY,   handle_line_directive},
-        {"#define",  SPACE_BLANK, handle_define_directive},
-        {"#undef",   SPACE_ANY,   handle_undef_directive},
-        {"#error",   SPACE_ANY,   handle_error_directive},
-        {"#pragma",  SPACE_ANY,   handle_pragma_directive},
-        {"#ifdef",   SPACE_ANY,   handle_conditional_directive},
-        {"#ifndef",  SPACE_ANY,   handle_conditional_directive},
-        {"#if",      SPACE_ANY,   handle_conditional_directive},
-        {"#elif",    SPACE_ANY,   handle_conditional_directive},
-        {"#else",    SPACE_NONE,  handle_conditional_directive},
-        {"#endif",   SPACE_NONE,  handle_conditional_directive}
-    };
-
-    for (size_t i = 0; i < sizeof(table)/sizeof(table[0]); i++) {
-        const directive_entry_t *d = &table[i];
-        size_t len = strlen(d->name);
-        if (strncmp(line, d->name, len) == 0) {
-            int ok = 1;
-            char next = line[len];
-            if (d->space == SPACE_BLANK)
-                ok = (next == ' ' || next == '\t');
-            else if (d->space == SPACE_ANY)
-                ok = isspace((unsigned char)next);
-            if (ok)
-                return d->handler(line, dir, macros, conds, out, incdirs,
-                                  stack);
-        }
-    }
+    const directive_entry_t *d = lookup_directive(line);
+    if (d)
+        return d->handler(line, dir, macros, conds, out, incdirs, stack);
 
     return handle_text_line(line, dir, macros, conds, out, incdirs, stack);
 }
