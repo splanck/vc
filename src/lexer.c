@@ -217,6 +217,7 @@ static void read_number(const char *src, size_t *i, size_t *col,
                         vector_t *tokens, size_t line)
 {
     size_t start = *i;
+    int is_float = 0;
 
     if (src[*i] == '0' && (src[*i + 1] == 'x' || src[*i + 1] == 'X')) {
         (*i) += 2; /* consume 0x */
@@ -231,11 +232,29 @@ static void read_number(const char *src, size_t *i, size_t *col,
             (*i)++;
     }
 
-    size_t len = *i - start;
-    if (src[*i] == 'L' || src[*i] == 'l') {
-        (*i)++;
-        len++;
+    if (src[*i] == '.') {
+        is_float = 1;
+        (*i)++; /* consume '.' */
+        while (isdigit((unsigned char)src[*i]))
+            (*i)++;
     }
+
+    if (src[*i] == 'e' || src[*i] == 'E') {
+        is_float = 1;
+        (*i)++; /* consume exponent marker */
+        if (src[*i] == '+' || src[*i] == '-')
+            (*i)++;
+        while (isdigit((unsigned char)src[*i]))
+            (*i)++;
+    }
+
+    if (src[*i] == 'f' || src[*i] == 'F' ||
+        src[*i] == 'l' || src[*i] == 'L') {
+        (*i)++;
+    }
+
+    size_t len = *i - start;
+    (void)is_float; /* not used but kept for clarity */
     append_token(tokens, TOK_NUMBER, src + start, len, line, *col);
     *col += len;
 }
