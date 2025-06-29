@@ -18,7 +18,7 @@ typedef struct var_const {
 } var_const_t;
 
 typedef struct {
-    int max_id;
+    size_t max_id;
     int *is_const;
     int *values;
     var_const_t *vars;
@@ -35,8 +35,8 @@ static void clear_var_list(var_const_t *head)
 static int init_const_tracking(const_track_t *ct, ir_builder_t *ir)
 {
     ct->max_id = ir->next_value_id;
-    ct->is_const = calloc((size_t)ct->max_id, sizeof(int));
-    ct->values = calloc((size_t)ct->max_id, sizeof(int));
+    ct->is_const = calloc(ct->max_id, sizeof(int));
+    ct->values = calloc(ct->max_id, sizeof(int));
     ct->vars = NULL;
     if (!ct->is_const || !ct->values) {
         opt_error("out of memory");
@@ -79,7 +79,7 @@ static int eval_long_float_op(ir_op_t op, int a, int b)
 static void handle_store(const_track_t *ct, ir_instr_t *ins)
 {
     var_const_t *v = ct->vars;
-    int max_id = ct->max_id;
+    size_t max_id = ct->max_id;
     while (v && strcmp(v->name, ins->name) != 0)
         v = v->next;
     if (!v) {
@@ -92,7 +92,7 @@ static void handle_store(const_track_t *ct, ir_instr_t *ins)
         v->next = ct->vars;
         ct->vars = v;
     }
-    if (!ins->is_volatile && ins->src1 < max_id && ct->is_const[ins->src1]) {
+    if (!ins->is_volatile && (size_t)ins->src1 < max_id && ct->is_const[ins->src1]) {
         v->known = 1;
         v->value = ct->values[ins->src1];
     } else {
@@ -104,7 +104,7 @@ static void handle_store(const_track_t *ct, ir_instr_t *ins)
 static void handle_load(const_track_t *ct, ir_instr_t *ins)
 {
     var_const_t *v = ct->vars;
-    int max_id = ct->max_id;
+    size_t max_id = ct->max_id;
     while (v && strcmp(v->name, ins->name) != 0)
         v = v->next;
     if (!ins->is_volatile && v && v->known) {
@@ -112,11 +112,11 @@ static void handle_load(const_track_t *ct, ir_instr_t *ins)
         ins->name = NULL;
         ins->op = IR_CONST;
         ins->imm = v->value;
-        if (ins->dest >= 0 && ins->dest < max_id) {
+        if (ins->dest >= 0 && (size_t)ins->dest < max_id) {
             ct->is_const[ins->dest] = 1;
             ct->values[ins->dest] = v->value;
         }
-    } else if (ins->dest >= 0 && ins->dest < max_id) {
+    } else if (ins->dest >= 0 && (size_t)ins->dest < max_id) {
         ct->is_const[ins->dest] = 0;
     }
 }
@@ -124,10 +124,10 @@ static void handle_load(const_track_t *ct, ir_instr_t *ins)
 /* Update constant tracking information for a single instruction */
 static void propagate_through_instruction(const_track_t *ct, ir_instr_t *ins)
 {
-    int max_id = ct->max_id;
+    size_t max_id = ct->max_id;
     switch (ins->op) {
     case IR_CONST:
-        if (ins->dest >= 0 && ins->dest < max_id) {
+        if (ins->dest >= 0 && (size_t)ins->dest < max_id) {
             ct->is_const[ins->dest] = 1;
             ct->values[ins->dest] = ins->imm;
         }
@@ -146,7 +146,7 @@ static void propagate_through_instruction(const_track_t *ct, ir_instr_t *ins)
     case IR_CALL_PTR:
     case IR_ARG:
         clear_var_list(ct->vars);
-        if (ins->dest >= 0 && ins->dest < max_id)
+        if (ins->dest >= 0 && (size_t)ins->dest < max_id)
             ct->is_const[ins->dest] = 0;
         break;
     case IR_LOGAND: case IR_LOGOR:
@@ -169,15 +169,15 @@ static void propagate_through_instruction(const_track_t *ct, ir_instr_t *ins)
     case IR_BCOND:
     case IR_LABEL:
     case IR_LFADD: case IR_LFSUB: case IR_LFMUL: case IR_LFDIV:
-        if (ins->dest >= 0 && ins->dest < max_id &&
-            ins->src1 < max_id && ins->src2 < max_id &&
+        if (ins->dest >= 0 && (size_t)ins->dest < max_id &&
+            (size_t)ins->src1 < max_id && (size_t)ins->src2 < max_id &&
             ct->is_const[ins->src1] && ct->is_const[ins->src2]) {
             int a = ct->values[ins->src1];
             int b = ct->values[ins->src2];
             int r = eval_long_float_op(ins->op, a, b);
             ct->is_const[ins->dest] = 1;
             ct->values[ins->dest] = r;
-        } else if (ins->dest >= 0 && ins->dest < max_id) {
+        } else if (ins->dest >= 0 && (size_t)ins->dest < max_id) {
             ct->is_const[ins->dest] = 0;
         }
         break;
@@ -188,7 +188,7 @@ static void propagate_through_instruction(const_track_t *ct, ir_instr_t *ins)
     case IR_PTR_DIFF:
     case IR_CMPEQ: case IR_CMPNE: case IR_CMPLT:
     case IR_CMPGT: case IR_CMPLE: case IR_CMPGE:
-        if (ins->dest >= 0 && ins->dest < max_id)
+        if (ins->dest >= 0 && (size_t)ins->dest < max_id)
             ct->is_const[ins->dest] = 0;
         if (ins->op == IR_FUNC_BEGIN)
             clear_var_list(ct->vars);

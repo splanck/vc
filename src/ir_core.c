@@ -14,6 +14,7 @@
 #include <stdio.h>
 #include <stdarg.h>
 #include <string.h>
+#include <limits.h>
 #include "ir_core.h"
 #include "label.h"
 #include "strbuf.h"
@@ -77,6 +78,16 @@ static ir_instr_t *append_instr(ir_builder_t *b)
     return ins;
 }
 
+/* Allocate the next unique value identifier or abort on overflow */
+static int alloc_value_id(ir_builder_t *b)
+{
+    if (b->next_value_id >= (size_t)INT_MAX) {
+        fprintf(stderr, "ir_core: too many values\n");
+        exit(1);
+    }
+    return (int)b->next_value_id++;
+}
+
 /* Remove instruction "ins" from the builder list and free it. */
 static void remove_instr(ir_builder_t *b, ir_instr_t *ins)
 {
@@ -111,7 +122,7 @@ ir_value_t ir_build_const(ir_builder_t *b, long long value)
     if (!ins)
         return (ir_value_t){0};
     ins->op = IR_CONST;
-    ins->dest = b->next_value_id++;
+    ins->dest = alloc_value_id(b);
     ins->imm = value;
     return (ir_value_t){ins->dest};
 }
@@ -126,7 +137,7 @@ ir_value_t ir_build_string(ir_builder_t *b, const char *str)
     if (!ins)
         return (ir_value_t){0};
     ins->op = IR_GLOB_STRING;
-    ins->dest = b->next_value_id++;
+    ins->dest = alloc_value_id(b);
     char label[32];
     ins->name = vc_strdup(label_format("Lstr", ins->dest, label));
     ins->data = vc_strdup(str ? str : "");
@@ -143,7 +154,7 @@ ir_value_t ir_build_wstring(ir_builder_t *b, const char *str)
     if (!ins)
         return (ir_value_t){0};
     ins->op = IR_GLOB_WSTRING;
-    ins->dest = b->next_value_id++;
+    ins->dest = alloc_value_id(b);
     char label[32];
     ins->name = vc_strdup(label_format("LWstr", ins->dest, label));
     size_t len = strlen(str ? str : "");
@@ -170,7 +181,7 @@ ir_value_t ir_build_load(ir_builder_t *b, const char *name)
     if (!ins)
         return (ir_value_t){0};
     ins->op = IR_LOAD;
-    ins->dest = b->next_value_id++;
+    ins->dest = alloc_value_id(b);
     ins->name = vc_strdup(name ? name : "");
     return (ir_value_t){ins->dest};
 }
@@ -181,7 +192,7 @@ ir_value_t ir_build_load_vol(ir_builder_t *b, const char *name)
     if (!ins)
         return (ir_value_t){0};
     ins->op = IR_LOAD;
-    ins->dest = b->next_value_id++;
+    ins->dest = alloc_value_id(b);
     ins->name = vc_strdup(name ? name : "");
     ins->is_volatile = 1;
     return (ir_value_t){ins->dest};
@@ -221,7 +232,7 @@ ir_value_t ir_build_load_param(ir_builder_t *b, int index)
     if (!ins)
         return (ir_value_t){0};
     ins->op = IR_LOAD_PARAM;
-    ins->dest = b->next_value_id++;
+    ins->dest = alloc_value_id(b);
     ins->imm = index;
     return (ir_value_t){ins->dest};
 }
@@ -248,7 +259,7 @@ ir_value_t ir_build_addr(ir_builder_t *b, const char *name)
     if (!ins)
         return (ir_value_t){0};
     ins->op = IR_ADDR;
-    ins->dest = b->next_value_id++;
+    ins->dest = alloc_value_id(b);
     ins->name = vc_strdup(name ? name : "");
     return (ir_value_t){ins->dest};
 }
@@ -262,7 +273,7 @@ ir_value_t ir_build_load_ptr(ir_builder_t *b, ir_value_t addr)
     if (!ins)
         return (ir_value_t){0};
     ins->op = IR_LOAD_PTR;
-    ins->dest = b->next_value_id++;
+    ins->dest = alloc_value_id(b);
     ins->src1 = addr.id;
     return (ir_value_t){ins->dest};
 }
@@ -288,7 +299,7 @@ ir_value_t ir_build_ptr_add(ir_builder_t *b, ir_value_t ptr, ir_value_t idx,
     if (!ins)
         return (ir_value_t){0};
     ins->op = IR_PTR_ADD;
-    ins->dest = b->next_value_id++;
+    ins->dest = alloc_value_id(b);
     ins->src1 = ptr.id;
     ins->src2 = idx.id;
     ins->imm = elem_size;
@@ -303,7 +314,7 @@ ir_value_t ir_build_ptr_diff(ir_builder_t *b, ir_value_t a, ir_value_t bptr,
     if (!ins)
         return (ir_value_t){0};
     ins->op = IR_PTR_DIFF;
-    ins->dest = b->next_value_id++;
+    ins->dest = alloc_value_id(b);
     ins->src1 = a.id;
     ins->src2 = bptr.id;
     ins->imm = elem_size;
@@ -319,7 +330,7 @@ ir_value_t ir_build_load_idx(ir_builder_t *b, const char *name, ir_value_t idx)
     if (!ins)
         return (ir_value_t){0};
     ins->op = IR_LOAD_IDX;
-    ins->dest = b->next_value_id++;
+    ins->dest = alloc_value_id(b);
     ins->src1 = idx.id;
     ins->name = vc_strdup(name ? name : "");
     return (ir_value_t){ins->dest};
@@ -332,7 +343,7 @@ ir_value_t ir_build_load_idx_vol(ir_builder_t *b, const char *name, ir_value_t i
     if (!ins)
         return (ir_value_t){0};
     ins->op = IR_LOAD_IDX;
-    ins->dest = b->next_value_id++;
+    ins->dest = alloc_value_id(b);
     ins->src1 = idx.id;
     ins->name = vc_strdup(name ? name : "");
     ins->is_volatile = 1;
@@ -376,7 +387,7 @@ ir_value_t ir_build_bfload(ir_builder_t *b, const char *name,
     if (!ins)
         return (ir_value_t){0};
     ins->op = IR_BFLOAD;
-    ins->dest = b->next_value_id++;
+    ins->dest = alloc_value_id(b);
     ins->name = vc_strdup(name ? name : "");
     ins->imm = ((long long)shift << 32) | (unsigned)width;
     return (ir_value_t){ins->dest};
@@ -402,7 +413,7 @@ ir_value_t ir_build_alloca(ir_builder_t *b, ir_value_t size)
     if (!ins)
         return (ir_value_t){0};
     ins->op = IR_ALLOCA;
-    ins->dest = b->next_value_id++;
+    ins->dest = alloc_value_id(b);
     ins->src1 = size.id;
     return (ir_value_t){ins->dest};
 }
@@ -417,7 +428,7 @@ ir_value_t ir_build_binop(ir_builder_t *b, ir_op_t op, ir_value_t left, ir_value
     if (!ins)
         return (ir_value_t){0};
     ins->op = op;
-    ins->dest = b->next_value_id++;
+    ins->dest = alloc_value_id(b);
     ins->src1 = left.id;
     ins->src2 = right.id;
     return (ir_value_t){ins->dest};
@@ -430,7 +441,7 @@ ir_value_t ir_build_logand(ir_builder_t *b, ir_value_t left, ir_value_t right)
     if (!ins)
         return (ir_value_t){0};
     ins->op = IR_LOGAND;
-    ins->dest = b->next_value_id++;
+    ins->dest = alloc_value_id(b);
     ins->src1 = left.id;
     ins->src2 = right.id;
     return (ir_value_t){ins->dest};
@@ -443,7 +454,7 @@ ir_value_t ir_build_logor(ir_builder_t *b, ir_value_t left, ir_value_t right)
     if (!ins)
         return (ir_value_t){0};
     ins->op = IR_LOGOR;
-    ins->dest = b->next_value_id++;
+    ins->dest = alloc_value_id(b);
     ins->src1 = left.id;
     ins->src2 = right.id;
     return (ir_value_t){ins->dest};
@@ -482,7 +493,7 @@ ir_value_t ir_build_call(ir_builder_t *b, const char *name, size_t arg_count)
     if (!ins)
         return (ir_value_t){0};
     ins->op = IR_CALL;
-    ins->dest = b->next_value_id++;
+    ins->dest = alloc_value_id(b);
     ins->name = vc_strdup(name ? name : "");
     ins->imm = (long long)arg_count;
     return (ir_value_t){ins->dest};
@@ -495,7 +506,7 @@ ir_value_t ir_build_call_ptr(ir_builder_t *b, ir_value_t func, size_t arg_count)
     if (!ins)
         return (ir_value_t){0};
     ins->op = IR_CALL_PTR;
-    ins->dest = b->next_value_id++;
+    ins->dest = alloc_value_id(b);
     ins->src1 = func.id;
     ins->imm = (long long)arg_count;
     return (ir_value_t){ins->dest};
