@@ -270,7 +270,7 @@ static char *parse_macro_params(char *p, vector_t *out)
             p = start - 1; /* restore '(' position */
             for (size_t i = 0; i < out->count; i++)
                 free(((char **)out->data)[i]);
-            vector_free(out);
+            free(out->data);
             vector_init(out, sizeof(char *));
         }
     } else if (*p) {
