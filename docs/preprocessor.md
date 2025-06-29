@@ -35,7 +35,10 @@ for identifiers or `emit_plain_char` otherwise.  The invocation helper parses
 any argument list and calls `expand_macro_call` so expansion remains recursive.
 `expand_params` continues to rely on helper routines that perform parameter
 lookup, handle the `#` stringize operator and manage `##` token pasting.
-Macro expansion is recursive so macro bodies may reference other macros.
+Macro expansion is recursive so macro bodies may reference other macros. To
+avoid infinite loops a hard limit of 100 nested expansions is enforced. The
+compiler aborts preprocessing with an error message when this depth is
+exceeded.
 
 Conditional expressions in `#if` directives are parsed by the small recursive
 descent parser in `preproc_expr.c`.  The `defined` operator queries the current

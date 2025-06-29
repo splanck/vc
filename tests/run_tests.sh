@@ -181,6 +181,19 @@ if [ $ret -eq 0 ] || ! grep -q "Include cycle detected" "${err}"; then
 fi
 rm -f "${out}" "${err}"
 
+# negative test for macro recursion limit
+err=$(mktemp)
+out=$(mktemp)
+set +e
+"$BINARY" -o "${out}" "$DIR/invalid/macro_cycle.c" 2> "${err}"
+ret=$?
+set -e
+if [ $ret -eq 0 ] || ! grep -q "Macro expansion limit exceeded" "${err}"; then
+    echo "Test macro_cycle failed"
+    fail=1
+fi
+rm -f "${out}" "${err}"
+
 # test --dump-asm option
 dump_out=$(mktemp)
 "$BINARY" --dump-asm "$DIR/fixtures/simple_add.c" > "${dump_out}"
