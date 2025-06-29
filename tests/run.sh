@@ -44,7 +44,7 @@ rm -f strbuf_overflow_impl.o util_strbuf.o "$DIR/test_strbuf_overflow.o"
 "$DIR/cli_tests"
 "$DIR/ir_core_tests"
 "$DIR/cond_expr_tests"
-=======
+echo "======="
 # regression test for strbuf overflow handling
 err=$(mktemp)
 set +e
