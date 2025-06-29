@@ -605,8 +605,8 @@ static int handle_line_directive(char *line, const char *dir, vector_t *macros,
         p++;
     errno = 0;
     char *end;
-    long val = strtol(p, &end, 10);
-    if (p == end || errno != 0 || val <= 0 || val > INT_MAX) {
+    long long val = strtoll(p, &end, 10);
+    if (p == end || errno != 0 || val > INT_MAX || val <= 0) {
         fprintf(stderr, "Invalid line number in #line directive\n");
         return 0;
     }
