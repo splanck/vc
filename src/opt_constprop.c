@@ -8,6 +8,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
+#include <stdint.h>
 #include "opt.h"
 
 typedef struct var_const {
@@ -60,9 +61,10 @@ static void free_const_tracking(const_track_t *ct)
 }
 
 /* Evaluate a long double binary op */
-static int eval_long_float_op(ir_op_t op, int a, int b)
+static uint64_t eval_long_float_op(ir_op_t op, int a, int b)
 {
-    if (sizeof(long double) > sizeof(int))
+    if (sizeof(long double) > sizeof(uint64_t) ||
+        sizeof(long double) > sizeof(int))
         return 0;
 
     long double fa = 0.0L;
@@ -80,8 +82,8 @@ static int eval_long_float_op(ir_op_t op, int a, int b)
     default:       res = 0.0L; break;
     }
 
-    int out = 0;
-    memcpy(&out, &res, sizeof(out));
+    uint64_t out = 0;
+    memcpy(&out, &res, sizeof(res));
     return out;
 }
 
@@ -185,9 +187,9 @@ static void propagate_through_instruction(const_track_t *ct, ir_instr_t *ins)
             ct->is_const[ins->src1] && ct->is_const[ins->src2]) {
             int a = ct->values[ins->src1];
             int b = ct->values[ins->src2];
-            int r = eval_long_float_op(ins->op, a, b);
+            uint64_t r = eval_long_float_op(ins->op, a, b);
             ct->is_const[ins->dest] = 1;
-            ct->values[ins->dest] = r;
+            ct->values[ins->dest] = (int)r;
         } else if (ins->dest >= 0 && (size_t)ins->dest < max_id) {
             ct->is_const[ins->dest] = 0;
         }
