@@ -46,6 +46,19 @@ Enable debug directives with `--debug`:
 vc --debug -S source.c
 ```
 
+## Testing
+
+The project ships with a small unit and integration test suite. A C99
+compiler such as `gcc` and a `make` implementation are required. Run the
+tests from the repository root with one of the following commands:
+
+```sh
+make test            # builds vc and runs tests/run_tests.sh
+tests/run.sh         # builds vc, compiles unit tests and runs everything
+```
+
+When all checks succeed the output ends with `All tests passed`.
+
 ## Documentation
 
 The [documentation index](docs/index.md) provides an overview of all available
