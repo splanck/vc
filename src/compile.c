@@ -414,6 +414,17 @@ int compile_unit(const char *source, const cli_options_t *cli,
 
     int ok = 1;
 
+    vector_t func_list_v, glob_list_v;
+    symtable_t funcs, globals;
+    ir_builder_t ir;
+
+    /* Initialize containers so cleanup can run safely */
+    vector_init(&func_list_v, sizeof(func_t *));
+    vector_init(&glob_list_v, sizeof(stmt_t *));
+    symtable_init(&funcs);
+    symtable_init(&globals);
+    ir_builder_init(&ir);
+
     /* Tokenization stage */
     char *src_text = NULL;
     token_t *tokens = NULL;
@@ -422,8 +433,6 @@ int compile_unit(const char *source, const cli_options_t *cli,
                             &tokens, &tok_count);
 
     /* Parsing stage */
-    vector_t func_list_v, glob_list_v;
-    symtable_t funcs;
     if (ok)
         ok = run_parse_stage(tokens, tok_count, &func_list_v, &glob_list_v,
                              &funcs);
@@ -431,8 +440,6 @@ int compile_unit(const char *source, const cli_options_t *cli,
     free(src_text);
 
     /* Semantic analysis */
-    symtable_t globals;
-    ir_builder_t ir;
     if (ok)
         ok = run_semantic_stage((func_t **)func_list_v.data, func_list_v.count,
                                 (stmt_t **)glob_list_v.data, glob_list_v.count,
