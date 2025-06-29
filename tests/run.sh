@@ -26,6 +26,13 @@ cc -Iinclude -Wall -Wextra -std=c99 -c src/label.c -o label_ircore.o
 cc -Iinclude -Wall -Wextra -std=c99 -c "$DIR/unit/test_ir_core.c" -o "$DIR/test_ir_core.o"
 cc -o "$DIR/ir_core_tests" ir_core_test.o util_ircore.o label_ircore.o "$DIR/test_ir_core.o"
 rm -f ir_core_test.o util_ircore.o label_ircore.o "$DIR/test_ir_core.o"
+# build conditional expression regression test
+cc -Iinclude -Wall -Wextra -std=c99 \
+    -o "$DIR/cond_expr_tests" "$DIR/unit/test_cond_expr.c" \
+    src/semantic_expr.c src/semantic_arith.c src/semantic_mem.c \
+    src/semantic_call.c src/consteval.c src/symtable_core.c \
+    src/ast_expr.c src/vector.c src/util.c src/ir_core.c \
+    src/error.c src/label.c
 # build strbuf overflow regression test
 cc -Iinclude -Wall -Wextra -std=c99 -c src/strbuf.c -o strbuf_overflow_impl.o
 cc -Iinclude -Wall -Wextra -std=c99 -c src/util.c -o util_strbuf.o
@@ -36,6 +43,8 @@ rm -f strbuf_overflow_impl.o util_strbuf.o "$DIR/test_strbuf_overflow.o"
 "$DIR/unit_tests"
 "$DIR/cli_tests"
 "$DIR/ir_core_tests"
+"$DIR/cond_expr_tests"
+=======
 # regression test for strbuf overflow handling
 err=$(mktemp)
 set +e
