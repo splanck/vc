@@ -285,6 +285,8 @@ static int unescape_char(const char *src, size_t *i)
             (*i)++;
             digits++;
         }
+        if (digits == 0)
+            return 'x';
         return value;
     }
     default:

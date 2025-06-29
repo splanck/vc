@@ -504,6 +504,21 @@ static void test_lexer_escapes(void)
     lexer_free_tokens(toks, count);
 }
 
+/* Hex escape with no digits should yield literal 'x' */
+static void test_lexer_invalid_hex_escape(void)
+{
+    const char *src = "'\\x'";
+    size_t count = 0;
+    token_t *toks = lexer_tokenize(src, &count);
+    ASSERT(toks[0].type == TOK_CHAR && toks[0].lexeme[0] == 'x');
+    lexer_free_tokens(toks, count);
+
+    const char *str_src = "\"\\x\"";
+    toks = lexer_tokenize(str_src, &count);
+    ASSERT(toks[0].type == TOK_STRING && strcmp(toks[0].lexeme, "x") == 0);
+    lexer_free_tokens(toks, count);
+}
+
 /* Unterminated character constant should yield an error token */
 static void test_lexer_char_missing_quote(void)
 {
@@ -575,6 +590,7 @@ int main(void)
     test_parser_bitfield();
     test_line_directive();
     test_lexer_escapes();
+    test_lexer_invalid_hex_escape();
     test_lexer_char_missing_quote();
     test_lexer_string_missing_quote();
     test_vector_large();
