@@ -372,7 +372,12 @@ static int emit_output_file(ir_builder_t *ir, const char *output,
             return 0;
         }
         codegen_emit_x86(tmpf, ir, use_x86_64);
-        fclose(tmpf);
+        if (fclose(tmpf) == EOF) {
+            perror("fclose");
+            unlink(tmpname);
+            free(tmpname);
+            return 0;
+        }
 
         const char *arch_flag = use_x86_64 ? "-m64" : "-m32";
         char *argv[] = {"cc", "-x", "assembler", (char *)arch_flag, "-c",
@@ -393,7 +398,11 @@ static int emit_output_file(ir_builder_t *ir, const char *output,
         return 0;
     }
     codegen_emit_x86(outf, ir, use_x86_64);
-    fclose(outf);
+    if (fclose(outf) == EOF) {
+        perror("fclose");
+        unlink(output);
+        return 0;
+    }
     return 1;
 }
 
