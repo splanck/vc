@@ -247,6 +247,9 @@ static void read_number(const char *src, size_t *i, size_t *col,
  */
 static int unescape_char(const char *src, size_t *i)
 {
+    if (!src[*i])
+        return 0;
+
     char c = src[*i];
     switch (c) {
     case 'n':

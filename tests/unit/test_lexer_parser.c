@@ -524,6 +524,21 @@ static void test_lexer_string_missing_quote(void)
     lexer_free_tokens(toks, count);
 }
 
+/* Unterminated escape sequence should not crash the lexer */
+static void test_lexer_truncated_escape(void)
+{
+    const char *char_src = "'\\";
+    size_t count = 0;
+    token_t *toks = lexer_tokenize(char_src, &count);
+    ASSERT(toks[0].type == TOK_UNKNOWN);
+    lexer_free_tokens(toks, count);
+
+    const char *str_src = "\"\\";
+    toks = lexer_tokenize(str_src, &count);
+    ASSERT(toks[0].type == TOK_UNKNOWN);
+    lexer_free_tokens(toks, count);
+}
+
 /* Ensure the vector grows correctly for large element counts */
 static void test_vector_large(void)
 {
@@ -588,6 +603,7 @@ int main(void)
     test_lexer_escapes();
     test_lexer_char_missing_quote();
     test_lexer_string_missing_quote();
+    test_lexer_truncated_escape();
     test_vector_zero_elem_size();
     test_vector_large();
     if (failures == 0) {
