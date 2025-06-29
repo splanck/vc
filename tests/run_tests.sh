@@ -155,6 +155,32 @@ if [ $ret -eq 0 ] || ! grep -q "Semantic error" "${err}"; then
 fi
 rm -f "${out}" "${err}"
 
+# negative test for undefined variable in conditional expression
+err=$(mktemp)
+out=$(mktemp)
+set +e
+"$BINARY" -o "${out}" "$DIR/invalid/undef_cond.c" 2> "${err}"
+ret=$?
+set -e
+if [ $ret -eq 0 ] || ! grep -q "Semantic error" "${err}"; then
+    echo "Test undef_cond failed"
+    fail=1
+fi
+rm -f "${out}" "${err}"
+
+# negative test for assignment to undefined variable
+err=$(mktemp)
+out=$(mktemp)
+set +e
+"$BINARY" -o "${out}" "$DIR/invalid/undef_assign.c" 2> "${err}"
+ret=$?
+set -e
+if [ $ret -eq 0 ] || ! grep -q "Semantic error" "${err}"; then
+    echo "Test undef_assign failed"
+    fail=1
+fi
+rm -f "${out}" "${err}"
+
 # negative test for #error directive
 err=$(mktemp)
 out=$(mktemp)
