@@ -12,12 +12,110 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
+#include <ctype.h>
 #include "opt.h"
 
 typedef struct {
     const char *name;
     ir_op_t op;
 } inline_func_t;
+
+/*
+ * Check if a function definition in the given source file has the
+ * 'inline' keyword appearing before its return type.  This is a very
+ * small parser that scans for a line defining the function and then
+ * tokenizes the portion preceding the function name.
+ */
+static int is_inline_def(const char *file, const char *name)
+{
+    FILE *f = fopen(file, "r");
+    if (!f)
+        return -1;
+
+    char *line = NULL;
+    size_t len = 0;
+    ssize_t nread;
+    int in_comment = 0;
+    int result = 0;
+
+    while ((nread = getline(&line, &len, f)) != -1) {
+        char *s = line;
+
+        /* handle multi-line comments */
+        if (in_comment) {
+            char *end = strstr(s, "*/");
+            if (!end)
+                continue;
+            s = end + 2;
+            in_comment = 0;
+        }
+        while (!in_comment) {
+            char *start = strstr(s, "/*");
+            if (!start)
+                break;
+            char *end = strstr(start + 2, "*/");
+            if (end) {
+                memmove(start, end + 2, strlen(end + 2) + 1);
+            } else {
+                *start = '\0';
+                in_comment = 1;
+                break;
+            }
+        }
+        if (in_comment)
+            continue;
+
+        /* strip line comments */
+        char *slashslash = strstr(s, "//");
+        if (slashslash)
+            *slashslash = '\0';
+
+        /* search for "name(" followed by ')' and '{' on the same line */
+        char *pos = strstr(s, name);
+        if (!pos)
+            continue;
+        if (pos > s && (isalnum((unsigned char)pos[-1]) || pos[-1] == '_'))
+            continue;
+        char *after = pos + strlen(name);
+        while (isspace((unsigned char)*after))
+            after++;
+        if (*after != '(')
+            continue;
+        char *close = strchr(after, ')');
+        if (!close)
+            continue;
+        char *brace = strchr(close, '{');
+        if (!brace)
+            continue;
+
+        /* tokenize the prefix before the function name */
+        char prefix[512];
+        size_t pre_len = (size_t)(pos - s);
+        if (pre_len >= sizeof(prefix))
+            pre_len = sizeof(prefix) - 1;
+        memcpy(prefix, s, pre_len);
+        prefix[pre_len] = '\0';
+
+        char *tokens[64];
+        size_t ntok = 0;
+        char *tok = strtok(prefix, " \t\r\n*");
+        while (tok && ntok < 64) {
+            tokens[ntok++] = tok;
+            tok = strtok(NULL, " \t\r\n*");
+        }
+        for (size_t i = 0; i + 1 < ntok; i++) {
+            if (strcmp(tokens[i], "inline") == 0) {
+                result = 1;
+                break;
+            }
+        }
+        break; /* processed definition line */
+    }
+
+    free(line);
+    fclose(f);
+    return result;
+}
 
 static int is_simple_op(ir_op_t op)
 {
@@ -59,25 +157,14 @@ static int collect_funcs(ir_builder_t *ir, inline_func_t **out, size_t *count)
         if (end->op != IR_FUNC_END)
             continue;
 
-        /* Check that the defining line contains the 'inline' keyword */
+        /* Check that the defining line marks the function as inline */
         int is_inline = 0;
         const char *src_file = p1 ? p1->file : NULL;
         if (src_file) {
-            FILE *f = fopen(src_file, "r");
-            if (f) {
-                char *buf = NULL;
-                size_t len = 0;
-                ssize_t nread;
-                while ((nread = getline(&buf, &len, f)) != -1) {
-                    (void)nread; /* unused */
-                    if (strstr(buf, "inline") && strstr(buf, ins->name)) {
-                        is_inline = 1;
-                        break;
-                    }
-                }
-                free(buf);
-                fclose(f);
-            } else {
+            int r = is_inline_def(src_file, ins->name);
+            if (r > 0) {
+                is_inline = 1;
+            } else if (r < 0) {
                 char msg[256];
                 snprintf(msg, sizeof(msg),
                          "could not open %s for inline check; "
