@@ -117,8 +117,9 @@ char *vc_read_file(const char *path)
 int vc_strtoul_size(const char *s, size_t *out)
 {
     errno = 0;
-    unsigned long val = strtoul(s, NULL, 10);
-    if (errno == ERANGE || val > SIZE_MAX)
+    char *end;
+    unsigned long val = strtoul(s, &end, 10);
+    if (errno == ERANGE || val > SIZE_MAX || *end != '\0')
         return 0;
     *out = (size_t)val;
     return 1;
@@ -130,8 +131,9 @@ int vc_strtoul_size(const char *s, size_t *out)
 int vc_strtoul_unsigned(const char *s, unsigned *out)
 {
     errno = 0;
-    unsigned long val = strtoul(s, NULL, 10);
-    if (errno == ERANGE || val > UINT_MAX)
+    char *end;
+    unsigned long val = strtoul(s, &end, 10);
+    if (errno == ERANGE || val > UINT_MAX || *end != '\0')
         return 0;
     *out = (unsigned)val;
     return 1;
