@@ -181,10 +181,13 @@ static int handle_include(char *line, const char *dir, vector_t *macros,
         endc = '>';
     }
     char *end = start ? strchr(start + 1, endc) : NULL;
+    char *fname = NULL;
+    char *incpath = NULL;
+    int result = 1;
     if (start && end) {
         size_t len = (size_t)(end - start - 1);
-        char *fname = vc_strndup(start + 1, len);
-        char *incpath = find_include_path(fname, endc, dir, incdirs);
+        fname = vc_strndup(start + 1, len);
+        incpath = find_include_path(fname, endc, dir, incdirs);
         const char *chosen = incpath;
         vector_t subconds;
         vector_init(&subconds, sizeof(cond_state_t));
@@ -204,12 +207,12 @@ static int handle_include(char *line, const char *dir, vector_t *macros,
             }
         }
         vector_free(&subconds);
-        free(incpath);
-        free(fname);
         if (!ok)
-            return 0;
+            result = 0;
     }
-    return 1;
+    free(incpath);
+    free(fname);
+    return result;
 }
 
 /* Split a comma separated list of parameters and append trimmed names to out */
