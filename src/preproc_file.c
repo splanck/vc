@@ -542,6 +542,23 @@ static void cleanup_file_resources(char *text, char **lines, char *dir)
     free(dir);
 }
 
+/* Load PATH and push it onto the include stack.  On failure any allocated
+ * resources are released and zero is returned. */
+static int load_and_register_file(const char *path, vector_t *stack,
+                                  char ***out_lines, char **out_dir,
+                                  char **out_text)
+{
+    if (!load_file_lines(path, out_lines, out_dir, out_text))
+        return 0;
+
+    if (!include_stack_push(stack, path)) {
+        cleanup_file_resources(*out_text, *out_lines, *out_dir);
+        return 0;
+    }
+
+    return 1;
+}
+
 /*
  * Free all macros stored in a vector.
  * Each macro's resources are released and the vector itself is freed.
@@ -775,13 +792,8 @@ static int process_file(const char *path, vector_t *macros,
     char *dir;
     char *text;
 
-    if (!load_file_lines(path, &lines, &dir, &text))
+    if (!load_and_register_file(path, stack, &lines, &dir, &text))
         return 0;
-
-    if (!include_stack_push(stack, path)) {
-        cleanup_file_resources(text, lines, dir);
-        return 0;
-    }
 
     int ok = process_all_lines(lines, path, dir, macros, conds, out, incdirs,
                                stack);
