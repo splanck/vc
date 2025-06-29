@@ -663,7 +663,7 @@ static int run_link_command(const vector_t *objs, const char *output,
                             int use_x86_64)
 {
     const char *arch_flag = use_x86_64 ? "-m64" : "-m32";
-    size_t argc = objs->count + 6;
+    size_t argc = objs->count + 5;
     char **argv = vc_alloc_or_exit((argc + 1) * sizeof(char *));
 
     size_t idx = 0;
