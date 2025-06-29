@@ -13,6 +13,8 @@ provides an overview of all available documentation.
   compilation.
 - [Preprocessor workflow](preprocessor.md) – how macros and directives are
   handled before lexing.
+- Built-in macros – `__FILE__`, `__LINE__`, `__DATE__`, `__TIME__`,
+  `__STDC__`, `__STDC_VERSION__` and `__func__` expand automatically.
 - [Supported language features](language_features.md) – syntax and semantics
   currently implemented, including variadic functions.
 - [Command-line usage](command_line.md) – available options and example
