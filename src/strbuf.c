@@ -9,6 +9,7 @@
 #include <string.h>
 #include <stdio.h>
 #include <stdarg.h>
+#include <stdint.h>
 #include "strbuf.h"
 #include "util.h"
 
@@ -29,10 +30,25 @@ void strbuf_init(strbuf_t *sb)
 /* Ensure the buffer can hold at least "extra" additional bytes. */
 static void sb_ensure(strbuf_t *sb, size_t extra)
 {
-    if (!sb->data || sb->len + extra >= sb->cap) {
-        size_t new_cap = sb->cap ? sb->cap * 2 : 128;
-        while (sb->len + extra >= new_cap)
+    if (!sb)
+        return;
+
+    /* calculate required capacity and detect overflow */
+    if (sb->len > SIZE_MAX - extra - 1) {
+        fprintf(stderr, "vc: string buffer too large\n");
+        exit(1);
+    }
+    size_t need = sb->len + extra + 1;
+
+    if (!sb->data || need > sb->cap) {
+        size_t new_cap = sb->cap ? sb->cap : 128;
+        while (new_cap < need) {
+            if (new_cap > SIZE_MAX / 2) {
+                fprintf(stderr, "vc: string buffer too large\n");
+                exit(1);
+            }
             new_cap *= 2;
+        }
         char *n = vc_realloc_or_exit(sb->data, new_cap);
         sb->data = n;
         sb->cap = new_cap;
