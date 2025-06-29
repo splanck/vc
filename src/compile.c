@@ -570,18 +570,30 @@ static int compile_source_files(const cli_options_t *cli, vector_t *objs)
     int ok = 1;
     vector_init(objs, sizeof(char *));
 
-    for (size_t i = 0; i < cli->sources.count && ok; i++) {
+    for (size_t i = 0; i < cli->sources.count; i++) {
         const char *src = ((const char **)cli->sources.data)[i];
         char *obj = NULL;
-        ok = compile_source_obj(src, cli, &obj);
-        if (ok) {
-            if (!vector_push(objs, &obj)) {
-                fprintf(stderr, "Out of memory\n");
-                ok = 0;
-                unlink(obj);
-                free(obj);
-            }
+
+        if (!compile_source_obj(src, cli, &obj)) {
+            ok = 0;
+            break;
         }
+
+        if (!vector_push(objs, &obj)) {
+            fprintf(stderr, "Out of memory\n");
+            ok = 0;
+            unlink(obj);
+            free(obj);
+            break;
+        }
+    }
+
+    if (!ok) {
+        for (size_t j = 0; j < objs->count; j++) {
+            unlink(((char **)objs->data)[j]);
+            free(((char **)objs->data)[j]);
+        }
+        vector_free(objs);
     }
 
     return ok;
