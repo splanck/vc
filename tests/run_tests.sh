@@ -181,6 +181,19 @@ if [ $ret -eq 0 ] || ! grep -q "Include cycle detected" "${err}"; then
 fi
 rm -f "${out}" "${err}"
 
+# negative test for include cycle through search path
+err=$(mktemp)
+out=$(mktemp)
+set +e
+"$BINARY" -I "$DIR/includes" -o "${out}" "$DIR/invalid/include_cycle_search.c" 2> "${err}"
+ret=$?
+set -e
+if [ $ret -eq 0 ] || ! grep -q "Include cycle detected" "${err}"; then
+    echo "Test include_cycle_search failed"
+    fail=1
+fi
+rm -f "${out}" "${err}"
+
 # negative test for macro recursion limit
 err=$(mktemp)
 out=$(mktemp)
