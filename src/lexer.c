@@ -374,11 +374,18 @@ static void read_string_lit(const char *src, size_t *i, size_t *col,
         }
         (*col)++;
     }
+    /* NUL-terminate the buffer for convenience */
+    char nul = '\0';
+    if (!vector_push(&buf_v, &nul)) {
+        vector_free(&buf_v);
+        return;
+    }
     if (src[*i] == '"') {
         (*i)++;
         (*col)++;
 
-        append_token(tokens, tok_type, buf_v.data, buf_v.count, line, column);
+        append_token(tokens, tok_type, buf_v.data, buf_v.count - 1,
+                     line, column);
         vector_free(&buf_v);
     } else {
         error_set(line, column, error_current_file, error_current_function);
