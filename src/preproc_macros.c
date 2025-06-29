@@ -312,7 +312,7 @@ static int parse_macro_invocation(const char *line, size_t *pos,
                                   vector_t *macros, strbuf_t *out,
                                   size_t column, int depth)
 {
-    if (depth > MAX_MACRO_DEPTH) {
+    if (depth >= MAX_MACRO_DEPTH) {
         fprintf(stderr, "Macro expansion limit exceeded\n");
         return 0;
     }
@@ -406,7 +406,7 @@ static int parse_macro_invocation(const char *line, size_t *pos,
  */
 void expand_line(const char *line, vector_t *macros, strbuf_t *out, size_t column, int depth)
 {
-    if (depth > MAX_MACRO_DEPTH) {
+    if (depth >= MAX_MACRO_DEPTH) {
         fprintf(stderr, "Macro expansion limit exceeded\n");
         return;
     }
