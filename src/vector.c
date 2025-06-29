@@ -9,6 +9,7 @@
 #include <string.h>
 #include <stdio.h>
 #include <stdint.h>
+#include <assert.h>
 #include "vector.h"
 #include "util.h"
 
@@ -21,6 +22,8 @@ void vector_init(vector_t *vec, size_t elem_size)
 {
     if (!vec)
         return;
+    /* element size is documented as non-zero */
+    assert(elem_size > 0);
     vec->data = NULL;
     vec->count = 0;
     vec->cap = 0;

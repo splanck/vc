@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>
+#include <getopt.h>
 #include "cli.h"
 #include "vector.h"
 
@@ -37,13 +38,15 @@ static void test_parse_success(void)
 static void test_parse_failure(void)
 {
     cli_options_t opts;
-    char *argv[] = {"vc", "file.c", NULL};
+    char *argv[] = {"vc", "-o", "out.s", "file.c", NULL};
+    /* reset getopt state before reusing cli_parse_args */
+    optind = 1;
     fail_push = 1;
     FILE *tmp = tmpfile();
     int saved = dup(fileno(stderr));
     dup2(fileno(tmp), fileno(stderr));
 
-    int ret = cli_parse_args(2, argv, &opts);
+    int ret = cli_parse_args(4, argv, &opts);
 
     fflush(stderr);
     fseek(tmp, 0, SEEK_SET);
