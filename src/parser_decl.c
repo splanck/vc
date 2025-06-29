@@ -16,6 +16,7 @@
 
 #include "ast_stmt.h"
 #include "ast_expr.h"
+#include "error.h"
 
 /* Helper prototypes */
 static int parse_decl_specs(parser_t *p, int *is_extern, int *is_static,
@@ -112,7 +113,15 @@ static int parse_array_suffix(parser_t *p, type_kind_t *type, char **name,
                 return 0;
             }
             if ((*size_expr)->kind == EXPR_NUMBER) {
-                *arr_size = strtoul((*size_expr)->number.value, NULL, 10);
+                if (!vc_strtoul_size((*size_expr)->number.value, arr_size)) {
+                    error_set((*size_expr)->line, (*size_expr)->column,
+                              error_current_file, error_current_function);
+                    error_print("Integer constant out of range");
+                    ast_free_expr(*size_expr);
+                    *size_expr = NULL;
+                    p->pos = save;
+                    return 0;
+                }
                 ast_free_expr(*size_expr);
                 *size_expr = NULL;
             }
@@ -195,7 +204,12 @@ static int parse_member(parser_t *p, int is_union,
         if (!num || num->type != TOK_NUMBER)
             return 0;
         p->pos++;
-        arr_size = strtoul(num->lexeme, NULL, 10);
+        if (!vc_strtoul_size(num->lexeme, &arr_size)) {
+            error_set(num->line, num->column,
+                      error_current_file, error_current_function);
+            error_print("Integer constant out of range");
+            return 0;
+        }
         if (!match(p, TOK_RBRACKET))
             return 0;
         mt = TYPE_ARRAY;
@@ -209,7 +223,12 @@ static int parse_member(parser_t *p, int is_union,
         if (!num || num->type != TOK_NUMBER)
             return 0;
         p->pos++;
-        bit_width = strtoul(num->lexeme, NULL, 10);
+        if (!vc_strtoul_unsigned(num->lexeme, &bit_width)) {
+            error_set(num->line, num->column,
+                      error_current_file, error_current_function);
+            error_print("Integer constant out of range");
+            return 0;
+        }
     }
     if (!match(p, TOK_SEMI))
         return 0;

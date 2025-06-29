@@ -17,6 +17,7 @@
 #include "vector.h"
 #include "util.h"
 #include "ast_clone.h"
+#include "error.h"
 
 /* Forward declarations */
 static expr_t *parse_expression(parser_t *p);
@@ -751,7 +752,13 @@ static int parse_type(parser_t *p, type_kind_t *out_type, size_t *out_size,
             return 0;
         }
         p->pos++;
-        arr = strtoul(num->lexeme, NULL, 10);
+        if (!vc_strtoul_size(num->lexeme, &arr)) {
+            error_set(num->line, num->column,
+                      error_current_file, error_current_function);
+            error_print("Integer constant out of range");
+            p->pos = save;
+            return 0;
+        }
         if (!match(p, TOK_RBRACKET)) {
             p->pos = save;
             return 0;
