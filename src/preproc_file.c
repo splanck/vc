@@ -804,6 +804,25 @@ static int process_file(const char *path, vector_t *macros,
     return ok;
 }
 
+/* Append colon-separated paths from ENV to SEARCH_DIRS */
+static void append_env_paths(const char *env, vector_t *search_dirs)
+{
+    if (!env || !*env)
+        return;
+
+    char *tmp = vc_strdup(env);
+    char *tok, *sp;
+    tok = strtok_r(tmp, ":", &sp);
+    while (tok) {
+        if (*tok) {
+            char *dup = vc_strdup(tok);
+            vector_push(search_dirs, &dup);
+        }
+        tok = strtok_r(NULL, ":", &sp);
+    }
+    free(tmp);
+}
+
 /*
  * Entry point used by the compiler.  Sets up include search paths,
  * invokes the file processor and returns the resulting text.
@@ -818,35 +837,8 @@ char *preproc_run(const char *path, const vector_t *include_dirs)
         vector_push(&search_dirs, &dup);
     }
 
-    const char *env = getenv("VCPATH");
-    if (env && *env) {
-        char *tmp = vc_strdup(env);
-        char *tok; char *sp;
-        tok = strtok_r(tmp, ":", &sp);
-        while (tok) {
-            if (*tok) {
-                char *dup = vc_strdup(tok);
-                vector_push(&search_dirs, &dup);
-            }
-            tok = strtok_r(NULL, ":", &sp);
-        }
-        free(tmp);
-    }
-
-    env = getenv("VCINC");
-    if (env && *env) {
-        char *tmp = vc_strdup(env);
-        char *tok; char *sp;
-        tok = strtok_r(tmp, ":", &sp);
-        while (tok) {
-            if (*tok) {
-                char *dup = vc_strdup(tok);
-                vector_push(&search_dirs, &dup);
-            }
-            tok = strtok_r(NULL, ":", &sp);
-        }
-        free(tmp);
-    }
+    append_env_paths(getenv("VCPATH"), &search_dirs);
+    append_env_paths(getenv("VCINC"), &search_dirs);
 
     vector_t macros;
     vector_init(&macros, sizeof(macro_t));
