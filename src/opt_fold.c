@@ -66,9 +66,9 @@ static int eval_long_float_op(ir_op_t op, int a, int b)
 
 /* Update destination entry in constant tracking tables */
 static void update_const(ir_instr_t *ins, int val, int cst,
-                         int max_id, int *is_const, int *values)
+                         size_t max_id, int *is_const, int *values)
 {
-    if (ins->dest >= 0 && ins->dest < max_id) {
+    if (ins->dest >= 0 && (size_t)ins->dest < max_id) {
         is_const[ins->dest] = cst;
         if (cst)
             values[ins->dest] = val;
@@ -76,10 +76,10 @@ static void update_const(ir_instr_t *ins, int val, int cst,
 }
 
 /* Try folding an integer binary operation */
-static void fold_int_instr(ir_instr_t *ins, int max_id,
+static void fold_int_instr(ir_instr_t *ins, size_t max_id,
                            int *is_const, int *values)
 {
-    if (ins->src1 < max_id && ins->src2 < max_id &&
+    if ((size_t)ins->src1 < max_id && (size_t)ins->src2 < max_id &&
         is_const[ins->src1] && is_const[ins->src2]) {
         int a = values[ins->src1];
         int b = values[ins->src2];
@@ -94,10 +94,10 @@ static void fold_int_instr(ir_instr_t *ins, int max_id,
 }
 
 /* Try folding a floating point binary operation */
-static void fold_float_instr(ir_instr_t *ins, int max_id,
+static void fold_float_instr(ir_instr_t *ins, size_t max_id,
                              int *is_const, int *values)
 {
-    if (ins->src1 < max_id && ins->src2 < max_id &&
+    if ((size_t)ins->src1 < max_id && (size_t)ins->src2 < max_id &&
         is_const[ins->src1] && is_const[ins->src2]) {
         int a = values[ins->src1];
         int b = values[ins->src2];
@@ -112,10 +112,10 @@ static void fold_float_instr(ir_instr_t *ins, int max_id,
 }
 
 /* Try folding a long double binary operation */
-static void fold_long_float_instr(ir_instr_t *ins, int max_id,
+static void fold_long_float_instr(ir_instr_t *ins, size_t max_id,
                                   int *is_const, int *values)
 {
-    if (ins->src1 < max_id && ins->src2 < max_id &&
+    if ((size_t)ins->src1 < max_id && (size_t)ins->src2 < max_id &&
         is_const[ins->src1] && is_const[ins->src2]) {
         int a = values[ins->src1];
         int b = values[ins->src2];
@@ -134,9 +134,9 @@ void fold_constants(ir_builder_t *ir)
 {
     if (!ir)
         return;
-    int max_id = ir->next_value_id;
-    int *is_const = calloc((size_t)max_id, sizeof(int));
-    int *values = calloc((size_t)max_id, sizeof(int));
+    size_t max_id = ir->next_value_id;
+    int *is_const = calloc(max_id, sizeof(int));
+    int *values = calloc(max_id, sizeof(int));
     if (!is_const || !values) {
         opt_error("out of memory");
         free(is_const);

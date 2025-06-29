@@ -33,10 +33,28 @@ cc -Iinclude -Wall -Wextra -std=c99 \
     src/semantic_call.c src/consteval.c src/symtable_core.c \
     src/ast_expr.c src/vector.c src/util.c src/ir_core.c \
     src/error.c src/label.c
+# build strbuf overflow regression test
+cc -Iinclude -Wall -Wextra -std=c99 -c src/strbuf.c -o strbuf_overflow_impl.o
+cc -Iinclude -Wall -Wextra -std=c99 -c src/util.c -o util_strbuf.o
+cc -Iinclude -Wall -Wextra -std=c99 -c "$DIR/unit/test_strbuf_overflow.c" -o "$DIR/test_strbuf_overflow.o"
+cc -o "$DIR/strbuf_overflow" strbuf_overflow_impl.o util_strbuf.o "$DIR/test_strbuf_overflow.o"
+rm -f strbuf_overflow_impl.o util_strbuf.o "$DIR/test_strbuf_overflow.o"
 # run unit tests
 "$DIR/unit_tests"
 "$DIR/cli_tests"
 "$DIR/ir_core_tests"
 "$DIR/cond_expr_tests"
+=======
+# regression test for strbuf overflow handling
+err=$(mktemp)
+set +e
+"$DIR/strbuf_overflow" 2> "$err"
+ret=$?
+set -e
+if [ $ret -eq 0 ] || ! grep -q "string buffer too large" "$err"; then
+    echo "Test strbuf_overflow failed"
+    fail=1
+fi
+rm -f "$err" "$DIR/strbuf_overflow"
 # run integration tests
 "$DIR/run_tests.sh"

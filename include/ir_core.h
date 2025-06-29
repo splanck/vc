@@ -94,7 +94,7 @@ typedef struct ir_instr {
 typedef struct {
     ir_instr_t *head;
     ir_instr_t *tail;
-    int next_value_id;
+    size_t next_value_id;
     const char *cur_file;
     size_t cur_line;
     size_t cur_column;
