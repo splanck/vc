@@ -47,7 +47,7 @@ void dead_code_elim(ir_builder_t *ir)
     if (!ir)
         return;
 
-    int max_id = ir->next_value_id;
+    size_t max_id = ir->next_value_id;
     int count = 0;
     for (ir_instr_t *i = ir->head; i; i = i->next)
         count++;
@@ -62,7 +62,7 @@ void dead_code_elim(ir_builder_t *ir)
     for (ir_instr_t *i = ir->head; i; i = i->next)
         list[idx++] = i;
 
-    int *used = calloc((size_t)max_id, sizeof(int));
+    int *used = calloc(max_id, sizeof(int));
     if (!used) {
         opt_error("out of memory");
         free(list);
@@ -89,9 +89,9 @@ void dead_code_elim(ir_builder_t *ir)
             continue;
         }
 
-        if (ins->src1 >= 0 && ins->src1 < max_id)
+        if (ins->src1 >= 0 && (size_t)ins->src1 < max_id)
             used[ins->src1] = 1;
-        if (ins->src2 >= 0 && ins->src2 < max_id)
+        if (ins->src2 >= 0 && (size_t)ins->src2 < max_id)
             used[ins->src2] = 1;
     }
 

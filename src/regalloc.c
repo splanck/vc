@@ -35,19 +35,19 @@
  * never used).  The resulting array is indexed by value id and should
  * be freed by the caller.  NULL is returned on allocation failure.
  */
-static int *compute_last_use(ir_builder_t *ir, int max_id)
+static int *compute_last_use(ir_builder_t *ir, size_t max_id)
 {
-    int *last = malloc((size_t)max_id * sizeof(int));
+    int *last = malloc(max_id * sizeof(int));
     if (!last)
         return NULL;
-    for (int i = 0; i < max_id; i++)
+    for (size_t i = 0; i < max_id; i++)
         last[i] = -1;
 
     int idx = 0;
     for (ir_instr_t *ins = ir->head; ins; ins = ins->next, idx++) {
-        if (ins->src1 > 0 && ins->src1 < max_id)
+        if (ins->src1 > 0 && (size_t)ins->src1 < max_id)
             last[ins->src1] = idx;
-        if (ins->src2 > 0 && ins->src2 < max_id)
+        if (ins->src2 > 0 && (size_t)ins->src2 < max_id)
             last[ins->src2] = idx;
     }
     return last;
@@ -97,12 +97,12 @@ void regalloc_run(ir_builder_t *ir, regalloc_t *ra)
      * none remain.  Freed registers are pushed back onto the stack for reuse.
      */
 
-    int max_id = ir->next_value_id;
-    ra->loc = malloc((size_t)max_id * sizeof(int));
+    size_t max_id = ir->next_value_id;
+    ra->loc = malloc(max_id * sizeof(int));
     ra->stack_slots = 0;
     if (!ra->loc)
         return;
-    for (int i = 0; i < max_id; i++)
+    for (size_t i = 0; i < max_id; i++)
         ra->loc[i] = -1;
 
     int *last = compute_last_use(ir, max_id);
@@ -123,15 +123,15 @@ void regalloc_run(ir_builder_t *ir, regalloc_t *ra)
         allocate_location(ins, free_regs, &free_count, ra);
 
         /* release registers whose value will not be needed again */
-        if (ins->src1 > 0 && ins->src1 < max_id &&
+        if (ins->src1 > 0 && (size_t)ins->src1 < max_id &&
             ra->loc[ins->src1] >= 0 && last[ins->src1] == idx)
             free_regs[free_count++] = ra->loc[ins->src1];
 
-        if (ins->src2 > 0 && ins->src2 < max_id &&
+        if (ins->src2 > 0 && (size_t)ins->src2 < max_id &&
             ra->loc[ins->src2] >= 0 && last[ins->src2] == idx)
             free_regs[free_count++] = ra->loc[ins->src2];
 
-        if (ins->dest > 0 && ins->dest < max_id &&
+        if (ins->dest > 0 && (size_t)ins->dest < max_id &&
             ra->loc[ins->dest] >= 0 && last[ins->dest] == idx)
             free_regs[free_count++] = ra->loc[ins->dest];
     }
