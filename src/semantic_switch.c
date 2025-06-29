@@ -108,8 +108,12 @@ static char **emit_case_branches(stmt_t *stmt, symtable_t *vars,
 {
     size_t count = stmt->switch_stmt.case_count;
     char **labels = calloc(count, sizeof(char *));
-    if (!labels)
+    long long *values = calloc(count, sizeof(long long));
+    if (!labels || !values) {
+        free(labels);
+        free(values);
         return NULL;
+    }
 
     for (size_t i = 0; i < count; i++) {
         char buf[32];
@@ -120,9 +124,21 @@ static char **emit_case_branches(stmt_t *stmt, symtable_t *vars,
             for (size_t j = 0; j <= i; j++)
                 free(labels[j]);
             free(labels);
+            free(values);
             error_set(stmt->switch_stmt.cases[i].expr->line, stmt->switch_stmt.cases[i].expr->column, error_current_file, error_current_function);
             return NULL;
         }
+        for (size_t j = 0; j < i; j++) {
+            if (values[j] == cval) {
+                for (size_t k = 0; k <= i; k++)
+                    free(labels[k]);
+                free(labels);
+                free(values);
+                error_set(stmt->switch_stmt.cases[i].expr->line, stmt->switch_stmt.cases[i].expr->column, error_current_file, error_current_function);
+                return NULL;
+            }
+        }
+        values[i] = cval;
         ir_value_t const_val = ir_build_const(ir, cval);
         ir_value_t cmp = ir_build_binop(ir, IR_CMPEQ, expr_val, const_val);
         ir_build_bcond(ir, cmp, labels[i]);
@@ -133,6 +149,7 @@ static char **emit_case_branches(stmt_t *stmt, symtable_t *vars,
     else
         ir_build_br(ir, end_label);
 
+    free(values);
     return labels;
 }
 
