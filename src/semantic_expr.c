@@ -120,13 +120,35 @@ static type_kind_t check_cond_expr(expr_t *expr, symtable_t *vars,
                                    symtable_t *funcs, ir_builder_t *ir,
                                    ir_value_t *out)
 {
-    ir_value_t cond_val;
-    if (!is_intlike(check_expr(expr->cond.cond, vars, funcs, ir, &cond_val))) {
-        error_set(expr->cond.cond->line, expr->cond.cond->column, error_current_file, error_current_function);
+    /* First validate all sub-expressions using a temporary IR builder so that
+     * no instructions are emitted on failure. */
+    ir_builder_t tmpb; ir_builder_init(&tmpb);
+    ir_value_t tmpv;
+    type_kind_t ct = check_expr(expr->cond.cond, vars, funcs, &tmpb, &tmpv);
+    type_kind_t tt = check_expr(expr->cond.then_expr, vars, funcs, &tmpb, NULL);
+    type_kind_t ft = check_expr(expr->cond.else_expr, vars, funcs, &tmpb, NULL);
+    ir_builder_free(&tmpb);
+
+    if (!is_intlike(ct) || tt == TYPE_UNKNOWN || ft == TYPE_UNKNOWN) {
+        if (!is_intlike(ct))
+            error_set(expr->cond.cond->line, expr->cond.cond->column,
+                      error_current_file, error_current_function);
         if (out)
             *out = (ir_value_t){0};
         return TYPE_UNKNOWN;
     }
+
+    if (!(is_intlike(tt) && is_intlike(ft))) {
+        error_set(expr->line, expr->column, error_current_file,
+                  error_current_function);
+        if (out)
+            *out = (ir_value_t){0};
+        return TYPE_UNKNOWN;
+    }
+
+    /* Re-evaluate using the real IR builder now that validation succeeded. */
+    ir_value_t cond_val;
+    check_expr(expr->cond.cond, vars, funcs, ir, &cond_val);
 
     char flabel[32], endlabel[32], tmp[32];
     int id = label_next_id();
@@ -136,22 +158,16 @@ static type_kind_t check_cond_expr(expr_t *expr, symtable_t *vars,
     ir_build_bcond(ir, cond_val, flabel);
 
     ir_value_t tval;
-    type_kind_t tt = check_expr(expr->cond.then_expr, vars, funcs, ir, &tval);
+    check_expr(expr->cond.then_expr, vars, funcs, ir, &tval);
     ir_build_store(ir, tmp, tval);
     ir_build_br(ir, endlabel);
 
     ir_build_label(ir, flabel);
     ir_value_t fval;
-    type_kind_t ft = check_expr(expr->cond.else_expr, vars, funcs, ir, &fval);
+    check_expr(expr->cond.else_expr, vars, funcs, ir, &fval);
     ir_build_store(ir, tmp, fval);
     ir_build_label(ir, endlabel);
 
-    if (!(is_intlike(tt) && is_intlike(ft))) {
-        error_set(expr->line, expr->column, error_current_file, error_current_function);
-        if (out)
-            *out = (ir_value_t){0};
-        return TYPE_UNKNOWN;
-    }
     if (out)
         *out = ir_build_load(ir, tmp);
     if (tt == TYPE_LLONG || tt == TYPE_ULLONG ||
