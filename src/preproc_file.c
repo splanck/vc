@@ -717,7 +717,7 @@ static int handle_text_line(char *line, const char *dir, vector_t *macros,
     if (stack_active(conds)) {
         strbuf_t tmp;
         strbuf_init(&tmp);
-        expand_line(line, macros, &tmp, 0);
+        expand_line(line, macros, &tmp, 0, 0);
         strbuf_append(&tmp, "\n");
         strbuf_append(out, tmp.data);
         strbuf_free(&tmp);

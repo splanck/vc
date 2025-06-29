@@ -26,7 +26,8 @@ typedef struct {
 void macro_free(macro_t *m);
 
 /* Expand macros in one line */
-void expand_line(const char *line, vector_t *macros, strbuf_t *out, size_t column);
+void expand_line(const char *line, vector_t *macros, strbuf_t *out,
+                 size_t column, int depth);
 
 /* Check whether a macro exists */
 int is_macro_defined(vector_t *macros, const char *name);

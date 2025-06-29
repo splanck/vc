@@ -15,9 +15,12 @@
 #include <stdlib.h>
 #include <string.h>
 #include "preproc_macros.h"
+#include <stdio.h>
 #include "util.h"
 #include "vector.h"
 #include "strbuf.h"
+
+#define MAX_MACRO_DEPTH 100
 
 /* current expansion location for builtin macros */
 static const char *builtin_file = "";
@@ -266,16 +269,16 @@ static int parse_macro_args(const char *line, size_t *pos, vector_t *out)
 
 /* Expand a macro invocation and append the result to "out". */
 static void expand_macro_call(macro_t *m, char **args, vector_t *macros,
-                              strbuf_t *out)
+                              strbuf_t *out, int depth)
 {
     strbuf_t tmp;
     strbuf_init(&tmp);
     if (m->params.count) {
         char *body = expand_params(m->value, &m->params, args);
-        expand_line(body, macros, &tmp, builtin_column);
+        expand_line(body, macros, &tmp, builtin_column, depth);
         free(body);
     } else {
-        expand_line(m->value, macros, &tmp, builtin_column);
+        expand_line(m->value, macros, &tmp, builtin_column, depth);
     }
     strbuf_append(out, tmp.data ? tmp.data : "");
     strbuf_free(&tmp);
@@ -296,8 +299,12 @@ static void emit_plain_char(const char *line, size_t *pos, strbuf_t *out)
  */
 static int parse_macro_invocation(const char *line, size_t *pos,
                                   vector_t *macros, strbuf_t *out,
-                                  size_t column)
+                                  size_t column, int depth)
 {
+    if (depth > MAX_MACRO_DEPTH) {
+        fprintf(stderr, "Macro expansion limit exceeded\n");
+        return 0;
+    }
     size_t i = *pos;
 
     if (!isalpha((unsigned char)line[i]) && line[i] != '_')
@@ -359,7 +366,7 @@ static int parse_macro_invocation(const char *line, size_t *pos,
                 vector_t args;
                 if (parse_macro_args(line, &pos2, &args) &&
                     args.count == m->params.count) {
-                    expand_macro_call(m, (char **)args.data, macros, out);
+                    expand_macro_call(m, (char **)args.data, macros, out, depth + 1);
                     for (size_t t = 0; t < args.count; t++)
                         free(((char **)args.data)[t]);
                     vector_free(&args);
@@ -370,7 +377,7 @@ static int parse_macro_invocation(const char *line, size_t *pos,
                     free(((char **)args.data)[t]);
                 vector_free(&args);
             } else {
-                expand_macro_call(m, NULL, macros, out);
+                expand_macro_call(m, NULL, macros, out, depth + 1);
                 *pos = j;
                 return 1;
             }
@@ -386,11 +393,15 @@ static int parse_macro_invocation(const char *line, size_t *pos,
  * Performs recursive expansion so macro bodies may contain other
  * macros.  Results are appended to the provided output buffer.
  */
-void expand_line(const char *line, vector_t *macros, strbuf_t *out, size_t column)
+void expand_line(const char *line, vector_t *macros, strbuf_t *out, size_t column, int depth)
 {
+    if (depth > MAX_MACRO_DEPTH) {
+        fprintf(stderr, "Macro expansion limit exceeded\n");
+        return;
+    }
     for (size_t i = 0; line[i];) {
         size_t col = column ? column : i + 1;
-        if (!parse_macro_invocation(line, &i, macros, out, col))
+        if (!parse_macro_invocation(line, &i, macros, out, col, depth))
             emit_plain_char(line, &i, out);
     }
 }
