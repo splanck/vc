@@ -460,13 +460,16 @@ static int create_temp_file(const cli_options_t *cli, const char *prefix,
     const char *dir = cli->obj_dir ? cli->obj_dir : "/tmp";
     size_t len = strlen(dir) + strlen(prefix) + 8; /* / prefix XXXXXX \0 */
     char *tmpl = malloc(len);
-    if (!tmpl)
+    if (!tmpl) {
+        *out_path = NULL;
         return -1;
+    }
     snprintf(tmpl, len, "%s/%sXXXXXX", dir, prefix);
     int fd = mkstemp(tmpl);
     if (fd < 0) {
         perror("mkstemp");
         free(tmpl);
+        *out_path = NULL;
         return -1;
     }
     *out_path = tmpl;
