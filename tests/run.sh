@@ -19,8 +19,16 @@ cc -Iinclude -Wall -Wextra -std=c99 -c src/vector.c -o vector_test.o
 cc -Iinclude -Wall -Wextra -std=c99 -c src/util.c -o util_test.o
 cc -o "$DIR/cli_tests" cli_test.o "$DIR/test_cli.o" vector_test.o util_test.o
 rm -f cli_test.o "$DIR/test_cli.o" vector_test.o util_test.o
+# build ir_core unit test binary with malloc wrapper
+cc -Iinclude -Wall -Wextra -std=c99 -Dmalloc=test_malloc -c src/ir_core.c -o ir_core_test.o
+cc -Iinclude -Wall -Wextra -std=c99 -c src/util.c -o util_ircore.o
+cc -Iinclude -Wall -Wextra -std=c99 -c src/label.c -o label_ircore.o
+cc -Iinclude -Wall -Wextra -std=c99 -c "$DIR/unit/test_ir_core.c" -o "$DIR/test_ir_core.o"
+cc -o "$DIR/ir_core_tests" ir_core_test.o util_ircore.o label_ircore.o "$DIR/test_ir_core.o"
+rm -f ir_core_test.o util_ircore.o label_ircore.o "$DIR/test_ir_core.o"
 # run unit tests
 "$DIR/unit_tests"
 "$DIR/cli_tests"
+"$DIR/ir_core_tests"
 # run integration tests
 "$DIR/run_tests.sh"

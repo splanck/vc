@@ -77,6 +77,30 @@ static ir_instr_t *append_instr(ir_builder_t *b)
     return ins;
 }
 
+/* Remove instruction "ins" from the builder list and free it. */
+static void remove_instr(ir_builder_t *b, ir_instr_t *ins)
+{
+    if (!b || !ins)
+        return;
+    ir_instr_t *prev = NULL;
+    ir_instr_t *cur = b->head;
+    while (cur && cur != ins) {
+        prev = cur;
+        cur = cur->next;
+    }
+    if (!cur)
+        return;
+    if (prev)
+        prev->next = cur->next;
+    else
+        b->head = cur->next;
+    if (b->tail == cur)
+        b->tail = prev;
+    free(cur->name);
+    free(cur->data);
+    free(cur);
+}
+
 /*
  * Emit IR_CONST. dest gets a fresh id and imm stores the constant
  * value.
@@ -124,8 +148,10 @@ ir_value_t ir_build_wstring(ir_builder_t *b, const char *str)
     ins->name = vc_strdup(label_format("LWstr", ins->dest, label));
     size_t len = strlen(str ? str : "");
     long long *vals = malloc((len + 1) * sizeof(long long));
-    if (!vals)
+    if (!vals) {
+        remove_instr(b, ins);
         return (ir_value_t){0};
+    }
     for (size_t i = 0; i < len; i++)
         vals[i] = (unsigned char)str[i];
     vals[len] = 0;
