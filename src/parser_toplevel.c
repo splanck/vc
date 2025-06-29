@@ -11,6 +11,8 @@
 #include "parser_types.h"
 #include "ast_stmt.h"
 #include "ast_expr.h"
+#include "util.h"
+#include "error.h"
 
 /* Helper to parse enum declarations at global scope */
 static int parse_enum_global(parser_t *p, size_t start_pos, stmt_t **out)
@@ -117,7 +119,13 @@ static int parse_typedef_decl(parser_t *p, size_t start_pos, stmt_t **out)
             return 0;
         }
         p->pos++;
-        arr_size = strtoul(num->lexeme, NULL, 10);
+        if (!vc_strtoul_size(num->lexeme, &arr_size)) {
+            error_set(num->line, num->column,
+                      error_current_file, error_current_function);
+            error_print("Integer constant out of range");
+            p->pos = start_pos;
+            return 0;
+        }
         if (!match(p, TOK_RBRACKET)) {
             p->pos = start_pos;
             return 0;
@@ -236,7 +244,15 @@ static int parse_array_size(parser_t *p, type_kind_t *type, size_t *arr_size,
                 return 0;
             }
             if ((*size_expr)->kind == EXPR_NUMBER) {
-                *arr_size = strtoul((*size_expr)->number.value, NULL, 10);
+                if (!vc_strtoul_size((*size_expr)->number.value, arr_size)) {
+                    error_set((*size_expr)->line, (*size_expr)->column,
+                              error_current_file, error_current_function);
+                    error_print("Integer constant out of range");
+                    ast_free_expr(*size_expr);
+                    *size_expr = NULL;
+                    p->pos = start;
+                    return 0;
+                }
                 ast_free_expr(*size_expr);
                 *size_expr = NULL;
             }

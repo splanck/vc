@@ -11,6 +11,8 @@
 #include <string.h>
 #include <stdint.h>
 #include <sys/types.h>
+#include <errno.h>
+#include <limits.h>
 #include "util.h"
 
 /*
@@ -107,5 +109,31 @@ char *vc_read_file(const char *path)
     buf[len] = '\0';
     fclose(f);
     return buf;
+}
+
+/*
+ * Convert string to size_t using strtoul with overflow checking.
+ */
+int vc_strtoul_size(const char *s, size_t *out)
+{
+    errno = 0;
+    unsigned long val = strtoul(s, NULL, 10);
+    if (errno == ERANGE || val > SIZE_MAX)
+        return 0;
+    *out = (size_t)val;
+    return 1;
+}
+
+/*
+ * Convert string to unsigned with overflow checking.
+ */
+int vc_strtoul_unsigned(const char *s, unsigned *out)
+{
+    errno = 0;
+    unsigned long val = strtoul(s, NULL, 10);
+    if (errno == ERANGE || val > UINT_MAX)
+        return 0;
+    *out = (unsigned)val;
+    return 1;
 }
 

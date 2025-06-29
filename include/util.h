@@ -23,4 +23,10 @@ void *vc_realloc_or_exit(void *ptr, size_t size);
 /* Read entire file into a NUL-terminated buffer */
 char *vc_read_file(const char *path);
 
+/* Convert string to size_t, returning 1 on success */
+int vc_strtoul_size(const char *s, size_t *out);
+
+/* Convert string to unsigned, returning 1 on success */
+int vc_strtoul_unsigned(const char *s, unsigned *out);
+
 #endif /* VC_UTIL_H */
