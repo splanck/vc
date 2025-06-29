@@ -6,6 +6,7 @@
  */
 
 #include <stdlib.h>
+#include <string.h>
 #include "opt.h"
 
 /* Evaluate a binary integer op for constant folding */
@@ -51,9 +52,16 @@ static int eval_float_op(ir_op_t op, int a, int b)
 /* Evaluate a binary long double op for constant folding */
 static int eval_long_float_op(ir_op_t op, int a, int b)
 {
-    long double fa = (long double)a;
-    long double fb = (long double)b;
+    if (sizeof(long double) > sizeof(int))
+        return 0;
+
+    long double fa = 0.0L;
+    long double fb = 0.0L;
     long double res;
+
+    memcpy(&fa, &a, sizeof(fa));
+    memcpy(&fb, &b, sizeof(fb));
+
     switch (op) {
     case IR_LFADD: res = fa + fb; break;
     case IR_LFSUB: res = fa - fb; break;
@@ -61,7 +69,10 @@ static int eval_long_float_op(ir_op_t op, int a, int b)
     case IR_LFDIV: res = fb != 0.0L ? fa / fb : 0.0L; break;
     default:       res = 0.0L; break;
     }
-    return (int)res;
+
+    int out = 0;
+    memcpy(&out, &res, sizeof(out));
+    return out;
 }
 
 /* Update destination entry in constant tracking tables */
@@ -115,6 +126,10 @@ static void fold_float_instr(ir_instr_t *ins, size_t max_id,
 static void fold_long_float_instr(ir_instr_t *ins, size_t max_id,
                                   int *is_const, int *values)
 {
+    if (sizeof(long double) > sizeof(int)) {
+        update_const(ins, 0, 0, max_id, is_const, values);
+        return;
+    }
     if ((size_t)ins->src1 < max_id && (size_t)ins->src2 < max_id &&
         is_const[ins->src1] && is_const[ins->src2]) {
         int a = values[ins->src1];

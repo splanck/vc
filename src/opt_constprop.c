@@ -62,9 +62,16 @@ static void free_const_tracking(const_track_t *ct)
 /* Evaluate a long double binary op */
 static int eval_long_float_op(ir_op_t op, int a, int b)
 {
-    long double fa = (long double)a;
-    long double fb = (long double)b;
+    if (sizeof(long double) > sizeof(int))
+        return 0;
+
+    long double fa = 0.0L;
+    long double fb = 0.0L;
     long double res;
+
+    memcpy(&fa, &a, sizeof(fa));
+    memcpy(&fb, &b, sizeof(fb));
+
     switch (op) {
     case IR_LFADD: res = fa + fb; break;
     case IR_LFSUB: res = fa - fb; break;
@@ -72,7 +79,10 @@ static int eval_long_float_op(ir_op_t op, int a, int b)
     case IR_LFDIV: res = fb != 0.0L ? fa / fb : 0.0L; break;
     default:       res = 0.0L; break;
     }
-    return (int)res;
+
+    int out = 0;
+    memcpy(&out, &res, sizeof(out));
+    return out;
 }
 
 /* Handle constant propagation through an IR_STORE instruction */
@@ -169,7 +179,8 @@ static void propagate_through_instruction(const_track_t *ct, ir_instr_t *ins)
     case IR_BCOND:
     case IR_LABEL:
     case IR_LFADD: case IR_LFSUB: case IR_LFMUL: case IR_LFDIV:
-        if (ins->dest >= 0 && (size_t)ins->dest < max_id &&
+        if (sizeof(long double) <= sizeof(int) &&
+            ins->dest >= 0 && (size_t)ins->dest < max_id &&
             (size_t)ins->src1 < max_id && (size_t)ins->src2 < max_id &&
             ct->is_const[ins->src1] && ct->is_const[ins->src2]) {
             int a = ct->values[ins->src1];
