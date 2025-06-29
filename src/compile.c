@@ -471,7 +471,13 @@ static int create_temp_file(const cli_options_t *cli, const char *prefix,
         *out_path = NULL;
         return -1;
     }
-    snprintf(tmpl, len, "%s/%sXXXXXX", dir, prefix);
+    int n = snprintf(tmpl, len, "%s/%sXXXXXX", dir, prefix);
+    if (n < 0 || (size_t)n >= len) {
+        free(tmpl);
+        *out_path = NULL;
+        errno = ENAMETOOLONG;
+        return -1;
+    }
     int fd = mkstemp(tmpl);
     if (fd < 0) {
         perror("mkstemp");
