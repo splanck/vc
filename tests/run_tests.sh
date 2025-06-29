@@ -318,6 +318,21 @@ if [ $ret -eq 0 ] || ! grep -q "Invalid optimization level" "${err}"; then
 fi
 rm -f "${out}" "${err}"
 
+# regression test for long command error message
+long_tmpdir=$(mktemp -d)
+long_out="$long_tmpdir/$(printf 'a%.0s' {1..50})/$(printf 'b%.0s' {1..50})/$(printf 'c%.0s' {1..50})/$(printf 'd%.0s' {1..50})/$(printf 'e%.0s' {1..50})/out.o"
+mkdir -p "$(dirname "$long_out")"
+err=$(mktemp)
+set +e
+PATH=/nonexistent "$BINARY" -c -o "$long_out" "$DIR/fixtures/simple_add.c" 2> "$err"
+ret=$?
+set -e
+if [ $ret -eq 0 ] || ! grep -q "$long_out" "$err"; then
+    echo "Test long_command_error failed"
+    fail=1
+fi
+rm -rf "$long_tmpdir" "$err"
+
 # test reading source from stdin
 stdin_out=$(mktemp)
 cat "$DIR/fixtures/simple_add.c" | "$BINARY" -o "${stdin_out}" -
