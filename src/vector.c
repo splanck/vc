@@ -36,7 +36,16 @@ int vector_push(vector_t *vec, const void *elem)
     if (!vec || !elem)
         return 0;
     if (vec->count >= vec->cap) {
-        size_t new_cap = vec->cap ? vec->cap * 2 : 16;
+        size_t new_cap;
+        if (vec->cap) {
+            if (vec->cap > SIZE_MAX / 2) {
+                fprintf(stderr, "vc: vector too large\n");
+                exit(1);
+            }
+            new_cap = vec->cap * 2;
+        } else {
+            new_cap = 16;
+        }
         if (new_cap > SIZE_MAX / vec->elem_size) {
             fprintf(stderr, "vc: vector too large\n");
             exit(1);
