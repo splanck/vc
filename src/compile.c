@@ -11,6 +11,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <limits.h>
 #include <unistd.h>
 #include <string.h>
 #include <errno.h>
@@ -494,6 +495,11 @@ static int create_temp_file(const cli_options_t *cli, const char *prefix,
 {
     const char *dir = cli->obj_dir ? cli->obj_dir : "/tmp";
     size_t len = strlen(dir) + strlen(prefix) + 8; /* / prefix XXXXXX \0 */
+    if (strlen(dir) + strlen(prefix) + 7 >= PATH_MAX) {
+        *out_path = NULL;
+        errno = ENAMETOOLONG;
+        return -1;
+    }
     char *tmpl = malloc(len);
     if (!tmpl) {
         *out_path = NULL;
