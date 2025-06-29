@@ -7,6 +7,7 @@
 
 #include <stdlib.h>
 #include <string.h>
+#include <stdint.h>
 #include "opt.h"
 
 /* Evaluate a binary integer op for constant folding */
@@ -59,9 +60,10 @@ static int eval_float_op(ir_op_t op, int a, int b)
 }
 
 /* Evaluate a binary long double op for constant folding */
-static int eval_long_float_op(ir_op_t op, int a, int b)
+static uint64_t eval_long_float_op(ir_op_t op, int a, int b)
 {
-    if (sizeof(long double) > sizeof(int))
+    if (sizeof(long double) > sizeof(uint64_t) ||
+        sizeof(long double) > sizeof(int))
         return 0;
 
     long double fa = 0.0L;
@@ -79,8 +81,8 @@ static int eval_long_float_op(ir_op_t op, int a, int b)
     default:       res = 0.0L; break;
     }
 
-    int out = 0;
-    memcpy(&out, &res, sizeof(out));
+    uint64_t out = 0;
+    memcpy(&out, &res, sizeof(res));
     return out;
 }
 
@@ -143,11 +145,11 @@ static void fold_long_float_instr(ir_instr_t *ins, size_t max_id,
         is_const[ins->src1] && is_const[ins->src2]) {
         int a = values[ins->src1];
         int b = values[ins->src2];
-        int result = eval_long_float_op(ins->op, a, b);
+        uint64_t result = eval_long_float_op(ins->op, a, b);
         ins->op = IR_CONST;
         ins->imm = result;
         ins->src1 = ins->src2 = 0;
-        update_const(ins, result, 1, max_id, is_const, values);
+        update_const(ins, (int)result, 1, max_id, is_const, values);
     } else {
         update_const(ins, 0, 0, max_id, is_const, values);
     }
