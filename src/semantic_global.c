@@ -81,14 +81,15 @@ static int inline_already_emitted(const char *name)
     return 0;
 }
 
-static void mark_inline_emitted(const char *name)
+static int mark_inline_emitted(const char *name)
 {
     const char **tmp = realloc((void *)inline_emitted,
                                (inline_emitted_count + 1) * sizeof(*tmp));
     if (!tmp)
-        return;
+        return 0;
     inline_emitted = tmp;
     inline_emitted[inline_emitted_count++] = name;
+    return 1;
 }
 
 /*
@@ -152,8 +153,12 @@ int check_func(func_t *func, symtable_t *funcs, symtable_t *globals,
     label_table_free(&labels);
     locals.globals = NULL;
     symtable_free(&locals);
-    if (decl->is_inline)
-        mark_inline_emitted(func->name);
+    if (decl->is_inline && !mark_inline_emitted(func->name)) {
+        error_set(0, 0, error_current_file, error_current_function);
+        preproc_set_function(NULL);
+        error_current_function = NULL;
+        return 0;
+    }
     preproc_set_function(NULL);
     error_current_function = NULL;
     return ok;
