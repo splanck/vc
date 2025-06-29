@@ -151,6 +151,8 @@ int parse_func_ptr_suffix(parser_t *p, char **name,
         *param_types = malloc(params_v.count * sizeof(type_kind_t));
         if (!*param_types) {
             vector_free(&params_v);
+            *param_types = NULL;
+            *param_count = 0;
             p->pos = start;
             return 0;
         }
