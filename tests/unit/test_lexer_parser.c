@@ -540,6 +540,17 @@ static void test_vector_large(void)
     vector_free(&v);
 }
 
+/* vector_push should fail when element size is zero */
+static void test_vector_zero_elem_size(void)
+{
+    vector_t v;
+    vector_init(&v, 0);
+    int x = 42;
+    ASSERT(!vector_push(&v, &x));
+    ASSERT(v.count == 0);
+    vector_free(&v);
+}
+
 /*
  * Entry point for the test executable.  Each unit test is run in
  * sequence and the total number of failures reported at the end.
@@ -577,6 +588,7 @@ int main(void)
     test_lexer_escapes();
     test_lexer_char_missing_quote();
     test_lexer_string_missing_quote();
+    test_vector_zero_elem_size();
     test_vector_large();
     if (failures == 0) {
         printf("All unit tests passed\n");
