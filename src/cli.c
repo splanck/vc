@@ -78,26 +78,26 @@ static void init_default_opts(cli_options_t *opts)
 
 /*
  * Append a source file path to "opts->sources".  Returns 0 on success and
- * 1 on out-of-memory failure.
+ * non-zero on failure.
  */
 static int push_source(cli_options_t *opts, const char *src)
 {
     if (!vector_push(&opts->sources, &src)) {
         fprintf(stderr, "Out of memory\n");
-        return 1;
+        return -1;
     }
     return 0;
 }
 
 /*
  * Add an include directory to "opts->include_dirs". Returns 0 on success
- * and 1 on out-of-memory failure.
+ * and non-zero on failure.
  */
 static int add_include_dir(cli_options_t *opts, const char *dir)
 {
     if (!vector_push(&opts->include_dirs, &dir)) {
         fprintf(stderr, "Out of memory\n");
-        return 1;
+        return -1;
     }
     return 0;
 }
