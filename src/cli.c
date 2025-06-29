@@ -328,6 +328,9 @@ static int handle_option(int opt, const char *arg, const char *prog,
  */
 int cli_parse_args(int argc, char **argv, cli_options_t *opts)
 {
+    /* getopt_long maintains state between calls, reset for reuse */
+    optind = 1;
+
     static struct option long_opts[] = {
         {"help",    no_argument,       0, 'h'},
         {"version", no_argument,       0, 'v'},
@@ -363,15 +366,15 @@ int cli_parse_args(int argc, char **argv, cli_options_t *opts)
         return 1;
     }
 
+    for (int i = optind; i < argc; i++) {
+        if (push_source(opts, argv[i]))
+            return 1;
+    }
+
     if (!opts->output && !opts->dump_asm && !opts->dump_ir && !opts->preprocess) {
         fprintf(stderr, "Error: no output path specified.\n");
         print_usage(argv[0]);
         return 1;
-    }
-
-    for (int i = optind; i < argc; i++) {
-        if (push_source(opts, argv[i]))
-            return 1;
     }
 
     return 0;

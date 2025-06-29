@@ -38,15 +38,24 @@ static int eval_int_op(ir_op_t op, int a, int b)
 /* Evaluate a binary floating point op for constant folding */
 static int eval_float_op(ir_op_t op, int a, int b)
 {
-    union { float f; int i; } fa = {.i = a}, fb = {.i = b}, res;
+    float fa = 0.0f;
+    float fb = 0.0f;
+    float res;
+
+    memcpy(&fa, &a, sizeof(fa));
+    memcpy(&fb, &b, sizeof(fb));
+
     switch (op) {
-    case IR_FADD: res.f = fa.f + fb.f; break;
-    case IR_FSUB: res.f = fa.f - fb.f; break;
-    case IR_FMUL: res.f = fa.f * fb.f; break;
-    case IR_FDIV: res.f = fb.f != 0.0f ? fa.f / fb.f : 0.0f; break;
-    default: res.i = 0; break;
+    case IR_FADD: res = fa + fb; break;
+    case IR_FSUB: res = fa - fb; break;
+    case IR_FMUL: res = fa * fb; break;
+    case IR_FDIV: res = fb != 0.0f ? fa / fb : 0.0f; break;
+    default:      res = 0.0f; break;
     }
-    return res.i;
+
+    int out = 0;
+    memcpy(&out, &res, sizeof(out));
+    return out;
 }
 
 /* Evaluate a binary long double op for constant folding */
