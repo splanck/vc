@@ -244,7 +244,10 @@ static int parse_macro_args(const char *line, size_t *pos, vector_t *out)
             while (end > a && (line[end - 1] == ' ' || line[end - 1] == '\t'))
                 end--;
             char *dup = vc_strndup(line + a, end - a);
-            vector_push(out, &dup);
+            if (!vector_push(out, &dup)) {
+                free(dup);
+                goto fail;
+            }
             *pos = p + 1;
             return 1;
         }
@@ -256,7 +259,10 @@ static int parse_macro_args(const char *line, size_t *pos, vector_t *out)
             while (end > a && (line[end - 1] == ' ' || line[end - 1] == '\t'))
                 end--;
             char *dup = vc_strndup(line + a, end - a);
-            vector_push(out, &dup);
+            if (!vector_push(out, &dup)) {
+                free(dup);
+                goto fail;
+            }
             p++; /* skip ',' */
             while (line[p] == ' ' || line[p] == '\t')
                 p++;
@@ -265,6 +271,11 @@ static int parse_macro_args(const char *line, size_t *pos, vector_t *out)
             continue;
         }
     }
+fail:
+    for (size_t i = 0; i < out->count; i++)
+        free(((char **)out->data)[i]);
+    vector_free(out);
+    return 0;
 }
 
 /* Expand a macro invocation and append the result to "out". */
