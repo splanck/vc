@@ -476,18 +476,31 @@ static int emit_var_initializer(stmt_t *stmt, symbol_t *sym,
                                 symtable_t *vars, symtable_t *funcs,
                                 ir_builder_t *ir)
 {
+    enum {
+        INIT_NONE,
+        INIT_STATIC,
+        INIT_DYNAMIC,
+        INIT_AGGREGATE
+    } kind = INIT_NONE;
+
     if (!copy_aggregate_metadata(stmt, sym))
         return 0;
 
     if (stmt->var_decl.init)
-        return stmt->var_decl.is_static
-                   ? emit_static_init(stmt, sym, vars, ir)
-                   : emit_dynamic_init(stmt, sym, vars, funcs, ir);
+        kind = stmt->var_decl.is_static ? INIT_STATIC : INIT_DYNAMIC;
+    else if (stmt->var_decl.init_list)
+        kind = INIT_AGGREGATE;
 
-    if (stmt->var_decl.init_list)
+    switch (kind) {
+    case INIT_STATIC:
+        return emit_static_init(stmt, sym, vars, ir);
+    case INIT_DYNAMIC:
+        return emit_dynamic_init(stmt, sym, vars, funcs, ir);
+    case INIT_AGGREGATE:
         return emit_aggregate_init(stmt, sym, vars, ir);
-
-    return 1;
+    default:
+        return 1;
+    }
 }
 
 static int check_var_decl_stmt(stmt_t *stmt, symtable_t *vars,
