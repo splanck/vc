@@ -232,6 +232,10 @@ static void read_number(const char *src, size_t *i, size_t *col,
     }
 
     size_t len = *i - start;
+    if (src[*i] == 'L' || src[*i] == 'l') {
+        (*i)++;
+        len++;
+    }
     append_token(tokens, TOK_NUMBER, src + start, len, line, *col);
     *col += len;
 }

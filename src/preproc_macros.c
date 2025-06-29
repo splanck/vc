@@ -346,7 +346,7 @@ static int parse_macro_invocation(const char *line, size_t *pos,
         }
     } else if (len == 16 && strncmp(line + i, "__STDC_VERSION__", 16) == 0) {
         preproc_set_location(NULL, builtin_line, column);
-        strbuf_append(out, "199901");
+        strbuf_append(out, "199901L");
         *pos = j;
         return 1;
     }
