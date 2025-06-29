@@ -26,9 +26,26 @@ cc -Iinclude -Wall -Wextra -std=c99 -c src/label.c -o label_ircore.o
 cc -Iinclude -Wall -Wextra -std=c99 -c "$DIR/unit/test_ir_core.c" -o "$DIR/test_ir_core.o"
 cc -o "$DIR/ir_core_tests" ir_core_test.o util_ircore.o label_ircore.o "$DIR/test_ir_core.o"
 rm -f ir_core_test.o util_ircore.o label_ircore.o "$DIR/test_ir_core.o"
+# build strbuf overflow regression test
+cc -Iinclude -Wall -Wextra -std=c99 -c src/strbuf.c -o strbuf_overflow_impl.o
+cc -Iinclude -Wall -Wextra -std=c99 -c src/util.c -o util_strbuf.o
+cc -Iinclude -Wall -Wextra -std=c99 -c "$DIR/unit/test_strbuf_overflow.c" -o "$DIR/test_strbuf_overflow.o"
+cc -o "$DIR/strbuf_overflow" strbuf_overflow_impl.o util_strbuf.o "$DIR/test_strbuf_overflow.o"
+rm -f strbuf_overflow_impl.o util_strbuf.o "$DIR/test_strbuf_overflow.o"
 # run unit tests
 "$DIR/unit_tests"
 "$DIR/cli_tests"
 "$DIR/ir_core_tests"
+# regression test for strbuf overflow handling
+err=$(mktemp)
+set +e
+"$DIR/strbuf_overflow" 2> "$err"
+ret=$?
+set -e
+if [ $ret -eq 0 ] || ! grep -q "string buffer too large" "$err"; then
+    echo "Test strbuf_overflow failed"
+    fail=1
+fi
+rm -f "$err" "$DIR/strbuf_overflow"
 # run integration tests
 "$DIR/run_tests.sh"
