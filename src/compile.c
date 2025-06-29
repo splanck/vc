@@ -707,6 +707,9 @@ int run_preprocessor(const cli_options_t *cli)
             return 1;
         }
         printf("%s", text);
+        size_t len = strlen(text);
+        if (len == 0 || text[len - 1] != '\n')
+            putchar('\n');
         free(text);
     }
     return 0;
