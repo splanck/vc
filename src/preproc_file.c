@@ -15,6 +15,8 @@
  */
 
 #include <ctype.h>
+#include <errno.h>
+#include <limits.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -574,10 +576,15 @@ static int handle_line_directive(char *line, const char *dir, vector_t *macros,
     char *p = line + 5;
     while (*p == ' ' || *p == '\t')
         p++;
-    char *start = p;
-    while (isdigit((unsigned char)*p))
-        p++;
-    int lineno = atoi(start);
+    errno = 0;
+    char *end;
+    long val = strtol(p, &end, 10);
+    if (p == end || errno != 0 || val <= 0 || val > INT_MAX) {
+        fprintf(stderr, "Invalid line number in #line directive\n");
+        return 0;
+    }
+    p = end;
+    int lineno = (int)val;
     while (*p == ' ' || *p == '\t')
         p++;
     char *fname = NULL;
