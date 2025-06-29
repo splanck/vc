@@ -245,7 +245,9 @@ fi
 rm -f "${debug_out}"
 
 # test -c/--compile option
-obj_out=$(mktemp --suffix=.o)
+obj_tmp=$(mktemp tmp.XXXXXX)
+obj_out="${obj_tmp}.o"
+rm -f "${obj_tmp}"
 "$BINARY" -c -o "${obj_out}" "$DIR/fixtures/simple_add.c"
 if ! od -An -t x1 "${obj_out}" | head -n 1 | grep -q "7f 45 4c 46"; then
     echo "Test compile_option failed"
