@@ -5,8 +5,13 @@ main:
     movl %eax, a
     movl $2, %eax
     movl %eax, b
-    movl $3, %eax
-    movl %eax, %eax
+    movl $1, %eax
+    movl $2, %ebx
+    fldt %eax
+    fldt %ebx
+    faddp
+    fstpt %ecx
+    movl %ecx, %eax
     ret
     movl %ebp, %esp
     popl %ebp
