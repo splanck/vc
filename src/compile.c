@@ -594,7 +594,28 @@ static int run_command(char *const argv[])
     int status;
     int ret = posix_spawnp(&pid, argv[0], NULL, NULL, argv, environ);
     if (ret != 0) {
-        fprintf(stderr, "posix_spawnp: %s\n", strerror(ret));
+        char cmd[256];
+        size_t off = 0;
+        for (size_t i = 0; argv[i]; i++) {
+            if (i > 0 && off + 1 < sizeof(cmd) - 4)
+                cmd[off++] = ' ';
+            const char *arg = argv[i];
+            size_t len = strlen(arg);
+            if (off + len >= sizeof(cmd) - 4) {
+                size_t avail = sizeof(cmd) - off - 4;
+                if (avail > 0) {
+                    memcpy(cmd + off, arg, avail);
+                    off += avail;
+                }
+                memcpy(cmd + off, "...", 4);
+                off += 3;
+                break;
+            }
+            memcpy(cmd + off, arg, len);
+            off += len;
+        }
+        cmd[off] = '\0';
+        fprintf(stderr, "posix_spawnp %s: %s\n", cmd, strerror(ret));
         return 0;
     }
     if (waitpid(pid, &status, 0) < 0) {
