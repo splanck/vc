@@ -584,10 +584,18 @@ static int write_startup_asm(int use_x86_64, const cli_options_t *cli,
         free(asmname);
         return 0;
     }
+    int rc;
     if (use_x86_64) {
-        fputs(".globl _start\n_start:\n    call main\n    mov %rax, %rdi\n    mov $60, %rax\n    syscall\n", stub);
+        rc = fputs(".globl _start\n_start:\n    call main\n    mov %rax, %rdi\n    mov $60, %rax\n    syscall\n", stub);
     } else {
-        fputs(".globl _start\n_start:\n    call main\n    mov %eax, %ebx\n    mov $1, %eax\n    int $0x80\n", stub);
+        rc = fputs(".globl _start\n_start:\n    call main\n    mov %eax, %ebx\n    mov $1, %eax\n    int $0x80\n", stub);
+    }
+    if (rc == EOF) {
+        perror("fputs");
+        fclose(stub);
+        unlink(asmname);
+        free(asmname);
+        return 0;
     }
     if (fclose(stub) == EOF) {
         perror("fclose");
