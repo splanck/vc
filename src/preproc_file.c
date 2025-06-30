@@ -606,6 +606,14 @@ static void free_macro_vector(vector_t *v)
     vector_free(v);
 }
 
+/* Free a vector of strings */
+static void free_string_vector(vector_t *v)
+{
+    for (size_t i = 0; i < v->count; i++)
+        free(((char **)v->data)[i]);
+    vector_free(v);
+}
+
 /* Iterate over the loaded lines and process each one. */
 static int process_all_lines(char **lines, const char *path, const char *dir,
                              vector_t *macros, vector_t *conds,
@@ -914,17 +922,19 @@ static int collect_include_dirs(vector_t *search_dirs,
         char *dup = vc_strdup(s);
         if (!vector_push(search_dirs, &dup)) {
             free(dup);
-            for (size_t j = 0; j < search_dirs->count; j++)
-                free(((char **)search_dirs->data)[j]);
-            vector_free(search_dirs);
+            free_string_vector(search_dirs);
             return 0;
         }
     }
 
-    if (!append_env_paths(getenv("VCPATH"), search_dirs))
+    if (!append_env_paths(getenv("VCPATH"), search_dirs)) {
+        free_string_vector(search_dirs);
         return 0;
-    if (!append_env_paths(getenv("VCINC"), search_dirs))
+    }
+    if (!append_env_paths(getenv("VCINC"), search_dirs)) {
+        free_string_vector(search_dirs);
         return 0;
+    }
     return 1;
 }
 
