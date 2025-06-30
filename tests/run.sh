@@ -44,10 +44,11 @@ rm -f parser_core_fail.o parser_init_fail.o parser_decl_fail.o parser_flow_fail.
 # build ir_core unit test binary with malloc wrapper
 cc -Iinclude -Wall -Wextra -std=c99 -Dmalloc=test_malloc -c src/ir_core.c -o ir_core_test.o
 cc -Iinclude -Wall -Wextra -std=c99 -c src/util.c -o util_ircore.o
+cc -Iinclude -Wall -Wextra -std=c99 -c src/error.c -o error_ircore.o
 cc -Iinclude -Wall -Wextra -std=c99 -c src/label.c -o label_ircore.o
 cc -Iinclude -Wall -Wextra -std=c99 -c "$DIR/unit/test_ir_core.c" -o "$DIR/test_ir_core.o"
-cc -o "$DIR/ir_core_tests" ir_core_test.o util_ircore.o label_ircore.o "$DIR/test_ir_core.o"
-rm -f ir_core_test.o util_ircore.o label_ircore.o "$DIR/test_ir_core.o"
+cc -o "$DIR/ir_core_tests" ir_core_test.o util_ircore.o error_ircore.o label_ircore.o "$DIR/test_ir_core.o"
+rm -f ir_core_test.o util_ircore.o error_ircore.o label_ircore.o "$DIR/test_ir_core.o"
 # build conditional expression regression test
 cc -Iinclude -Wall -Wextra -std=c99 \
     -o "$DIR/cond_expr_tests" "$DIR/unit/test_cond_expr.c" \
@@ -67,6 +68,11 @@ cc -Iinclude -Wall -Wextra -std=c99 -c src/util.c -o util_eintr.o
 cc -Iinclude -Wall -Wextra -std=c99 -c "$DIR/unit/test_waitpid_retry.c" -o "$DIR/test_waitpid_retry.o"
 cc -o "$DIR/waitpid_retry" strbuf_eintr_impl.o util_eintr.o "$DIR/test_waitpid_retry.o"
 rm -f strbuf_eintr_impl.o util_eintr.o "$DIR/test_waitpid_retry.o"
+# build create_temp_file path length regression test
+cc -Iinclude -Wall -Wextra -std=c99 -DUNIT_TESTING -ffunction-sections -fdata-sections -c src/compile.c -o compile_temp.o
+cc -Iinclude -Wall -Wextra -std=c99 -c "$DIR/unit/test_temp_file.c" -o "$DIR/test_temp_file.o"
+cc -Wl,--gc-sections -o "$DIR/temp_file_tests" compile_temp.o "$DIR/test_temp_file.o"
+rm -f compile_temp.o "$DIR/test_temp_file.o"
 # run unit tests
 "$DIR/unit_tests"
 "$DIR/cli_tests"
@@ -75,6 +81,7 @@ rm -f strbuf_eintr_impl.o util_eintr.o "$DIR/test_waitpid_retry.o"
 # remaining unit test binaries
 "$DIR/cond_expr_tests"
 "$DIR/waitpid_retry"
+"$DIR/temp_file_tests"
 # separator for clarity
 echo "======="
 # regression test for strbuf overflow handling
