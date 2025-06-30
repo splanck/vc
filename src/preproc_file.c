@@ -206,7 +206,7 @@ static int handle_include(char *line, const char *dir, vector_t *macros,
         int ok = 1;
         if (stack_active(conds)) {
             if (!chosen) {
-                perror(fname);
+                fprintf(stderr, "%s: No such file or directory\n", fname);
                 ok = 0;
             } else {
                 if (include_stack_contains(stack, chosen)) {
