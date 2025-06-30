@@ -308,6 +308,22 @@ if ! grep -q "return 42;" "${pp_out}"; then
 fi
 rm -f "${pp_out}"
 
+# simulate write failure with a full pipe
+err=$(mktemp)
+tmp_big=$(mktemp)
+# create a large temporary source exceeding the pipe capacity
+yes "int x = 0;" | head -n 7000 > "$tmp_big"
+set +e
+bash -c "set -o pipefail; trap \"\" PIPE; \"$BINARY\" -E \"$tmp_big\" 2> \"$err\" | head -c 1 >/dev/null"
+ret=$?
+set -e
+rm -f "$tmp_big"
+if [ $ret -eq 0 ] || ! grep -qi "broken pipe" "$err"; then
+    echo "Test preprocess_write_fail failed"
+    fail=1
+fi
+rm -f "$err"
+
 # test --no-cprop option
 cprop_out=$(mktemp)
 "$BINARY" --no-cprop -o "${cprop_out}" "$DIR/fixtures/const_load.c"
