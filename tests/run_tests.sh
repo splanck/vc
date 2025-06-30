@@ -260,6 +260,19 @@ if [ $ret -eq 0 ] || ! grep -q "Missing ')' in macro definition" "${err}"; then
 fi
 rm -f "${out}" "${err}"
 
+# negative test for unterminated macro parameter list
+err=$(mktemp)
+out=$(mktemp)
+set +e
+"$BINARY" -o "${out}" "$DIR/invalid/macro_param_unterm.c" 2> "${err}"
+ret=$?
+set -e
+if [ $ret -eq 0 ] || ! grep -q "Missing ')' in macro definition" "${err}"; then
+    echo "Test macro_param_unterm failed"
+    fail=1
+fi
+rm -f "${out}" "${err}"
+
 # negative test for include depth limit
 err=$(mktemp)
 out=$(mktemp)
