@@ -60,8 +60,10 @@ static int stack_active(vector_t *conds)
 static int include_stack_contains(vector_t *stack, const char *path)
 {
     char *canon = realpath(path, NULL);
-    if (!canon)
+    if (!canon) {
+        perror(path);
         return 0;
+    }
     for (size_t i = 0; i < stack->count; i++) {
         const char *p = ((const char **)stack->data)[i];
         if (strcmp(p, canon) == 0) {
@@ -77,10 +79,16 @@ static int include_stack_contains(vector_t *stack, const char *path)
 static int include_stack_push(vector_t *stack, const char *path)
 {
     char *canon = realpath(path, NULL);
-    if (!canon)
+    if (!canon) {
         canon = vc_strdup(path);
+        if (!canon) {
+            fprintf(stderr, "Out of memory\n");
+            return 0;
+        }
+    }
     if (!vector_push(stack, &canon)) {
         free(canon);
+        fprintf(stderr, "Out of memory\n");
         return 0;
     }
     return 1;
