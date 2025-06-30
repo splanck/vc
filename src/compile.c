@@ -668,6 +668,11 @@ static int run_command(char *const argv[])
         perror("waitpid");
         return 0;
     }
+    if (WIFSIGNALED(status)) {
+        fprintf(stderr, "%s terminated by signal %d\n", argv[0],
+                WTERMSIG(status));
+        return 0;
+    }
     if (!WIFEXITED(status) || WEXITSTATUS(status) != 0)
         return 0;
     return 1;
