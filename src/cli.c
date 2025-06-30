@@ -42,6 +42,7 @@ static void print_usage(const char *prog)
     printf("      --no-inline      Disable inline expansion\n");
     printf("      --debug          Emit .file/.loc directives\n");
     printf("      --x86-64         Generate 64-bit x86 assembly\n");
+    printf("      --intel-syntax    Use Intel assembly syntax\n");
     printf("  -S, --dump-asm       Print assembly to stdout and exit\n");
     printf("      --dump-ir        Print IR to stdout and exit\n");
     printf("  -E, --preprocess     Run only the preprocessor and print the result\n");
@@ -70,6 +71,7 @@ static void init_default_opts(cli_options_t *opts)
     opts->dump_ir = 0;
     opts->preprocess = 0;
     opts->debug = 0;
+    opts->asm_syntax = ASM_ATT;
     opts->std = STD_C99;
     opts->obj_dir = "/tmp";
     vector_init(&opts->include_dirs, sizeof(char *));
@@ -214,6 +216,13 @@ static int enable_x86(const char *arg, const char *prog, cli_options_t *opts)
     return 0;
 }
 
+static int enable_intel_syntax(const char *arg, const char *prog, cli_options_t *opts)
+{
+    (void)arg; (void)prog;
+    opts->asm_syntax = ASM_INTEL;
+    return 0;
+}
+
 static int enable_dump(const char *arg, const char *prog, cli_options_t *opts)
 {
     (void)arg; (void)prog;
@@ -297,6 +306,7 @@ static int handle_option(int opt, const char *arg, const char *prog,
         {1,   disable_fold},
         {2,   disable_dce},
         {3,   enable_x86},
+        {12,  enable_intel_syntax},
         {'S', enable_dump},
         {4,   enable_dump},
         {5,   disable_cprop},
@@ -340,6 +350,7 @@ int cli_parse_args(int argc, char **argv, cli_options_t *opts)
         {"no-fold", no_argument,       0, 1},
         {"no-dce",  no_argument,       0, 2},
         {"x86-64", no_argument,       0, 3},
+        {"intel-syntax", no_argument, 0, 12},
         {"dump-asm", no_argument,     0, 4},
         {"no-cprop", no_argument,     0, 5},
         {"no-inline", no_argument,   0, 11},

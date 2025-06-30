@@ -32,6 +32,18 @@ static void test_parse_success(void)
     ASSERT(ret == 0);
     ASSERT(opts.sources.count == 1);
     ASSERT(strcmp(((char **)opts.sources.data)[0], "file.c") == 0);
+    ASSERT(opts.asm_syntax == ASM_ATT);
+    vector_free(&opts.sources);
+    vector_free(&opts.include_dirs);
+}
+
+static void test_intel_syntax_option(void)
+{
+    cli_options_t opts;
+    char *argv[] = {"vc", "--intel-syntax", "-o", "out.s", "file.c", NULL};
+    int ret = cli_parse_args(5, argv, &opts);
+    ASSERT(ret == 0);
+    ASSERT(opts.asm_syntax == ASM_INTEL);
     vector_free(&opts.sources);
     vector_free(&opts.include_dirs);
 }
@@ -74,6 +86,7 @@ static void test_parse_failure(void)
 int main(void)
 {
     test_parse_success();
+    test_intel_syntax_option();
     test_parse_failure();
     if (failures == 0)
         printf("All cli tests passed\n");
