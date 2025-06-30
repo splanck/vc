@@ -77,6 +77,12 @@ cc -Iinclude -Wall -Wextra -std=c99 -c src/vector.c -o vector_invalid.o
 cc -Iinclude -Wall -Wextra -std=c99 -c src/util.c -o util_invalid.o
 cc -o "$DIR/invalid_macro_tests" "$DIR/test_invalid_macro.o" vector_invalid.o util_invalid.o
 rm -f "$DIR/test_invalid_macro.o" vector_invalid.o util_invalid.o
+# build preprocessor alloc failure tests
+cc -Iinclude -Wall -Wextra -std=c99 -Dvector_push=test_vector_push \
+    -c "$DIR/unit/test_preproc_alloc_fail.c" -o "$DIR/test_preproc_alloc_fail.o"
+cc -Iinclude -Wall -Wextra -std=c99 -c src/vector.c -o vector_preproc.o
+cc -o "$DIR/preproc_alloc_tests" "$DIR/test_preproc_alloc_fail.o" vector_preproc.o
+rm -f "$DIR/test_preproc_alloc_fail.o" vector_preproc.o
 # build create_temp_file path length regression test
 cc -Iinclude -Wall -Wextra -std=c99 -DUNIT_TESTING -ffunction-sections -fdata-sections -c src/compile.c -o compile_temp.o
 cc -Iinclude -Wall -Wextra -std=c99 -c "$DIR/unit/test_temp_file.c" -o "$DIR/test_temp_file.o"
@@ -91,6 +97,7 @@ rm -f compile_temp.o "$DIR/test_temp_file.o"
 "$DIR/cond_expr_tests"
 "$DIR/waitpid_retry"
 "$DIR/temp_file_tests"
+"$DIR/preproc_alloc_tests"
 "$DIR/invalid_macro_tests"
 # separator for clarity
 echo "======="
