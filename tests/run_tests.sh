@@ -10,11 +10,8 @@ for cfile in $(ls "$DIR"/fixtures/*.c | sort); do
     base=$(basename "$cfile" .c)
 
     case "$base" in
-        *_x86-64|struct_*|bitfield_rw) continue;;
-    esac
-    case "$base" in
-        include_search|include_angle|include_env|macro_bad_define) continue;;
-        include_search|include_angle|include_env|preproc_blank) continue;;
+        *_x86-64|struct_*|bitfield_rw|include_search|include_angle|include_env|macro_bad_define|preproc_blank)
+            continue;;
     esac
     expect="$DIR/fixtures/$base.s"
     out=$(mktemp)
