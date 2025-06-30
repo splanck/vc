@@ -28,11 +28,13 @@ typedef struct {
  */
 static int is_inline_def(const char *file, const char *name)
 {
-    FILE *f = fopen(file, "r");
-    if (!f)
-        return -1;
-
     char *line = NULL;
+    FILE *f = fopen(file, "r");
+    if (!f) {
+        free(line);
+        return -1;
+    }
+
     size_t len = 0;
     ssize_t nread;
     int in_comment = 0;
@@ -110,6 +112,12 @@ static int is_inline_def(const char *file, const char *name)
             }
         }
         break; /* processed definition line */
+    }
+
+    if (ferror(f)) {
+        free(line);
+        fclose(f);
+        return -1;
     }
 
     free(line);
