@@ -6,7 +6,7 @@ BINARY="$DIR/../vc"
 fail=0
 # compile each fixture, including vla.c which exercises
 # variable length array support
-for cfile in $(ls "$DIR"/fixtures/*.c | sort); do
+for cfile in "$DIR"/fixtures/*.c; do
     base=$(basename "$cfile" .c)
 
     case "$base" in
