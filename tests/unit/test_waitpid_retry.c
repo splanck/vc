@@ -45,10 +45,11 @@ static void handle_alarm(int sig)
 
 int main(void)
 {
-    signal(SIGALRM, handle_alarm);
+    void (*prev)(int) = signal(SIGALRM, handle_alarm);
     alarm(1);
     char *cmd[] = {"sleep", "2", NULL};
     int rc = run_command(cmd);
+    signal(SIGALRM, prev);
     if (rc != 1) {
         printf("waitpid retry failed\n");
         return 1;
