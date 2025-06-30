@@ -61,13 +61,20 @@ cc -Iinclude -Wall -Wextra -std=c99 -c src/util.c -o util_strbuf.o
 cc -Iinclude -Wall -Wextra -std=c99 -c "$DIR/unit/test_strbuf_overflow.c" -o "$DIR/test_strbuf_overflow.o"
 cc -o "$DIR/strbuf_overflow" strbuf_overflow_impl.o util_strbuf.o "$DIR/test_strbuf_overflow.o"
 rm -f strbuf_overflow_impl.o util_strbuf.o "$DIR/test_strbuf_overflow.o"
+# build waitpid EINTR regression test
+cc -Iinclude -Wall -Wextra -std=c99 -c src/strbuf.c -o strbuf_eintr_impl.o
+cc -Iinclude -Wall -Wextra -std=c99 -c src/util.c -o util_eintr.o
+cc -Iinclude -Wall -Wextra -std=c99 -c "$DIR/unit/test_waitpid_retry.c" -o "$DIR/test_waitpid_retry.o"
+cc -o "$DIR/waitpid_retry" strbuf_eintr_impl.o util_eintr.o "$DIR/test_waitpid_retry.o"
+rm -f strbuf_eintr_impl.o util_eintr.o "$DIR/test_waitpid_retry.o"
 # run unit tests
 "$DIR/unit_tests"
 "$DIR/cli_tests"
 "$DIR/parser_alloc_tests"
 "$DIR/ir_core_tests"
-# last unit test binary
+# remaining unit test binaries
 "$DIR/cond_expr_tests"
+"$DIR/waitpid_retry"
 # separator for clarity
 echo "======="
 # regression test for strbuf overflow handling

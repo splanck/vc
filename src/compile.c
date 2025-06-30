@@ -691,7 +691,9 @@ static int run_command(char *const argv[])
         strbuf_free(&cmd);
         return 0;
     }
-    if (waitpid(pid, &status, 0) < 0) {
+    while (waitpid(pid, &status, 0) < 0) {
+        if (errno == EINTR)
+            continue;
         perror("waitpid");
         return 0;
     }
