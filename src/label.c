@@ -44,6 +44,7 @@ const char *label_format(const char *prefix, int id, char buf[32])
         error_set(0, 0, error_current_file, error_current_function);
         error_print("Generated label name too long");
         buf[31] = '\0';
+        buf[0] = '\0';
         return NULL;
     }
     return buf;
@@ -58,6 +59,7 @@ const char *label_format_suffix(const char *prefix, int id, const char *suffix,
         error_set(0, 0, error_current_file, error_current_function);
         error_print("Generated label name too long");
         buf[31] = '\0';
+        buf[0] = '\0';
         return NULL;
     }
     return buf;
