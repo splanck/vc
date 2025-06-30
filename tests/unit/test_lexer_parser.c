@@ -539,6 +539,19 @@ static void test_lexer_truncated_escape(void)
     lexer_free_tokens(toks, count);
 }
 
+/* Octal escape values beyond 255 should be clamped */
+static void test_lexer_octal_range(void)
+{
+    const char *src = "'\\400' \"\\400\"";
+    size_t count = 0;
+    token_t *toks = lexer_tokenize(src, &count);
+    ASSERT(toks[0].type == TOK_CHAR &&
+           (unsigned char)toks[0].lexeme[0] == 255);
+    ASSERT(toks[1].type == TOK_STRING && strlen(toks[1].lexeme) == 1 &&
+           (unsigned char)toks[1].lexeme[0] == 255);
+    lexer_free_tokens(toks, count);
+}
+
 /* Ensure the vector grows correctly for large element counts */
 static void test_vector_large(void)
 {
@@ -606,6 +619,7 @@ int main(void)
     test_lexer_char_missing_quote();
     test_lexer_string_missing_quote();
     test_lexer_truncated_escape();
+    test_lexer_octal_range();
     test_vector_zero_elem_size();
     test_vector_large();
     if (failures == 0) {
