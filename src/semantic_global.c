@@ -88,7 +88,7 @@ static int mark_inline_emitted(const char *name)
     if (!tmp)
         return 0;
     inline_emitted = tmp;
-    inline_emitted[inline_emitted_count++] = name;
+    inline_emitted[inline_emitted_count++] = vc_strdup(name ? name : "");
     return 1;
 }
 
@@ -490,6 +490,8 @@ int check_global(stmt_t *decl, symtable_t *globals, ir_builder_t *ir)
 
 void semantic_global_cleanup(void)
 {
+    for (size_t i = 0; i < inline_emitted_count; i++)
+        free((void *)inline_emitted[i]);
     free((void *)inline_emitted);
     inline_emitted = NULL;
     inline_emitted_count = 0;
