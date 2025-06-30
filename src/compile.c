@@ -390,11 +390,12 @@ static int emit_output_file(ir_builder_t *ir, const char *output,
         const char *arch_flag = use_x86_64 ? "-m64" : "-m32";
         char *argv[] = {"cc", "-x", "assembler", (char *)arch_flag, "-c",
                         tmpname, "-o", (char *)output, NULL};
-        int ok = run_command(argv);
+        int rc = run_command(argv);
         unlink(tmpname);
         free(tmpname);
-        if (!ok) {
-            fprintf(stderr, "cc failed\n");
+        if (rc != 1) {
+            if (rc == 0)
+                fprintf(stderr, "cc failed\n");
             return 0;
         }
         return 1;
@@ -570,9 +571,10 @@ static int assemble_startup_obj(const char *asm_path, int use_x86_64,
     const char *arch_flag = use_x86_64 ? "-m64" : "-m32";
     char *argv[] = {"cc", "-x", "assembler", (char *)arch_flag, "-c",
                     (char *)asm_path, "-o", objname, NULL};
-    int ok = run_command(argv);
-    if (!ok) {
-        fprintf(stderr, "cc failed\n");
+    int rc = run_command(argv);
+    if (rc != 1) {
+        if (rc == 0)
+            fprintf(stderr, "cc failed\n");
         unlink(objname);
         free(objname);
         return 0;
@@ -653,7 +655,12 @@ static int compile_source_files(const cli_options_t *cli, vector_t *objs)
     return ok;
 }
 
-/* Spawn a command using posix_spawnp and wait for it to finish. */
+/*
+ * Spawn a command using posix_spawnp and wait for it to finish.
+ *
+ * Returns 1 on success, 0 on failure and -1 if the child
+ * was terminated by a signal.
+ */
 static int run_command(char *const argv[])
 {
     pid_t pid;
@@ -678,7 +685,7 @@ static int run_command(char *const argv[])
     if (WIFSIGNALED(status)) {
         fprintf(stderr, "%s terminated by signal %d\n", argv[0],
                 WTERMSIG(status));
-        return 0;
+        return -1;
     }
     if (!WIFEXITED(status) || WEXITSTATUS(status) != 0)
         return 0;
@@ -703,10 +710,11 @@ static int run_link_command(const vector_t *objs, const char *output,
     argv[idx++] = (char *)output;
     argv[idx] = NULL;
 
-    int ok = run_command(argv);
+    int rc = run_command(argv);
     free(argv);
-    if (!ok) {
-        fprintf(stderr, "cc failed\n");
+    if (rc != 1) {
+        if (rc == 0)
+            fprintf(stderr, "cc failed\n");
         return 0;
     }
     return 1;
