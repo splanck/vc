@@ -246,6 +246,19 @@ if [ $ret -eq 0 ] || ! grep -q "Macro expansion limit exceeded" "${err}"; then
 fi
 rm -f "${out}" "${err}"
 
+# negative test for include depth limit
+err=$(mktemp)
+out=$(mktemp)
+set +e
+"$BINARY" -o "${out}" "$DIR/invalid/include_depth.c" 2> "${err}"
+ret=$?
+set -e
+if [ $ret -eq 0 ] || ! grep -q "Include depth limit exceeded" "${err}"; then
+    echo "Test include_depth failed"
+    fail=1
+fi
+rm -f "${out}" "${err}"
+
 # negative test for duplicate switch cases
 err=$(mktemp)
 out=$(mktemp)
