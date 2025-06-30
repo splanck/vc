@@ -10,6 +10,7 @@
 #include <stdio.h>
 #include <stdarg.h>
 #include <stdint.h>
+#include <errno.h>
 #include "strbuf.h"
 #include "util.h"
 
@@ -76,15 +77,33 @@ void strbuf_appendf(strbuf_t *sb, const char *fmt, ...)
     char buf[128];
     va_list ap;
     va_start(ap, fmt);
-    int n = vsnprintf(buf, sizeof(buf), fmt, ap);
+    int ret = vsnprintf(buf, sizeof(buf), fmt, ap);
     va_end(ap);
-    if (n < 0)
+    if (ret < 0) {
+        if (errno == EOVERFLOW) {
+            fprintf(stderr, "vc: formatted output too large\n");
+            exit(1);
+        }
         return;
-    if ((size_t)n >= sizeof(buf)) {
-        char *tmp = vc_alloc_or_exit((size_t)n + 1);
+    }
+    size_t n = (size_t)ret;
+    if (n >= sizeof(buf)) {
+        if (n > SIZE_MAX - 1) {
+            fprintf(stderr, "vc: formatted output too large\n");
+            exit(1);
+        }
+        char *tmp = vc_alloc_or_exit(n + 1);
         va_start(ap, fmt);
-        vsnprintf(tmp, (size_t)n + 1, fmt, ap);
+        ret = vsnprintf(tmp, n + 1, fmt, ap);
         va_end(ap);
+        if (ret < 0) {
+            free(tmp);
+            if (errno == EOVERFLOW) {
+                fprintf(stderr, "vc: formatted output too large\n");
+                exit(1);
+            }
+            return;
+        }
         strbuf_append(sb, tmp);
         free(tmp);
     } else {
