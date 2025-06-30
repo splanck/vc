@@ -320,6 +320,7 @@ static int add_macro(const char *name, const char *value, vector_t *params,
                 free(((char **)params->data)[j]);
             vector_free(params);
             macro_free(&m);
+            fprintf(stderr, "Out of memory\n");
             return 0;
         }
     }
@@ -327,6 +328,7 @@ static int add_macro(const char *name, const char *value, vector_t *params,
     m.value = vc_strdup(value);
     if (!vector_push(macros, &m)) {
         macro_free(&m);
+        fprintf(stderr, "Out of memory\n");
         return 0;
     }
     return 1;
