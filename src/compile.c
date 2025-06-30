@@ -37,6 +37,13 @@
 #include "preproc.h"
 #include "compile.h"
 
+/* Use binary mode for temporary files on platforms that require it */
+#if defined(_WIN32)
+# define TEMP_FOPEN_MODE "wb"
+#else
+# define TEMP_FOPEN_MODE "w"
+#endif
+
 /* Active diagnostic context */
 extern const char *error_current_file;
 extern const char *error_current_function;
@@ -129,7 +136,7 @@ static int compile_tokenize(const char *source, const vector_t *incdirs,
             perror("mkstemp");
             return 0;
         }
-        FILE *f = fdopen(fd, "w");
+        FILE *f = fdopen(fd, TEMP_FOPEN_MODE);
         if (!f) {
             perror("fdopen");
             close(fd);
@@ -364,7 +371,7 @@ static int emit_output_file(ir_builder_t *ir, const char *output,
         if (fd < 0) {
             return 0;
         }
-        FILE *tmpf = fdopen(fd, "w");
+        FILE *tmpf = fdopen(fd, TEMP_FOPEN_MODE);
         if (!tmpf) {
             perror("fdopen");
             close(fd);
@@ -393,7 +400,7 @@ static int emit_output_file(ir_builder_t *ir, const char *output,
         return 1;
     }
 
-    FILE *outf = fopen(output, "w");
+    FILE *outf = fopen(output, "wb");
     if (!outf) {
         perror("fopen");
         return 0;
@@ -531,7 +538,7 @@ static int write_startup_asm(int use_x86_64, const cli_options_t *cli,
     int asmfd = create_temp_file(cli, "vcstub", &asmname);
     if (asmfd < 0)
         return 0;
-    FILE *stub = fdopen(asmfd, "w");
+    FILE *stub = fdopen(asmfd, TEMP_FOPEN_MODE);
     if (!stub) {
         perror("fdopen");
         close(asmfd);
