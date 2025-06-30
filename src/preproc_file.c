@@ -293,7 +293,7 @@ static char *parse_macro_params(char *p, vector_t *out)
             for (size_t i = 0; i < out->count; i++)
                 free(((char **)out->data)[i]);
             vector_free(out);
-            vector_init(out, sizeof(char *));
+            return NULL;
         }
     } else if (*p) {
         *p++ = '\0';
@@ -351,6 +351,7 @@ static int handle_define(char *line, vector_t *macros, vector_t *conds)
     n = parse_macro_params(n, &params);
     if (!n) {
         vector_free(&params);
+        fprintf(stderr, "Missing ')' in macro definition\n");
         return 0;
     }
     while (*n == ' ' || *n == '\t')

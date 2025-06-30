@@ -13,7 +13,7 @@ for cfile in $(ls "$DIR"/fixtures/*.c | sort); do
         *_x86-64|struct_*|bitfield_rw) continue;;
     esac
     case "$base" in
-        include_search|include_angle|include_env) continue;;
+        include_search|include_angle|include_env|macro_bad_define) continue;;
     esac
     expect="$DIR/fixtures/$base.s"
     out=$(mktemp)
@@ -242,6 +242,19 @@ ret=$?
 set -e
 if [ $ret -eq 0 ] || ! grep -q "Macro expansion limit exceeded" "${err}"; then
     echo "Test macro_cycle failed"
+    fail=1
+fi
+rm -f "${out}" "${err}"
+
+# regression test for missing ')' in macro definition
+err=$(mktemp)
+out=$(mktemp)
+set +e
+"$BINARY" -o "${out}" "$DIR/invalid/macro_param_missing.c" 2> "${err}"
+ret=$?
+set -e
+if [ $ret -eq 0 ] || ! grep -q "Missing ')' in macro definition" "${err}"; then
+    echo "Test macro_param_missing failed"
     fail=1
 fi
 rm -f "${out}" "${err}"

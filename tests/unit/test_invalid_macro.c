@@ -52,7 +52,7 @@ static char *parse_macro_params(char *p, vector_t *out)
             for (size_t i = 0; i < out->count; i++)
                 free(((char **)out->data)[i]);
             vector_free(out);
-            vector_init(out, sizeof(char *));
+            return NULL;
         }
     } else if (*p) {
         *p++ = '\0';
@@ -73,7 +73,7 @@ static void test_invalid_params(void)
     char line[] = "(x, y"; /* missing closing parenthesis */
     vector_t v;
     char *res = parse_macro_params(line, &v);
-    ASSERT(res == line);         /* pointer should reset to '(' */
+    ASSERT(res == NULL);         /* failure detected */
     ASSERT(line[0] == '(');      /* '(' restored */
     ASSERT(v.count == 0);        /* vector reset */
     ASSERT(v.cap == 0);
