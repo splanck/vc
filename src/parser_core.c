@@ -213,6 +213,8 @@ static int parse_param_list(parser_t *p,
                 !vector_push(&types_v, &pt) ||
                 !vector_push(&sizes_v, &ps) ||
                 !vector_push(&restrict_v, &is_restrict)) {
+                for (size_t i = 0; i < names_v.count; i++)
+                    free(((char **)names_v.data)[i]);
                 vector_free(&names_v);
                 vector_free(&types_v);
                 vector_free(&sizes_v);

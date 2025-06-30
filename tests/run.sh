@@ -19,6 +19,28 @@ cc -Iinclude -Wall -Wextra -std=c99 -c src/vector.c -o vector_test.o
 cc -Iinclude -Wall -Wextra -std=c99 -c src/util.c -o util_test.o
 cc -o "$DIR/cli_tests" cli_test.o "$DIR/test_cli.o" vector_test.o util_test.o
 rm -f cli_test.o "$DIR/test_cli.o" vector_test.o util_test.o
+# build parser alloc failure unit test with vector_push wrapper
+cc -Iinclude -Wall -Wextra -std=c99 -Dvector_push=test_vector_push -c src/parser_core.c -o parser_core_fail.o
+cc -Iinclude -Wall -Wextra -std=c99 -c src/parser_init.c -o parser_init_fail.o
+cc -Iinclude -Wall -Wextra -std=c99 -c src/parser_decl.c -o parser_decl_fail.o
+cc -Iinclude -Wall -Wextra -std=c99 -c src/parser_flow.c -o parser_flow_fail.o
+cc -Iinclude -Wall -Wextra -std=c99 -c src/parser_toplevel.c -o parser_toplevel_fail.o
+cc -Iinclude -Wall -Wextra -std=c99 -c src/parser_expr.c -o parser_expr_fail.o
+cc -Iinclude -Wall -Wextra -std=c99 -c src/parser_stmt.c -o parser_stmt_fail.o
+cc -Iinclude -Wall -Wextra -std=c99 -c src/parser_types.c -o parser_types_fail.o
+cc -Iinclude -Wall -Wextra -std=c99 -c src/symtable_core.c -o symtable_core_fail.o
+cc -Iinclude -Wall -Wextra -std=c99 -c src/symtable_globals.c -o symtable_globals_fail.o
+cc -Iinclude -Wall -Wextra -std=c99 -c src/symtable_struct.c -o symtable_struct_fail.o
+cc -Iinclude -Wall -Wextra -std=c99 -c src/ast_clone.c -o ast_clone_fail.o
+cc -Iinclude -Wall -Wextra -std=c99 -c src/ast_expr.c -o ast_expr_fail.o
+cc -Iinclude -Wall -Wextra -std=c99 -c src/ast_stmt.c -o ast_stmt_fail.o
+cc -Iinclude -Wall -Wextra -std=c99 -c src/lexer.c -o lexer_alloc.o
+cc -Iinclude -Wall -Wextra -std=c99 -c src/vector.c -o vector_alloc.o
+cc -Iinclude -Wall -Wextra -std=c99 -c src/util.c -o util_alloc.o
+cc -Iinclude -Wall -Wextra -std=c99 -c src/error.c -o error_alloc.o
+cc -Iinclude -Wall -Wextra -std=c99 -c "$DIR/unit/test_parser_alloc_fail.c" -o "$DIR/test_parser_alloc_fail.o"
+cc -o "$DIR/parser_alloc_tests" parser_core_fail.o parser_init_fail.o parser_decl_fail.o parser_flow_fail.o parser_toplevel_fail.o parser_expr_fail.o parser_stmt_fail.o parser_types_fail.o symtable_core_fail.o symtable_globals_fail.o symtable_struct_fail.o ast_clone_fail.o ast_expr_fail.o ast_stmt_fail.o lexer_alloc.o vector_alloc.o util_alloc.o error_alloc.o "$DIR/test_parser_alloc_fail.o"
+rm -f parser_core_fail.o parser_init_fail.o parser_decl_fail.o parser_flow_fail.o parser_toplevel_fail.o parser_expr_fail.o parser_stmt_fail.o parser_types_fail.o symtable_core_fail.o symtable_globals_fail.o symtable_struct_fail.o ast_clone_fail.o ast_expr_fail.o ast_stmt_fail.o lexer_alloc.o vector_alloc.o util_alloc.o error_alloc.o "$DIR/test_parser_alloc_fail.o"
 # build ir_core unit test binary with malloc wrapper
 cc -Iinclude -Wall -Wextra -std=c99 -Dmalloc=test_malloc -c src/ir_core.c -o ir_core_test.o
 cc -Iinclude -Wall -Wextra -std=c99 -c src/util.c -o util_ircore.o
@@ -42,6 +64,7 @@ rm -f strbuf_overflow_impl.o util_strbuf.o "$DIR/test_strbuf_overflow.o"
 # run unit tests
 "$DIR/unit_tests"
 "$DIR/cli_tests"
+"$DIR/parser_alloc_tests"
 "$DIR/ir_core_tests"
 # last unit test binary
 "$DIR/cond_expr_tests"
