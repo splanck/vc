@@ -725,15 +725,19 @@ static int handle_text_line(char *line, const char *dir, vector_t *macros,
                             const vector_t *incdirs, vector_t *stack)
 {
     (void)dir; (void)incdirs; (void)stack;
+    int ok = 1;
     if (stack_active(conds)) {
         strbuf_t tmp;
         strbuf_init(&tmp);
-        expand_line(line, macros, &tmp, 0, 0);
-        strbuf_append(&tmp, "\n");
-        strbuf_append(out, tmp.data);
+        if (!expand_line(line, macros, &tmp, 0, 0))
+            ok = 0;
+        else
+            strbuf_append(&tmp, "\n");
+        if (ok)
+            strbuf_append(out, tmp.data);
         strbuf_free(&tmp);
     }
-    return 1;
+    return ok;
 }
 
 /*

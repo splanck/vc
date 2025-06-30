@@ -36,9 +36,9 @@ any argument list and calls `expand_macro_call` so expansion remains recursive.
 `expand_params` continues to rely on helper routines that perform parameter
 lookup, handle the `#` stringize operator and manage `##` token pasting.
 Macro expansion is recursive so macro bodies may reference other macros. To
-avoid infinite loops a hard limit of 100 nested expansions is enforced. The
-compiler aborts preprocessing with an error message as soon as this depth is
-reached.
+avoid infinite loops a hard limit of 100 nested expansions is enforced.  When
+this limit is hit `expand_line` returns zero and the compiler aborts
+preprocessing after printing "Macro expansion limit exceeded".
 
 File inclusion works the same way and may recurse when headers themselves
 contain `#include` directives.  To guard against unbounded recursion the
