@@ -44,7 +44,6 @@ rm -f parser_core_fail.o parser_init_fail.o parser_decl_fail.o parser_flow_fail.
 # build ir_core unit test binary with malloc wrapper
 cc -Iinclude -Wall -Wextra -std=c99 -Dmalloc=test_malloc -c src/ir_core.c -o ir_core_test.o
 cc -Iinclude -Wall -Wextra -std=c99 -c src/util.c -o util_ircore.o
-cc -Iinclude -Wall -Wextra -std=c99 -c src/error.c -o error_ircore.o
 cc -Iinclude -Wall -Wextra -std=c99 -c src/label.c -o label_ircore.o
 cc -Iinclude -Wall -Wextra -std=c99 -c src/error.c -o error_ircore.o
 cc -Iinclude -Wall -Wextra -std=c99 -c "$DIR/unit/test_ir_core.c" -o "$DIR/test_ir_core.o"
