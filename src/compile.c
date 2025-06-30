@@ -768,10 +768,24 @@ int run_preprocessor(const cli_options_t *cli)
             perror("preproc_run");
             return 1;
         }
-        printf("%s", text);
+        if (printf("%s", text) < 0) {
+            perror("printf");
+            free(text);
+            return 1;
+        }
         size_t len = strlen(text);
-        if (len == 0 || text[len - 1] != '\n')
-            putchar('\n');
+        if (len == 0 || text[len - 1] != '\n') {
+            if (putchar('\n') == EOF) {
+                perror("putchar");
+                free(text);
+                return 1;
+            }
+        }
+        if (fflush(stdout) == EOF) {
+            perror("printf");
+            free(text);
+            return 1;
+        }
         free(text);
     }
     return 0;
