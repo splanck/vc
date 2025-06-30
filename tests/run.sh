@@ -46,6 +46,7 @@ cc -Iinclude -Wall -Wextra -std=c99 -Dmalloc=test_malloc -c src/ir_core.c -o ir_
 cc -Iinclude -Wall -Wextra -std=c99 -c src/util.c -o util_ircore.o
 cc -Iinclude -Wall -Wextra -std=c99 -c src/error.c -o error_ircore.o
 cc -Iinclude -Wall -Wextra -std=c99 -c src/label.c -o label_ircore.o
+cc -Iinclude -Wall -Wextra -std=c99 -c src/error.c -o error_ircore.o
 cc -Iinclude -Wall -Wextra -std=c99 -c "$DIR/unit/test_ir_core.c" -o "$DIR/test_ir_core.o"
 cc -o "$DIR/ir_core_tests" ir_core_test.o util_ircore.o error_ircore.o label_ircore.o "$DIR/test_ir_core.o"
 rm -f ir_core_test.o util_ircore.o error_ircore.o label_ircore.o "$DIR/test_ir_core.o"
