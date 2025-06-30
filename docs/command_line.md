@@ -39,13 +39,15 @@ terminal, or pipe code into `vc -o out.s -` to read from standard input.
 
 ## Preprocessor Usage
 
-The preprocessor runs automatically before the lexer. It supports both
-`#include "file"` and `#include <file>` to insert the contents of another
-file. Additional directories to search for included files can be provided with
-the `-I`/`--include` option. Angle-bracket includes search those directories,
-then any paths listed in the `VCPATH` environment variable (colon separated),
-followed by the standard system locations such as `/usr/include`. Quoted includes
-also consult directories from `VCINC`. It also supports
+The preprocessor runs automatically before the lexer. It supports both `#include "file"` and `#include <file>` to insert the contents of another file. Additional directories to search for included files can be provided with the `-I`/`--include` option. Angle-bracket includes search those directories, then any paths listed in the `VCPATH` environment variable (colon separated), followed by the standard system locations such as `/usr/include`. Quoted includes also consult directories from `VCINC`. Entries from `VCPATH` and `VCINC` are appended after all `-I` directories so command-line paths are searched first. It also supports
+For example:
+
+```sh
+VCPATH=/opt/headers VCINC=./quoted vc -I ./inc -o prog.s prog.c
+```
+
+The compiler will search `./inc` first, then `/opt/headers` for `<...>` includes and `./quoted` for `"..."` includes before falling back to the system directories.
+
 object-like `#define` macros and parameterized
 macros such as `#define NAME(a, b)`; macro bodies are expanded recursively.
 The `#` operator stringizes a parameter and `##` concatenates two tokens during
