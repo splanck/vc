@@ -336,7 +336,8 @@ static void emit_glob_string(strbuf_t *sb, ir_instr_t *ins,
  * register names so that either 32- or 64-bit code can be produced.
  */
 void emit_memory_instr(strbuf_t *sb, ir_instr_t *ins,
-                       regalloc_t *ra, int x64)
+                       regalloc_t *ra, int x64,
+                       asm_syntax_t syntax)
 {
     switch (ins->op) {
     case IR_CONST:

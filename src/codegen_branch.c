@@ -151,7 +151,8 @@ static void emit_alloca(strbuf_t *sb, ir_instr_t *ins,
  * and stack pointer registers.
  */
 void emit_branch_instr(strbuf_t *sb, ir_instr_t *ins,
-                       regalloc_t *ra, int x64)
+                       regalloc_t *ra, int x64,
+                       asm_syntax_t syntax)
 {
     const char *sfx = x64 ? "q" : "l";
     const char *ax = x64 ? "%rax" : "%eax";

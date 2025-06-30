@@ -15,6 +15,7 @@
 #include "strbuf.h"
 #include "ir_core.h"
 #include "regalloc.h"
+#include "cli.h"
 
 /*
  * Emit assembly for an arithmetic instruction.
@@ -23,6 +24,7 @@
  * 64-bit instruction encodings.
  */
 void emit_arith_instr(strbuf_t *sb, ir_instr_t *ins,
-                      regalloc_t *ra, int x64);
+                      regalloc_t *ra, int x64,
+                      asm_syntax_t syntax);
 
 #endif /* VC_CODEGEN_ARITH_H */

@@ -369,7 +369,8 @@ static int compile_output(ir_builder_t *ir, const char *output,
         return 1;
     }
     if (dump_asm) {
-        char *text = codegen_ir_to_string(ir, use_x86_64);
+        char *text = codegen_ir_to_string(ir, use_x86_64,
+                                          cli->asm_syntax);
         if (text) {
             printf("%s", text);
             free(text);
@@ -399,7 +400,8 @@ static int emit_output_file(ir_builder_t *ir, const char *output,
             free(tmpname);
             return 0;
         }
-        codegen_emit_x86(tmpf, ir, use_x86_64);
+        codegen_emit_x86(tmpf, ir, use_x86_64,
+                        cli->asm_syntax);
         if (fflush(tmpf) == EOF) {
             perror("fflush");
             fclose(tmpf);
@@ -435,7 +437,8 @@ static int emit_output_file(ir_builder_t *ir, const char *output,
         perror("fopen");
         return 0;
     }
-    codegen_emit_x86(outf, ir, use_x86_64);
+    codegen_emit_x86(outf, ir, use_x86_64,
+                    cli->asm_syntax);
     if (fclose(outf) == EOF) {
         perror("fclose");
         unlink(output);

@@ -17,6 +17,7 @@
 #include <string.h>
 #include <stdarg.h>
 #include "codegen.h"
+#include "cli.h"
 #include "regalloc.h"
 #include "regalloc_x86.h"
 #include "strbuf.h"
@@ -55,7 +56,9 @@ void codegen_set_debug(int flag)
  * register allocator state `ra` provides operand locations and `x64`
  * selects the 32- or 64-bit instruction forms used by the helper.
  */
-static void emit_instr(strbuf_t *sb, ir_instr_t *ins, regalloc_t *ra, int x64)
+static void emit_instr(strbuf_t *sb, ir_instr_t *ins,
+                       regalloc_t *ra, int x64,
+                       asm_syntax_t syntax)
 {
     switch (ins->op) {
     case IR_CONST: case IR_LOAD: case IR_STORE:
@@ -66,7 +69,7 @@ static void emit_instr(strbuf_t *sb, ir_instr_t *ins, regalloc_t *ra, int x64)
     case IR_ARG: case IR_GLOB_STRING: case IR_GLOB_WSTRING:
     case IR_GLOB_VAR: case IR_GLOB_ARRAY:
     case IR_GLOB_UNION: case IR_GLOB_STRUCT:
-        emit_memory_instr(sb, ins, ra, x64);
+        emit_memory_instr(sb, ins, ra, x64, syntax);
         break;
 
     case IR_PTR_ADD: case IR_PTR_DIFF:
@@ -79,11 +82,11 @@ static void emit_instr(strbuf_t *sb, ir_instr_t *ins, regalloc_t *ra, int x64)
     case IR_CMPEQ: case IR_CMPNE: case IR_CMPLT: case IR_CMPGT:
     case IR_CMPLE: case IR_CMPGE:
     case IR_LOGAND: case IR_LOGOR:
-        emit_arith_instr(sb, ins, ra, x64);
+        emit_arith_instr(sb, ins, ra, x64, syntax);
         break;
 
     default:
-        emit_branch_instr(sb, ins, ra, x64);
+        emit_branch_instr(sb, ins, ra, x64, syntax);
         break;
     }
 }
@@ -97,7 +100,8 @@ static void emit_instr(strbuf_t *sb, ir_instr_t *ins, regalloc_t *ra, int x64)
  * declarations are not included in the returned buffer.  The caller takes
  * ownership of the heap-allocated string.
  */
-char *codegen_ir_to_string(ir_builder_t *ir, int x64)
+char *codegen_ir_to_string(ir_builder_t *ir, int x64,
+                           asm_syntax_t syntax)
 {
     if (!ir)
         return NULL;
@@ -112,7 +116,7 @@ char *codegen_ir_to_string(ir_builder_t *ir, int x64)
     for (ir_instr_t *ins = ir->head; ins; ins = ins->next) {
         if (debug_info && ins->file && ins->line)
             strbuf_appendf(&sb, ".loc 1 %zu %zu\n", ins->line, ins->column);
-        emit_instr(&sb, ins, &ra, x64);
+        emit_instr(&sb, ins, &ra, x64, syntax);
     }
 
     regalloc_free(&ra);
@@ -127,7 +131,8 @@ char *codegen_ir_to_string(ir_builder_t *ir, int x64)
  * `codegen_ir_to_string` and emitted after a `.text` header when needed.
  * The `x64` argument selects the target word size.
  */
-void codegen_emit_x86(FILE *out, ir_builder_t *ir, int x64)
+void codegen_emit_x86(FILE *out, ir_builder_t *ir, int x64,
+                      asm_syntax_t syntax)
 {
     if (!out)
         return;
@@ -165,7 +170,7 @@ void codegen_emit_x86(FILE *out, ir_builder_t *ir, int x64)
     if (has_data)
         fputs(".text\n", out);
 
-    char *text = codegen_ir_to_string(ir, x64);
+    char *text = codegen_ir_to_string(ir, x64, syntax);
     if (text) {
         fputs(text, out);
         free(text);

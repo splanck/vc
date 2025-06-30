@@ -15,6 +15,7 @@
 
 #include <stdio.h>
 #include "ir_core.h"
+#include "cli.h"
 
 /*
  * Emit the full x86 assembly for `ir` to `out`.
@@ -25,7 +26,8 @@
  * Passing a non-zero `x86_64` enables 64-bit register names and pointer
  * sizes.
  */
-void codegen_emit_x86(FILE *out, ir_builder_t *ir, int x86_64);
+void codegen_emit_x86(FILE *out, ir_builder_t *ir, int x86_64,
+                      asm_syntax_t syntax);
 
 /*
  * Convert the IR to an assembly string.
@@ -34,7 +36,8 @@ void codegen_emit_x86(FILE *out, ir_builder_t *ir, int x86_64);
  * caller owns the returned buffer and must free it.  The `x86_64` flag
  * selects whether 32- or 64-bit mnemonics are produced.
  */
-char *codegen_ir_to_string(ir_builder_t *ir, int x86_64);
+char *codegen_ir_to_string(ir_builder_t *ir, int x86_64,
+                           asm_syntax_t syntax);
 
 /*
  * Set whether function symbols should be exported.
