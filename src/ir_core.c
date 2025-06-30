@@ -139,7 +139,12 @@ ir_value_t ir_build_string(ir_builder_t *b, const char *str)
     ins->op = IR_GLOB_STRING;
     ins->dest = alloc_value_id(b);
     char label[32];
-    ins->name = vc_strdup(label_format("Lstr", ins->dest, label));
+    const char *fmt = label_format("Lstr", ins->dest, label);
+    if (!fmt) {
+        remove_instr(b, ins);
+        return (ir_value_t){0};
+    }
+    ins->name = vc_strdup(fmt);
     ins->data = vc_strdup(str ? str : "");
     return (ir_value_t){ins->dest};
 }
@@ -156,7 +161,12 @@ ir_value_t ir_build_wstring(ir_builder_t *b, const char *str)
     ins->op = IR_GLOB_WSTRING;
     ins->dest = alloc_value_id(b);
     char label[32];
-    ins->name = vc_strdup(label_format("LWstr", ins->dest, label));
+    const char *fmtw = label_format("LWstr", ins->dest, label);
+    if (!fmtw) {
+        remove_instr(b, ins);
+        return (ir_value_t){0};
+    }
+    ins->name = vc_strdup(fmtw);
     size_t len = strlen(str ? str : "");
     long long *vals = malloc((len + 1) * sizeof(long long));
     if (!vals) {

@@ -87,7 +87,13 @@ const char *label_table_get_or_add(label_table_t *t, const char *name)
         return NULL;
     e->name = vc_strdup(name);
     char buf[32];
-    e->ir_name = vc_strdup(label_format("Luser", label_next_id(), buf));
+    const char *fmt = label_format("Luser", label_next_id(), buf);
+    if (!fmt) {
+        free(e->name);
+        free(e);
+        return NULL;
+    }
+    e->ir_name = vc_strdup(fmt);
     e->next = t->head;
     t->head = e;
     return e->ir_name;
@@ -202,8 +208,9 @@ int check_switch_stmt(stmt_t *stmt, symtable_t *vars, symtable_t *funcs,
     char end_label[32];
     char default_label[32];
     int id = label_next_id();
-    label_format_suffix("L", id, "_end", end_label);
-    label_format_suffix("L", id, "_default", default_label);
+    if (!label_format_suffix("L", id, "_end", end_label) ||
+        !label_format_suffix("L", id, "_default", default_label))
+        return 0;
 
     /* generate conditional branches to each case */
     char **case_labels = emit_case_branches(stmt, vars, ir, expr_val,

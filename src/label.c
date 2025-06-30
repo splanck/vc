@@ -38,7 +38,9 @@ void label_reset(void)
 /* Format a label combining prefix and id.  "buf" must have space for 32 bytes. */
 const char *label_format(const char *prefix, int id, char buf[32])
 {
-    snprintf(buf, 32, "%s%d", prefix, id);
+    int n = snprintf(buf, 32, "%s%d", prefix, id);
+    if (n < 0 || n >= 32)
+        return NULL;
     return buf;
 }
 
@@ -46,6 +48,8 @@ const char *label_format(const char *prefix, int id, char buf[32])
 const char *label_format_suffix(const char *prefix, int id, const char *suffix,
                                 char buf[32])
 {
-    snprintf(buf, 32, "%s%d%s", prefix, id, suffix);
+    int n = snprintf(buf, 32, "%s%d%s", prefix, id, suffix);
+    if (n < 0 || n >= 32)
+        return NULL;
     return buf;
 }

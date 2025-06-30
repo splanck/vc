@@ -17,10 +17,16 @@ int label_next_id(void);
 /* Reset label numbering back to zero. */
 void label_reset(void);
 
-/* Format a label as prefix followed by id. */
+/*
+ * Format a label as prefix followed by id.
+ * Returns NULL if the text does not fit in the buffer.
+ */
 const char *label_format(const char *prefix, int id, char buf[32]);
 
-/* Format a label as prefix + id + suffix. */
+/*
+ * Format a label as prefix + id + suffix.
+ * Returns NULL if the text does not fit in the buffer.
+ */
 const char *label_format_suffix(const char *prefix, int id, const char *suffix,
                                 char buf[32]);
 
