@@ -412,6 +412,21 @@ if [ $ret -eq 0 ] || ! grep -q "Invalid optimization level" "${err}"; then
 fi
 rm -f "${out}" "${err}"
 
+# simulate disk full during assembly generation
+lib="$DIR/libfail_fflush.so"
+cc -shared -fPIC -o "$lib" "$DIR/unit/fail_fflush.c"
+out=$(mktemp)
+err=$(mktemp)
+set +e
+LD_PRELOAD="$lib" "$BINARY" -c -o "$out" "$DIR/fixtures/simple_add.c" 2> "$err"
+ret=$?
+set -e
+if [ $ret -eq 0 ] || ! grep -q "No space left on device" "$err"; then
+    echo "Test disk_full_flush failed"
+    fail=1
+fi
+rm -f "$out" "$err" "$lib"
+
 # regression test for long command error message
 long_tmpdir=$(mktemp -d)
 long_out="$long_tmpdir/$(printf 'a%.0s' {1..50})/$(printf 'b%.0s' {1..50})/$(printf 'c%.0s' {1..50})/$(printf 'd%.0s' {1..50})/$(printf 'e%.0s' {1..50})/out.o"

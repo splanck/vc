@@ -393,6 +393,13 @@ static int emit_output_file(ir_builder_t *ir, const char *output,
             return 0;
         }
         codegen_emit_x86(tmpf, ir, use_x86_64);
+        if (fflush(tmpf) == EOF) {
+            perror("fflush");
+            fclose(tmpf);
+            unlink(tmpname);
+            free(tmpname);
+            return 0;
+        }
         if (fclose(tmpf) == EOF) {
             perror("fclose");
             unlink(tmpname);
