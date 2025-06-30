@@ -32,8 +32,9 @@ int check_while_stmt(stmt_t *stmt, symtable_t *vars, symtable_t *funcs,
     char start_label[32];
     char end_label[32];
     int id = label_next_id();
-    label_format_suffix("L", id, "_start", start_label);
-    label_format_suffix("L", id, "_end", end_label);
+    if (!label_format_suffix("L", id, "_start", start_label) ||
+        !label_format_suffix("L", id, "_end", end_label))
+        return 0;
     ir_build_label(ir, start_label);
     if (check_expr(stmt->while_stmt.cond, vars, funcs, ir, &cond_val) == TYPE_UNKNOWN)
         return 0;
@@ -61,9 +62,10 @@ int check_do_while_stmt(stmt_t *stmt, symtable_t *vars, symtable_t *funcs,
     char cond_label[32];
     char end_label[32];
     int id = label_next_id();
-    label_format_suffix("L", id, "_start", start_label);
-    label_format_suffix("L", id, "_cond", cond_label);
-    label_format_suffix("L", id, "_end", end_label);
+    if (!label_format_suffix("L", id, "_start", start_label) ||
+        !label_format_suffix("L", id, "_cond", cond_label) ||
+        !label_format_suffix("L", id, "_end", end_label))
+        return 0;
     ir_build_label(ir, start_label);
     if (!check_stmt(stmt->do_while_stmt.body, vars, funcs, labels, ir,
                     func_ret_type, end_label, cond_label))
@@ -92,8 +94,9 @@ int check_for_stmt(stmt_t *stmt, symtable_t *vars, symtable_t *funcs,
     char start_label[32];
     char end_label[32];
     int id = label_next_id();
-    label_format_suffix("L", id, "_start", start_label);
-    label_format_suffix("L", id, "_end", end_label);
+    if (!label_format_suffix("L", id, "_start", start_label) ||
+        !label_format_suffix("L", id, "_end", end_label))
+        return 0;
     symbol_t *old_head = vars->head;
     if (stmt->for_stmt.init_decl) {
         if (!check_stmt(stmt->for_stmt.init_decl, vars, funcs, labels, ir,
@@ -114,7 +117,10 @@ int check_for_stmt(stmt_t *stmt, symtable_t *vars, symtable_t *funcs,
     }
     ir_build_bcond(ir, cond_val, end_label);
     char cont_label[32];
-    label_format_suffix("L", id, "_cont", cont_label);
+    if (!label_format_suffix("L", id, "_cont", cont_label)) {
+        symtable_pop_scope(vars, old_head);
+        return 0;
+    }
     if (!check_stmt(stmt->for_stmt.body, vars, funcs, labels, ir,
                     func_ret_type, end_label, cont_label)) {
         symtable_pop_scope(vars, old_head);
