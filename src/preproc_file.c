@@ -270,9 +270,10 @@ static char *parse_macro_params(char *p, vector_t *out)
             p++; /* skip ')' */
         } else {
             p = start - 1; /* restore '(' position */
+            *p = '('; /* undo temporary termination */
             for (size_t i = 0; i < out->count; i++)
                 free(((char **)out->data)[i]);
-            free(out->data);
+            vector_free(out);
             vector_init(out, sizeof(char *));
         }
     } else if (*p) {
