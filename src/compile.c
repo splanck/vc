@@ -13,6 +13,7 @@
 #include <stdlib.h>
 #include <limits.h>
 #include <unistd.h>
+#include <fcntl.h>
 #include <string.h>
 #include <errno.h>
 #include <spawn.h>
@@ -553,6 +554,14 @@ static int create_temp_file(const cli_options_t *cli, const char *prefix,
         perror("mkstemp");
         free(tmpl);
         *out_path = NULL;
+        return -1;
+    }
+    if (fcntl(fd, F_SETFD, FD_CLOEXEC) != 0) {
+        int err = errno;
+        close(fd);
+        free(tmpl);
+        *out_path = NULL;
+        errno = err;
         return -1;
     }
     *out_path = tmpl;
