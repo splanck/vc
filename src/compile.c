@@ -102,8 +102,13 @@ static int assemble_startup_obj(const char *asm_path, int use_x86_64,
                                const cli_options_t *cli, char **out_path);
 
 /* Create a temporary file and return its descriptor. */
+#ifdef UNIT_TESTING
+int create_temp_file(const cli_options_t *cli, const char *prefix,
+                     char **out_path);
+#else
 static int create_temp_file(const cli_options_t *cli, const char *prefix,
                             char **out_path);
+#endif
 
 /* Create an object file containing the entry stub for linking. */
 static int create_startup_object(const cli_options_t *cli, int use_x86_64,
@@ -508,12 +513,18 @@ int compile_unit(const char *source, const cli_options_t *cli,
 }
 
 /* Create a temporary file and return its descriptor. */
+#ifdef UNIT_TESTING
+int create_temp_file(const cli_options_t *cli, const char *prefix,
+                     char **out_path)
+#else
 static int create_temp_file(const cli_options_t *cli, const char *prefix,
                             char **out_path)
+#endif
 {
     const char *dir = cli->obj_dir ? cli->obj_dir : "/tmp";
-    size_t len = strlen(dir) + strlen(prefix) + 8; /* / prefix XXXXXX \0 */
-    if (strlen(dir) + strlen(prefix) + 7 >= PATH_MAX) {
+    /* dir + '/' + prefix + "XXXXXX" + NUL */
+    size_t len = strlen(dir) + strlen(prefix) + sizeof("/XXXXXX");
+    if (len > PATH_MAX) {
         *out_path = NULL;
         errno = ENAMETOOLONG;
         return -1;
