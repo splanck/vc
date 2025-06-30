@@ -390,8 +390,8 @@ void ir_build_store_idx_vol(ir_builder_t *b, const char *name, ir_value_t idx,
 }
 
 /* Load a bit-field from `name` shifted by `shift` and masked by `width`. */
-ir_value_t ir_build_bfload(ir_builder_t *b, const char *name,
-                           int shift, int width)
+static ir_value_t ir_build_bfload(ir_builder_t *b, const char *name,
+                                  int shift, int width)
 {
     ir_instr_t *ins = append_instr(b);
     if (!ins)
@@ -404,8 +404,8 @@ ir_value_t ir_build_bfload(ir_builder_t *b, const char *name,
 }
 
 /* Store `val` into a bit-field at `name`. */
-void ir_build_bfstore(ir_builder_t *b, const char *name, int shift,
-                      int width, ir_value_t val)
+static void ir_build_bfstore(ir_builder_t *b, const char *name, int shift,
+                             int width, ir_value_t val)
 {
     ir_instr_t *ins = append_instr(b);
     if (!ins)

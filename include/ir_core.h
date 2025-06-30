@@ -175,13 +175,6 @@ void ir_build_store_idx(ir_builder_t *b, const char *name, ir_value_t idx,
 void ir_build_store_idx_vol(ir_builder_t *b, const char *name, ir_value_t idx,
                             ir_value_t val);
 
-/* Load a bit-field using IR_BFLOAD (shift and width encoded in imm). */
-ir_value_t ir_build_bfload(ir_builder_t *b, const char *name,
-                           int shift, int width);
-
-/* Store `val` into a bit-field using IR_BFSTORE. */
-void ir_build_bfstore(ir_builder_t *b, const char *name, int shift,
-                      int width, ir_value_t val);
 
 /* Emit IR_ALLOCA reserving `size` bytes on the stack. */
 ir_value_t ir_build_alloca(ir_builder_t *b, ir_value_t size);
