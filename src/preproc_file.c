@@ -871,10 +871,10 @@ static int process_file(const char *path, vector_t *macros,
 }
 
 /* Append colon-separated paths from ENV to SEARCH_DIRS */
-static void append_env_paths(const char *env, vector_t *search_dirs)
+static int append_env_paths(const char *env, vector_t *search_dirs)
 {
     if (!env || !*env)
-        return;
+        return 1;
 
     char *tmp = vc_strdup(env);
     char *tok, *sp;
@@ -882,26 +882,40 @@ static void append_env_paths(const char *env, vector_t *search_dirs)
     while (tok) {
         if (*tok) {
             char *dup = vc_strdup(tok);
-            vector_push(search_dirs, &dup);
+            if (!vector_push(search_dirs, &dup)) {
+                free(dup);
+                free(tmp);
+                return 0;
+            }
         }
         tok = strtok_r(NULL, ":", &sp);
     }
     free(tmp);
+    return 1;
 }
 
 /* Collect include search directories from CLI options and environment */
-static void collect_include_dirs(vector_t *search_dirs,
-                                 const vector_t *include_dirs)
+static int collect_include_dirs(vector_t *search_dirs,
+                                const vector_t *include_dirs)
 {
     vector_init(search_dirs, sizeof(char *));
     for (size_t i = 0; i < include_dirs->count; i++) {
         const char *s = ((const char **)include_dirs->data)[i];
         char *dup = vc_strdup(s);
-        vector_push(search_dirs, &dup);
+        if (!vector_push(search_dirs, &dup)) {
+            free(dup);
+            for (size_t j = 0; j < search_dirs->count; j++)
+                free(((char **)search_dirs->data)[j]);
+            vector_free(search_dirs);
+            return 0;
+        }
     }
 
-    append_env_paths(getenv("VCPATH"), search_dirs);
-    append_env_paths(getenv("VCINC"), search_dirs);
+    if (!append_env_paths(getenv("VCPATH"), search_dirs))
+        return 0;
+    if (!append_env_paths(getenv("VCINC"), search_dirs))
+        return 0;
+    return 1;
 }
 
 /* Initialize the vectors used during preprocessing */
@@ -938,8 +952,8 @@ char *preproc_run(const char *path, const vector_t *include_dirs)
 {
     vector_t search_dirs, macros, conds, stack;
     strbuf_t out;
-
-    collect_include_dirs(&search_dirs, include_dirs);
+    if (!collect_include_dirs(&search_dirs, include_dirs))
+        return NULL;
     init_preproc_vectors(&macros, &conds, &stack, &out);
 
     int ok = process_file(path, &macros, &conds, &out, &search_dirs, &stack);
