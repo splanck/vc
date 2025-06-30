@@ -148,18 +148,26 @@ static int compile_tokenize(const char *source, const vector_t *incdirs,
         while ((n = fread(buf, 1, sizeof(buf), stdin)) > 0) {
             if (fwrite(buf, 1, n, f) != n) {
                 perror("fwrite");
-                fclose(f);
+                if (fclose(f) == EOF) {
+                    perror("fclose");
+                }
                 unlink(tmpl);
                 return 0;
             }
         }
         if (ferror(stdin)) {
             perror("fread");
-            fclose(f);
+            if (fclose(f) == EOF) {
+                perror("fclose");
+            }
             unlink(tmpl);
             return 0;
         }
-        fclose(f);
+        if (fclose(f) == EOF) {
+            perror("fclose");
+            unlink(tmpl);
+            return 0;
+        }
         char *stdin_path = strdup(tmpl);
         if (!stdin_path) {
             unlink(tmpl);
@@ -552,7 +560,12 @@ static int write_startup_asm(int use_x86_64, const cli_options_t *cli,
     } else {
         fputs(".globl _start\n_start:\n    call main\n    mov %eax, %ebx\n    mov $1, %eax\n    int $0x80\n", stub);
     }
-    fclose(stub);
+    if (fclose(stub) == EOF) {
+        perror("fclose");
+        unlink(asmname);
+        free(asmname);
+        return 0;
+    }
 
     *out_path = asmname;
     return 1;
