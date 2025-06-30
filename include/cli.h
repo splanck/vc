@@ -19,6 +19,11 @@ typedef enum {
     STD_GNU99
 } c_std_t;
 
+typedef enum {
+    ASM_ATT = 0,
+    ASM_INTEL
+} asm_syntax_t;
+
 /* Command line options parsed from argv */
 typedef struct {
     char *output;       /* output file path */
@@ -30,6 +35,7 @@ typedef struct {
     int dump_ir;        /* dump IR to stdout */
     int preprocess;     /* run preprocessor only and print to stdout */
     int debug;          /* emit debug directives */
+    asm_syntax_t asm_syntax; /* assembly syntax flavor */
     c_std_t std;        /* language standard */
     char *obj_dir;      /* directory for temporary object files */
     vector_t include_dirs; /* additional include directories */
