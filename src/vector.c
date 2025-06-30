@@ -11,7 +11,6 @@
 #include <stdint.h>
 #include <assert.h>
 #include "vector.h"
-#include "util.h"
 
 /*
  * Prepare a vector to hold elements of "elem_size" bytes.  The vector
@@ -43,19 +42,17 @@ int vector_push(vector_t *vec, const void *elem)
     if (vec->count >= vec->cap) {
         size_t new_cap;
         if (vec->cap) {
-            if (vec->cap > SIZE_MAX / 2) {
-                fprintf(stderr, "vc: vector too large\n");
-                exit(1);
-            }
+            if (vec->cap > SIZE_MAX / 2)
+                return 0;
             new_cap = vec->cap * 2;
         } else {
             new_cap = 16;
         }
-        if (new_cap > SIZE_MAX / vec->elem_size) {
-            fprintf(stderr, "vc: vector too large\n");
-            exit(1);
-        }
-        void *tmp = vc_realloc_or_exit(vec->data, new_cap * vec->elem_size);
+        if (new_cap > SIZE_MAX / vec->elem_size)
+            return 0;
+        void *tmp = realloc(vec->data, new_cap * vec->elem_size);
+        if (!tmp)
+            return 0;
         vec->data = tmp;
         vec->cap = new_cap;
     }
