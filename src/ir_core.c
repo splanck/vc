@@ -15,11 +15,13 @@
 #include <stdarg.h>
 #include <string.h>
 #include <limits.h>
+#include <stdint.h>
 #include "ir_core.h"
 #include "label.h"
 #include "strbuf.h"
 #include "util.h"
 #include "ast.h"
+#include "error.h"
 
 
 /*
@@ -168,6 +170,12 @@ ir_value_t ir_build_wstring(ir_builder_t *b, const char *str)
     }
     ins->name = vc_strdup(fmt);
     size_t len = strlen(str ? str : "");
+    if (len + 1 > SIZE_MAX / sizeof(long long)) {
+        error_set(b->cur_line, b->cur_column, b->cur_file, error_current_function);
+        error_print("wide string literal too large");
+        remove_instr(b, ins);
+        return (ir_value_t){0};
+    }
     long long *vals = malloc((len + 1) * sizeof(long long));
     if (!vals) {
         remove_instr(b, ins);
