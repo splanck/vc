@@ -6,7 +6,7 @@
 #include "util.h"
 
 /* Minimal helpers from preproc_file.c needed for testing */
-static void tokenize_param_list(char *list, vector_t *out)
+static int tokenize_param_list(char *list, vector_t *out)
 {
     char *tok; char *sp;
     tok = strtok_r(list, ",", &sp);
@@ -17,9 +17,17 @@ static void tokenize_param_list(char *list, vector_t *out)
         while (end > tok && (end[-1] == ' ' || end[-1] == '\t'))
             end--;
         char *dup = vc_strndup(tok, (size_t)(end - tok));
-        vector_push(out, &dup);
+        if (!vector_push(out, &dup)) {
+            free(dup);
+            for (size_t i = 0; i < out->count; i++)
+                free(((char **)out->data)[i]);
+            vector_free(out);
+            vector_init(out, sizeof(char *));
+            return 0;
+        }
         tok = strtok_r(NULL, ",", &sp);
     }
+    return 1;
 }
 
 static char *parse_macro_params(char *p, vector_t *out)
@@ -32,7 +40,10 @@ static char *parse_macro_params(char *p, vector_t *out)
             p++;
         if (*p == ')') {
             char *plist = vc_strndup(start, (size_t)(p - start));
-            tokenize_param_list(plist, out);
+            if (!tokenize_param_list(plist, out)) {
+                free(plist);
+                return NULL;
+            }
             free(plist);
             p++; /* skip ')' */
         } else {
