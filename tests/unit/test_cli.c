@@ -2,6 +2,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <getopt.h>
+#include <stdlib.h>
 #include "cli.h"
 #include "vector.h"
 
@@ -46,6 +47,10 @@ static void test_parse_failure(void)
 #endif
     fail_push = 1;
     FILE *tmp = tmpfile();
+    if (!tmp) {
+        perror("tmpfile");
+        exit(1);
+    }
     int saved = dup(fileno(stderr));
     dup2(fileno(tmp), fileno(stderr));
 
