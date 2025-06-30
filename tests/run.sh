@@ -63,6 +63,8 @@ cc -Iinclude -Wall -Wextra -std=c99 -c src/util.c -o util_strbuf.o
 cc -Iinclude -Wall -Wextra -std=c99 -c "$DIR/unit/test_strbuf_overflow.c" -o "$DIR/test_strbuf_overflow.o"
 cc -o "$DIR/strbuf_overflow" strbuf_overflow_impl.o util_strbuf.o "$DIR/test_strbuf_overflow.o"
 rm -f strbuf_overflow_impl.o util_strbuf.o "$DIR/test_strbuf_overflow.o"
+# build collect_funcs overflow regression test
+cc -Iinclude -Wall -Wextra -std=c99 "$DIR/unit/test_collect_funcs_overflow.c" -o "$DIR/collect_funcs_overflow"
 # build waitpid EINTR regression test
 cc -Iinclude -Wall -Wextra -std=c99 -c src/strbuf.c -o strbuf_eintr_impl.o
 cc -Iinclude -Wall -Wextra -std=c99 -c src/util.c -o util_eintr.o
@@ -96,5 +98,16 @@ if [ $ret -eq 0 ] || ! grep -q "string buffer too large" "$err"; then
     fail=1
 fi
 rm -f "$err" "$DIR/strbuf_overflow"
+# regression test for collect_funcs overflow handling
+err=$(mktemp)
+set +e
+"$DIR/collect_funcs_overflow" 2> "$err" >/dev/null
+ret=$?
+set -e
+if [ $ret -ne 0 ] || ! grep -q "too many inline functions" "$err"; then
+    echo "Test collect_funcs_overflow failed"
+    fail=1
+fi
+rm -f "$err" "$DIR/collect_funcs_overflow"
 # run integration tests
 "$DIR/run_tests.sh"

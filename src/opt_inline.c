@@ -12,7 +12,10 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
+#include <sys/types.h>
 #include <ctype.h>
+#include <limits.h>
+#include <stdint.h>
 #include "opt.h"
 
 typedef struct {
@@ -186,14 +189,29 @@ static int collect_funcs(ir_builder_t *ir, inline_func_t **out, size_t *count)
             continue;
         }
         if (*count == cap) {
-            cap = cap ? cap * 2 : 4;
-            inline_func_t *tmp = realloc(*out, cap * sizeof(**out));
+            size_t max_cap = SIZE_MAX / sizeof(**out);
+            size_t new_cap;
+            if (cap) {
+                if (cap > max_cap / 2) {
+                    opt_error("too many inline functions");
+                    free(*out);
+                    *out = NULL;
+                    return 0;
+                }
+                new_cap = cap * 2;
+            } else {
+                new_cap = 4;
+            }
+            if (new_cap > max_cap)
+                new_cap = max_cap;
+            inline_func_t *tmp = realloc(*out, new_cap * sizeof(**out));
             if (!tmp) {
                 opt_error("out of memory");
                 free(*out);
                 return 0;
             }
             *out = tmp;
+            cap = new_cap;
         }
         (*out)[(*count)++] = (inline_func_t){ins->name, op->op};
     }
