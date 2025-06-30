@@ -12,6 +12,12 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <limits.h>
+#ifndef PATH_MAX
+# include <sys/param.h>
+#endif
+#ifndef PATH_MAX
+# define PATH_MAX 4096
+#endif
 #include <unistd.h>
 #include <fcntl.h>
 #include <string.h>

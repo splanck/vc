@@ -2,7 +2,12 @@
 #include <stdlib.h>
 #include <string.h>
 #include <limits.h>
-#include <linux/limits.h>
+#ifndef PATH_MAX
+# include <sys/param.h>
+#endif
+#ifndef PATH_MAX
+# define PATH_MAX 4096
+#endif
 #include <errno.h>
 #include "cli.h"
 
