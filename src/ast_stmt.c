@@ -58,10 +58,6 @@ stmt_t *ast_make_var_decl(const char *name, type_kind_t type, size_t array_size,
     stmt->line = line;
     stmt->column = column;
     stmt->var_decl.name = vc_strdup(name ? name : "");
-    if (!stmt->var_decl.name) {
-        free(stmt);
-        return NULL;
-    }
     stmt->var_decl.type = type;
     stmt->var_decl.array_size = array_size;
     stmt->var_decl.size_expr = size_expr;
@@ -210,10 +206,6 @@ stmt_t *ast_make_label(const char *name, size_t line, size_t column)
     stmt->line = line;
     stmt->column = column;
     stmt->label.name = vc_strdup(name ? name : "");
-    if (!stmt->label.name) {
-        free(stmt);
-        return NULL;
-    }
     return stmt;
 }
 
@@ -227,10 +219,6 @@ stmt_t *ast_make_goto(const char *name, size_t line, size_t column)
     stmt->line = line;
     stmt->column = column;
     stmt->goto_stmt.name = vc_strdup(name ? name : "");
-    if (!stmt->goto_stmt.name) {
-        free(stmt);
-        return NULL;
-    }
     return stmt;
 }
 
@@ -245,10 +233,6 @@ stmt_t *ast_make_typedef(const char *name, type_kind_t type, size_t array_size,
     stmt->line = line;
     stmt->column = column;
     stmt->typedef_decl.name = vc_strdup(name ? name : "");
-    if (!stmt->typedef_decl.name) {
-        free(stmt);
-        return NULL;
-    }
     stmt->typedef_decl.type = type;
     stmt->typedef_decl.array_size = array_size;
     stmt->typedef_decl.elem_size = elem_size;
@@ -342,10 +326,6 @@ func_t *ast_make_func(const char *name, type_kind_t ret_type,
     if (!fn)
         return NULL;
     fn->name = vc_strdup(name ? name : "");
-    if (!fn->name) {
-        free(fn);
-        return NULL;
-    }
     fn->return_type = ret_type;
     fn->param_count = param_count;
     fn->is_variadic = is_variadic;
