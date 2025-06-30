@@ -14,6 +14,7 @@ for cfile in $(ls "$DIR"/fixtures/*.c | sort); do
     esac
     case "$base" in
         include_search|include_angle|include_env|macro_bad_define) continue;;
+        include_search|include_angle|include_env|preproc_blank) continue;;
     esac
     expect="$DIR/fixtures/$base.s"
     out=$(mktemp)
@@ -320,6 +321,15 @@ if ! grep -q "return 42;" "${pp_out}"; then
     fail=1
 fi
 rm -f "${pp_out}"
+
+# verify blank lines are preserved by the preprocessor
+pp_blank=$(mktemp)
+"$BINARY" -E "$DIR/fixtures/preproc_blank.c" > "${pp_blank}"
+if ! diff -u "$DIR/fixtures/preproc_blank.expected" "${pp_blank}"; then
+    echo "Test preprocess_blank_lines failed"
+    fail=1
+fi
+rm -f "${pp_blank}"
 
 # simulate write failure with a full pipe
 err=$(mktemp)

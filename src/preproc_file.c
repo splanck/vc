@@ -528,21 +528,27 @@ static char *read_file_lines(const char *path, char ***out_lines)
     if (!text)
         return NULL;
 
+    size_t len = strlen(text);
     size_t line_count = 1;
     for (char *p = text; *p; p++)
         if (*p == '\n')
             line_count++;
+    if (len > 0 && text[len - 1] == '\n')
+        line_count--;
 
     char **lines = vc_alloc_or_exit(sizeof(char *) * (line_count + 1));
 
-    char *saveptr;
-    char *line = strtok_r(text, "\n", &saveptr);
     size_t idx = 0;
-    while (line) {
-        lines[idx++] = line;
-        line = strtok_r(NULL, "\n", &saveptr);
+    lines[idx++] = text;
+    for (size_t i = 0; i < len; i++) {
+        if (text[i] == '\n') {
+            text[i] = '\0';
+            if (i + 1 < len)
+                lines[idx++] = &text[i + 1];
+        }
     }
     lines[idx] = NULL;
+    line_count = idx;
     *out_lines = lines;
     return text;
 }
