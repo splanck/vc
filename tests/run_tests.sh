@@ -220,6 +220,19 @@ if [ $ret -eq 0 ] || ! grep -q "Include cycle detected" "${err}"; then
 fi
 rm -f "${out}" "${err}"
 
+# negative test for missing include file
+err=$(mktemp)
+out=$(mktemp)
+set +e
+"$BINARY" -o "${out}" "$DIR/invalid/include_missing.c" 2> "${err}"
+ret=$?
+set -e
+if [ $ret -eq 0 ] || ! grep -q "nonexistent.h: No such file or directory" "${err}"; then
+    echo "Test include_missing failed"
+    fail=1
+fi
+rm -f "${out}" "${err}"
+
 # negative test for macro recursion limit
 err=$(mktemp)
 out=$(mktemp)
