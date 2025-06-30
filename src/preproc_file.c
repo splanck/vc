@@ -310,10 +310,18 @@ static int add_macro(const char *name, const char *value, vector_t *params,
 {
     macro_t m;
     m.name = vc_strdup(name);
+    m.value = NULL; /* ensure safe cleanup on failure */
     vector_init(&m.params, sizeof(char *));
     for (size_t i = 0; i < params->count; i++) {
         char *pname = ((char **)params->data)[i];
-        vector_push(&m.params, &pname);
+        if (!vector_push(&m.params, &pname)) {
+            free(pname);
+            for (size_t j = i + 1; j < params->count; j++)
+                free(((char **)params->data)[j]);
+            vector_free(params);
+            macro_free(&m);
+            return 0;
+        }
     }
     vector_free(params);
     m.value = vc_strdup(value);
