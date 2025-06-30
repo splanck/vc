@@ -209,7 +209,6 @@ static int collect_funcs(ir_builder_t *ir, inline_func_t **out, size_t *count)
             inline_func_t *tmp = realloc(*out, new_cap * sizeof(**out));
             if (!tmp) {
                 opt_error("out of memory");
-                free(*out);
                 return 0;
             }
             *out = tmp;
