@@ -8,6 +8,7 @@
 #include <ctype.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdio.h>
 
 #include "token.h"
 #include "vector.h"
@@ -106,8 +107,11 @@ static void append_token(vector_t *vec, token_type_t type, const char *lexeme,
 {
     char *text = vc_strndup(lexeme, len);
     token_t tok = { type, text, line, column };
-    if (!vector_push(vec, &tok))
+    if (!vector_push(vec, &tok)) {
+        free(text);
+        fprintf(stderr, "Out of memory\n");
         exit(1);
+    }
 }
 
 /* Parse a line marker of the form '# <num> "file"' and update counters */
