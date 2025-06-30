@@ -41,6 +41,9 @@ static void test_parse_failure(void)
     char *argv[] = {"vc", "-o", "out.s", "file.c", NULL};
     /* reset getopt state before reusing cli_parse_args */
     optind = 1;
+#ifdef __BSD_VISIBLE
+    optreset = 1;
+#endif
     fail_push = 1;
     FILE *tmp = tmpfile();
     int saved = dup(fileno(stderr));
