@@ -12,6 +12,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
+#include <errno.h>
 #include <sys/types.h>
 #include <ctype.h>
 #include <limits.h>
@@ -34,7 +35,7 @@ static int is_inline_def(const char *file, const char *name)
     char *line = NULL;
     FILE *f = fopen(file, "r");
     if (!f) {
-        free(line);
+        /* errno is preserved for callers */
         return -1;
     }
 
@@ -178,7 +179,8 @@ static int collect_funcs(ir_builder_t *ir, inline_func_t **out, size_t *count)
             } else if (r < 0) {
                 char msg[256];
                 snprintf(msg, sizeof(msg),
-                         "could not open %s for inline check", src_file);
+                         "could not open %s for inline check: %s",
+                         src_file, strerror(errno));
                 opt_error(msg);
                 free(*out);
                 *out = NULL;
