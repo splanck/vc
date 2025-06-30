@@ -272,8 +272,11 @@ static symbol_t *register_var_symbol(stmt_t *stmt, symtable_t *vars)
 {
     char ir_name_buf[32];
     const char *ir_name = stmt->var_decl.name;
-    if (stmt->var_decl.is_static)
-        ir_name = label_format("__static", label_next_id(), ir_name_buf);
+    if (stmt->var_decl.is_static) {
+        if (!label_format("__static", label_next_id(), ir_name_buf))
+            return NULL;
+        ir_name = ir_name_buf;
+    }
 
     compute_var_layout(stmt);
     if (stmt->var_decl.is_const && !stmt->var_decl.init &&
@@ -539,8 +542,9 @@ static int check_if_stmt(stmt_t *stmt, symtable_t *vars, symtable_t *funcs,
     char else_label[32];
     char end_label[32];
     int id = label_next_id();
-    label_format_suffix("L", id, "_else", else_label);
-    label_format_suffix("L", id, "_end", end_label);
+    if (!label_format_suffix("L", id, "_else", else_label) ||
+        !label_format_suffix("L", id, "_end", end_label))
+        return 0;
     const char *target = stmt->if_stmt.else_branch ? else_label : end_label;
     ir_build_bcond(ir, cond_val, target);
     if (!check_stmt(stmt->if_stmt.then_branch, vars, funcs, labels, ir,

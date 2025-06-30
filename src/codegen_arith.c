@@ -233,8 +233,9 @@ static void emit_logand(strbuf_t *sb, ir_instr_t *ins,
     int id = label_next_id();
     char fl[32];
     char end[32];
-    label_format_suffix("L", id, "_false", fl);
-    label_format_suffix("L", id, "_end", end);
+    if (!label_format_suffix("L", id, "_false", fl) ||
+        !label_format_suffix("L", id, "_end", end))
+        return;
     strbuf_appendf(sb, "    mov%s %s, %s\n", sfx,
                    loc_str(b1, ra, ins->src1, x64),
                    loc_str(b2, ra, ins->dest, x64));
@@ -266,8 +267,9 @@ static void emit_logor(strbuf_t *sb, ir_instr_t *ins,
     int id = label_next_id();
     char tl[32];
     char end[32];
-    label_format_suffix("L", id, "_true", tl);
-    label_format_suffix("L", id, "_end", end);
+    if (!label_format_suffix("L", id, "_true", tl) ||
+        !label_format_suffix("L", id, "_end", end))
+        return;
     strbuf_appendf(sb, "    mov%s %s, %s\n", sfx,
                    loc_str(b1, ra, ins->src1, x64),
                    loc_str(b2, ra, ins->dest, x64));

@@ -152,9 +152,13 @@ static type_kind_t check_cond_expr(expr_t *expr, symtable_t *vars,
 
     char flabel[32], endlabel[32], tmp[32];
     int id = label_next_id();
-    label_format_suffix("L", id, "_false", flabel);
-    label_format_suffix("L", id, "_end", endlabel);
-    label_format("tmp", id, tmp);
+    if (!label_format_suffix("L", id, "_false", flabel) ||
+        !label_format_suffix("L", id, "_end", endlabel) ||
+        !label_format("tmp", id, tmp)) {
+        if (out)
+            *out = (ir_value_t){0};
+        return TYPE_UNKNOWN;
+    }
     ir_build_bcond(ir, cond_val, flabel);
 
     ir_value_t tval;
