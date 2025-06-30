@@ -337,7 +337,8 @@ tmp_big=$(mktemp)
 # create a large temporary source exceeding the pipe capacity
 yes "int x = 0;" | head -n 7000 > "$tmp_big"
 set +e
-bash -c "set -o pipefail; trap \"\" PIPE; \"$BINARY\" -E \"$tmp_big\" 2> \"$err\" | head -c 1 >/dev/null"
+# use positional parameters so the compiler path can contain spaces
+bash -c 'set -o pipefail; trap "" PIPE; "$1" -E "$2" 2> "$3" | head -c 1 >/dev/null' _ "$BINARY" "$tmp_big" "$err"
 ret=$?
 set -e
 rm -f "$tmp_big"
