@@ -327,6 +327,9 @@ static int add_macro(const char *name, const char *value, vector_t *params,
     vector_free(params);
     m.value = vc_strdup(value);
     if (!vector_push(macros, &m)) {
+        for (size_t i = 0; i < m.params.count; i++)
+            free(((char **)m.params.data)[i]);
+        m.params.count = 0;
         macro_free(&m);
         fprintf(stderr, "Out of memory\n");
         return 0;
