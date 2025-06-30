@@ -404,6 +404,8 @@ static int emit_output_file(ir_builder_t *ir, const char *output,
         if (rc != 1) {
             if (rc == 0)
                 fprintf(stderr, "cc failed\n");
+            else if (rc == -1)
+                fprintf(stderr, "cc terminated by signal\n");
             return 0;
         }
         return 1;
@@ -588,6 +590,8 @@ static int assemble_startup_obj(const char *asm_path, int use_x86_64,
     if (rc != 1) {
         if (rc == 0)
             fprintf(stderr, "cc failed\n");
+        else if (rc == -1)
+            fprintf(stderr, "cc terminated by signal\n");
         unlink(objname);
         free(objname);
         return 0;
@@ -730,6 +734,8 @@ static int run_link_command(const vector_t *objs, const char *output,
     if (rc != 1) {
         if (rc == 0)
             fprintf(stderr, "cc failed\n");
+        else if (rc == -1)
+            fprintf(stderr, "cc terminated by signal\n");
         return 0;
     }
     return 1;
