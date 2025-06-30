@@ -647,7 +647,7 @@ static int compile_source_files(const cli_options_t *cli, vector_t *objs)
             unlink(((char **)objs->data)[j]);
             free(((char **)objs->data)[j]);
         }
-        vector_free(objs);
+        objs->count = 0;
     }
 
     return ok;
@@ -761,7 +761,7 @@ int link_sources(const cli_options_t *cli)
         unlink(((char **)objs.data)[i]);
         free(((char **)objs.data)[i]);
     }
-    free(objs.data);
+    vector_free(&objs);
 
     return ok;
 }

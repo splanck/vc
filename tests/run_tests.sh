@@ -394,6 +394,19 @@ if ! diff -u "$DIR/fixtures/simple_add.s" "${stdin_out}" > /dev/null; then
 fi
 rm -f "${stdin_out}"
 
+# regression test for invalid source with --link (double free)
+err=$(mktemp)
+out=$(mktemp)
+set +e
+"$BINARY" --link -o "${out}" "$DIR/invalid/parse_error.c" 2> "${err}"
+ret=$?
+set -e
+if [ $ret -eq 0 ] || grep -qi "double free" "${err}"; then
+    echo "Test link_invalid_double_free failed"
+    fail=1
+fi
+rm -f "${out}" "${err}"
+
 if [ $fail -eq 0 ]; then
     echo "All tests passed"
 else
