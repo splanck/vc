@@ -536,13 +536,13 @@ static int create_temp_file(const cli_options_t *cli, const char *prefix,
         errno = ENAMETOOLONG;
         return -1;
     }
-    char *tmpl = malloc(len);
+    char *tmpl = malloc(len + 1);
     if (!tmpl) {
         *out_path = NULL;
         return -1;
     }
-    int n = snprintf(tmpl, len, "%s/%sXXXXXX", dir, prefix);
-    if (n < 0 || (size_t)n >= len) {
+    int n = snprintf(tmpl, len + 1, "%s/%sXXXXXX", dir, prefix);
+    if (n < 0 || (size_t)n >= len + 1) {
         free(tmpl);
         *out_path = NULL;
         errno = ENAMETOOLONG;
