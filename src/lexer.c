@@ -264,7 +264,8 @@ static void read_number(const char *src, size_t *i, size_t *col,
  * Translate escape sequences within character and string literals. The
  * index pointer is advanced past the consumed characters.
  */
-static int unescape_char(const char *src, size_t *i)
+static int unescape_char(const char *src, size_t *i,
+                         size_t line, size_t column)
 {
     if (!src[*i])
         return 0;
@@ -317,10 +318,22 @@ static int unescape_char(const char *src, size_t *i)
         if (c >= '0' && c <= '7') { /* octal */
             int value = 0;
             int digits = 0;
+            int overflow = 0;
             while (digits < 3 && src[*i] >= '0' && src[*i] <= '7') {
-                value = value * 8 + (src[*i] - '0');
+                int digit = src[*i] - '0';
+                int next = value * 8 + digit;
+                if (next > 255) {
+                    overflow = 1;
+                    value = 255;
+                } else {
+                    value = next;
+                }
                 (*i)++;
                 digits++;
+            }
+            if (overflow) {
+                error_set(line, column, error_current_file, error_current_function);
+                error_print("Escape sequence out of range");
             }
             return value;
         }
@@ -347,7 +360,7 @@ static void read_char_const(const char *src, size_t *i, size_t *col,
     char value = src[*i];
     if (value == '\\') {
         (*i)++; /* skip backslash */
-        value = (char)unescape_char(src, i);
+        value = (char)unescape_char(src, i, line, column);
     } else {
         (*i)++; /* consume character */
     }
@@ -383,7 +396,7 @@ static void read_string_lit(const char *src, size_t *i, size_t *col,
         char c = src[*i];
         if (c == '\\') {
             (*i)++; /* skip backslash */
-            c = (char)unescape_char(src, i);
+            c = (char)unescape_char(src, i, line, column);
         } else {
             (*i)++; /* consume character */
         }
