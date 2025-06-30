@@ -786,12 +786,12 @@ int run_preprocessor(const cli_options_t *cli)
             perror("preproc_run");
             return 1;
         }
-        if (printf("%s", text) < 0) {
-            perror("printf");
+        size_t len = strlen(text);
+        if (fwrite(text, 1, len, stdout) != len) {
+            perror("fwrite");
             free(text);
             return 1;
         }
-        size_t len = strlen(text);
         if (len == 0 || text[len - 1] != '\n') {
             if (putchar('\n') == EOF) {
                 perror("putchar");
@@ -800,7 +800,7 @@ int run_preprocessor(const cli_options_t *cli)
             }
         }
         if (fflush(stdout) == EOF) {
-            perror("printf");
+            perror("fflush");
             free(text);
             return 1;
         }
