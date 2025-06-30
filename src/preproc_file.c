@@ -379,7 +379,8 @@ static void cond_push_ifdef_common(char *line, vector_t *macros,
     } else {
         st.taking = 0;
     }
-    vector_push(conds, &st);
+    if (!vector_push(conds, &st))
+        fprintf(stderr, "Out of memory\n");
 }
 
 /* Push a new state for an #ifdef directive */
@@ -407,7 +408,8 @@ static void cond_push_ifexpr(char *line, vector_t *macros, vector_t *conds)
     } else {
         st.taking = 0;
     }
-    vector_push(conds, &st);
+    if (!vector_push(conds, &st))
+        fprintf(stderr, "Out of memory\n");
 }
 
 /* Handle an #elif directive */
