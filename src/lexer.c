@@ -106,6 +106,10 @@ static void append_token(vector_t *vec, token_type_t type, const char *lexeme,
                          size_t len, size_t line, size_t column)
 {
     char *text = vc_strndup(lexeme, len);
+    if (!text) {
+        fprintf(stderr, "Out of memory\n");
+        exit(1);
+    }
     token_t tok = { type, text, line, column };
     if (!vector_push(vec, &tok)) {
         free(text);

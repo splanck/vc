@@ -8,10 +8,10 @@
 #ifndef VC_UTIL_H
 #define VC_UTIL_H
 
-/* Duplicate a string using malloc */
+/* Duplicate a string using malloc. Returns NULL on allocation failure */
 char *vc_strdup(const char *s);
 
-/* Duplicate at most 'n' characters of a string */
+/* Duplicate at most 'n' characters of a string. Returns NULL on allocation failure */
 char *vc_strndup(const char *s, size_t n);
 
 /* Allocate memory or exit on failure */

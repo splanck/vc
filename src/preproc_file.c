@@ -916,12 +916,14 @@ static int append_env_paths(const char *env, vector_t *search_dirs)
         return 1;
 
     char *tmp = vc_strdup(env);
+    if (!tmp)
+        return 0;
     char *tok, *sp;
     tok = strtok_r(tmp, ":", &sp);
     while (tok) {
         if (*tok) {
             char *dup = vc_strdup(tok);
-            if (!vector_push(search_dirs, &dup)) {
+            if (!dup || !vector_push(search_dirs, &dup)) {
                 free(dup);
                 free(tmp);
                 return 0;
@@ -941,7 +943,7 @@ static int collect_include_dirs(vector_t *search_dirs,
     for (size_t i = 0; i < include_dirs->count; i++) {
         const char *s = ((const char **)include_dirs->data)[i];
         char *dup = vc_strdup(s);
-        if (!vector_push(search_dirs, &dup)) {
+        if (!dup || !vector_push(search_dirs, &dup)) {
             free(dup);
             free_string_vector(search_dirs);
             return 0;

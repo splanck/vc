@@ -244,7 +244,7 @@ static int parse_macro_args(const char *line, size_t *pos, vector_t *out)
             while (end > a && (line[end - 1] == ' ' || line[end - 1] == '\t'))
                 end--;
             char *dup = vc_strndup(line + a, end - a);
-            if (!vector_push(out, &dup)) {
+            if (!dup || !vector_push(out, &dup)) {
                 free(dup);
                 goto fail;
             }
@@ -259,7 +259,7 @@ static int parse_macro_args(const char *line, size_t *pos, vector_t *out)
             while (end > a && (line[end - 1] == ' ' || line[end - 1] == '\t'))
                 end--;
             char *dup = vc_strndup(line + a, end - a);
-            if (!vector_push(out, &dup)) {
+            if (!dup || !vector_push(out, &dup)) {
                 free(dup);
                 goto fail;
             }
