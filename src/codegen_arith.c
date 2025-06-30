@@ -300,7 +300,8 @@ static void emit_logor(strbuf_t *sb, ir_instr_t *ins,
  * names.
  */
 void emit_arith_instr(strbuf_t *sb, ir_instr_t *ins,
-                      regalloc_t *ra, int x64)
+                      regalloc_t *ra, int x64,
+                      asm_syntax_t syntax)
 {
     switch (ins->op) {
     case IR_PTR_ADD:

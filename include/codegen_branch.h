@@ -14,6 +14,7 @@
 #include "strbuf.h"
 #include "ir_core.h"
 #include "regalloc.h"
+#include "cli.h"
 
 /*
  * Emit assembly for branching and function control flow instructions.
@@ -22,6 +23,7 @@
  * 64-bit encodings according to `x64`.
  */
 void emit_branch_instr(strbuf_t *sb, ir_instr_t *ins,
-                       regalloc_t *ra, int x64);
+                       regalloc_t *ra, int x64,
+                       asm_syntax_t syntax);
 
 #endif /* VC_CODEGEN_BRANCH_H */
