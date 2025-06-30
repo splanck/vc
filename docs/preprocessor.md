@@ -40,6 +40,11 @@ avoid infinite loops a hard limit of 100 nested expansions is enforced. The
 compiler aborts preprocessing with an error message as soon as this depth is
 reached.
 
+File inclusion works the same way and may recurse when headers themselves
+contain `#include` directives.  To guard against unbounded recursion the
+preprocessor enforces a maximum include depth of 20 files.  If this limit is
+exceeded the build stops with an "Include depth limit exceeded" error.
+
 Conditional expressions in `#if` directives are parsed by the small recursive
 descent parser in `preproc_expr.c`.  The `defined` operator queries the current
 macro table so feature tests work as expected.

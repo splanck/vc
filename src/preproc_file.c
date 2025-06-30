@@ -29,6 +29,8 @@
 #include "vector.h"
 #include "strbuf.h"
 
+#define MAX_INCLUDE_DEPTH 20
+
 /* Default system include search paths */
 static const char *std_include_dirs[] = {
     "/usr/local/include",
@@ -820,6 +822,10 @@ static int process_file(const char *path, vector_t *macros,
                         vector_t *conds, strbuf_t *out,
                         const vector_t *incdirs, vector_t *stack)
 {
+    if (stack->count >= MAX_INCLUDE_DEPTH) {
+        fprintf(stderr, "Include depth limit exceeded\n");
+        return 0;
+    }
     char **lines;
     char *dir;
     char *text;
