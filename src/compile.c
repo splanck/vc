@@ -532,7 +532,7 @@ static int create_temp_file(const cli_options_t *cli, const char *prefix,
     const char *dir = cli->obj_dir ? cli->obj_dir : "/tmp";
     /* dir + '/' + prefix + "XXXXXX" + NUL */
     size_t len = strlen(dir) + strlen(prefix) + sizeof("/XXXXXX");
-    if (len > PATH_MAX) {
+    if (len >= PATH_MAX) {
         *out_path = NULL;
         errno = ENAMETOOLONG;
         return -1;

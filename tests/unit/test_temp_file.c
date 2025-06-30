@@ -38,9 +38,32 @@ static void test_reject_long_path(void)
     free(dir);
 }
 
+static void test_reject_pathmax_dir(void)
+{
+    const char *prefix = "vc";
+    size_t dir_len = PATH_MAX - strlen(prefix) - sizeof("/XXXXXX");
+    char *dir = malloc(dir_len + 1);
+    memset(dir, 'a', dir_len);
+    dir[dir_len] = '\0';
+
+    cli_options_t cli;
+    memset(&cli, 0, sizeof(cli));
+    cli.obj_dir = dir;
+
+    char *path = (char *)0x1;
+    errno = 0;
+    int fd = create_temp_file(&cli, prefix, &path);
+    ASSERT(fd < 0);
+    ASSERT(errno == ENAMETOOLONG);
+    ASSERT(path == NULL);
+
+    free(dir);
+}
+
 int main(void)
 {
     test_reject_long_path();
+    test_reject_pathmax_dir();
     if (failures == 0)
         printf("All create_temp_file tests passed\n");
     else
