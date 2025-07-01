@@ -14,6 +14,8 @@
 #ifndef VC_REGALLOC_X86_H
 #define VC_REGALLOC_X86_H
 
+#include "cli.h"
+
 /*
  * Number of allocatable general purpose registers.
  *
@@ -31,5 +33,8 @@ const char *regalloc_reg_name(int idx);
 
 /* Enable or disable 64-bit register naming. */
 void regalloc_set_x86_64(int enable);
+
+/* Select assembly syntax flavor for register names. */
+void regalloc_set_asm_syntax(asm_syntax_t syntax);
 
 #endif /* VC_REGALLOC_X86_H */
