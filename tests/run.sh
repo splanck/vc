@@ -43,7 +43,7 @@ cc -o "$DIR/parser_alloc_tests" parser_core_fail.o parser_init_fail.o parser_dec
 rm -f parser_core_fail.o parser_init_fail.o parser_decl_fail.o parser_flow_fail.o parser_toplevel_fail.o parser_expr_fail.o parser_stmt_fail.o parser_types_fail.o symtable_core_fail.o symtable_globals_fail.o symtable_struct_fail.o ast_clone_fail.o ast_expr_fail.o ast_stmt_fail.o lexer_alloc.o vector_alloc.o util_alloc.o error_alloc.o "$DIR/test_parser_alloc_fail.o"
 # build ir_core unit test binary with malloc wrapper
 cc -Iinclude -Wall -Wextra -std=c99 -Dmalloc=test_malloc -c src/ir_core.c -o ir_core_test.o
-cc -Iinclude -Wall -Wextra -std=c99 -c src/util.c -o util_ircore.o
+cc -Iinclude -Wall -Wextra -std=c99 -Dmalloc=test_malloc -c src/util.c -o util_ircore.o
 cc -Iinclude -Wall -Wextra -std=c99 -c src/label.c -o label_ircore.o
 cc -Iinclude -Wall -Wextra -std=c99 -c src/error.c -o error_ircore.o
 cc -Iinclude -Wall -Wextra -std=c99 -c "$DIR/unit/test_ir_core.c" -o "$DIR/test_ir_core.o"

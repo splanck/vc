@@ -147,7 +147,15 @@ ir_value_t ir_build_string(ir_builder_t *b, const char *str)
         return (ir_value_t){0};
     }
     ins->name = vc_strdup(fmt);
+    if (!ins->name) {
+        remove_instr(b, ins);
+        return (ir_value_t){0};
+    }
     ins->data = vc_strdup(str ? str : "");
+    if (!ins->data) {
+        remove_instr(b, ins);
+        return (ir_value_t){0};
+    }
     return (ir_value_t){ins->dest};
 }
 
@@ -169,6 +177,10 @@ ir_value_t ir_build_wstring(ir_builder_t *b, const char *str)
         return (ir_value_t){0};
     }
     ins->name = vc_strdup(fmt);
+    if (!ins->name) {
+        remove_instr(b, ins);
+        return (ir_value_t){0};
+    }
     size_t len = strlen(str ? str : "");
     if (len + 1 > SIZE_MAX / sizeof(long long)) {
         error_set(b->cur_line, b->cur_column, b->cur_file, error_current_function);
@@ -201,6 +213,10 @@ ir_value_t ir_build_load(ir_builder_t *b, const char *name)
     ins->op = IR_LOAD;
     ins->dest = alloc_value_id(b);
     ins->name = vc_strdup(name ? name : "");
+    if (!ins->name) {
+        remove_instr(b, ins);
+        return (ir_value_t){0};
+    }
     return (ir_value_t){ins->dest};
 }
 
@@ -212,6 +228,10 @@ ir_value_t ir_build_load_vol(ir_builder_t *b, const char *name)
     ins->op = IR_LOAD;
     ins->dest = alloc_value_id(b);
     ins->name = vc_strdup(name ? name : "");
+    if (!ins->name) {
+        remove_instr(b, ins);
+        return (ir_value_t){0};
+    }
     ins->is_volatile = 1;
     return (ir_value_t){ins->dest};
 }
@@ -228,6 +248,10 @@ void ir_build_store(ir_builder_t *b, const char *name, ir_value_t val)
     ins->op = IR_STORE;
     ins->src1 = val.id;
     ins->name = vc_strdup(name ? name : "");
+    if (!ins->name) {
+        remove_instr(b, ins);
+        return;
+    }
 }
 
 void ir_build_store_vol(ir_builder_t *b, const char *name, ir_value_t val)
@@ -238,6 +262,10 @@ void ir_build_store_vol(ir_builder_t *b, const char *name, ir_value_t val)
     ins->op = IR_STORE;
     ins->src1 = val.id;
     ins->name = vc_strdup(name ? name : "");
+    if (!ins->name) {
+        remove_instr(b, ins);
+        return;
+    }
     ins->is_volatile = 1;
 }
 
@@ -279,6 +307,10 @@ ir_value_t ir_build_addr(ir_builder_t *b, const char *name)
     ins->op = IR_ADDR;
     ins->dest = alloc_value_id(b);
     ins->name = vc_strdup(name ? name : "");
+    if (!ins->name) {
+        remove_instr(b, ins);
+        return (ir_value_t){0};
+    }
     return (ir_value_t){ins->dest};
 }
 
@@ -351,6 +383,10 @@ ir_value_t ir_build_load_idx(ir_builder_t *b, const char *name, ir_value_t idx)
     ins->dest = alloc_value_id(b);
     ins->src1 = idx.id;
     ins->name = vc_strdup(name ? name : "");
+    if (!ins->name) {
+        remove_instr(b, ins);
+        return (ir_value_t){0};
+    }
     return (ir_value_t){ins->dest};
 }
 
@@ -364,6 +400,10 @@ ir_value_t ir_build_load_idx_vol(ir_builder_t *b, const char *name, ir_value_t i
     ins->dest = alloc_value_id(b);
     ins->src1 = idx.id;
     ins->name = vc_strdup(name ? name : "");
+    if (!ins->name) {
+        remove_instr(b, ins);
+        return (ir_value_t){0};
+    }
     ins->is_volatile = 1;
     return (ir_value_t){ins->dest};
 }
@@ -381,6 +421,10 @@ void ir_build_store_idx(ir_builder_t *b, const char *name, ir_value_t idx,
     ins->src1 = idx.id;
     ins->src2 = val.id;
     ins->name = vc_strdup(name ? name : "");
+    if (!ins->name) {
+        remove_instr(b, ins);
+        return;
+    }
 }
 
 /* Volatile variant of IR_STORE_IDX assigning `val` to `name[idx]`. */
@@ -394,6 +438,10 @@ void ir_build_store_idx_vol(ir_builder_t *b, const char *name, ir_value_t idx,
     ins->src1 = idx.id;
     ins->src2 = val.id;
     ins->name = vc_strdup(name ? name : "");
+    if (!ins->name) {
+        remove_instr(b, ins);
+        return;
+    }
     ins->is_volatile = 1;
 }
 
@@ -407,6 +455,10 @@ static ir_value_t ir_build_bfload(ir_builder_t *b, const char *name,
     ins->op = IR_BFLOAD;
     ins->dest = alloc_value_id(b);
     ins->name = vc_strdup(name ? name : "");
+    if (!ins->name) {
+        remove_instr(b, ins);
+        return (ir_value_t){0};
+    }
     ins->imm = ((long long)shift << 32) | (unsigned)width;
     return (ir_value_t){ins->dest};
 }
@@ -421,6 +473,10 @@ static void ir_build_bfstore(ir_builder_t *b, const char *name, int shift,
     ins->op = IR_BFSTORE;
     ins->src1 = val.id;
     ins->name = vc_strdup(name ? name : "");
+    if (!ins->name) {
+        remove_instr(b, ins);
+        return;
+    }
     ins->imm = ((long long)shift << 32) | (unsigned)width;
 }
 
@@ -513,6 +569,10 @@ ir_value_t ir_build_call(ir_builder_t *b, const char *name, size_t arg_count)
     ins->op = IR_CALL;
     ins->dest = alloc_value_id(b);
     ins->name = vc_strdup(name ? name : "");
+    if (!ins->name) {
+        remove_instr(b, ins);
+        return (ir_value_t){0};
+    }
     ins->imm = (long long)arg_count;
     return (ir_value_t){ins->dest};
 }
@@ -538,6 +598,10 @@ void ir_build_func_begin(ir_builder_t *b, const char *name)
         return;
     ins->op = IR_FUNC_BEGIN;
     ins->name = vc_strdup(name ? name : "");
+    if (!ins->name) {
+        remove_instr(b, ins);
+        return;
+    }
 }
 
 /* End the current function. */
@@ -557,6 +621,10 @@ void ir_build_br(ir_builder_t *b, const char *label)
         return;
     ins->op = IR_BR;
     ins->name = vc_strdup(label ? label : "");
+    if (!ins->name) {
+        remove_instr(b, ins);
+        return;
+    }
 }
 
 /*
@@ -571,6 +639,10 @@ void ir_build_bcond(ir_builder_t *b, ir_value_t cond, const char *label)
     ins->op = IR_BCOND;
     ins->src1 = cond.id;
     ins->name = vc_strdup(label ? label : "");
+    if (!ins->name) {
+        remove_instr(b, ins);
+        return;
+    }
 }
 
 /* Emit IR_LABEL marking a location in the instruction stream. */
@@ -581,6 +653,10 @@ void ir_build_label(ir_builder_t *b, const char *label)
         return;
     ins->op = IR_LABEL;
     ins->name = vc_strdup(label ? label : "");
+    if (!ins->name) {
+        remove_instr(b, ins);
+        return;
+    }
 }
 
 
