@@ -124,7 +124,7 @@ set +e
 "$DIR/strbuf_overflow" 2> "$err"
 ret=$?
 set -e
-if [ $ret -eq 0 ] || ! grep -q "string buffer too large" "$err"; then
+if [ $ret -ne 0 ] || ! grep -q "string buffer too large" "$err"; then
     echo "Test strbuf_overflow failed"
     fail=1
 fi
