@@ -108,6 +108,22 @@ static int write_startup_asm(int use_x86_64, asm_syntax_t syntax,
 static int assemble_startup_obj(const char *asm_path, int use_x86_64,
                                const cli_options_t *cli, char **out_path);
 
+static const char nasm_macros[] =
+    "%macro movl 2\n    mov %1, %2\n%endmacro\n"
+    "%macro movq 2\n    mov %1, %2\n%endmacro\n"
+    "%macro addl 2\n    add %1, %2\n%endmacro\n"
+    "%macro addq 2\n    add %1, %2\n%endmacro\n"
+    "%macro subl 2\n    sub %1, %2\n%endmacro\n"
+    "%macro subq 2\n    sub %1, %2\n%endmacro\n"
+    "%macro imull 2\n    imul %1, %2\n%endmacro\n"
+    "%macro imulq 2\n    imul %1, %2\n%endmacro\n"
+    "%macro cmpl 2\n    cmp %1, %2\n%endmacro\n"
+    "%macro cmpq 2\n    cmp %1, %2\n%endmacro\n"
+    "%macro pushl 1\n    push %1\n%endmacro\n"
+    "%macro pushq 1\n    push %1\n%endmacro\n"
+    "%macro popl 1\n    pop %1\n%endmacro\n"
+    "%macro popq 1\n    pop %1\n%endmacro\n";
+
 /* Create a temporary file and return its descriptor. */
 #ifdef UNIT_TESTING
 int create_temp_file(const cli_options_t *cli, const char *prefix,
@@ -400,6 +416,8 @@ static int emit_output_file(ir_builder_t *ir, const char *output,
             free(tmpname);
             return 0;
         }
+        if (cli->asm_syntax == ASM_INTEL)
+            fputs(nasm_macros, tmpf);
         codegen_emit_x86(tmpf, ir, use_x86_64,
                         cli->asm_syntax);
         if (fflush(tmpf) == EOF) {
