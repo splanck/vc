@@ -18,6 +18,7 @@
 #include <limits.h>
 #include <stdint.h>
 #include "opt.h"
+#include "error.h"
 
 typedef struct {
     const char *name;
@@ -97,8 +98,14 @@ static int is_inline_def(const char *file, const char *name)
         /* tokenize the prefix before the function name */
         char prefix[512];
         size_t pre_len = (size_t)(pos - s);
-        if (pre_len >= sizeof(prefix))
-            pre_len = sizeof(prefix) - 1;
+        if (pre_len >= sizeof(prefix)) {
+            error_set(0, 0, file, name);
+            error_print("Function definition prefix too long");
+            free(line);
+            fclose(f);
+            errno = ENAMETOOLONG;
+            return -1;
+        }
         memcpy(prefix, s, pre_len);
         prefix[pre_len] = '\0';
 
@@ -177,11 +184,13 @@ static int collect_funcs(ir_builder_t *ir, inline_func_t **out, size_t *count)
             if (r > 0) {
                 is_inline = 1;
             } else if (r < 0) {
-                char msg[256];
-                snprintf(msg, sizeof(msg),
-                         "could not open %s for inline check: %s",
-                         src_file, strerror(errno));
-                opt_error(msg);
+                if (errno != ENAMETOOLONG) {
+                    char msg[256];
+                    snprintf(msg, sizeof(msg),
+                             "could not open %s for inline check: %s",
+                             src_file, strerror(errno));
+                    opt_error(msg);
+                }
                 free(*out);
                 *out = NULL;
                 return 0;
