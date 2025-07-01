@@ -195,8 +195,9 @@ static int compile_tokenize(const char *source, const vector_t *incdirs,
             unlink(tmpl);
             return 0;
         }
-        char *stdin_path = strdup(tmpl);
+        char *stdin_path = vc_strdup(tmpl);
         if (!stdin_path) {
+            fprintf(stderr, "Out of memory\n");
             unlink(tmpl);
             return 0;
         }
