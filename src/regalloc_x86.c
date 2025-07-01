@@ -14,6 +14,8 @@
 
 /* Current register naming mode: 0 for 32-bit, 1 for 64-bit. */
 static int use_x86_64 = 0;
+/* Assembly syntax flavor for register names. */
+static asm_syntax_t current_syntax = ASM_ATT;
 
 /* register names for 32-bit mode */
 static const char *phys_regs_32[REGALLOC_NUM_REGS] = {
@@ -37,9 +39,14 @@ static const char *phys_regs_64[REGALLOC_NUM_REGS] = {
 const char *regalloc_reg_name(int idx)
 {
     const char **regs = use_x86_64 ? phys_regs_64 : phys_regs_32;
+    const char *name;
     if (idx >= 0 && idx < REGALLOC_NUM_REGS)
-        return regs[idx];
-    return use_x86_64 ? "%rax" : "%eax";
+        name = regs[idx];
+    else
+        name = use_x86_64 ? "%rax" : "%eax";
+    if (current_syntax == ASM_INTEL && name[0] == '%')
+        return name + 1;
+    return name;
 }
 
 /*
@@ -49,4 +56,10 @@ const char *regalloc_reg_name(int idx)
 void regalloc_set_x86_64(int enable)
 {
     use_x86_64 = enable ? 1 : 0;
+}
+
+/* Set the assembly syntax style used for register names. */
+void regalloc_set_asm_syntax(asm_syntax_t syntax)
+{
+    current_syntax = syntax;
 }

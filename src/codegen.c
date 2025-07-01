@@ -107,6 +107,7 @@ char *codegen_ir_to_string(ir_builder_t *ir, int x64,
         return NULL;
     regalloc_t ra;
     regalloc_set_x86_64(x64);
+    regalloc_set_asm_syntax(syntax);
     regalloc_run(ir, &ra);
 
     strbuf_t sb;
