@@ -45,8 +45,8 @@ cc -Iinclude -Wall -Wextra -std=c99 -c "$DIR/unit/test_parser_alloc_fail.c" -o "
 cc -o "$DIR/parser_alloc_tests" parser_core_fail.o parser_init_fail.o parser_decl_fail.o parser_flow_fail.o parser_toplevel_fail.o parser_expr_fail.o parser_stmt_fail.o parser_types_fail.o symtable_core_fail.o symtable_globals_fail.o symtable_struct_fail.o ast_clone_fail.o ast_expr_fail.o ast_stmt_fail.o lexer_alloc.o vector_alloc.o util_alloc.o error_alloc.o "$DIR/test_parser_alloc_fail.o"
 rm -f parser_core_fail.o parser_init_fail.o parser_decl_fail.o parser_flow_fail.o parser_toplevel_fail.o parser_expr_fail.o parser_stmt_fail.o parser_types_fail.o symtable_core_fail.o symtable_globals_fail.o symtable_struct_fail.o ast_clone_fail.o ast_expr_fail.o ast_stmt_fail.o lexer_alloc.o vector_alloc.o util_alloc.o error_alloc.o "$DIR/test_parser_alloc_fail.o"
 # build ir_core unit test binary with malloc wrapper
-cc -Iinclude -Wall -Wextra -std=c99 -Dmalloc=test_malloc -c src/ir_core.c -o ir_core_test.o
-cc -Iinclude -Wall -Wextra -std=c99 -Dmalloc=test_malloc -c src/util.c -o util_ircore.o
+cc -Iinclude -Wall -Wextra -std=c99 -Dmalloc=test_malloc -Dcalloc=test_calloc -c src/ir_core.c -o ir_core_test.o
+cc -Iinclude -Wall -Wextra -std=c99 -Dmalloc=test_malloc -Dcalloc=test_calloc -c src/util.c -o util_ircore.o
 cc -Iinclude -Wall -Wextra -std=c99 -c src/label.c -o label_ircore.o
 cc -Iinclude -Wall -Wextra -std=c99 -c src/error.c -o error_ircore.o
 cc -Iinclude -Wall -Wextra -std=c99 -c "$DIR/unit/test_ir_core.c" -o "$DIR/test_ir_core.o"
@@ -95,8 +95,7 @@ cc -Iinclude -Wall -Wextra -std=c99 -c src/vector.c -o vector_preproc.o
 cc -o "$DIR/preproc_alloc_tests" "$DIR/test_preproc_alloc_fail.o" vector_preproc.o
 rm -f "$DIR/test_preproc_alloc_fail.o" vector_preproc.o
 # build add_macro push failure test
-cc -Iinclude -Wall -Wextra -std=c99 -Dvector_push=test_vector_push \
-    -c "$DIR/unit/test_add_macro_fail.c" -o "$DIR/test_add_macro_fail.o"
+cc -Iinclude -Wall -Wextra -std=c99 -Dvector_push=test_vector_push -c "$DIR/unit/test_add_macro_fail.c" -o "$DIR/test_add_macro_fail.o"
 cc -Iinclude -Wall -Wextra -std=c99 -c src/vector.c -o vector_addmacro.o
 cc -o "$DIR/add_macro_fail_tests" "$DIR/test_add_macro_fail.o" vector_addmacro.o
 rm -f "$DIR/test_add_macro_fail.o" vector_addmacro.o
@@ -105,6 +104,11 @@ cc -Iinclude -Wall -Wextra -std=c99 -DUNIT_TESTING -ffunction-sections -fdata-se
 cc -Iinclude -Wall -Wextra -std=c99 -c "$DIR/unit/test_temp_file.c" -o "$DIR/test_temp_file.o"
 cc -Wl,--gc-sections -o "$DIR/temp_file_tests" compile_temp.o "$DIR/test_temp_file.o"
 rm -f compile_temp.o "$DIR/test_temp_file.o"
+# build compile_source_obj temp file failure test
+cc -Iinclude -Wall -Wextra -std=c99 -DUNIT_TESTING -Dcompile_unit=test_compile_unit -ffunction-sections -fdata-sections -c src/compile.c -o compile_obj_fail.o
+cc -Iinclude -Wall -Wextra -std=c99 -c "$DIR/unit/test_compile_obj_fail.c" -o "$DIR/test_compile_obj_fail.o"
+cc -Wl,--gc-sections -o "$DIR/compile_obj_fail" compile_obj_fail.o "$DIR/test_compile_obj_fail.o"
+rm -f compile_obj_fail.o "$DIR/test_compile_obj_fail.o"
 # run unit tests
 "$DIR/unit_tests"
 "$DIR/cli_tests"
@@ -116,6 +120,7 @@ rm -f compile_temp.o "$DIR/test_temp_file.o"
 "$DIR/number_overflow"
 "$DIR/waitpid_retry"
 "$DIR/temp_file_tests"
+"$DIR/compile_obj_fail"
 "$DIR/preproc_alloc_tests"
 "$DIR/add_macro_fail_tests"
 "$DIR/invalid_macro_tests"

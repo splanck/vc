@@ -1,5 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
+#include <stdint.h>
 #include <limits.h>
 #include <unistd.h>
 #include <sys/wait.h>
@@ -24,6 +26,16 @@ void *test_malloc(size_t size)
         fail_after--;
     }
     return malloc(size);
+}
+
+void *test_calloc(size_t nmemb, size_t size)
+{
+    if (size && nmemb > SIZE_MAX / size)
+        return NULL;
+    void *ptr = test_malloc(nmemb * size);
+    if (ptr)
+        memset(ptr, 0, nmemb * size);
+    return ptr;
 }
 
 static void test_wstring_alloc_fail(void)

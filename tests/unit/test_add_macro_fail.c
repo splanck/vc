@@ -14,6 +14,7 @@ static int failures = 0;
 
 extern int vector_push(vector_t *vec, const void *elem); /* real impl */
 static int fail_push = 0;
+#undef vector_push
 int test_vector_push(vector_t *vec, const void *elem)
 {
     if (fail_push)
