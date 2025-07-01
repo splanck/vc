@@ -20,92 +20,160 @@ extern int export_syms;
 /* Forward declarations for small helpers. */
 static void emit_return(strbuf_t *sb, ir_instr_t *ins,
                         regalloc_t *ra, int x64,
-                        const char *sfx, const char *ax);
+                        const char *sfx, const char *ax,
+                        asm_syntax_t syntax);
 static void emit_call(strbuf_t *sb, ir_instr_t *ins,
                       regalloc_t *ra, int x64,
-                      const char *sfx, const char *ax, const char *sp);
+                      const char *sfx, const char *ax, const char *sp,
+                      asm_syntax_t syntax);
 static void emit_func_frame(strbuf_t *sb, ir_instr_t *ins,
                             regalloc_t *ra, int x64,
-                            const char *sfx, const char *bp, const char *sp);
+                            const char *sfx, const char *bp, const char *sp,
+                            asm_syntax_t syntax);
 static void emit_jumps(strbuf_t *sb, ir_instr_t *ins,
                        regalloc_t *ra, int x64,
-                       const char *sfx);
+                       const char *sfx, asm_syntax_t syntax);
 static void emit_alloca(strbuf_t *sb, ir_instr_t *ins,
                         regalloc_t *ra, int x64,
-                        const char *sfx, const char *sp);
+                        const char *sfx, const char *sp,
+                        asm_syntax_t syntax);
 
 /* Return the register or stack location string for `id`. */
-static const char *loc_str(char buf[32], regalloc_t *ra, int id, int x64)
+/* Format a register name for the requested syntax. */
+static const char *reg_str(int reg, asm_syntax_t syntax)
+{
+    const char *name = regalloc_reg_name(reg);
+    if (syntax == ASM_INTEL && name[0] == '%')
+        return name + 1;
+    return name;
+}
+
+static const char *fmt_reg(const char *name, asm_syntax_t syntax)
+{
+    if (syntax == ASM_INTEL && name[0] == '%')
+        return name + 1;
+    return name;
+}
+
+/* Helper returning the textual location of operand `id`. */
+static const char *loc_str(char buf[32], regalloc_t *ra, int id, int x64,
+                           asm_syntax_t syntax)
 {
     if (!ra || id <= 0)
         return "";
     int loc = ra->loc[id];
     if (loc >= 0)
-        return regalloc_reg_name(loc);
-    if (x64)
-        snprintf(buf, 32, "-%d(%%rbp)", -loc * 8);
-    else
-        snprintf(buf, 32, "-%d(%%ebp)", -loc * 4);
+        return reg_str(loc, syntax);
+    if (x64) {
+        if (syntax == ASM_INTEL)
+            snprintf(buf, 32, "[rbp-%d]", -loc * 8);
+        else
+            snprintf(buf, 32, "-%d(%%rbp)", -loc * 8);
+    } else {
+        if (syntax == ASM_INTEL)
+            snprintf(buf, 32, "[ebp-%d]", -loc * 4);
+        else
+            snprintf(buf, 32, "-%d(%%ebp)", -loc * 4);
+    }
     return buf;
 }
 
 /* Emit a return instruction (IR_RETURN). */
 static void emit_return(strbuf_t *sb, ir_instr_t *ins,
                         regalloc_t *ra, int x64,
-                        const char *sfx, const char *ax)
+                        const char *sfx, const char *ax,
+                        asm_syntax_t syntax)
 {
     char buf[32];
-    strbuf_appendf(sb, "    mov%s %s, %s\n", sfx,
-                   loc_str(buf, ra, ins->src1, x64), ax);
+    if (syntax == ASM_INTEL)
+        strbuf_appendf(sb, "    mov%s %s, %s\n", sfx, ax,
+                       loc_str(buf, ra, ins->src1, x64, syntax));
+    else
+        strbuf_appendf(sb, "    mov%s %s, %s\n", sfx,
+                       loc_str(buf, ra, ins->src1, x64, syntax), ax);
     strbuf_append(sb, "    ret\n");
 }
 
 /* Emit a call instruction (IR_CALL). */
 static void emit_call(strbuf_t *sb, ir_instr_t *ins,
                       regalloc_t *ra, int x64,
-                      const char *sfx, const char *ax, const char *sp)
+                      const char *sfx, const char *ax, const char *sp,
+                      asm_syntax_t syntax)
 {
     char buf[32];
     strbuf_appendf(sb, "    call %s\n", ins->name);
-    if (ins->imm > 0)
-        strbuf_appendf(sb, "    add%s $%d, %s\n", sfx,
-                       ins->imm * (x64 ? 8 : 4), sp);
-    strbuf_appendf(sb, "    mov%s %s, %s\n", sfx, ax,
-                   loc_str(buf, ra, ins->dest, x64));
+    if (ins->imm > 0) {
+        if (syntax == ASM_INTEL)
+            strbuf_appendf(sb, "    add%s %s, %d\n", sfx, sp,
+                           ins->imm * (x64 ? 8 : 4));
+        else
+            strbuf_appendf(sb, "    add%s $%d, %s\n", sfx,
+                           ins->imm * (x64 ? 8 : 4), sp);
+    }
+    if (syntax == ASM_INTEL)
+        strbuf_appendf(sb, "    mov%s %s, %s\n", sfx,
+                       loc_str(buf, ra, ins->dest, x64, syntax), ax);
+    else
+        strbuf_appendf(sb, "    mov%s %s, %s\n", sfx, ax,
+                       loc_str(buf, ra, ins->dest, x64, syntax));
 }
 
 /* Emit an indirect call instruction (IR_CALL_PTR). */
 static void emit_call_ptr(strbuf_t *sb, ir_instr_t *ins,
                           regalloc_t *ra, int x64,
-                          const char *sfx, const char *ax, const char *sp)
+                          const char *sfx, const char *ax, const char *sp,
+                          asm_syntax_t syntax)
 {
     char buf[32];
-    strbuf_appendf(sb, "    call *%s\n", loc_str(buf, ra, ins->src1, x64));
-    if (ins->imm > 0)
-        strbuf_appendf(sb, "    add%s $%d, %s\n", sfx,
-                       ins->imm * (x64 ? 8 : 4), sp);
-    strbuf_appendf(sb, "    mov%s %s, %s\n", sfx, ax,
-                   loc_str(buf, ra, ins->dest, x64));
+    if (syntax == ASM_INTEL)
+        strbuf_appendf(sb, "    call %s\n", loc_str(buf, ra, ins->src1, x64, syntax));
+    else
+        strbuf_appendf(sb, "    call *%s\n", loc_str(buf, ra, ins->src1, x64, syntax));
+    if (ins->imm > 0) {
+        if (syntax == ASM_INTEL)
+            strbuf_appendf(sb, "    add%s %s, %d\n", sfx, sp,
+                           ins->imm * (x64 ? 8 : 4));
+        else
+            strbuf_appendf(sb, "    add%s $%d, %s\n", sfx,
+                           ins->imm * (x64 ? 8 : 4), sp);
+    }
+    if (syntax == ASM_INTEL)
+        strbuf_appendf(sb, "    mov%s %s, %s\n", sfx,
+                       loc_str(buf, ra, ins->dest, x64, syntax), ax);
+    else
+        strbuf_appendf(sb, "    mov%s %s, %s\n", sfx, ax,
+                       loc_str(buf, ra, ins->dest, x64, syntax));
 }
 
 /* Emit function prologue and epilogue. */
 static void emit_func_frame(strbuf_t *sb, ir_instr_t *ins,
                             regalloc_t *ra, int x64,
-                            const char *sfx, const char *bp, const char *sp)
+                            const char *sfx, const char *bp, const char *sp,
+                            asm_syntax_t syntax)
 {
     if (ins->op == IR_FUNC_BEGIN) {
         if (export_syms)
             strbuf_appendf(sb, ".globl %s\n", ins->name);
         strbuf_appendf(sb, "%s:\n", ins->name);
         strbuf_appendf(sb, "    push%s %s\n", sfx, bp);
-        strbuf_appendf(sb, "    mov%s %s, %s\n", sfx, sp, bp);
+        if (syntax == ASM_INTEL)
+            strbuf_appendf(sb, "    mov%s %s, %s\n", sfx, bp, sp);
+        else
+            strbuf_appendf(sb, "    mov%s %s, %s\n", sfx, sp, bp);
         int frame = ra ? ra->stack_slots * (x64 ? 8 : 4) : 0;
         if (x64 && frame % 16 != 0)
             frame += 16 - (frame % 16);
-        if (frame > 0)
-            strbuf_appendf(sb, "    sub%s $%d, %s\n", sfx, frame, sp);
+        if (frame > 0) {
+            if (syntax == ASM_INTEL)
+                strbuf_appendf(sb, "    sub%s %s, %d\n", sfx, sp, frame);
+            else
+                strbuf_appendf(sb, "    sub%s $%d, %s\n", sfx, frame, sp);
+        }
     } else { /* IR_FUNC_END */
-        strbuf_appendf(sb, "    mov%s %s, %s\n", sfx, bp, sp);
+        if (syntax == ASM_INTEL)
+            strbuf_appendf(sb, "    mov%s %s, %s\n", sfx, sp, bp);
+        else
+            strbuf_appendf(sb, "    mov%s %s, %s\n", sfx, bp, sp);
         strbuf_appendf(sb, "    pop%s %s\n", sfx, bp);
         strbuf_append(sb, "    ret\n");
     }
@@ -114,14 +182,18 @@ static void emit_func_frame(strbuf_t *sb, ir_instr_t *ins,
 /* Emit unconditional and conditional jumps. */
 static void emit_jumps(strbuf_t *sb, ir_instr_t *ins,
                        regalloc_t *ra, int x64,
-                       const char *sfx)
+                       const char *sfx, asm_syntax_t syntax)
 {
     char buf[32];
     if (ins->op == IR_BR) {
         strbuf_appendf(sb, "    jmp %s\n", ins->name);
     } else if (ins->op == IR_BCOND) {
-        strbuf_appendf(sb, "    cmp%s $0, %s\n", sfx,
-                       loc_str(buf, ra, ins->src1, x64));
+        if (syntax == ASM_INTEL)
+            strbuf_appendf(sb, "    cmp%s %s, 0\n", sfx,
+                           loc_str(buf, ra, ins->src1, x64, syntax));
+        else
+            strbuf_appendf(sb, "    cmp%s $0, %s\n", sfx,
+                           loc_str(buf, ra, ins->src1, x64, syntax));
         strbuf_appendf(sb, "    je %s\n", ins->name);
     } else if (ins->op == IR_LABEL) {
         strbuf_appendf(sb, "%s:\n", ins->name);
@@ -131,14 +203,22 @@ static void emit_jumps(strbuf_t *sb, ir_instr_t *ins,
 /* Emit stack allocation instruction (IR_ALLOCA). */
 static void emit_alloca(strbuf_t *sb, ir_instr_t *ins,
                         regalloc_t *ra, int x64,
-                        const char *sfx, const char *sp)
+                        const char *sfx, const char *sp,
+                        asm_syntax_t syntax)
 {
     char buf1[32];
     char buf2[32];
-    strbuf_appendf(sb, "    sub%s %s, %s\n", sfx,
-                   loc_str(buf1, ra, ins->src1, x64), sp);
-    strbuf_appendf(sb, "    mov%s %s, %s\n", sfx, sp,
-                   loc_str(buf2, ra, ins->dest, x64));
+    if (syntax == ASM_INTEL) {
+        strbuf_appendf(sb, "    sub%s %s, %s\n", sfx, sp,
+                       loc_str(buf1, ra, ins->src1, x64, syntax));
+        strbuf_appendf(sb, "    mov%s %s, %s\n", sfx,
+                       loc_str(buf2, ra, ins->dest, x64, syntax), sp);
+    } else {
+        strbuf_appendf(sb, "    sub%s %s, %s\n", sfx,
+                       loc_str(buf1, ra, ins->src1, x64, syntax), sp);
+        strbuf_appendf(sb, "    mov%s %s, %s\n", sfx, sp,
+                       loc_str(buf2, ra, ins->dest, x64, syntax));
+    }
 }
 
 /*
@@ -155,28 +235,28 @@ void emit_branch_instr(strbuf_t *sb, ir_instr_t *ins,
                        asm_syntax_t syntax)
 {
     const char *sfx = x64 ? "q" : "l";
-    const char *ax = x64 ? "%rax" : "%eax";
-    const char *bp = x64 ? "%rbp" : "%ebp";
-    const char *sp = x64 ? "%rsp" : "%esp";
+    const char *ax = fmt_reg(x64 ? "%rax" : "%eax", syntax);
+    const char *bp = fmt_reg(x64 ? "%rbp" : "%ebp", syntax);
+    const char *sp = fmt_reg(x64 ? "%rsp" : "%esp", syntax);
 
     switch (ins->op) {
     case IR_RETURN:
-        emit_return(sb, ins, ra, x64, sfx, ax);
+        emit_return(sb, ins, ra, x64, sfx, ax, syntax);
         break;
     case IR_CALL:
-        emit_call(sb, ins, ra, x64, sfx, ax, sp);
+        emit_call(sb, ins, ra, x64, sfx, ax, sp, syntax);
         break;
     case IR_CALL_PTR:
-        emit_call_ptr(sb, ins, ra, x64, sfx, ax, sp);
+        emit_call_ptr(sb, ins, ra, x64, sfx, ax, sp, syntax);
         break;
     case IR_FUNC_BEGIN: case IR_FUNC_END:
-        emit_func_frame(sb, ins, ra, x64, sfx, bp, sp);
+        emit_func_frame(sb, ins, ra, x64, sfx, bp, sp, syntax);
         break;
     case IR_BR: case IR_BCOND: case IR_LABEL:
-        emit_jumps(sb, ins, ra, x64, sfx);
+        emit_jumps(sb, ins, ra, x64, sfx, syntax);
         break;
     case IR_ALLOCA:
-        emit_alloca(sb, ins, ra, x64, sfx, sp);
+        emit_alloca(sb, ins, ra, x64, sfx, sp, syntax);
         break;
     default:
         break;
