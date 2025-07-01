@@ -32,7 +32,6 @@
 #include "parser_core.h"
 #include "ast_stmt.h"
 #include "vector.h"
-#include "strbuf.h"
 #include "symtable.h"
 #include "semantic.h"
 #include "error.h"
@@ -787,15 +786,30 @@ static int run_command(char *const argv[])
     int status;
     int ret = posix_spawnp(&pid, argv[0], NULL, NULL, argv, environ);
     if (ret != 0) {
-        strbuf_t cmd;
-        strbuf_init(&cmd);
-        for (size_t i = 0; argv[i]; i++) {
-            if (i > 0)
-                strbuf_append(&cmd, " ");
-            strbuf_append(&cmd, argv[i]);
+        char cmd[256];
+        size_t len = 0;
+        cmd[0] = '\0';
+        for (size_t i = 0; argv[i] && len < sizeof(cmd) - 1; i++) {
+            if (i > 0 && len < sizeof(cmd) - 1) {
+                cmd[len++] = ' ';
+            }
+            if (len >= sizeof(cmd) - 1)
+                break;
+            int n = snprintf(cmd + len, sizeof(cmd) - len, "%s", argv[i]);
+            if (n < 0)
+                break;
+            if ((size_t)n >= sizeof(cmd) - len) {
+                len = sizeof(cmd) - 1;
+                break;
+            }
+            len += (size_t)n;
         }
-        fprintf(stderr, "posix_spawnp %s: %s\n", cmd.data, strerror(ret));
-        strbuf_free(&cmd);
+        cmd[len] = '\0';
+        if (len == sizeof(cmd) - 1 && sizeof(cmd) > 4) {
+            memcpy(cmd + sizeof(cmd) - 4, "...", 3);
+            cmd[sizeof(cmd) - 1] = '\0';
+        }
+        fprintf(stderr, "posix_spawnp %s: %s\n", cmd, strerror(ret));
         return 0;
     }
     while (waitpid(pid, &status, 0) < 0) {
