@@ -65,6 +65,19 @@ for asm64 in "$DIR"/fixtures/*_x86-64.s; do
     rm -f "${out}"
 done
 
+# verify Intel syntax assembly for selected fixtures
+for intelasm in "$DIR"/fixtures/*_intel.s; do
+    base=$(basename "$intelasm" _intel.s)
+    cfile="$DIR/fixtures/$base.c"
+    out=$(mktemp)
+    "$BINARY" --intel-syntax -o "${out}" "$cfile"
+    if ! diff -u "$intelasm" "${out}"; then
+        echo "Test intel_${base} failed"
+        fail=1
+    fi
+    rm -f "${out}"
+done
+
 # verify include search path option
 inc_out=$(mktemp)
 "$BINARY" -I "$DIR/includes" -o "${inc_out}" "$DIR/fixtures/include_search.c"
