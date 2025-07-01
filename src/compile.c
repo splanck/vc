@@ -101,8 +101,8 @@ static int run_link_command(const vector_t *objs, const char *output,
 static int run_command(char *const argv[]);
 
 /* Write the entry stub assembly to a temporary file. */
-static int write_startup_asm(int use_x86_64, const cli_options_t *cli,
-                             char **out_path);
+static int write_startup_asm(int use_x86_64, asm_syntax_t syntax,
+                             const cli_options_t *cli, char **out_path);
 
 /* Assemble the stub into an object file. */
 static int assemble_startup_obj(const char *asm_path, int use_x86_64,
@@ -596,8 +596,8 @@ static int create_temp_file(const cli_options_t *cli, const char *prefix,
 }
 
 /* Write the entry stub assembly to a temporary file. */
-static int write_startup_asm(int use_x86_64, const cli_options_t *cli,
-                             char **out_path)
+static int write_startup_asm(int use_x86_64, asm_syntax_t syntax,
+                             const cli_options_t *cli, char **out_path)
 {
     char *asmname = NULL;
     int asmfd = create_temp_file(cli, "vcstub", &asmname);
@@ -612,10 +612,18 @@ static int write_startup_asm(int use_x86_64, const cli_options_t *cli,
         return 0;
     }
     int rc;
-    if (use_x86_64) {
-        rc = fputs(".globl _start\n_start:\n    call main\n    mov %rax, %rdi\n    mov $60, %rax\n    syscall\n", stub);
+    if (syntax == ASM_INTEL) {
+        if (use_x86_64) {
+            rc = fputs("global _start\n_start:\n    call main\n    mov rdi, rax\n    mov rax, 60\n    syscall\n", stub);
+        } else {
+            rc = fputs("global _start\n_start:\n    call main\n    mov ebx, eax\n    mov eax, 1\n    int 0x80\n", stub);
+        }
     } else {
-        rc = fputs(".globl _start\n_start:\n    call main\n    mov %eax, %ebx\n    mov $1, %eax\n    int $0x80\n", stub);
+        if (use_x86_64) {
+            rc = fputs(".globl _start\n_start:\n    call main\n    mov %rax, %rdi\n    mov $60, %rax\n    syscall\n", stub);
+        } else {
+            rc = fputs(".globl _start\n_start:\n    call main\n    mov %eax, %ebx\n    mov $1, %eax\n    int $0x80\n", stub);
+        }
     }
     if (rc == EOF) {
         perror("fputs");
@@ -683,7 +691,7 @@ static int create_startup_object(const cli_options_t *cli, int use_x86_64,
                                 char **out_path)
 {
     char *asmfile = NULL;
-    int ok = write_startup_asm(use_x86_64, cli, &asmfile);
+    int ok = write_startup_asm(use_x86_64, cli->asm_syntax, cli, &asmfile);
     if (ok)
         ok = assemble_startup_obj(asmfile, use_x86_64, cli, out_path);
     if (asmfile) {
