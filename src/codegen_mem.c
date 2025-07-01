@@ -28,11 +28,19 @@
  */
 static void emit_move_with_spill(strbuf_t *sb, const char *sfx,
                                  const char *src, const char *dest,
-                                 const char *slot, int spill)
+                                 const char *slot, int spill,
+                                 asm_syntax_t syntax)
 {
-    strbuf_appendf(sb, "    mov%s %s, %s\n", sfx, src, dest);
-    if (spill)
-        strbuf_appendf(sb, "    mov%s %s, %s\n", sfx, dest, slot);
+    if (syntax == ASM_INTEL)
+        strbuf_appendf(sb, "    mov%s %s, %s\n", sfx, dest, src);
+    else
+        strbuf_appendf(sb, "    mov%s %s, %s\n", sfx, src, dest);
+    if (spill) {
+        if (syntax == ASM_INTEL)
+            strbuf_appendf(sb, "    mov%s %s, %s\n", sfx, slot, dest);
+        else
+            strbuf_appendf(sb, "    mov%s %s, %s\n", sfx, dest, slot);
+    }
 }
 
 /* Format the register or stack location for operand `id`. */
@@ -91,8 +99,11 @@ static void emit_const(strbuf_t *sb, ir_instr_t *ins,
                              : loc_str(destb, ra, ins->dest, x64, syntax);
     const char *slot = loc_str(mem, ra, ins->dest, x64, syntax);
     char srcbuf[32];
-    snprintf(srcbuf, sizeof(srcbuf), "$%lld", ins->imm);
-    emit_move_with_spill(sb, sfx, srcbuf, dest, slot, spill);
+    if (syntax == ASM_INTEL)
+        snprintf(srcbuf, sizeof(srcbuf), "%lld", ins->imm);
+    else
+        snprintf(srcbuf, sizeof(srcbuf), "$%lld", ins->imm);
+    emit_move_with_spill(sb, sfx, srcbuf, dest, slot, spill, syntax);
 }
 
 /* Load a variable by name (IR_LOAD).
@@ -111,7 +122,7 @@ static void emit_load(strbuf_t *sb, ir_instr_t *ins,
     const char *dest = spill ? reg_str(SCRATCH_REG, syntax)
                              : loc_str(destb, ra, ins->dest, x64, syntax);
     const char *slot = loc_str(mem, ra, ins->dest, x64, syntax);
-    emit_move_with_spill(sb, sfx, ins->name, dest, slot, spill);
+    emit_move_with_spill(sb, sfx, ins->name, dest, slot, spill, syntax);
 }
 
 /* Store a value to a variable (IR_STORE).
@@ -125,8 +136,12 @@ static void emit_store(strbuf_t *sb, ir_instr_t *ins,
 {
     char b1[32];
     const char *sfx = x64 ? "q" : "l";
-    strbuf_appendf(sb, "    mov%s %s, %s\n", sfx,
-                   loc_str(b1, ra, ins->src1, x64, syntax), ins->name);
+    if (syntax == ASM_INTEL)
+        strbuf_appendf(sb, "    mov%s %s, %s\n", sfx, ins->name,
+                       loc_str(b1, ra, ins->src1, x64, syntax));
+    else
+        strbuf_appendf(sb, "    mov%s %s, %s\n", sfx,
+                       loc_str(b1, ra, ins->src1, x64, syntax), ins->name);
 }
 
 /* Load a function parameter (IR_LOAD_PARAM).
@@ -150,8 +165,11 @@ static void emit_load_param(strbuf_t *sb, ir_instr_t *ins,
     const char *slot = loc_str(mem, ra, ins->dest, x64, syntax);
     int off = 8 + ins->imm * (x64 ? 8 : 4);
     char srcbuf[32];
-    snprintf(srcbuf, sizeof(srcbuf), "%d(%s)", off, bp);
-    emit_move_with_spill(sb, sfx, srcbuf, dest, slot, spill);
+    if (syntax == ASM_INTEL)
+        snprintf(srcbuf, sizeof(srcbuf), "[%s+%d]", bp, off);
+    else
+        snprintf(srcbuf, sizeof(srcbuf), "%d(%s)", off, bp);
+    emit_move_with_spill(sb, sfx, srcbuf, dest, slot, spill, syntax);
 }
 
 /* Store a value to a parameter slot (IR_STORE_PARAM).
@@ -194,8 +212,11 @@ static void emit_addr(strbuf_t *sb, ir_instr_t *ins,
                              : loc_str(destb, ra, ins->dest, x64, syntax);
     const char *slot = loc_str(mem, ra, ins->dest, x64, syntax);
     char srcbuf[32];
-    snprintf(srcbuf, sizeof(srcbuf), "$%s", ins->name);
-    emit_move_with_spill(sb, sfx, srcbuf, dest, slot, spill);
+    if (syntax == ASM_INTEL)
+        snprintf(srcbuf, sizeof(srcbuf), "%s", ins->name);
+    else
+        snprintf(srcbuf, sizeof(srcbuf), "$%s", ins->name);
+    emit_move_with_spill(sb, sfx, srcbuf, dest, slot, spill, syntax);
 }
 
 /* Load from a pointer (IR_LOAD_PTR).
@@ -216,9 +237,13 @@ static void emit_load_ptr(strbuf_t *sb, ir_instr_t *ins,
                              : loc_str(destb, ra, ins->dest, x64, syntax);
     const char *slot = loc_str(mem, ra, ins->dest, x64, syntax);
     char srcbuf[32];
-    snprintf(srcbuf, sizeof(srcbuf), "(%s)",
-             loc_str(b1, ra, ins->src1, x64, syntax));
-    emit_move_with_spill(sb, sfx, srcbuf, dest, slot, spill);
+    if (syntax == ASM_INTEL)
+        snprintf(srcbuf, sizeof(srcbuf), "[%s]",
+                 loc_str(b1, ra, ins->src1, x64, syntax));
+    else
+        snprintf(srcbuf, sizeof(srcbuf), "(%s)",
+                 loc_str(b1, ra, ins->src1, x64, syntax));
+    emit_move_with_spill(sb, sfx, srcbuf, dest, slot, spill, syntax);
 }
 
 /* Store through a pointer (IR_STORE_PTR).
@@ -264,7 +289,7 @@ static void emit_load_idx(strbuf_t *sb, ir_instr_t *ins,
     char srcbuf[64];
     snprintf(srcbuf, sizeof(srcbuf), "%s(,%s,4)",
              ins->name, loc_str(b1, ra, ins->src1, x64, syntax));
-    emit_move_with_spill(sb, sfx, srcbuf, dest, slot, spill);
+    emit_move_with_spill(sb, sfx, srcbuf, dest, slot, spill, syntax);
 }
 
 /* Store to an indexed symbol (IR_STORE_IDX).
@@ -307,7 +332,7 @@ static void emit_bfload(strbuf_t *sb, ir_instr_t *ins,
     unsigned width = (unsigned)(ins->imm & 0xffffffffu);
     unsigned long long mask = (width == 64) ? 0xffffffffffffffffULL
                                             : ((1ULL << width) - 1ULL);
-    emit_move_with_spill(sb, sfx, ins->name, dest, slot, 0);
+    emit_move_with_spill(sb, sfx, ins->name, dest, slot, 0, syntax);
     if (shift)
         strbuf_appendf(sb, "    shr%s $%u, %s\n", sfx, shift, dest);
     strbuf_appendf(sb, "    and%s $%llu, %s\n", sfx, mask, dest);
@@ -329,11 +354,19 @@ static void emit_bfstore(strbuf_t *sb, ir_instr_t *ins,
     unsigned long long clear = ~((unsigned long long)mask << shift);
     const char *scratch = regalloc_reg_name(SCRATCH_REG);
 
-    strbuf_appendf(sb, "    mov%s %s, %s\n", sfx, ins->name, scratch);
+    if (syntax == ASM_INTEL)
+        strbuf_appendf(sb, "    mov%s %s, %s\n", sfx, scratch, ins->name);
+    else
+        strbuf_appendf(sb, "    mov%s %s, %s\n", sfx, ins->name, scratch);
     strbuf_appendf(sb, "    and%s $%llu, %s\n", sfx, clear, scratch);
-    strbuf_appendf(sb, "    mov%s %s, %s\n", sfx,
-                   loc_str(bval, ra, ins->src1, x64, syntax),
-                   x64 ? fmt_reg("%rcx", syntax) : fmt_reg("%ecx", syntax));
+    if (syntax == ASM_INTEL)
+        strbuf_appendf(sb, "    mov%s %s, %s\n", sfx,
+                       x64 ? fmt_reg("%rcx", syntax) : fmt_reg("%ecx", syntax),
+                       loc_str(bval, ra, ins->src1, x64, syntax));
+    else
+        strbuf_appendf(sb, "    mov%s %s, %s\n", sfx,
+                       loc_str(bval, ra, ins->src1, x64, syntax),
+                       x64 ? fmt_reg("%rcx", syntax) : fmt_reg("%ecx", syntax));
     strbuf_appendf(sb, "    and%s $%llu, %s\n", sfx, mask,
                    x64 ? fmt_reg("%rcx", syntax) : fmt_reg("%ecx", syntax));
     if (shift)
@@ -342,7 +375,10 @@ static void emit_bfstore(strbuf_t *sb, ir_instr_t *ins,
     strbuf_appendf(sb, "    or%s %s, %s\n", sfx,
                    x64 ? fmt_reg("%rcx", syntax) : fmt_reg("%ecx", syntax),
                    scratch);
-    strbuf_appendf(sb, "    mov%s %s, %s\n", sfx, scratch, ins->name);
+    if (syntax == ASM_INTEL)
+        strbuf_appendf(sb, "    mov%s %s, %s\n", sfx, ins->name, scratch);
+    else
+        strbuf_appendf(sb, "    mov%s %s, %s\n", sfx, scratch, ins->name);
 }
 
 /* Push an argument (IR_ARG). */
@@ -389,8 +425,11 @@ static void emit_glob_string(strbuf_t *sb, ir_instr_t *ins,
                              : loc_str(destb, ra, ins->dest, x64, syntax);
     const char *slot = loc_str(mem, ra, ins->dest, x64, syntax);
     char srcbuf[32];
-    snprintf(srcbuf, sizeof(srcbuf), "$%s", ins->name);
-    emit_move_with_spill(sb, sfx, srcbuf, dest, slot, spill);
+    if (syntax == ASM_INTEL)
+        snprintf(srcbuf, sizeof(srcbuf), "%s", ins->name);
+    else
+        snprintf(srcbuf, sizeof(srcbuf), "$%s", ins->name);
+    emit_move_with_spill(sb, sfx, srcbuf, dest, slot, spill, syntax);
 }
 
 /*
