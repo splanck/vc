@@ -8,7 +8,7 @@ int main(void)
     strbuf_init(&sb);
     sb.len = SIZE_MAX - 16; /* force near-overflow */
     sb.cap = 1;
-    strbuf_append(&sb, "test");
-    /* should not reach */
+    if (strbuf_append(&sb, "test") == 0)
+        return 1;
     return 0;
 }

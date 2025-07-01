@@ -29,15 +29,20 @@ void strbuf_init(strbuf_t *sb)
 }
 
 /* Ensure the buffer can hold at least "extra" additional bytes. */
-static void sb_ensure(strbuf_t *sb, size_t extra)
+/*
+ * Ensure the buffer can hold at least "extra" additional bytes.
+ * Returns 0 on success and -1 on failure.  On failure an error message
+ * is printed and no reallocation is performed.
+ */
+static int sb_ensure(strbuf_t *sb, size_t extra)
 {
     if (!sb)
-        return;
+        return -1;
 
     /* calculate required capacity and detect overflow */
     if (sb->len > SIZE_MAX - extra - 1) {
         fprintf(stderr, "vc: string buffer too large\n");
-        exit(1);
+        return -1;
     }
     size_t need = sb->len + extra + 1;
 
@@ -46,34 +51,47 @@ static void sb_ensure(strbuf_t *sb, size_t extra)
         while (new_cap < need) {
             if (new_cap > SIZE_MAX / 2) {
                 fprintf(stderr, "vc: string buffer too large\n");
-                exit(1);
+                return -1;
             }
             new_cap *= 2;
         }
         char *n = vc_realloc_or_exit(sb->data, new_cap);
+        if (!n)
+            return -1;
         sb->data = n;
         sb->cap = new_cap;
     }
+    return 0;
 }
 
 /* Append a simple NUL terminated string to the buffer. */
-void strbuf_append(strbuf_t *sb, const char *text)
+/*
+ * Append a simple NUL terminated string to the buffer.
+ * Returns 0 on success and -1 on failure.
+ */
+int strbuf_append(strbuf_t *sb, const char *text)
 {
     if (!sb || !text)
-        return;
+        return -1;
     size_t l = strlen(text);
-    sb_ensure(sb, l + 1);
+    if (sb_ensure(sb, l + 1) < 0)
+        return -1;
     if (!sb->data)
-        return;
+        return -1;
     memcpy(sb->data + sb->len, text, l + 1);
     sb->len += l;
+    return 0;
 }
 
 /* Append formatted text using printf-style formatting. */
-void strbuf_appendf(strbuf_t *sb, const char *fmt, ...)
+/*
+ * Append formatted text using printf-style formatting. Returns 0 on success
+ * and -1 on failure.
+ */
+int strbuf_appendf(strbuf_t *sb, const char *fmt, ...)
 {
     if (!sb || !fmt)
-        return;
+        return -1;
     char buf[128];
     va_list ap;
     va_start(ap, fmt);
@@ -82,15 +100,15 @@ void strbuf_appendf(strbuf_t *sb, const char *fmt, ...)
     if (ret < 0) {
         if (errno == EOVERFLOW) {
             fprintf(stderr, "vc: formatted output too large\n");
-            exit(1);
+            return -1;
         }
-        return;
+        return -1;
     }
     size_t n = (size_t)ret;
     if (n >= sizeof(buf)) {
         if (n > SIZE_MAX - 1) {
             fprintf(stderr, "vc: formatted output too large\n");
-            exit(1);
+            return -1;
         }
         char *tmp = vc_alloc_or_exit(n + 1);
         va_start(ap, fmt);
@@ -100,15 +118,15 @@ void strbuf_appendf(strbuf_t *sb, const char *fmt, ...)
             free(tmp);
             if (errno == EOVERFLOW) {
                 fprintf(stderr, "vc: formatted output too large\n");
-                exit(1);
+                return -1;
             }
-            return;
+            return -1;
         }
-        strbuf_append(sb, tmp);
+        int rc = strbuf_append(sb, tmp);
         free(tmp);
-    } else {
-        strbuf_append(sb, buf);
+        return rc;
     }
+    return strbuf_append(sb, buf);
 }
 
 /* Free the memory used by a string buffer. */
