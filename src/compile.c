@@ -594,11 +594,16 @@ static int create_temp_file(const cli_options_t *cli, const char *prefix,
     errno = 0;
     int n = snprintf(tmpl, len + 1, "%s/%sXXXXXX", dir, prefix);
     int err = errno;
-    if (n < 0 || (size_t)n >= len + 1) {
-        /* Propagate errno from snprintf if it set one; do not overwrite it */
+    if (n < 0) {
         free(tmpl);
         *out_path = NULL;
         errno = err;
+        return -1;
+    }
+    if ((size_t)n >= len + 1) {
+        free(tmpl);
+        *out_path = NULL;
+        errno = ENAMETOOLONG;
         return -1;
     }
     int fd = mkstemp(tmpl);

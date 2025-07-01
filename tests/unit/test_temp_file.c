@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <stdarg.h>
 #include <stdlib.h>
 #include <string.h>
 #include <limits.h>
@@ -12,6 +13,22 @@
 #include "cli.h"
 
 int create_temp_file(const cli_options_t *cli, const char *prefix, char **out_path);
+
+static int force_snprintf_overflow;
+
+int snprintf(char *str, size_t size, const char *fmt, ...)
+{
+    if (force_snprintf_overflow) {
+        (void)str; (void)fmt;
+        /* return a value indicating truncation */
+        return (int)(size + 1);
+    }
+    va_list ap;
+    va_start(ap, fmt);
+    int rc = vsnprintf(str, size, fmt, ap);
+    va_end(ap);
+    return rc;
+}
 
 static int failures = 0;
 #define ASSERT(cond) do { \
@@ -65,10 +82,26 @@ static void test_reject_pathmax_dir(void)
     free(dir);
 }
 
+static void test_snprintf_overflow(void)
+{
+    force_snprintf_overflow = 1;
+    cli_options_t cli;
+    memset(&cli, 0, sizeof(cli));
+    const char *prefix = "vc";
+    char *path = (char *)0x1;
+    errno = 0;
+    int fd = create_temp_file(&cli, prefix, &path);
+    ASSERT(fd < 0);
+    ASSERT(errno == ENAMETOOLONG);
+    ASSERT(path == NULL);
+    force_snprintf_overflow = 0;
+}
+
 int main(void)
 {
     test_reject_long_path();
     test_reject_pathmax_dir();
+    test_snprintf_overflow();
     if (failures == 0)
         printf("All create_temp_file tests passed\n");
     else
