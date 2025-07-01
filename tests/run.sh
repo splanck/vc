@@ -56,6 +56,10 @@ cc -Iinclude -Wall -Wextra -std=c99 \
     src/semantic_call.c src/consteval.c src/symtable_core.c \
     src/ast_expr.c src/vector.c src/util.c src/ir_core.c \
     src/error.c src/label.c
+# build sizeof pointer evaluation test
+cc -Iinclude -Wall -Wextra -std=c99 \
+    -o "$DIR/eval_sizeof_tests" "$DIR/unit/test_eval_sizeof.c" \
+    src/ast_expr.c src/consteval.c src/util.c
 # build strbuf overflow regression test
 cc -Iinclude -Wall -Wextra -std=c99 -c src/strbuf.c -o strbuf_overflow_impl.o
 cc -Iinclude -Wall -Wextra -std=c99 -c src/util.c -o util_strbuf.o
@@ -100,6 +104,7 @@ rm -f compile_temp.o "$DIR/test_temp_file.o"
 "$DIR/ir_core_tests"
 # remaining unit test binaries
 "$DIR/cond_expr_tests"
+"$DIR/eval_sizeof_tests"
 "$DIR/waitpid_retry"
 "$DIR/temp_file_tests"
 "$DIR/preproc_alloc_tests"

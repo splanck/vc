@@ -35,7 +35,7 @@ static int validate_array_entry(init_entry_t *ent, size_t array_size,
     size_t i = *cur;
     if (ent->kind == INIT_INDEX) {
         long long cidx;
-        if (!eval_const_expr(ent->index, vars, &cidx) || cidx < 0 ||
+        if (!eval_const_expr(ent->index, vars, 0, &cidx) || cidx < 0 ||
             (size_t)cidx >= array_size) {
             error_set(ent->index->line, ent->index->column, error_current_file, error_current_function);
             return 0;
@@ -119,7 +119,7 @@ int expand_array_initializer(init_entry_t *entries, size_t count,
                                   &cur, &idx))
             return cleanup_and_return(vals);
         long long val;
-        if (!eval_const_expr(ent->value, vars, &val)) {
+        if (!eval_const_expr(ent->value, vars, 0, &val)) {
             error_set(ent->value->line, ent->value->column, error_current_file, error_current_function);
             return cleanup_and_return(vals);
         }
@@ -154,7 +154,7 @@ int expand_struct_initializer(init_entry_t *entries, size_t count,
         if (!resolve_struct_field(ent, sym, line, column, &cur, &idx))
             return cleanup_and_return(vals);
         long long val;
-        if (!eval_const_expr(ent->value, vars, &val)) {
+        if (!eval_const_expr(ent->value, vars, 0, &val)) {
             error_set(ent->value->line, ent->value->column, error_current_file, error_current_function);
             return cleanup_and_return(vals);
         }
