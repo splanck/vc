@@ -6,6 +6,7 @@
  */
 
 #include <stdlib.h>
+#include <errno.h>
 #include "consteval.h"
 #include "symtable.h"
 
@@ -47,8 +48,12 @@ int is_floatlike(type_kind_t t)
  */
 static int eval_number(expr_t *expr, long long *out)
 {
+    errno = 0;
+    long long val = strtoll(expr->number.value, NULL, 0);
+    if (errno != 0)
+        return 0;
     if (out)
-        *out = strtoll(expr->number.value, NULL, 0);
+        *out = val;
     return 1;
 }
 
