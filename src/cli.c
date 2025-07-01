@@ -14,6 +14,7 @@
 #include <string.h>
 #include <limits.h>
 #include <errno.h>
+#include <unistd.h>
 
 #include "cli.h"
 
@@ -340,6 +341,9 @@ int cli_parse_args(int argc, char **argv, cli_options_t *opts)
 {
     /* getopt_long maintains state between calls, reset for reuse */
     optind = 1;
+#ifdef __BSD_VISIBLE
+    optreset = 1;
+#endif
 
     static struct option long_opts[] = {
         {"help",    no_argument,       0, 'h'},
