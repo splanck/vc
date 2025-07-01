@@ -19,7 +19,8 @@ The compiler supports the following options:
 - `--no-inline` – disable inline expansion of small functions.
 - `--debug` – emit `.file` and `.loc` directives in the assembly output.
 - `--x86-64` – generate 64‑bit x86 assembly.
-- `--intel-syntax` – enable Intel-style x86 assembly output.
+- `--intel-syntax` – enable Intel-style x86 assembly output. When used
+  together with `--compile` or `--link`, the assembler must be `nasm`.
 - `-c`, `--compile` – assemble the output into an object file using `cc -c`.
 - `--link` – build an executable by assembling and linking with `cc`.
 - `--obj-dir <path>` – directory for temporary object files.
