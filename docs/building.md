@@ -40,6 +40,9 @@ To dump the generated assembly to stdout instead of creating a file, use
 To assemble the output directly into an object file, pass `-c` or
 `--compile` along with an output path ending in `.o`. The compiler will
 invoke `cc -c` on the generated assembly to produce the object file.
+When the `--intel-syntax` flag is used together with `--compile` or the
+`--link` option, the build requires `nasm` to assemble the Intel-style
+output.
 
 ## Additional build steps
 
