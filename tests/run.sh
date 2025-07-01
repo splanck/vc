@@ -1,6 +1,9 @@
 #!/bin/sh
+# exit on unhandled errors
 set -e
 DIR=$(dirname "$0")
+# track failing regression tests
+fail=0
 # build the compiler
 make
 # build unit test binary
@@ -142,3 +145,4 @@ fi
 rm -f "$err" "$DIR/collect_funcs_overflow"
 # run integration tests
 "$DIR/run_tests.sh"
+exit $fail
