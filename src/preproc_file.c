@@ -267,10 +267,14 @@ static int tokenize_param_list(char *list, vector_t *out)
  * Parse a comma separated parameter list starting at *p.
  *
  * "p" should point to the character immediately following the macro
- * name.  On return the vector "out" contains the parameter names and
+ * name.  On success the vector "out" contains the parameter names and
  * the returned pointer points to the character following the closing
  * ')', or the first non-whitespace character when no parameter list
  * was present.  The macro name is NUL-terminated by this routine.
+ *
+ * On failure NULL is returned.  Any partially collected parameter
+ * strings are freed and vector_free() leaves "out" reusable via
+ * vector_init().
  */
 static char *parse_macro_params(char *p, vector_t *out)
 {
@@ -284,6 +288,10 @@ static char *parse_macro_params(char *p, vector_t *out)
             char *plist = vc_strndup(start, (size_t)(p - start));
             if (!tokenize_param_list(plist, out)) {
                 free(plist);
+                /* cleanup partially collected parameters */
+                for (size_t i = 0; i < out->count; i++)
+                    free(((char **)out->data)[i]);
+                vector_free(out); /* leaves vector reusable */
                 return NULL;
             }
             free(plist);
@@ -293,7 +301,7 @@ static char *parse_macro_params(char *p, vector_t *out)
             *p = '('; /* undo temporary termination */
             for (size_t i = 0; i < out->count; i++)
                 free(((char **)out->data)[i]);
-            vector_free(out);
+            vector_free(out); /* leaves vector reusable */
             return NULL;
         }
     } else if (*p) {

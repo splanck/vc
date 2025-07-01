@@ -72,6 +72,39 @@ static int tokenize_param_list(char *list, vector_t *out)
     return 1;
 }
 
+static char *parse_macro_params(char *p, vector_t *out)
+{
+    vector_init(out, sizeof(char *));
+    if (*p == '(') {
+        *p++ = '\0';
+        char *start = p;
+        while (*p && *p != ')')
+            p++;
+        if (*p == ')') {
+            char *plist = xstrndup(start, (size_t)(p - start));
+            if (!tokenize_param_list(plist, out)) {
+                xfree(plist);
+                for (size_t i = 0; i < out->count; i++)
+                    xfree(((char **)out->data)[i]);
+                vector_free(out);
+                return NULL;
+            }
+            xfree(plist);
+            p++;
+        } else {
+            p = start - 1;
+            *p = '(';
+            for (size_t i = 0; i < out->count; i++)
+                xfree(((char **)out->data)[i]);
+            vector_free(out);
+            return NULL;
+        }
+    } else if (*p) {
+        *p++ = '\0';
+    }
+    return p;
+}
+
 static void test_fail_first(void)
 {
     vector_t v;
@@ -98,10 +131,23 @@ static void test_fail_second(void)
     vector_free(&v);
 }
 
+static void test_parse_fail(void)
+{
+    vector_t v;
+    call_count = 0;
+    fail_at = 2; /* fail while tokenizing parameters */
+    char line[] = "(a,b)";
+    ASSERT(parse_macro_params(line, &v) == NULL);
+    ASSERT(v.count == 0 && v.cap == 0);
+    ASSERT(allocs == 0);
+    vector_free(&v);
+}
+
 int main(void)
 {
     test_fail_first();
     test_fail_second();
+    test_parse_fail();
     if (failures == 0)
         printf("All preproc alloc tests passed\n");
     else
