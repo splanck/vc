@@ -416,17 +416,32 @@ static int emit_output_file(ir_builder_t *ir, const char *output,
             return 0;
         }
 
-        const char *arch_flag = use_x86_64 ? "-m64" : "-m32";
-        char *argv[] = {"cc", "-x", "assembler", (char *)arch_flag, "-c",
-                        tmpname, "-o", (char *)output, NULL};
-        int rc = run_command(argv);
+        int rc;
+        if (cli->asm_syntax == ASM_INTEL) {
+            const char *fmt = use_x86_64 ? "elf64" : "elf32";
+            char *argv[] = {"nasm", "-f", (char *)fmt, tmpname, "-o",
+                            (char *)output, NULL};
+            rc = run_command(argv);
+        } else {
+            const char *arch_flag = use_x86_64 ? "-m64" : "-m32";
+            char *argv[] = {"cc", "-x", "assembler", (char *)arch_flag, "-c",
+                            tmpname, "-o", (char *)output, NULL};
+            rc = run_command(argv);
+        }
         unlink(tmpname);
         free(tmpname);
         if (rc != 1) {
-            if (rc == 0)
-                fprintf(stderr, "cc failed\n");
-            else if (rc == -1)
-                fprintf(stderr, "cc terminated by signal\n");
+            if (rc == 0) {
+                if (cli->asm_syntax == ASM_INTEL)
+                    fprintf(stderr, "assembly failed\n");
+                else
+                    fprintf(stderr, "cc failed\n");
+            } else if (rc == -1) {
+                if (cli->asm_syntax == ASM_INTEL)
+                    fprintf(stderr, "nasm terminated by signal\n");
+                else
+                    fprintf(stderr, "cc terminated by signal\n");
+            }
             return 0;
         }
         return 1;
@@ -630,15 +645,30 @@ static int assemble_startup_obj(const char *asm_path, int use_x86_64,
         return 0;
     close(objfd);
 
-    const char *arch_flag = use_x86_64 ? "-m64" : "-m32";
-    char *argv[] = {"cc", "-x", "assembler", (char *)arch_flag, "-c",
-                    (char *)asm_path, "-o", objname, NULL};
-    int rc = run_command(argv);
+    int rc;
+    if (cli->asm_syntax == ASM_INTEL) {
+        const char *fmt = use_x86_64 ? "elf64" : "elf32";
+        char *argv[] = {"nasm", "-f", (char *)fmt, (char *)asm_path,
+                        "-o", objname, NULL};
+        rc = run_command(argv);
+    } else {
+        const char *arch_flag = use_x86_64 ? "-m64" : "-m32";
+        char *argv[] = {"cc", "-x", "assembler", (char *)arch_flag, "-c",
+                        (char *)asm_path, "-o", objname, NULL};
+        rc = run_command(argv);
+    }
     if (rc != 1) {
-        if (rc == 0)
-            fprintf(stderr, "cc failed\n");
-        else if (rc == -1)
-            fprintf(stderr, "cc terminated by signal\n");
+        if (rc == 0) {
+            if (cli->asm_syntax == ASM_INTEL)
+                fprintf(stderr, "assembly failed\n");
+            else
+                fprintf(stderr, "cc failed\n");
+        } else if (rc == -1) {
+            if (cli->asm_syntax == ASM_INTEL)
+                fprintf(stderr, "nasm terminated by signal\n");
+            else
+                fprintf(stderr, "cc terminated by signal\n");
+        }
         unlink(objname);
         free(objname);
         return 0;
