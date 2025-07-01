@@ -57,7 +57,8 @@ make test            # builds vc and runs tests/run_tests.sh
 tests/run.sh         # builds vc, compiles unit tests and runs everything
 ```
 
-When all checks succeed the output ends with `All tests passed`.
+Both scripts exit with status 0 when all checks pass. The output ends with
+`All tests passed` on success.
 
 ## Documentation
 

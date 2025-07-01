@@ -67,7 +67,7 @@ tests/run.sh
 
 This script builds the compiler, compiles the unit test harness for the lexer
 and parser, and then runs both the unit tests and the integration tests found
-under `tests/`.
+under `tests/`. It returns a non-zero status if any test fails.
 
 ## Improved diagnostics
 
