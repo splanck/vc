@@ -389,9 +389,9 @@ static void read_char_const(const char *src, size_t *i, size_t *col,
 }
 
 /* Parse a double-quoted string literal */
-static void read_string_lit(const char *src, size_t *i, size_t *col,
-                            vector_t *tokens, size_t line,
-                            token_type_t tok_type)
+static int read_string_lit(const char *src, size_t *i, size_t *col,
+                           vector_t *tokens, size_t line,
+                           token_type_t tok_type)
 {
     size_t column = *col;
     (*i)++; /* skip opening quote */
@@ -409,16 +409,18 @@ static void read_string_lit(const char *src, size_t *i, size_t *col,
             (*i)++; /* consume character */
         }
         if (!vector_push(&buf_v, &c)) {
+            fprintf(stderr, "Out of memory\n");
             vector_free(&buf_v);
-            return;
+            return 0;
         }
         (*col)++;
     }
     /* NUL-terminate the buffer for convenience */
     char nul = '\0';
     if (!vector_push(&buf_v, &nul)) {
+        fprintf(stderr, "Out of memory\n");
         vector_free(&buf_v);
-        return;
+        return 0;
     }
     if (src[*i] == '"') {
         (*i)++;
@@ -427,11 +429,13 @@ static void read_string_lit(const char *src, size_t *i, size_t *col,
         append_token(tokens, tok_type, buf_v.data, buf_v.count - 1,
                      line, column);
         vector_free(&buf_v);
+        return 1;
     } else {
         error_set(line, column, error_current_file, error_current_function);
         error_print("Missing closing quote");
         vector_free(&buf_v);
         append_token(tokens, TOK_UNKNOWN, "", 0, line, column);
+        return 1;
     }
 }
 
@@ -492,7 +496,8 @@ static int scan_string(const char *src, size_t *i, size_t *col,
 {
     if (src[*i] != '"')
         return 0;
-    read_string_lit(src, i, col, tokens, line, TOK_STRING);
+    if (!read_string_lit(src, i, col, tokens, line, TOK_STRING))
+        return -1;
     return 1;
 }
 
@@ -511,7 +516,8 @@ static int scan_wstring(const char *src, size_t *i, size_t *col,
     if (src[*i] != 'L' || src[*i + 1] != '"')
         return 0;
     (*i)++; (*col)++;
-    read_string_lit(src, i, col, tokens, line, TOK_WIDE_STRING);
+    if (!read_string_lit(src, i, col, tokens, line, TOK_WIDE_STRING))
+        return -1;
     return 1;
 }
 
@@ -555,14 +561,20 @@ token_t *lexer_tokenize(const char *src, size_t *out_count)
         if (!src[i])
             break;
         char c = src[i];
-        if (scan_wstring(src, &i, &col, &vec, line) ||
-            scan_wchar(src, &i, &col, &vec, line) ||
-            scan_identifier(src, &i, &col, &vec, line) ||
-            scan_number(src, &i, &col, &vec, line) ||
-            scan_string(src, &i, &col, &vec, line) ||
-            scan_char(src, &i, &col, &vec, line)) {
-            continue;
-        }
+
+        int res;
+        res = scan_wstring(src, &i, &col, &vec, line);
+        if (res) { if (res < 0) { vector_free(&vec); return NULL; } else continue; }
+        res = scan_wchar(src, &i, &col, &vec, line);
+        if (res) { if (res < 0) { vector_free(&vec); return NULL; } else continue; }
+        res = scan_identifier(src, &i, &col, &vec, line);
+        if (res) { continue; }
+        res = scan_number(src, &i, &col, &vec, line);
+        if (res) { continue; }
+        res = scan_string(src, &i, &col, &vec, line);
+        if (res) { if (res < 0) { vector_free(&vec); return NULL; } else continue; }
+        res = scan_char(src, &i, &col, &vec, line);
+        if (res) { continue; }
 
         if (scan_punct_table(src, &i, &col, &vec, line))
             continue;
