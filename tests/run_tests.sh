@@ -74,6 +74,23 @@ if ! diff -u "$DIR/fixtures/simple_add_intel.s" "${intel_out}"; then
 fi
 rm -f "${intel_out}"
 
+# additional Intel syntax fixtures
+intel_out=$(mktemp)
+"$BINARY" --intel-syntax -o "${intel_out}" "$DIR/fixtures/pointer_add.c"
+if ! diff -u "$DIR/fixtures/pointer_add_intel.s" "${intel_out}"; then
+    echo "Test intel_pointer_add failed"
+    fail=1
+fi
+rm -f "${intel_out}"
+
+intel_out=$(mktemp)
+"$BINARY" --intel-syntax -o "${intel_out}" "$DIR/fixtures/while_loop.c"
+if ! diff -u "$DIR/fixtures/while_loop_intel.s" "${intel_out}"; then
+    echo "Test intel_while_loop failed"
+    fail=1
+fi
+rm -f "${intel_out}"
+
 # verify include search path option
 inc_out=$(mktemp)
 "$BINARY" -I "$DIR/includes" -o "${inc_out}" "$DIR/fixtures/include_search.c"
@@ -404,6 +421,21 @@ if ! od -An -t x1 "${obj_out}" | head -n 1 | grep -q "7f 45 4c 46"; then
     fail=1
 fi
 rm -f "${obj_out}"
+
+# test --intel-syntax --compile option (requires nasm)
+if command -v nasm >/dev/null; then
+    obj_tmp=$(mktemp tmp.XXXXXX)
+    obj_out="${obj_tmp}.o"
+    rm -f "${obj_tmp}"
+    "$BINARY" --intel-syntax -c -o "${obj_out}" "$DIR/fixtures/simple_add.c"
+    if ! od -An -t x1 "${obj_out}" | head -n 1 | grep -q "7f 45 4c 46"; then
+        echo "Test compile_option_intel failed"
+        fail=1
+    fi
+    rm -f "${obj_out}"
+else
+    echo "Skipping compile_option_intel (nasm not found)"
+fi
 
 # test --link option with spaces and semicolons in output path
 link_tmpdir=$(mktemp -d)
