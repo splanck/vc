@@ -18,7 +18,7 @@ provides an overview of all available documentation.
 - [Supported language features](language_features.md) – syntax and semantics
   currently implemented, including variadic functions.
 - [Command-line usage](command_line.md) – available options and example
-  invocations.
+  invocations, including the `--intel-syntax` flag for Intel-style assembly.
 - [Optimization passes](optimization.md) – constant folding, propagation and
   dead code elimination.
 - [Development roadmap](roadmap.md) – planned milestones and compatibility
