@@ -115,6 +115,19 @@ static void test_strdup_fail_string(void)
     ir_builder_free(&b);
 }
 
+static void test_strdup_fail_wstring(void)
+{
+    ir_builder_t b;
+    ir_builder_init(&b);
+    fail_malloc = 1;
+    fail_after = 2; /* fail duplicating label after buffer alloc */
+    ir_value_t v = ir_build_wstring(&b, "abc");
+    ASSERT(v.id == 0);
+    ASSERT(b.head == NULL && b.tail == NULL);
+    fail_malloc = 0;
+    ir_builder_free(&b);
+}
+
 int main(void)
 {
     test_wstring_alloc_fail();
@@ -122,6 +135,7 @@ int main(void)
     test_id_overflow();
     test_strdup_fail_load();
     test_strdup_fail_string();
+    test_strdup_fail_wstring();
     if (failures == 0)
         printf("All ir_core tests passed\n");
     else

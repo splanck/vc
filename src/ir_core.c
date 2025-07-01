@@ -170,17 +170,6 @@ ir_value_t ir_build_wstring(ir_builder_t *b, const char *str)
         return (ir_value_t){0};
     ins->op = IR_GLOB_WSTRING;
     ins->dest = alloc_value_id(b);
-    char label[32];
-    const char *fmt = label_format("LWstr", ins->dest, label);
-    if (!fmt) {
-        remove_instr(b, ins);
-        return (ir_value_t){0};
-    }
-    ins->name = vc_strdup(fmt);
-    if (!ins->name) {
-        remove_instr(b, ins);
-        return (ir_value_t){0};
-    }
     size_t len = strlen(str ? str : "");
     if (len + 1 > SIZE_MAX / sizeof(long long)) {
         error_set(b->cur_line, b->cur_column, b->cur_file, error_current_function);
@@ -196,6 +185,19 @@ ir_value_t ir_build_wstring(ir_builder_t *b, const char *str)
     for (size_t i = 0; i < len; i++)
         vals[i] = (unsigned char)str[i];
     vals[len] = 0;
+    char label[32];
+    const char *fmt = label_format("LWstr", ins->dest, label);
+    if (!fmt) {
+        free(vals);
+        remove_instr(b, ins);
+        return (ir_value_t){0};
+    }
+    ins->name = vc_strdup(fmt);
+    if (!ins->name) {
+        free(vals);
+        remove_instr(b, ins);
+        return (ir_value_t){0};
+    }
     ins->imm = (long long)(len + 1);
     ins->data = (char *)vals;
     return (ir_value_t){ins->dest};
