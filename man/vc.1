@@ -10,6 +10,7 @@ is a lightweight ANSI C compiler with experimental C99 support.
 It processes input through lexical analysis, parsing, semantic analysis,
 optional optimizations, register allocation and code generation.
 The resulting assembly can be written to a file or printed to stdout.
+Intel-style assembly output may be selected with \fB--intel-syntax\fR.
 Supported constructs include arrays (including variable length arrays inside functions with sizes determined at runtime, size inference from initializer lists and designated initializers using \fB[index]\fR or \fB.member\fR designators), pointer arithmetic (including pointer subtraction and pointer increments), loops (\fBfor\fR, \fBwhile\fR and \fBdo\fR\~\fBwhile\fR), global variable declarations, external declarations using \fBextern\fR, floating-point variables including \fBlong double\fR, the
 \fBchar\fR type, support for 64-bit integer constants including hexadecimal and octal literals, string literals usable as \fBchar\fR pointers with standard escape sequences such as \n, \t, \r, \b, \f, \v and numeric forms like \e123 or \ex7F, complete \fBstruct\fR and \fBunion\fR declarations with bit-field members, enum variables, typedef declarations, the
 Wide character and string literals may be written using L'c' and L"text".
@@ -74,6 +75,9 @@ Emit .file and .loc directives for debugging.
 .TP
 .B --x86-64
 Generate x86-64 assembly instead of 32-bit.
+.TP
+.B --intel-syntax
+Use Intel-style x86 assembly output.
 .TP
 .BR -c "," \fB--compile\fR
 Assemble the output into an object file using \fBcc -c\fR.
