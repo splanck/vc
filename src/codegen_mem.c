@@ -333,11 +333,12 @@ static void emit_bfload(strbuf_t *sb, ir_instr_t *ins,
     unsigned long long mask = (width == 64) ? 0xffffffffffffffffULL
                                             : ((1ULL << width) - 1ULL);
     emit_move_with_spill(sb, sfx, ins->name, dest, slot, 0, syntax);
-    if (shift)
+    if (shift) {
         if (syntax == ASM_INTEL)
             strbuf_appendf(sb, "    shr%s %s, %u\n", sfx, dest, shift);
         else
             strbuf_appendf(sb, "    shr%s $%u, %s\n", sfx, shift, dest);
+    }
     if (syntax == ASM_INTEL)
         strbuf_appendf(sb, "    and%s %s, %llu\n", sfx, dest, mask);
     else
