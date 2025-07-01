@@ -15,10 +15,14 @@ static int failures = 0;
 
 extern void *malloc(size_t size); /* real malloc */
 static int fail_malloc = 0;
+static int fail_after = 0;
 void *test_malloc(size_t size)
 {
-    if (fail_malloc)
-        return NULL;
+    if (fail_malloc) {
+        if (fail_after <= 0)
+            return NULL;
+        fail_after--;
+    }
     return malloc(size);
 }
 
@@ -69,11 +73,43 @@ static void test_id_overflow(void)
     ir_builder_free(&b);
 }
 
+static void test_strdup_fail_load(void)
+{
+    ir_builder_t b;
+    ir_builder_init(&b);
+    fail_malloc = 1;
+    fail_after = 1; /* fail on vc_strdup */
+    ir_value_t v = ir_build_load(&b, "x");
+    ASSERT(v.id == 0);
+    ASSERT(b.head == NULL && b.tail == NULL);
+    fail_malloc = 0;
+    ir_builder_free(&b);
+}
+
+static void test_strdup_fail_string(void)
+{
+    ir_builder_t b;
+    ir_builder_init(&b);
+    fail_malloc = 1;
+    fail_after = 1; /* fail duplicating label */
+    ir_value_t v = ir_build_string(&b, "abc");
+    ASSERT(v.id == 0);
+    ASSERT(b.head == NULL && b.tail == NULL);
+    fail_after = 2; /* fail duplicating data */
+    v = ir_build_string(&b, "abc");
+    ASSERT(v.id == 0);
+    ASSERT(b.head == NULL && b.tail == NULL);
+    fail_malloc = 0;
+    ir_builder_free(&b);
+}
+
 int main(void)
 {
     test_wstring_alloc_fail();
     test_many_ids();
     test_id_overflow();
+    test_strdup_fail_load();
+    test_strdup_fail_string();
     if (failures == 0)
         printf("All ir_core tests passed\n");
     else
