@@ -20,6 +20,7 @@
 #include "label.h"
 #include "error.h"
 #include <limits.h>
+#include <errno.h>
 
 /*
  * Validate a numeric literal and emit a constant IR value.  The returned
@@ -30,7 +31,15 @@ static type_kind_t check_number_expr(expr_t *expr, symtable_t *vars,
                                      ir_value_t *out)
 {
     (void)vars; (void)funcs;
+    errno = 0;
     long long val = strtoll(expr->number.value, NULL, 0);
+    if (errno != 0) {
+        error_set(expr->line, expr->column, error_current_file,
+                  error_current_function);
+        if (out)
+            *out = (ir_value_t){0};
+        return TYPE_UNKNOWN;
+    }
     if (out)
         *out = ir_build_const(ir, val);
     if (val > INT_MAX || val < INT_MIN)

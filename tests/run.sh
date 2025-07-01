@@ -57,9 +57,14 @@ cc -Iinclude -Wall -Wextra -std=c99 \
     src/ast_expr.c src/vector.c src/util.c src/ir_core.c \
     src/error.c src/label.c
 # build sizeof pointer evaluation test
+# eval sizeof with small helper modules
 cc -Iinclude -Wall -Wextra -std=c99 \
     -o "$DIR/eval_sizeof_tests" "$DIR/unit/test_eval_sizeof.c" \
-    src/ast_expr.c src/consteval.c src/util.c
+    src/ast_expr.c src/consteval.c src/symtable_core.c src/util.c
+# build numeric constant overflow regression test
+cc -Iinclude -Wall -Wextra -std=c99 \
+    -o "$DIR/number_overflow" "$DIR/unit/test_number_overflow.c" \
+    src/ast_expr.c src/consteval.c src/symtable_core.c src/util.c
 # build strbuf overflow regression test
 cc -Iinclude -Wall -Wextra -std=c99 -c src/strbuf.c -o strbuf_overflow_impl.o
 cc -Iinclude -Wall -Wextra -std=c99 -c src/util.c -o util_strbuf.o
@@ -105,6 +110,7 @@ rm -f compile_temp.o "$DIR/test_temp_file.o"
 # remaining unit test binaries
 "$DIR/cond_expr_tests"
 "$DIR/eval_sizeof_tests"
+"$DIR/number_overflow"
 "$DIR/waitpid_retry"
 "$DIR/temp_file_tests"
 "$DIR/preproc_alloc_tests"
