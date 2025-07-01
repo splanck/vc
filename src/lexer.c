@@ -365,10 +365,10 @@ static void read_char_const(const char *src, size_t *i, size_t *col,
         return;
     }
 
-    char value = src[*i];
+    unsigned char value = (unsigned char)src[*i];
     if (value == '\\') {
         (*i)++; /* skip backslash */
-        value = (char)unescape_char(src, i, line, column);
+        value = (unsigned char)unescape_char(src, i, line, column);
     } else {
         (*i)++; /* consume character */
     }
@@ -384,7 +384,7 @@ static void read_char_const(const char *src, size_t *i, size_t *col,
     (*i)++;
     (*col)++;
 
-    char buf[2] = {value, '\0'};
+    char buf[2] = {(char)value, '\0'};
     append_token(tokens, tok_type, buf, 1, line, column);
 }
 
