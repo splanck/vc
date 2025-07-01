@@ -334,8 +334,14 @@ static void emit_bfload(strbuf_t *sb, ir_instr_t *ins,
                                             : ((1ULL << width) - 1ULL);
     emit_move_with_spill(sb, sfx, ins->name, dest, slot, 0, syntax);
     if (shift)
-        strbuf_appendf(sb, "    shr%s $%u, %s\n", sfx, shift, dest);
-    strbuf_appendf(sb, "    and%s $%llu, %s\n", sfx, mask, dest);
+        if (syntax == ASM_INTEL)
+            strbuf_appendf(sb, "    shr%s %s, %u\n", sfx, dest, shift);
+        else
+            strbuf_appendf(sb, "    shr%s $%u, %s\n", sfx, shift, dest);
+    if (syntax == ASM_INTEL)
+        strbuf_appendf(sb, "    and%s %s, %llu\n", sfx, dest, mask);
+    else
+        strbuf_appendf(sb, "    and%s $%llu, %s\n", sfx, mask, dest);
     if (spill)
         strbuf_appendf(sb, "    mov%s %s, %s\n", sfx, dest, slot);
 }
@@ -358,7 +364,10 @@ static void emit_bfstore(strbuf_t *sb, ir_instr_t *ins,
         strbuf_appendf(sb, "    mov%s %s, %s\n", sfx, scratch, ins->name);
     else
         strbuf_appendf(sb, "    mov%s %s, %s\n", sfx, ins->name, scratch);
-    strbuf_appendf(sb, "    and%s $%llu, %s\n", sfx, clear, scratch);
+    if (syntax == ASM_INTEL)
+        strbuf_appendf(sb, "    and%s %s, %llu\n", sfx, scratch, clear);
+    else
+        strbuf_appendf(sb, "    and%s $%llu, %s\n", sfx, clear, scratch);
     if (syntax == ASM_INTEL)
         strbuf_appendf(sb, "    mov%s %s, %s\n", sfx,
                        x64 ? fmt_reg("%rcx", syntax) : fmt_reg("%ecx", syntax),
@@ -367,11 +376,21 @@ static void emit_bfstore(strbuf_t *sb, ir_instr_t *ins,
         strbuf_appendf(sb, "    mov%s %s, %s\n", sfx,
                        loc_str(bval, ra, ins->src1, x64, syntax),
                        x64 ? fmt_reg("%rcx", syntax) : fmt_reg("%ecx", syntax));
-    strbuf_appendf(sb, "    and%s $%llu, %s\n", sfx, mask,
-                   x64 ? fmt_reg("%rcx", syntax) : fmt_reg("%ecx", syntax));
-    if (shift)
-        strbuf_appendf(sb, "    shl%s $%u, %s\n", sfx, shift,
+    if (syntax == ASM_INTEL)
+        strbuf_appendf(sb, "    and%s %s, %llu\n", sfx,
+                       x64 ? fmt_reg("%rcx", syntax) : fmt_reg("%ecx", syntax),
+                       mask);
+    else
+        strbuf_appendf(sb, "    and%s $%llu, %s\n", sfx, mask,
                        x64 ? fmt_reg("%rcx", syntax) : fmt_reg("%ecx", syntax));
+    if (shift)
+        if (syntax == ASM_INTEL)
+            strbuf_appendf(sb, "    shl%s %s, %u\n", sfx,
+                           x64 ? fmt_reg("%rcx", syntax) : fmt_reg("%ecx", syntax),
+                           shift);
+        else
+            strbuf_appendf(sb, "    shl%s $%u, %s\n", sfx, shift,
+                           x64 ? fmt_reg("%rcx", syntax) : fmt_reg("%ecx", syntax));
     strbuf_appendf(sb, "    or%s %s, %s\n", sfx,
                    x64 ? fmt_reg("%rcx", syntax) : fmt_reg("%ecx", syntax),
                    scratch);
@@ -392,17 +411,26 @@ static void emit_arg(strbuf_t *sb, ir_instr_t *ins,
                      : (x64 ? "%rsp" : "%esp");
     type_kind_t t = (type_kind_t)ins->imm;
     if (t == TYPE_FLOAT) {
-        strbuf_appendf(sb, "    sub $4, %s\n", sp);
+        if (syntax == ASM_INTEL)
+            strbuf_appendf(sb, "    sub %s, 4\n", sp);
+        else
+            strbuf_appendf(sb, "    sub $4, %s\n", sp);
         strbuf_appendf(sb, "    movd %s, %%xmm0\n",
                        loc_str(b1, ra, ins->src1, x64, syntax));
         strbuf_appendf(sb, "    movss %%xmm0, (%s)\n", sp);
     } else if (t == TYPE_DOUBLE) {
-        strbuf_appendf(sb, "    sub $8, %s\n", sp);
+        if (syntax == ASM_INTEL)
+            strbuf_appendf(sb, "    sub %s, 8\n", sp);
+        else
+            strbuf_appendf(sb, "    sub $8, %s\n", sp);
         strbuf_appendf(sb, "    movq %s, %%xmm0\n",
                        loc_str(b1, ra, ins->src1, x64, syntax));
         strbuf_appendf(sb, "    movsd %%xmm0, (%s)\n", sp);
     } else if (t == TYPE_LDOUBLE) {
-        strbuf_appendf(sb, "    sub $10, %s\n", sp);
+        if (syntax == ASM_INTEL)
+            strbuf_appendf(sb, "    sub %s, 10\n", sp);
+        else
+            strbuf_appendf(sb, "    sub $10, %s\n", sp);
         strbuf_appendf(sb, "    fldt %s\n", loc_str(b1, ra, ins->src1, x64, syntax));
         strbuf_appendf(sb, "    fstpt (%s)\n", sp);
     } else {
