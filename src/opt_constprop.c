@@ -61,29 +61,23 @@ static void free_const_tracking(const_track_t *ct)
 }
 
 /* Evaluate a long double binary op */
-static uint64_t eval_long_float_op(ir_op_t op, int a, int b)
+static uint64_t eval_long_float_op(ir_op_t op, long double a, long double b)
 {
-    if (sizeof(long double) > sizeof(uint64_t) ||
-        sizeof(long double) > sizeof(int))
+    if (sizeof(long double) > sizeof(uint64_t))
         return 0;
 
-    long double fa = 0.0L;
-    long double fb = 0.0L;
     long double res;
 
-    memcpy(&fa, &a, sizeof(fa));
-    memcpy(&fb, &b, sizeof(fb));
-
     switch (op) {
-    case IR_LFADD: res = fa + fb; break;
-    case IR_LFSUB: res = fa - fb; break;
-    case IR_LFMUL: res = fa * fb; break;
-    case IR_LFDIV: res = fb != 0.0L ? fa / fb : 0.0L; break;
+    case IR_LFADD: res = a + b; break;
+    case IR_LFSUB: res = a - b; break;
+    case IR_LFMUL: res = a * b; break;
+    case IR_LFDIV: res = b != 0.0L ? a / b : 0.0L; break;
     default:       res = 0.0L; break;
     }
 
     uint64_t out = 0;
-    memcpy(&out, &res, sizeof(res));
+    memcpy(&out, &res, sizeof(res) > sizeof(out) ? sizeof(out) : sizeof(res));
     return out;
 }
 
@@ -185,8 +179,12 @@ static void propagate_through_instruction(const_track_t *ct, ir_instr_t *ins)
             ins->dest >= 0 && (size_t)ins->dest < max_id &&
             (size_t)ins->src1 < max_id && (size_t)ins->src2 < max_id &&
             ct->is_const[ins->src1] && ct->is_const[ins->src2]) {
-            int a = ct->values[ins->src1];
-            int b = ct->values[ins->src2];
+            int ia = ct->values[ins->src1];
+            int ib = ct->values[ins->src2];
+            long double a = 0.0L;
+            long double b = 0.0L;
+            memcpy(&a, &ia, sizeof(a));
+            memcpy(&b, &ib, sizeof(b));
             uint64_t r = eval_long_float_op(ins->op, a, b);
             ct->is_const[ins->dest] = 1;
             ct->values[ins->dest] = (int)r;
