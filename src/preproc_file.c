@@ -61,7 +61,8 @@ static int include_stack_contains(vector_t *stack, const char *path)
 {
     char *canon = realpath(path, NULL);
     if (!canon) {
-        perror(path);
+        if (errno != ENOENT)
+            perror(path);
         return 0;
     }
     for (size_t i = 0; i < stack->count; i++) {
