@@ -53,7 +53,7 @@ static int check_enum_decl_stmt(stmt_t *stmt, symtable_t *vars)
         enumerator_t *e = &stmt->enum_decl.items[i];
         long long val = next;
         if (e->value) {
-            if (!eval_const_expr(e->value, vars, &val)) {
+            if (!eval_const_expr(e->value, vars, 0, &val)) {
                 error_set(e->value->line, e->value->column, error_current_file, error_current_function);
                 return 0;
             }
@@ -366,7 +366,7 @@ static int emit_static_initializer(stmt_t *stmt, symbol_t *sym,
                                    symtable_t *vars, ir_builder_t *ir)
 {
     long long cval;
-    if (!eval_const_expr(stmt->var_decl.init, vars, &cval)) {
+    if (!eval_const_expr(stmt->var_decl.init, vars, 0, &cval)) {
         error_set(stmt->var_decl.init->line, stmt->var_decl.init->column, error_current_file, error_current_function);
         return 0;
     }

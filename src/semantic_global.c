@@ -176,7 +176,7 @@ static int check_enum_decl_global(stmt_t *decl, symtable_t *globals)
         enumerator_t *e = &decl->enum_decl.items[i];
         long long val = next;
         if (e->value) {
-            if (!eval_const_expr(e->value, globals, &val)) {
+            if (!eval_const_expr(e->value, globals, 0, &val)) {
                 error_set(e->value->line, e->value->column, error_current_file, error_current_function);
                 return 0;
             }
@@ -423,7 +423,7 @@ static int emit_global_initializer(stmt_t *decl, symbol_t *sym,
 
     long long value = 0;
     if (decl->var_decl.init) {
-        if (!eval_const_expr(decl->var_decl.init, globals, &value)) {
+        if (!eval_const_expr(decl->var_decl.init, globals, 0, &value)) {
             error_set(decl->var_decl.init->line, decl->var_decl.init->column, error_current_file, error_current_function);
             return 0;
         }

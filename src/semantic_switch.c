@@ -126,7 +126,7 @@ static char **emit_case_branches(stmt_t *stmt, symtable_t *vars,
         snprintf(buf, sizeof(buf), "L%d_case%zu", id, i);
         labels[i] = vc_strdup(buf);
         long long cval;
-        if (!eval_const_expr(stmt->switch_stmt.cases[i].expr, vars, &cval)) {
+        if (!eval_const_expr(stmt->switch_stmt.cases[i].expr, vars, 0, &cval)) {
             for (size_t j = 0; j <= i; j++)
                 free(labels[j]);
             free(labels);

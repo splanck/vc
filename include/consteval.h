@@ -13,6 +13,8 @@
 
 int is_intlike(type_kind_t t);
 int is_floatlike(type_kind_t t);
-int eval_const_expr(expr_t *expr, symtable_t *vars, long long *out);
+/* Evaluate a constant expression using the given pointer size. */
+int eval_const_expr(expr_t *expr, symtable_t *vars,
+                    int use_x86_64, long long *out);
 
 #endif /* VC_CONSTEVAL_H */

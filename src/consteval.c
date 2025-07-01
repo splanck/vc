@@ -12,11 +12,14 @@
 /* Forward declarations for helper functions */
 static int eval_number(expr_t *expr, long long *out);
 static int eval_char(expr_t *expr, long long *out);
-static int eval_unary(expr_t *expr, symtable_t *vars, long long *out);
-static int eval_binary(expr_t *expr, symtable_t *vars, long long *out);
-static int eval_conditional(expr_t *expr, symtable_t *vars, long long *out);
+static int eval_unary(expr_t *expr, symtable_t *vars,
+                      int use_x86_64, long long *out);
+static int eval_binary(expr_t *expr, symtable_t *vars,
+                       int use_x86_64, long long *out);
+static int eval_conditional(expr_t *expr, symtable_t *vars,
+                            int use_x86_64, long long *out);
 static int eval_ident(expr_t *expr, symtable_t *vars, long long *out);
-static int eval_sizeof(expr_t *expr, long long *out);
+static int eval_sizeof(expr_t *expr, int use_x86_64, long long *out);
 
 int is_intlike(type_kind_t t)
 {
@@ -62,11 +65,12 @@ static int eval_char(expr_t *expr, long long *out)
 /*
  * Evaluate a unary expression.  Only negation is supported.
  */
-static int eval_unary(expr_t *expr, symtable_t *vars, long long *out)
+static int eval_unary(expr_t *expr, symtable_t *vars,
+                      int use_x86_64, long long *out)
 {
     if (expr->unary.op == UNOP_NEG) {
         long long val;
-        if (eval_const_expr(expr->unary.operand, vars, &val)) {
+        if (eval_const_expr(expr->unary.operand, vars, use_x86_64, &val)) {
             if (out)
                 *out = -val;
             return 1;
@@ -78,11 +82,12 @@ static int eval_unary(expr_t *expr, symtable_t *vars, long long *out)
 /*
  * Evaluate a binary operator expression.
  */
-static int eval_binary(expr_t *expr, symtable_t *vars, long long *out)
+static int eval_binary(expr_t *expr, symtable_t *vars,
+                       int use_x86_64, long long *out)
 {
     long long a, b;
-    if (!eval_const_expr(expr->binary.left, vars, &a) ||
-        !eval_const_expr(expr->binary.right, vars, &b))
+    if (!eval_const_expr(expr->binary.left, vars, use_x86_64, &a) ||
+        !eval_const_expr(expr->binary.right, vars, use_x86_64, &b))
         return 0;
 
     switch (expr->binary.op) {
@@ -111,14 +116,15 @@ static int eval_binary(expr_t *expr, symtable_t *vars, long long *out)
 /*
  * Evaluate a ternary conditional expression.
  */
-static int eval_conditional(expr_t *expr, symtable_t *vars, long long *out)
+static int eval_conditional(expr_t *expr, symtable_t *vars,
+                            int use_x86_64, long long *out)
 {
     long long cval;
-    if (!eval_const_expr(expr->cond.cond, vars, &cval))
+    if (!eval_const_expr(expr->cond.cond, vars, use_x86_64, &cval))
         return 0;
     if (cval)
-        return eval_const_expr(expr->cond.then_expr, vars, out);
-    return eval_const_expr(expr->cond.else_expr, vars, out);
+        return eval_const_expr(expr->cond.then_expr, vars, use_x86_64, out);
+    return eval_const_expr(expr->cond.else_expr, vars, use_x86_64, out);
 }
 
 /*
@@ -138,7 +144,7 @@ static int eval_ident(expr_t *expr, symtable_t *vars, long long *out)
 /*
  * Evaluate a sizeof type expression.
  */
-static int eval_sizeof(expr_t *expr, long long *out)
+static int eval_sizeof(expr_t *expr, int use_x86_64, long long *out)
 {
     if (!expr->sizeof_expr.is_type)
         return 0;
@@ -150,7 +156,9 @@ static int eval_sizeof(expr_t *expr, long long *out)
         case TYPE_INT: case TYPE_UINT:
         case TYPE_LONG: case TYPE_ULONG: sz = 4; break;
         case TYPE_LLONG: case TYPE_ULLONG: sz = 8; break;
-        case TYPE_PTR:  sz = 4; break;
+        case TYPE_PTR:
+            sz = use_x86_64 ? 8 : 4;
+            break;
         case TYPE_ARRAY:
             sz = (int)expr->sizeof_expr.array_size *
                  (int)expr->sizeof_expr.elem_size;
@@ -165,7 +173,8 @@ static int eval_sizeof(expr_t *expr, long long *out)
     return 1;
 }
 
-int eval_const_expr(expr_t *expr, symtable_t *vars, long long *out)
+int eval_const_expr(expr_t *expr, symtable_t *vars,
+                    int use_x86_64, long long *out)
 {
     if (!expr)
         return 0;
@@ -175,15 +184,15 @@ int eval_const_expr(expr_t *expr, symtable_t *vars, long long *out)
     case EXPR_CHAR:
         return eval_char(expr, out);
     case EXPR_UNARY:
-        return eval_unary(expr, vars, out);
+        return eval_unary(expr, vars, use_x86_64, out);
     case EXPR_BINARY:
-        return eval_binary(expr, vars, out);
+        return eval_binary(expr, vars, use_x86_64, out);
     case EXPR_COND:
-        return eval_conditional(expr, vars, out);
+        return eval_conditional(expr, vars, use_x86_64, out);
     case EXPR_IDENT:
         return eval_ident(expr, vars, out);
     case EXPR_SIZEOF:
-        return eval_sizeof(expr, out);
+        return eval_sizeof(expr, use_x86_64, out);
     default:
         return 0;
     }
