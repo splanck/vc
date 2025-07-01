@@ -89,8 +89,13 @@ int compile_unit(const char *source, const cli_options_t *cli,
                  const char *output, int compile_obj);
 
 /* Compile one source file into a temporary object file. */
+#ifdef UNIT_TESTING
+int compile_source_obj(const char *source, const cli_options_t *cli,
+                       char **out_path);
+#else
 static int compile_source_obj(const char *source, const cli_options_t *cli,
                               char **out_path);
+#endif
 
 /* Build and run the final linker command. */
 static int run_link_command(const vector_t *objs, const char *output,
@@ -498,6 +503,7 @@ static void cleanup_compile_unit(vector_t *funcs_v, vector_t *globs_v,
 }
 
 /* Compile a single translation unit */
+#ifndef UNIT_TESTING
 int compile_unit(const char *source, const cli_options_t *cli,
                  const char *output, int compile_obj)
 {
@@ -561,6 +567,7 @@ int compile_unit(const char *source, const cli_options_t *cli,
 
     return ok;
 }
+#endif /* !UNIT_TESTING */
 
 /* Create a temporary file and return its descriptor. */
 #ifdef UNIT_TESTING
@@ -720,13 +727,20 @@ static int create_startup_object(const cli_options_t *cli, int use_x86_64,
 }
 
 /* Compile a single source file to a temporary object. */
+#ifdef UNIT_TESTING
+int compile_source_obj(const char *source, const cli_options_t *cli,
+                       char **out_path)
+#else
 static int compile_source_obj(const char *source, const cli_options_t *cli,
                               char **out_path)
+#endif
 {
     char *objname = NULL;
     int fd = create_temp_file(cli, "vcobj", &objname);
-    if (fd < 0)
+    if (fd < 0) {
+        perror("mkstemp");
         return 0;
+    }
     close(fd);
 
     int ok = compile_unit(source, cli, objname, 1);
