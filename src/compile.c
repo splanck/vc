@@ -267,12 +267,16 @@ static int compile_parse(token_t *toks, size_t count,
     vector_init(globs_v, sizeof(stmt_t *));
 
     int ok = 1;
+    func_t *err_fn = NULL;
+    stmt_t *err_g = NULL;
     while (ok && !parser_is_eof(&parser)) {
         func_t *fn = NULL;
         stmt_t *g = NULL;
         if (!parser_parse_toplevel(&parser, funcs, &fn, &g)) {
             token_type_t expected[] = { TOK_KW_INT, TOK_KW_VOID };
             parser_print_error(&parser, expected, 2);
+            err_fn = fn;
+            err_g = g;
             ok = 0;
             break;
         }
@@ -287,6 +291,12 @@ static int compile_parse(token_t *toks, size_t count,
                 ast_free_stmt(g);
             }
         }
+    }
+    if (!ok) {
+        if (err_fn)
+            ast_free_func(err_fn);
+        if (err_g)
+            ast_free_stmt(err_g);
     }
     return ok;
 }
