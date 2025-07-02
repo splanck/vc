@@ -100,11 +100,14 @@ static const char *lookup_param(const char *name, size_t len,
     return NULL;
 }
 
-/* Handle a `#` operator starting at `i`.  Appends to `sb` and
- * returns the index after the processed sequence. */
-static size_t handle_stringify(const char *value, size_t i,
-                               const vector_t *params, char **args,
-                               strbuf_t *sb)
+/*
+ * Append the stringized form of a macro parameter referenced by the
+ * `#` operator starting at index `i`.  The index after the processed
+ * sequence is returned.
+ */
+static size_t append_stringized_param(const char *value, size_t i,
+                                      const vector_t *params, char **args,
+                                      strbuf_t *sb)
 {
     size_t j = i + 1;
     while (value[j] == ' ' || value[j] == '\t')
@@ -121,13 +124,15 @@ static size_t handle_stringify(const char *value, size_t i,
     return i + 1;
 }
 
-/* Handle a `##` operator following the identifier that starts at `i`.
- * `len` and `rep` describe this first identifier.  Returns non-zero
- * when token pasting occurred and updates `*out_i` to the index after
- * the processed sequence. */
-static int handle_token_paste(const char *value, size_t i, size_t len,
-                              const char *rep, const vector_t *params,
-                              char **args, strbuf_t *sb, size_t *out_i)
+/*
+ * Perform the `##` token-pasting operation starting at the identifier
+ * beginning at `i`.  `len` and `rep` describe this first identifier.
+ * When pasting occurs `*out_i` is set to the index after the sequence
+ * and non-zero is returned.
+ */
+static int append_pasted_tokens(const char *value, size_t i, size_t len,
+                                const char *rep, const vector_t *params,
+                                char **args, strbuf_t *sb, size_t *out_i)
 {
     size_t k = i + len;
     while (value[k] == ' ' || value[k] == '\t')
@@ -174,7 +179,7 @@ static char *expand_params(const char *value, const vector_t *params, char **arg
     strbuf_init(&sb);
     for (size_t i = 0; value[i];) {
         if (value[i] == '#' && value[i + 1] != '#') {
-            i = handle_stringify(value, i, params, args, &sb);
+            i = append_stringized_param(value, i, params, args, &sb);
             continue;
         }
 
@@ -182,7 +187,7 @@ static char *expand_params(const char *value, const vector_t *params, char **arg
         if (len) {
             const char *rep = lookup_param(value + i, len, params, args);
             size_t next;
-            if (handle_token_paste(value, i, len, rep, params, args, &sb, &next)) {
+            if (append_pasted_tokens(value, i, len, rep, params, args, &sb, &next)) {
                 i = next;
                 continue;
             }
