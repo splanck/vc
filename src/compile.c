@@ -334,6 +334,7 @@ static int register_function_prototypes(func_t **func_list, size_t fcount,
                     mismatch = 1;
             if (mismatch) {
                 error_set(0, 0, error_current_file, error_current_function);
+                error_print("Semantic error");
                 return 0;
             }
             existing->is_prototype = 0;
