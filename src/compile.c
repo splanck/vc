@@ -41,6 +41,7 @@
 #include "codegen.h"
 #include "label.h"
 #include "preproc.h"
+#include "command.h"
 #include "compile.h"
 
 /* Use binary mode for temporary files on platforms that require it */
@@ -124,7 +125,6 @@ static int run_link_command(const vector_t *objs, const char *output,
                             int use_x86_64);
 
 /* Spawn a command and wait for completion */
-static int run_command(char *const argv[]);
 
 /* Write the entry stub assembly to a temporary file. */
 static int write_startup_asm(int use_x86_64, asm_syntax_t syntax,
@@ -554,12 +554,12 @@ static int emit_output_file(ir_builder_t *ir, const char *output,
             const char *fmt = use_x86_64 ? "elf64" : "elf32";
             char *argv[] = {"nasm", "-f", (char *)fmt, tmpname, "-o",
                             (char *)output, NULL};
-            rc = run_command(argv);
+            rc = command_run(argv);
         } else {
             const char *arch_flag = use_x86_64 ? "-m64" : "-m32";
             char *argv[] = {"cc", "-x", "assembler", (char *)arch_flag, "-c",
                             tmpname, "-o", (char *)output, NULL};
-            rc = run_command(argv);
+            rc = command_run(argv);
         }
         unlink(tmpname);
         free(tmpname);
@@ -756,12 +756,12 @@ static int assemble_startup_obj(const char *asm_path, int use_x86_64,
         const char *fmt = use_x86_64 ? "elf64" : "elf32";
         char *argv[] = {"nasm", "-f", (char *)fmt, (char *)asm_path,
                         "-o", objname, NULL};
-        rc = run_command(argv);
+        rc = command_run(argv);
     } else {
         const char *arch_flag = use_x86_64 ? "-m64" : "-m32";
         char *argv[] = {"cc", "-x", "assembler", (char *)arch_flag, "-c",
                         (char *)asm_path, "-o", objname, NULL};
-        rc = run_command(argv);
+        rc = command_run(argv);
     }
     if (rc != 1) {
         if (rc == 0) {
@@ -862,59 +862,6 @@ static int compile_source_files(const cli_options_t *cli, vector_t *objs)
     return ok;
 }
 
-/*
- * Spawn a command using posix_spawnp and wait for it to finish.
- *
- * Returns 1 on success, 0 on failure and -1 if the child
- * was terminated by a signal.
- */
-static int run_command(char *const argv[])
-{
-    pid_t pid;
-    int status;
-    int ret = posix_spawnp(&pid, argv[0], NULL, NULL, argv, environ);
-    if (ret != 0) {
-        char cmd[256];
-        size_t len = 0;
-        cmd[0] = '\0';
-        for (size_t i = 0; argv[i] && len < sizeof(cmd) - 1; i++) {
-            if (i > 0 && len < sizeof(cmd) - 1) {
-                cmd[len++] = ' ';
-            }
-            if (len >= sizeof(cmd) - 1)
-                break;
-            int n = snprintf(cmd + len, sizeof(cmd) - len, "%s", argv[i]);
-            if (n < 0)
-                break;
-            if ((size_t)n >= sizeof(cmd) - len) {
-                len = sizeof(cmd) - 1;
-                break;
-            }
-            len += (size_t)n;
-        }
-        cmd[len] = '\0';
-        if (len == sizeof(cmd) - 1 && sizeof(cmd) > 4) {
-            memcpy(cmd + sizeof(cmd) - 4, "...", 3);
-            cmd[sizeof(cmd) - 1] = '\0';
-        }
-        fprintf(stderr, "posix_spawnp %s: %s\n", cmd, strerror(ret));
-        return 0;
-    }
-    while (waitpid(pid, &status, 0) < 0) {
-        if (errno == EINTR)
-            continue;
-        perror("waitpid");
-        return 0;
-    }
-    if (WIFSIGNALED(status)) {
-        fprintf(stderr, "%s terminated by signal %d\n", argv[0],
-                WTERMSIG(status));
-        return -1;
-    }
-    if (!WIFEXITED(status) || WEXITSTATUS(status) != 0)
-        return 0;
-    return 1;
-}
 
 /* Construct and run the final cc link command. */
 static int run_link_command(const vector_t *objs, const char *output,
@@ -934,7 +881,7 @@ static int run_link_command(const vector_t *objs, const char *output,
     argv[idx++] = (char *)output;
     argv[idx] = NULL;
 
-    int rc = run_command(argv);
+    int rc = command_run(argv);
     free(argv);
     if (rc != 1) {
         if (rc == 0)
