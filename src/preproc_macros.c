@@ -46,8 +46,11 @@ void preproc_set_function(const char *name)
 
 /*
  * Release all memory associated with a macro definition.
- * Frees the name string, parameter list and value.  Safe to
- * call with a NULL pointer.
+ *
+ * The macro must have been created by add_macro() which allocates
+ * the name and value strings and takes ownership of all parameter
+ * names.  macro_free() disposes of these heap allocations and resets
+ * the internal vector.  It is safe to pass NULL.
  */
 void macro_free(macro_t *m)
 {
@@ -452,7 +455,9 @@ int is_macro_defined(vector_t *macros, const char *name)
 
 /*
  * Delete all macros matching the given name from the macro list.
- * The order of remaining entries is preserved.
+ *
+ * Each removed entry is cleaned up with macro_free().  The order of the
+ * remaining macros is preserved.
  */
 void remove_macro(vector_t *macros, const char *name)
 {

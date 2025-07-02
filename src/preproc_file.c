@@ -318,10 +318,18 @@ static char *parse_macro_params(char *p, vector_t *out)
     return p;
 }
 
-/** Create a macro definition and append it to the macro table.
+/**
+ * Create a macro definition and append it to the macro table.
  *
- * Ownership of any parameter strings is transferred from "params" to
- * the new macro entry.  Returns non-zero on success. */
+ * The strings contained in the supplied "params" vector must be
+ * heap allocated.  add_macro() duplicates "name" and "value" and
+ * takes ownership of all parameter strings.  On success the newly
+ * created macro is stored in "macros" and becomes the caller's
+ * responsibility to free using macro_free().
+ *
+ * Any allocation failure results in all intermediate resources
+ * being released and zero being returned.
+ */
 static int add_macro(const char *name, const char *value, vector_t *params,
                      vector_t *macros)
 {
@@ -632,7 +640,10 @@ static int load_and_register_file(const char *path, vector_t *stack,
 
 /*
  * Free all macros stored in a vector.
- * Each macro's resources are released and the vector itself is freed.
+ *
+ * Each macro must have been created by add_macro() so that macro_free()
+ * can correctly release the heap allocated strings.  The vector itself
+ * is also freed.
  */
 static void free_macro_vector(vector_t *v)
 {
