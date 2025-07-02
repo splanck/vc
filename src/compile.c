@@ -449,8 +449,8 @@ static void compile_ctx_cleanup(compile_context_t *ctx)
         ast_free_func(((func_t **)ctx->func_list_v.data)[i]);
     for (size_t i = 0; i < ctx->glob_list_v.count; i++)
         ast_free_stmt(((stmt_t **)ctx->glob_list_v.data)[i]);
-    free(ctx->func_list_v.data);
-    free(ctx->glob_list_v.data);
+    vector_free(&ctx->func_list_v);
+    vector_free(&ctx->glob_list_v);
     symtable_free(&ctx->funcs);
     ir_builder_free(&ctx->ir);
     symtable_free(&ctx->globals);
