@@ -675,6 +675,7 @@ int create_temp_file(const cli_options_t *cli, const char *prefix,
     if (fcntl(fd, F_SETFD, FD_CLOEXEC) != 0) {
         int err = errno;
         close(fd);
+        unlink(tmpl);
         free(tmpl);
         *out_path = NULL;
         errno = err;
