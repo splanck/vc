@@ -24,6 +24,22 @@ typedef enum {
     ASM_INTEL
 } asm_syntax_t;
 
+/* getopt_long option identifiers */
+typedef enum {
+    CLI_OPT_NO_FOLD = 1,
+    CLI_OPT_NO_DCE,
+    CLI_OPT_X86_64,
+    CLI_OPT_DUMP_ASM_LONG,
+    CLI_OPT_NO_CPROP,
+    CLI_OPT_DUMP_IR,
+    CLI_OPT_LINK = 7,
+    CLI_OPT_STD,
+    CLI_OPT_OBJ_DIR,
+    CLI_OPT_DEBUG = 10,
+    CLI_OPT_NO_INLINE,
+    CLI_OPT_INTEL_SYNTAX = 12
+} cli_opt_id;
+
 /* Command line options parsed from argv */
 typedef struct {
     char *output;       /* output file path */
