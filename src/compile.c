@@ -55,17 +55,46 @@ extern const char *error_current_file;
 extern const char *error_current_function;
 extern char **environ;
 
-/* Compilation stage helpers */
-static int compile_tokenize(const char *source, const vector_t *incdirs,
-                            char **out_src, token_t **out_toks,
-                            size_t *out_count, char **tmp_path);
-static int compile_parse(token_t *toks, size_t count,
-                         vector_t *funcs_v, vector_t *globs_v,
-                         symtable_t *funcs);
-static int compile_semantic(func_t **func_list, size_t fcount,
-                            stmt_t **glob_list, size_t gcount,
-                            symtable_t *funcs, symtable_t *globals,
-                            ir_builder_t *ir);
+typedef struct compile_context {
+    char       *src_text;
+    token_t    *tokens;
+    size_t      tok_count;
+    char       *stdin_tmp;
+    vector_t    func_list_v;
+    vector_t    glob_list_v;
+    symtable_t  funcs;
+    symtable_t  globals;
+    ir_builder_t ir;
+} compile_context_t;
+
+/* Stage implementations */
+static int compile_tokenize_impl(const char *source, const vector_t *incdirs,
+                                 char **out_src, token_t **out_toks,
+                                 size_t *out_count, char **tmp_path);
+static int compile_parse_impl(token_t *toks, size_t count,
+                              vector_t *funcs_v, vector_t *globs_v,
+                              symtable_t *funcs);
+static int compile_semantic_impl(func_t **func_list, size_t fcount,
+                                 stmt_t **glob_list, size_t gcount,
+                                 symtable_t *funcs, symtable_t *globals,
+                                 ir_builder_t *ir);
+static int compile_optimize_impl(ir_builder_t *ir, const opt_config_t *cfg);
+static int compile_output_impl(ir_builder_t *ir, const char *output,
+                               int dump_ir, int dump_asm, int use_x86_64,
+                               int compile, const cli_options_t *cli);
+
+/* Stage helpers */
+static void compile_ctx_init(compile_context_t *ctx);
+static void compile_ctx_cleanup(compile_context_t *ctx);
+static int compile_tokenize_stage(compile_context_t *ctx, const char *source,
+                                  const vector_t *incdirs);
+static int compile_parse_stage(compile_context_t *ctx);
+static int compile_semantic_stage(compile_context_t *ctx);
+static int compile_optimize_stage(compile_context_t *ctx,
+                                  const opt_config_t *cfg);
+static int compile_output_stage(compile_context_t *ctx, const char *output,
+                                int dump_ir, int dump_asm, int use_x86_64,
+                                int compile_obj, const cli_options_t *cli);
 static int register_function_prototypes(func_t **func_list, size_t fcount,
                                         symtable_t *funcs);
 static int check_global_decls(stmt_t **glob_list, size_t gcount,
@@ -73,16 +102,9 @@ static int check_global_decls(stmt_t **glob_list, size_t gcount,
 static int check_function_defs(func_t **func_list, size_t fcount,
                                symtable_t *funcs, symtable_t *globals,
                                ir_builder_t *ir);
-static int compile_optimize(ir_builder_t *ir, const opt_config_t *cfg);
-static int compile_output(ir_builder_t *ir, const char *output,
-                          int dump_ir, int dump_asm, int use_x86_64,
-                          int compile, const cli_options_t *cli);
 static int emit_output_file(ir_builder_t *ir, const char *output,
                             int use_x86_64, int compile_obj,
                             const cli_options_t *cli);
-static void cleanup_compile_unit(vector_t *funcs_v, vector_t *globs_v,
-                                 symtable_t *funcs, symtable_t *globals,
-                                 ir_builder_t *ir);
 
 /* Compile one translation unit to the given output path. */
 int compile_unit(const char *source, const cli_options_t *cli,
@@ -154,7 +176,7 @@ int run_preprocessor(const cli_options_t *cli);
 int link_sources(const cli_options_t *cli);
 
 /* Tokenize the preprocessed source file */
-static int compile_tokenize(const char *source, const vector_t *incdirs,
+static int compile_tokenize_impl(const char *source, const vector_t *incdirs,
                             char **out_src, token_t **out_toks,
                             size_t *out_count, char **tmp_path)
 {
@@ -256,7 +278,7 @@ static int compile_tokenize(const char *source, const vector_t *incdirs,
 }
 
 /* Parse tokens into AST lists */
-static int compile_parse(token_t *toks, size_t count,
+static int compile_parse_impl(token_t *toks, size_t count,
                          vector_t *funcs_v, vector_t *globs_v,
                          symtable_t *funcs)
 {
@@ -362,7 +384,7 @@ static int check_function_defs(func_t **func_list, size_t fcount,
 }
 
 /* Perform semantic analysis and IR generation */
-static int compile_semantic(func_t **func_list, size_t fcount,
+static int compile_semantic_impl(func_t **func_list, size_t fcount,
                             stmt_t **glob_list, size_t gcount,
                             symtable_t *funcs, symtable_t *globals,
                             ir_builder_t *ir)
@@ -379,7 +401,7 @@ static int compile_semantic(func_t **func_list, size_t fcount,
 }
 
 /* Run IR optimizations */
-static int compile_optimize(ir_builder_t *ir, const opt_config_t *cfg)
+static int compile_optimize_impl(ir_builder_t *ir, const opt_config_t *cfg)
 {
     if (cfg)
         opt_run(ir, cfg);
@@ -387,7 +409,7 @@ static int compile_optimize(ir_builder_t *ir, const opt_config_t *cfg)
 }
 
 /* Emit the requested output */
-static int compile_output(ir_builder_t *ir, const char *output,
+static int compile_output_impl(ir_builder_t *ir, const char *output,
                           int dump_ir, int dump_asm, int use_x86_64,
                           int compile, const cli_options_t *cli)
 {
@@ -410,6 +432,84 @@ static int compile_output(ir_builder_t *ir, const char *output,
     }
 
     return emit_output_file(ir, output, use_x86_64, compile, cli);
+}
+
+/* Initialize compilation context */
+static void compile_ctx_init(compile_context_t *ctx)
+{
+    memset(ctx, 0, sizeof(*ctx));
+    vector_init(&ctx->func_list_v, sizeof(func_t *));
+    vector_init(&ctx->glob_list_v, sizeof(stmt_t *));
+    symtable_init(&ctx->funcs);
+    symtable_init(&ctx->globals);
+    ir_builder_init(&ctx->ir);
+}
+
+/* Free resources allocated during compilation */
+static void compile_ctx_cleanup(compile_context_t *ctx)
+{
+    for (size_t i = 0; i < ctx->func_list_v.count; i++)
+        ast_free_func(((func_t **)ctx->func_list_v.data)[i]);
+    for (size_t i = 0; i < ctx->glob_list_v.count; i++)
+        ast_free_stmt(((stmt_t **)ctx->glob_list_v.data)[i]);
+    free(ctx->func_list_v.data);
+    free(ctx->glob_list_v.data);
+    symtable_free(&ctx->funcs);
+    ir_builder_free(&ctx->ir);
+    symtable_free(&ctx->globals);
+
+    lexer_free_tokens(ctx->tokens, ctx->tok_count);
+    free(ctx->src_text);
+}
+
+/* Run tokenization stage */
+static int compile_tokenize_stage(compile_context_t *ctx, const char *source,
+                                  const vector_t *incdirs)
+{
+    return compile_tokenize_impl(source, incdirs, &ctx->src_text,
+                                 &ctx->tokens, &ctx->tok_count,
+                                 &ctx->stdin_tmp);
+}
+
+/* Run parsing stage */
+static int compile_parse_stage(compile_context_t *ctx)
+{
+    int ok = compile_parse_impl(ctx->tokens, ctx->tok_count,
+                                &ctx->func_list_v, &ctx->glob_list_v,
+                                &ctx->funcs);
+    lexer_free_tokens(ctx->tokens, ctx->tok_count);
+    free(ctx->src_text);
+    ctx->tokens = NULL;
+    ctx->src_text = NULL;
+    ctx->tok_count = 0;
+    return ok;
+}
+
+/* Run semantic analysis stage */
+static int compile_semantic_stage(compile_context_t *ctx)
+{
+    return compile_semantic_impl((func_t **)ctx->func_list_v.data,
+                                 ctx->func_list_v.count,
+                                 (stmt_t **)ctx->glob_list_v.data,
+                                 ctx->glob_list_v.count,
+                                 &ctx->funcs, &ctx->globals,
+                                 &ctx->ir);
+}
+
+/* Run optimization stage */
+static int compile_optimize_stage(compile_context_t *ctx,
+                                  const opt_config_t *cfg)
+{
+    return compile_optimize_impl(&ctx->ir, cfg);
+}
+
+/* Run output stage */
+static int compile_output_stage(compile_context_t *ctx, const char *output,
+                                int dump_ir, int dump_asm, int use_x86_64,
+                                int compile_obj, const cli_options_t *cli)
+{
+    return compile_output_impl(&ctx->ir, output, dump_ir, dump_asm,
+                               use_x86_64, compile_obj, cli);
 }
 
 /* Emit assembly or an object file */
@@ -495,23 +595,6 @@ static int emit_output_file(ir_builder_t *ir, const char *output,
     return 1;
 }
 
-/* Free resources allocated during compilation */
-static void cleanup_compile_unit(vector_t *funcs_v, vector_t *globs_v,
-                                 symtable_t *funcs, symtable_t *globals,
-                                 ir_builder_t *ir)
-{
-    for (size_t i = 0; i < funcs_v->count; i++)
-        ast_free_func(((func_t **)funcs_v->data)[i]);
-    for (size_t i = 0; i < globs_v->count; i++)
-        ast_free_stmt(((stmt_t **)globs_v->data)[i]);
-    free(funcs_v->data);
-    free(globs_v->data);
-    symtable_free(funcs);
-
-    ir_builder_free(ir);
-    symtable_free(globals);
-}
-
 /* Compile a single translation unit */
 #ifndef UNIT_TESTING
 int compile_unit(const char *source, const cli_options_t *cli,
@@ -524,53 +607,28 @@ int compile_unit(const char *source, const cli_options_t *cli,
     codegen_set_debug(cli->debug);
 
     int ok = 1;
+    compile_context_t ctx;
+    compile_ctx_init(&ctx);
 
-    vector_t func_list_v, glob_list_v;
-    symtable_t funcs, globals;
-    ir_builder_t ir;
-
-    /* Initialize containers so cleanup can run safely */
-    vector_init(&func_list_v, sizeof(func_t *));
-    vector_init(&glob_list_v, sizeof(stmt_t *));
-    symtable_init(&funcs);
-    symtable_init(&globals);
-    ir_builder_init(&ir);
-
-    /* Tokenization stage */
-    char *src_text = NULL;
-    token_t *tokens = NULL;
-    size_t tok_count = 0;
-    char *stdin_tmp = NULL;
-    ok = compile_tokenize(source, &cli->include_dirs, &src_text,
-                          &tokens, &tok_count, &stdin_tmp);
-
-    /* Parsing stage */
+    ok = compile_tokenize_stage(&ctx, source, &cli->include_dirs);
     if (ok)
-        ok = compile_parse(tokens, tok_count, &func_list_v, &glob_list_v,
-                           &funcs);
-    lexer_free_tokens(tokens, tok_count);
-    free(src_text);
-
-    /* Semantic analysis */
+        ok = compile_parse_stage(&ctx);
     if (ok)
-        ok = compile_semantic((func_t **)func_list_v.data, func_list_v.count,
-                              (stmt_t **)glob_list_v.data, glob_list_v.count,
-                              &funcs, &globals, &ir);
-
-    /* Optimization and output */
+        ok = compile_semantic_stage(&ctx);
     if (ok) {
-        ok = compile_optimize(&ir, &cli->opt_cfg);
+        ok = compile_optimize_stage(&ctx, &cli->opt_cfg);
         if (ok)
-            ok = compile_output(&ir, output, cli->dump_ir, cli->dump_asm,
-                                cli->use_x86_64, compile_obj, cli);
+            ok = compile_output_stage(&ctx, output, cli->dump_ir,
+                                     cli->dump_asm, cli->use_x86_64,
+                                     compile_obj, cli);
     }
 
-    cleanup_compile_unit(&func_list_v, &glob_list_v, &funcs, &globals, &ir);
+    compile_ctx_cleanup(&ctx);
     semantic_global_cleanup();
 
-    if (stdin_tmp) {
-        unlink(stdin_tmp);
-        free(stdin_tmp);
+    if (ctx.stdin_tmp) {
+        unlink(ctx.stdin_tmp);
+        free(ctx.stdin_tmp);
     }
 
     label_reset();
