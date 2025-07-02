@@ -43,6 +43,7 @@
 #include "preproc.h"
 #include "command.h"
 #include "compile.h"
+#include "startup.h"
 
 /* Use binary mode for temporary files on platforms that require it */
 #if defined(_WIN32)
@@ -126,14 +127,6 @@ static int run_link_command(const vector_t *objs, const char *output,
 
 /* Spawn a command and wait for completion */
 
-/* Write the entry stub assembly to a temporary file. */
-static int write_startup_asm(int use_x86_64, asm_syntax_t syntax,
-                             const cli_options_t *cli, char **out_path);
-
-/* Assemble the stub into an object file. */
-static int assemble_startup_obj(const char *asm_path, int use_x86_64,
-                               const cli_options_t *cli, char **out_path);
-
 static const char nasm_macros[] =
     "%macro movl 2\n    mov %1, %2\n%endmacro\n"
     "%macro movq 2\n    mov %1, %2\n%endmacro\n"
@@ -151,13 +144,8 @@ static const char nasm_macros[] =
     "%macro popq 1\n    pop %1\n%endmacro\n";
 
 /* Create a temporary file and return its descriptor. */
-#ifdef UNIT_TESTING
 int create_temp_file(const cli_options_t *cli, const char *prefix,
                      char **out_path);
-#else
-static int create_temp_file(const cli_options_t *cli, const char *prefix,
-                            char **out_path);
-#endif
 
 /* Create an object file containing the entry stub for linking. */
 static int create_startup_object(const cli_options_t *cli, int use_x86_64,
@@ -638,13 +626,8 @@ int compile_unit(const char *source, const cli_options_t *cli,
 #endif /* !UNIT_TESTING */
 
 /* Create a temporary file and return its descriptor. */
-#ifdef UNIT_TESTING
 int create_temp_file(const cli_options_t *cli, const char *prefix,
                      char **out_path)
-#else
-static int create_temp_file(const cli_options_t *cli, const char *prefix,
-                            char **out_path)
-#endif
 {
     const char *dir = cli->obj_dir ? cli->obj_dir : "/tmp";
     /* dir + '/' + prefix + "XXXXXX" + NUL */
@@ -693,96 +676,7 @@ static int create_temp_file(const cli_options_t *cli, const char *prefix,
     return fd;
 }
 
-/* Write the entry stub assembly to a temporary file. */
-static int write_startup_asm(int use_x86_64, asm_syntax_t syntax,
-                             const cli_options_t *cli, char **out_path)
-{
-    char *asmname = NULL;
-    int asmfd = create_temp_file(cli, "vcstub", &asmname);
-    if (asmfd < 0)
-        return 0;
-    FILE *stub = fdopen(asmfd, TEMP_FOPEN_MODE);
-    if (!stub) {
-        perror("fdopen");
-        close(asmfd);
-        unlink(asmname);
-        free(asmname);
-        return 0;
-    }
-    int rc;
-    if (syntax == ASM_INTEL) {
-        if (use_x86_64) {
-            rc = fputs("global _start\n_start:\n    call main\n    mov rdi, rax\n    mov rax, 60\n    syscall\n", stub);
-        } else {
-            rc = fputs("global _start\n_start:\n    call main\n    mov ebx, eax\n    mov eax, 1\n    int 0x80\n", stub);
-        }
-    } else {
-        if (use_x86_64) {
-            rc = fputs(".globl _start\n_start:\n    call main\n    mov %rax, %rdi\n    mov $60, %rax\n    syscall\n", stub);
-        } else {
-            rc = fputs(".globl _start\n_start:\n    call main\n    mov %eax, %ebx\n    mov $1, %eax\n    int $0x80\n", stub);
-        }
-    }
-    if (rc == EOF) {
-        perror("fputs");
-        fclose(stub);
-        unlink(asmname);
-        free(asmname);
-        return 0;
-    }
-    if (fclose(stub) == EOF) {
-        perror("fclose");
-        unlink(asmname);
-        free(asmname);
-        return 0;
-    }
 
-    *out_path = asmname;
-    return 1;
-}
-
-/* Assemble the entry stub into an object file. */
-static int assemble_startup_obj(const char *asm_path, int use_x86_64,
-                               const cli_options_t *cli, char **out_path)
-{
-    char *objname = NULL;
-    int objfd = create_temp_file(cli, "vcobj", &objname);
-    if (objfd < 0)
-        return 0;
-    close(objfd);
-
-    int rc;
-    if (cli->asm_syntax == ASM_INTEL) {
-        const char *fmt = use_x86_64 ? "elf64" : "elf32";
-        char *argv[] = {"nasm", "-f", (char *)fmt, (char *)asm_path,
-                        "-o", objname, NULL};
-        rc = command_run(argv);
-    } else {
-        const char *arch_flag = use_x86_64 ? "-m64" : "-m32";
-        char *argv[] = {"cc", "-x", "assembler", (char *)arch_flag, "-c",
-                        (char *)asm_path, "-o", objname, NULL};
-        rc = command_run(argv);
-    }
-    if (rc != 1) {
-        if (rc == 0) {
-            if (cli->asm_syntax == ASM_INTEL)
-                fprintf(stderr, "assembly failed\n");
-            else
-                fprintf(stderr, "cc failed\n");
-        } else if (rc == -1) {
-            if (cli->asm_syntax == ASM_INTEL)
-                fprintf(stderr, "nasm terminated by signal\n");
-            else
-                fprintf(stderr, "cc terminated by signal\n");
-        }
-        unlink(objname);
-        free(objname);
-        return 0;
-    }
-
-    *out_path = objname;
-    return 1;
-}
 
 /* Create object file with program entry point */
 static int create_startup_object(const cli_options_t *cli, int use_x86_64,
