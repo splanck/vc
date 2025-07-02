@@ -107,6 +107,8 @@ static int check_function_defs(func_t **func_list, size_t fcount,
 static int emit_output_file(ir_builder_t *ir, const char *output,
                             int use_x86_64, int compile_obj,
                             const cli_options_t *cli);
+static int read_stdin_source(const vector_t *incdirs, char **out_path,
+                             char **out_text);
 
 /* Compile one translation unit to the given output path. */
 int compile_unit(const char *source, const cli_options_t *cli,
@@ -163,6 +165,68 @@ int run_preprocessor(const cli_options_t *cli);
 /* Link multiple object files into the final executable. */
 int link_sources(const cli_options_t *cli);
 
+/* Read source from stdin into a temporary file and run the preprocessor */
+static int read_stdin_source(const vector_t *incdirs, char **out_path,
+                             char **out_text)
+{
+    char tmpl[] = "/tmp/vcstdinXXXXXX";
+    int fd = mkstemp(tmpl);
+    if (fd < 0) {
+        perror("mkstemp");
+        return 0;
+    }
+    FILE *f = fdopen(fd, TEMP_FOPEN_MODE);
+    if (!f) {
+        perror("fdopen");
+        close(fd);
+        unlink(tmpl);
+        return 0;
+    }
+
+    char buf[4096];
+    size_t n;
+    while ((n = fread(buf, 1, sizeof(buf), stdin)) > 0) {
+        if (fwrite(buf, 1, n, f) != n) {
+            perror("fwrite");
+            if (fclose(f) == EOF)
+                perror("fclose");
+            unlink(tmpl);
+            return 0;
+        }
+    }
+    if (ferror(stdin)) {
+        perror("fread");
+        if (fclose(f) == EOF)
+            perror("fclose");
+        unlink(tmpl);
+        return 0;
+    }
+    if (fclose(f) == EOF) {
+        perror("fclose");
+        unlink(tmpl);
+        return 0;
+    }
+
+    char *path = vc_strdup(tmpl);
+    if (!path) {
+        fprintf(stderr, "Out of memory\n");
+        unlink(tmpl);
+        return 0;
+    }
+
+    char *text = preproc_run(path, incdirs);
+    if (!text) {
+        perror("preproc_run");
+        unlink(path);
+        free(path);
+        return 0;
+    }
+
+    *out_path = path;
+    *out_text = text;
+    return 1;
+}
+
 /* Tokenize the preprocessed source file */
 static int compile_tokenize_impl(const char *source, const vector_t *incdirs,
                             char **out_src, token_t **out_toks,
@@ -171,91 +235,35 @@ static int compile_tokenize_impl(const char *source, const vector_t *incdirs,
     if (tmp_path)
         *tmp_path = NULL;
 
+    char *stdin_path = NULL;
+    char *text = NULL;
     if (source && strcmp(source, "-") == 0) {
-        char tmpl[] = "/tmp/vcstdinXXXXXX";
-        int fd = mkstemp(tmpl);
-        if (fd < 0) {
-            perror("mkstemp");
+        if (!read_stdin_source(incdirs, &stdin_path, &text))
             return 0;
-        }
-        FILE *f = fdopen(fd, TEMP_FOPEN_MODE);
-        if (!f) {
-            perror("fdopen");
-            close(fd);
-            unlink(tmpl);
-            return 0;
-        }
-        char buf[4096];
-        size_t n;
-        while ((n = fread(buf, 1, sizeof(buf), stdin)) > 0) {
-            if (fwrite(buf, 1, n, f) != n) {
-                perror("fwrite");
-                if (fclose(f) == EOF) {
-                    perror("fclose");
-                }
-                unlink(tmpl);
-                return 0;
-            }
-        }
-        if (ferror(stdin)) {
-            perror("fread");
-            if (fclose(f) == EOF) {
-                perror("fclose");
-            }
-            unlink(tmpl);
-            return 0;
-        }
-        if (fclose(f) == EOF) {
-            perror("fclose");
-            unlink(tmpl);
-            return 0;
-        }
-        char *stdin_path = vc_strdup(tmpl);
-        if (!stdin_path) {
-            fprintf(stderr, "Out of memory\n");
-            unlink(tmpl);
-            return 0;
-        }
-        source = stdin_path;
-        char *text = preproc_run(stdin_path, incdirs);
-        if (!text) {
-            perror("preproc_run");
-            unlink(stdin_path);
-            free(stdin_path);
-            return 0;
-        }
-        size_t count = 0;
-        token_t *toks = lexer_tokenize(text, &count);
-        if (!toks) {
-            fprintf(stderr, "Tokenization failed\n");
-            free(text);
-            unlink(stdin_path);
-            free(stdin_path);
-            return 0;
-        }
-        *out_src = text;
-        *out_toks = toks;
-        if (out_count)
-            *out_count = count;
         if (tmp_path)
             *tmp_path = stdin_path;
         else {
             unlink(stdin_path);
             free(stdin_path);
+            stdin_path = NULL;
         }
-        return 1;
+    } else {
+        text = preproc_run(source, incdirs);
+        if (!text) {
+            perror("preproc_run");
+            return 0;
+        }
     }
 
-    char *text = preproc_run(source, incdirs);
-    if (!text) {
-        perror("preproc_run");
-        return 0;
-    }
     size_t count = 0;
     token_t *toks = lexer_tokenize(text, &count);
     if (!toks) {
         fprintf(stderr, "Tokenization failed\n");
         free(text);
+        if (stdin_path) {
+            unlink(stdin_path);
+            free(stdin_path);
+        }
         return 0;
     }
     *out_src = text;
