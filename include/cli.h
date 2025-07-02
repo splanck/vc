@@ -13,6 +13,7 @@
 
 #include "opt.h"
 #include "vector.h"
+#include <stdbool.h>
 
 typedef enum {
     STD_C99 = 0,
@@ -44,13 +45,13 @@ typedef enum {
 typedef struct {
     char *output;       /* output file path */
     opt_config_t opt_cfg; /* optimization configuration */
-    int use_x86_64;     /* enable 64-bit codegen */
-    int compile;        /* assemble to object */
-    int link;           /* build executable */
-    int dump_asm;       /* dump assembly to stdout (-S/--dump-asm) */
-    int dump_ir;        /* dump IR to stdout */
-    int preprocess;     /* run preprocessor only and print to stdout */
-    int debug;          /* emit debug directives */
+    bool use_x86_64;    /* enable 64-bit codegen */
+    bool compile;       /* assemble to object */
+    bool link;          /* build executable */
+    bool dump_asm;      /* dump assembly to stdout (-S/--dump-asm) */
+    bool dump_ir;       /* dump IR to stdout */
+    bool preprocess;    /* run preprocessor only and print to stdout */
+    bool debug;         /* emit debug directives */
     asm_syntax_t asm_syntax; /* assembly syntax flavor */
     c_std_t std;        /* language standard */
     char *obj_dir;      /* directory for temporary object files */

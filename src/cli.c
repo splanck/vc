@@ -65,13 +65,13 @@ static void init_default_opts(cli_options_t *opts)
     opts->opt_cfg.dead_code = 1;
     opts->opt_cfg.const_prop = 1;
     opts->opt_cfg.inline_funcs = 1;
-    opts->use_x86_64 = 0;
-    opts->compile = 0;
-    opts->link = 0;
-    opts->dump_asm = 0;
-    opts->dump_ir = 0;
-    opts->preprocess = 0;
-    opts->debug = 0;
+    opts->use_x86_64 = false;
+    opts->compile = false;
+    opts->link = false;
+    opts->dump_asm = false;
+    opts->dump_ir = false;
+    opts->preprocess = false;
+    opts->debug = false;
     opts->asm_syntax = ASM_ATT;
     opts->std = STD_C99;
     opts->obj_dir = "/tmp";
@@ -180,7 +180,7 @@ static int set_output_path(const char *arg, const char *prog, cli_options_t *opt
 static int enable_compile(const char *arg, const char *prog, cli_options_t *opts)
 {
     (void)arg; (void)prog;
-    opts->compile = 1;
+    opts->compile = true;
     return 0;
 }
 
@@ -213,7 +213,7 @@ static int disable_dce(const char *arg, const char *prog, cli_options_t *opts)
 static int enable_x86(const char *arg, const char *prog, cli_options_t *opts)
 {
     (void)arg; (void)prog;
-    opts->use_x86_64 = 1;
+    opts->use_x86_64 = true;
     return 0;
 }
 
@@ -227,7 +227,7 @@ static int enable_intel_syntax(const char *arg, const char *prog, cli_options_t 
 static int enable_dump(const char *arg, const char *prog, cli_options_t *opts)
 {
     (void)arg; (void)prog;
-    opts->dump_asm = 1;
+    opts->dump_asm = true;
     return 0;
 }
 
@@ -248,28 +248,28 @@ static int disable_inline_opt(const char *arg, const char *prog, cli_options_t *
 static int enable_dump_ir_opt(const char *arg, const char *prog, cli_options_t *opts)
 {
     (void)arg; (void)prog;
-    opts->dump_ir = 1;
+    opts->dump_ir = true;
     return 0;
 }
 
 static int enable_debug_opt(const char *arg, const char *prog, cli_options_t *opts)
 {
     (void)arg; (void)prog;
-    opts->debug = 1;
+    opts->debug = true;
     return 0;
 }
 
 static int enable_preproc(const char *arg, const char *prog, cli_options_t *opts)
 {
     (void)arg; (void)prog;
-    opts->preprocess = 1;
+    opts->preprocess = true;
     return 0;
 }
 
 static int enable_link_opt(const char *arg, const char *prog, cli_options_t *opts)
 {
     (void)arg; (void)prog;
-    opts->link = 1;
+    opts->link = true;
     return 0;
 }
 
