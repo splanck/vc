@@ -38,6 +38,14 @@ static const char *std_include_dirs[] = {
     NULL
 };
 
+/* Advance P past spaces and tabs and return the updated pointer */
+static char *skip_ws(char *p)
+{
+    while (*p == ' ' || *p == '\t')
+        p++;
+    return p;
+}
+
 typedef struct {
     int parent_active;
     int taking;
@@ -354,8 +362,7 @@ static int add_macro(const char *name, const char *value, vector_t *params,
 static int handle_define(char *line, vector_t *macros, vector_t *conds)
 {
     char *n = line + 7;
-    while (*n == ' ' || *n == '\t')
-        n++;
+    n = skip_ws(n);
     char *name = n;
     while (*n && !isspace((unsigned char)*n) && *n != '(')
         n++;
@@ -366,8 +373,7 @@ static int handle_define(char *line, vector_t *macros, vector_t *conds)
         fprintf(stderr, "Missing ')' in macro definition\n");
         return 0;
     }
-    while (*n == ' ' || *n == '\t')
-        n++;
+    n = skip_ws(n);
     char *val = *n ? n : "";
     int ok = 1;
     if (stack_active(conds)) {
@@ -386,8 +392,7 @@ static int cond_push_ifdef_common(char *line, vector_t *macros,
                                   vector_t *conds, int neg)
 {
     char *n = line + (neg ? 7 : 6);
-    while (*n == ' ' || *n == '\t')
-        n++;
+    n = skip_ws(n);
     char *id = n;
     while (isalnum((unsigned char)*n) || *n == '_')
         n++;
@@ -596,8 +601,7 @@ static int process_line(char *line, const char *dir, vector_t *macros,
                         vector_t *conds, strbuf_t *out,
                         const vector_t *incdirs, vector_t *stack)
 {
-    while (*line == ' ' || *line == '\t')
-        line++;
+    line = skip_ws(line);
     return handle_directive(line, dir, macros, conds, out, incdirs, stack);
 }
 
@@ -676,8 +680,7 @@ static int handle_line_directive(char *line, const char *dir, vector_t *macros,
 {
     (void)dir; (void)macros; (void)incdirs; (void)stack;
     char *p = line + 5;
-    while (*p == ' ' || *p == '\t')
-        p++;
+    p = skip_ws(p);
     errno = 0;
     char *end;
     long long val = strtoll(p, &end, 10);
@@ -687,8 +690,7 @@ static int handle_line_directive(char *line, const char *dir, vector_t *macros,
     }
     p = end;
     int lineno = (int)val;
-    while (*p == ' ' || *p == '\t')
-        p++;
+    p = skip_ws(p);
     char *fname = NULL;
     if (*p == '"') {
         p++;
@@ -727,8 +729,7 @@ static int handle_undef_directive(char *line, const char *dir, vector_t *macros,
 {
     (void)dir; (void)out; (void)incdirs; (void)stack;
     char *n = line + 6;
-    while (*n == ' ' || *n == '\t')
-        n++;
+    n = skip_ws(n);
     char *id = n;
     while (isalnum((unsigned char)*n) || *n == '_')
         n++;
@@ -747,8 +748,7 @@ static int handle_error_directive(char *line, const char *dir,
 {
     (void)dir; (void)macros; (void)out; (void)incdirs; (void)stack;
     char *msg = line + 6; /* skip '#error' */
-    while (*msg == ' ' || *msg == '\t')
-        msg++;
+    msg = skip_ws(msg);
     if (stack_active(conds)) {
         fprintf(stderr, "%s\n", *msg ? msg : "preprocessor error");
         return 0;
