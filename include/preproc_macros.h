@@ -15,11 +15,20 @@
 #include "vector.h"
 #include "strbuf.h"
 
-/* Stored macro definition */
+/*
+ * Stored macro definition.
+ *
+ * The strings pointed to by "name" and "value" as well as each entry in
+ * the "params" vector are allocated on the heap.  Ownership of these
+ * allocations belongs to the macro instance and they are released by
+ * macro_free().  add_macro() creates a fully self-contained macro_t by
+ * duplicating the provided name and value strings and taking ownership of
+ * the parameter names supplied in the vector.
+ */
 typedef struct {
-    char *name;
-    vector_t params; /* vector of char* parameter names */
-    char *value;
+    char *name;       /* malloc'd name string */
+    vector_t params;  /* vector of malloc'd char* parameter names */
+    char *value;      /* malloc'd macro body */
 } macro_t;
 
 /* Free memory used by a macro */
