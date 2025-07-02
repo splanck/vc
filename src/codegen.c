@@ -26,6 +26,16 @@
 #include "codegen_arith.h"
 #include "codegen_branch.h"
 
+/*
+ * Global flags controlling optional assembly output.
+ *
+ * `export_syms` determines whether function labels are emitted with
+ * `.globl` so that they can be linked from other objects.  Valid values
+ * are 0 (do not export) or 1 (export all functions).
+ *
+ * `debug_info` toggles emission of `.file` and `.loc` directives used by
+ * debuggers.  Set to 1 to enable them or 0 to omit the directives.
+ */
 int export_syms = 0;
 static int debug_info = 0;
 

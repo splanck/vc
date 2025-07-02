@@ -50,4 +50,9 @@ void codegen_set_export(int flag);
 /* Toggle emission of .file and .loc directives */
 void codegen_set_debug(int flag);
 
+/*
+ * These flags are global variables defined in codegen.c so that other
+ * code generation modules can inspect them.
+ */
+
 #endif /* VC_CODEGEN_H */
