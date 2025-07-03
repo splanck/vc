@@ -21,6 +21,8 @@ preprocessor directive is handled immediately:
   `#endif`) manipulate a stack of state objects so nested conditions may be
   evaluated correctly.
 - `#pragma` lines are passed through verbatim when active.
+- `#pragma once` marks the current file so subsequent includes of the same
+  path are ignored.
 - Any other line has macros expanded and is appended to the output buffer.
 
 At the end of processing the combined text is returned to the compiler and fed

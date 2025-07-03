@@ -10,7 +10,7 @@ for cfile in "$DIR"/fixtures/*.c; do
     base=$(basename "$cfile" .c)
 
     case "$base" in
-        *_x86-64|struct_*|bitfield_rw|include_search|include_angle|include_env|macro_bad_define|preproc_blank|macro_cli)
+        *_x86-64|struct_*|bitfield_rw|include_search|include_angle|include_env|macro_bad_define|preproc_blank|macro_cli|include_once)
             continue;;
     esac
     expect="$DIR/fixtures/$base.s"
@@ -384,6 +384,15 @@ if ! diff -u "$DIR/fixtures/preproc_blank.expected" "${pp_blank}"; then
     fail=1
 fi
 rm -f "${pp_blank}"
+
+# verify #pragma once prevents repeated includes
+pp_once=$(mktemp)
+"$BINARY" -I "$DIR/includes" -E "$DIR/fixtures/include_once.c" > "${pp_once}"
+if ! diff -u "$DIR/fixtures/include_once.expected" "${pp_once}"; then
+    echo "Test pragma_once failed"
+    fail=1
+fi
+rm -f "${pp_once}"
 
 # simulate write failure with a full pipe
 err=$(mktemp)
