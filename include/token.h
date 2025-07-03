@@ -114,7 +114,8 @@ typedef struct {
  * number of tokens returned. */
 token_t *lexer_tokenize(const char *src, size_t *out_count);
 
-/* Free an array of tokens returned by lexer_tokenize(). */
+/* Free an array of tokens returned by lexer_tokenize().  If \a tokens is NULL
+ * or \a count is zero the function does nothing. */
 void lexer_free_tokens(token_t *tokens, size_t count);
 
 #endif /* VC_TOKEN_H */
