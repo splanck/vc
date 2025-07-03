@@ -94,6 +94,12 @@ static void emit_return(strbuf_t *sb, ir_instr_t *ins,
     strbuf_append(sb, "    ret\n");
 }
 
+/* Emit a return instruction for aggregate values (IR_RETURN_AGG). */
+static void emit_return_agg(strbuf_t *sb)
+{
+    strbuf_append(sb, "    ret\n");
+}
+
 /* Emit a call instruction (IR_CALL). */
 static void emit_call(strbuf_t *sb, ir_instr_t *ins,
                       regalloc_t *ra, int x64,
@@ -242,6 +248,9 @@ void emit_branch_instr(strbuf_t *sb, ir_instr_t *ins,
     switch (ins->op) {
     case IR_RETURN:
         emit_return(sb, ins, ra, x64, sfx, ax, syntax);
+        break;
+    case IR_RETURN_AGG:
+        emit_return_agg(sb);
         break;
     case IR_CALL:
         emit_call(sb, ins, ra, x64, sfx, ax, sp, syntax);

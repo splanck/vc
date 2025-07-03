@@ -591,6 +591,16 @@ void ir_build_return(ir_builder_t *b, ir_value_t val)
     ins->src1 = val.id;
 }
 
+/* Emit IR_RETURN_AGG using the supplied pointer id. */
+void ir_build_return_agg(ir_builder_t *b, ir_value_t ptr)
+{
+    ir_instr_t *ins = append_instr(b);
+    if (!ins)
+        return;
+    ins->op = IR_RETURN_AGG;
+    ins->src1 = ptr.id;
+}
+
 /*
  * Emit IR_CALL to `name`. The number of arguments previously pushed by
  * IR_ARG instructions is stored in imm.

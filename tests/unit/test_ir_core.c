@@ -128,6 +128,18 @@ static void test_strdup_fail_wstring(void)
     ir_builder_free(&b);
 }
 
+static void test_return_agg_opcode(void)
+{
+    ir_builder_t b;
+    ir_builder_init(&b);
+    ir_value_t p = ir_build_const(&b, 0);
+    ir_build_return_agg(&b, p);
+    ir_instr_t *i = b.head;
+    ASSERT(i && i->op == IR_CONST); i = i->next;
+    ASSERT(i && i->op == IR_RETURN_AGG && i->src1 == p.id);
+    ir_builder_free(&b);
+}
+
 int main(void)
 {
     test_wstring_alloc_fail();
@@ -136,6 +148,7 @@ int main(void)
     test_strdup_fail_load();
     test_strdup_fail_string();
     test_strdup_fail_wstring();
+    test_return_agg_opcode();
     if (failures == 0)
         printf("All ir_core tests passed\n");
     else

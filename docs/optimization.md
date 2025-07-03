@@ -48,7 +48,7 @@ range of `long long` the compiler emits a `Constant overflow` diagnostic.
 
 The unreachable block pass scans each function and removes any instructions
 that cannot be reached from its `IR_FUNC_BEGIN`.  Blocks that follow an
-unconditional branch or `IR_RETURN` are pruned even when they contain side
+unconditional branch or `IR_RETURN`/`IR_RETURN_AGG` are pruned even when they contain side
 effects.
 
 Dead code elimination scans the instruction stream and removes operations that

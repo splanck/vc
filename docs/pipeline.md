@@ -189,7 +189,7 @@ The IR uses a straightforward three-address format. The operations defined in
 - variable access `IR_LOAD`, `IR_STORE`, `IR_LOAD_PARAM`, `IR_STORE_PARAM`
 - pointer ops `IR_ADDR`, `IR_LOAD_PTR`, `IR_STORE_PTR`, `IR_PTR_ADD`,
   `IR_PTR_DIFF`
-- function and call ops `IR_RETURN`, `IR_CALL`, `IR_FUNC_BEGIN`, `IR_FUNC_END`
+- function and call ops `IR_RETURN`, `IR_RETURN_AGG`, `IR_CALL`, `IR_FUNC_BEGIN`, `IR_FUNC_END`
 - control flow `IR_BR`, `IR_BCOND`, `IR_LABEL`
 
 IR instructions are appended sequentially using the builder API. A tiny

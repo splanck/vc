@@ -158,7 +158,7 @@ static int is_simple_op(ir_op_t op)
  * to an IR_FUNC_BEGIN instruction.  On success, a newly allocated array
  * of instructions is stored in `*out` and the number of entries in
  * `*count`.  Only instructions recognised by `is_simple_op`,
- * IR_LOAD_PARAM, IR_CONST and IR_RETURN are permitted.  The total number
+ * IR_LOAD_PARAM, IR_CONST, IR_RETURN and IR_RETURN_AGG are permitted.  The total number
  * of arithmetic operations must not exceed four.
  */
 static int clone_func_body(ir_instr_t *begin, ir_instr_t **out, size_t *count)
@@ -174,7 +174,8 @@ static int clone_func_body(ir_instr_t *begin, ir_instr_t **out, size_t *count)
         if (is_simple_op(it->op)) {
             if (++arith > 4)
                 return 0;
-        } else if (it->op != IR_LOAD_PARAM && it->op != IR_CONST && it->op != IR_RETURN) {
+        } else if (it->op != IR_LOAD_PARAM && it->op != IR_CONST &&
+                   it->op != IR_RETURN && it->op != IR_RETURN_AGG) {
             return 0;
         }
         n++;
@@ -405,7 +406,7 @@ void inline_small_funcs(ir_builder_t *ir)
                 map[mcount++] = (map_entry_t){orig->dest, args[orig->imm], NULL};
                 continue;
             }
-            if (orig->op == IR_RETURN) {
+            if (orig->op == IR_RETURN || orig->op == IR_RETURN_AGG) {
                 ret_val = lookup(map, mcount, orig->src1);
                 for (size_t m = 0; m < mcount; m++) {
                     if (map[m].old_id == orig->src1 && map[m].ins) {
