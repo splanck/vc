@@ -10,7 +10,7 @@ for cfile in "$DIR"/fixtures/*.c; do
     base=$(basename "$cfile" .c)
 
     case "$base" in
-        *_x86-64|struct_*|bitfield_rw|include_search|include_angle|include_env|macro_bad_define|preproc_blank)
+        *_x86-64|struct_*|bitfield_rw|include_search|include_angle|include_env|macro_bad_define|preproc_blank|macro_cli)
             continue;;
     esac
     expect="$DIR/fixtures/$base.s"
@@ -126,6 +126,15 @@ if ! diff -u "$DIR/fixtures/include_search.s" "${inc_env_out}"; then
     fail=1
 fi
 rm -f "${inc_env_out}"
+
+# verify command-line macro definitions
+macro_out=$(mktemp)
+"$BINARY" -DVAL=4 -DFLAG -o "${macro_out}" "$DIR/fixtures/macro_cli.c"
+if ! diff -u "$DIR/fixtures/macro_cli.s" "${macro_out}"; then
+    echo "Test define_option failed"
+    fail=1
+fi
+rm -f "${macro_out}"
 
 # negative test for parse error message
 err=$(mktemp)

@@ -38,7 +38,8 @@ typedef enum {
     CLI_OPT_OBJ_DIR,
     CLI_OPT_DEBUG = 10,
     CLI_OPT_NO_INLINE,
-    CLI_OPT_INTEL_SYNTAX = 12
+    CLI_OPT_INTEL_SYNTAX = 12,
+    CLI_OPT_DEFINE
 } cli_opt_id;
 
 /* Command line options parsed from argv */
@@ -57,6 +58,7 @@ typedef struct {
     char *obj_dir;      /* directory for temporary object files */
     vector_t include_dirs; /* additional include directories */
     vector_t sources;      /* input source files */
+    vector_t defines;      /* command line macro definitions */
 } cli_options_t;
 
 /* Parse command line arguments. Returns 0 on success, non-zero on error. */

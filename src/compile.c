@@ -71,6 +71,7 @@ typedef struct compile_context {
 
 /* Stage implementations */
 static int compile_tokenize_impl(const char *source, const vector_t *incdirs,
+                                 const vector_t *defines,
                                  char **out_src, token_t **out_toks,
                                  size_t *out_count, char **tmp_path);
 static int compile_parse_impl(token_t *toks, size_t count,
@@ -89,7 +90,8 @@ static int compile_output_impl(ir_builder_t *ir, const char *output,
 static void compile_ctx_init(compile_context_t *ctx);
 static void compile_ctx_cleanup(compile_context_t *ctx);
 static int compile_tokenize_stage(compile_context_t *ctx, const char *source,
-                                  const vector_t *incdirs);
+                                  const vector_t *incdirs,
+                                  const vector_t *defines);
 static int compile_parse_stage(compile_context_t *ctx);
 static int compile_semantic_stage(compile_context_t *ctx);
 static int compile_optimize_stage(compile_context_t *ctx,
@@ -107,8 +109,8 @@ static int check_function_defs(func_t **func_list, size_t fcount,
 static int emit_output_file(ir_builder_t *ir, const char *output,
                             int use_x86_64, int compile_obj,
                             const cli_options_t *cli);
-static int read_stdin_source(const vector_t *incdirs, char **out_path,
-                             char **out_text);
+static int read_stdin_source(const vector_t *incdirs, const vector_t *defines,
+                             char **out_path, char **out_text);
 
 /* Compile one translation unit to the given output path. */
 int compile_unit(const char *source, const cli_options_t *cli,
@@ -166,8 +168,8 @@ int run_preprocessor(const cli_options_t *cli);
 int link_sources(const cli_options_t *cli);
 
 /* Read source from stdin into a temporary file and run the preprocessor */
-static int read_stdin_source(const vector_t *incdirs, char **out_path,
-                             char **out_text)
+static int read_stdin_source(const vector_t *incdirs, const vector_t *defines,
+                             char **out_path, char **out_text)
 {
     char tmpl[] = "/tmp/vcstdinXXXXXX";
     int fd = mkstemp(tmpl);
@@ -214,7 +216,7 @@ static int read_stdin_source(const vector_t *incdirs, char **out_path,
         return 0;
     }
 
-    char *text = preproc_run(path, incdirs);
+    char *text = preproc_run(path, incdirs, defines);
     if (!text) {
         perror("preproc_run");
         unlink(path);
@@ -229,6 +231,7 @@ static int read_stdin_source(const vector_t *incdirs, char **out_path,
 
 /* Tokenize the preprocessed source file */
 static int compile_tokenize_impl(const char *source, const vector_t *incdirs,
+                            const vector_t *defines,
                             char **out_src, token_t **out_toks,
                             size_t *out_count, char **tmp_path)
 {
@@ -238,7 +241,7 @@ static int compile_tokenize_impl(const char *source, const vector_t *incdirs,
     char *stdin_path = NULL;
     char *text = NULL;
     if (source && strcmp(source, "-") == 0) {
-        if (!read_stdin_source(incdirs, &stdin_path, &text))
+        if (!read_stdin_source(incdirs, defines, &stdin_path, &text))
             return 0;
         if (tmp_path)
             *tmp_path = stdin_path;
@@ -248,7 +251,7 @@ static int compile_tokenize_impl(const char *source, const vector_t *incdirs,
             stdin_path = NULL;
         }
     } else {
-        text = preproc_run(source, incdirs);
+        text = preproc_run(source, incdirs, defines);
         if (!text) {
             perror("preproc_run");
             return 0;
@@ -461,9 +464,10 @@ static void compile_ctx_cleanup(compile_context_t *ctx)
 
 /* Run tokenization stage */
 static int compile_tokenize_stage(compile_context_t *ctx, const char *source,
-                                  const vector_t *incdirs)
+                                  const vector_t *incdirs,
+                                  const vector_t *defines)
 {
-    return compile_tokenize_impl(source, incdirs, &ctx->src_text,
+    return compile_tokenize_impl(source, incdirs, defines, &ctx->src_text,
                                  &ctx->tokens, &ctx->tok_count,
                                  &ctx->stdin_tmp);
 }
@@ -607,7 +611,8 @@ int compile_unit(const char *source, const cli_options_t *cli,
     compile_context_t ctx;
     compile_ctx_init(&ctx);
 
-    ok = compile_tokenize_stage(&ctx, source, &cli->include_dirs);
+    ok = compile_tokenize_stage(&ctx, source, &cli->include_dirs,
+                                &cli->defines);
     if (ok)
         ok = compile_parse_stage(&ctx);
     if (ok)
@@ -819,7 +824,7 @@ int run_preprocessor(const cli_options_t *cli)
 {
     for (size_t i = 0; i < cli->sources.count; i++) {
         const char *src = ((const char **)cli->sources.data)[i];
-        char *text = preproc_run(src, &cli->include_dirs);
+        char *text = preproc_run(src, &cli->include_dirs, &cli->defines);
         if (!text) {
             perror("preproc_run");
             return 1;
