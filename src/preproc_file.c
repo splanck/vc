@@ -715,10 +715,18 @@ static int handle_line_directive(char *line, const char *dir, vector_t *macros,
             fname = vc_strndup(fstart, (size_t)(p - fstart));
     }
     if (stack_active(conds)) {
-        strbuf_appendf(out, "# %d", lineno);
-        if (fname)
-            strbuf_appendf(out, " \"%s\"", fname);
-        strbuf_append(out, "\n");
+        if (strbuf_appendf(out, "# %d", lineno) < 0) {
+            free(fname);
+            return 0;
+        }
+        if (fname && strbuf_appendf(out, " \"%s\"", fname) < 0) {
+            free(fname);
+            return 0;
+        }
+        if (strbuf_append(out, "\n") < 0) {
+            free(fname);
+            return 0;
+        }
     }
     free(fname);
     return 1;
