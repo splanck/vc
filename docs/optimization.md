@@ -43,6 +43,8 @@ includes the long double operations `IR_LFADD`, `IR_LFSUB`, `IR_LFMUL` and
 arithmetic.
 For example, an expression such as `1.0L + 2.0L` is folded to a single
 constant at compile time.
+Intermediate results are checked for overflow; if a computation exceeds the
+range of `long long` the compiler emits a `Constant overflow` diagnostic.
 
 The unreachable block pass scans each function and removes any instructions
 that cannot be reached from its `IR_FUNC_BEGIN`.  Blocks that follow an

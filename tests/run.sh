@@ -68,6 +68,10 @@ cc -Iinclude -Wall -Wextra -std=c99 \
 cc -Iinclude -Wall -Wextra -std=c99 \
     -o "$DIR/number_overflow" "$DIR/unit/test_number_overflow.c" \
     src/ast_expr.c src/consteval.c src/symtable_core.c src/util.c
+# build constant arithmetic overflow regression test
+cc -Iinclude -Wall -Wextra -std=c99 \
+    -o "$DIR/consteval_overflow" "$DIR/unit/test_consteval_overflow.c" \
+    src/ast_expr.c src/consteval.c src/symtable_core.c src/util.c src/error.c
 # build strbuf overflow regression test
 cc -Iinclude -Wall -Wextra -std=c99 -c src/strbuf.c -o strbuf_overflow_impl.o
 cc -Iinclude -Wall -Wextra -std=c99 -c src/util.c -o util_strbuf.o
@@ -157,6 +161,17 @@ if [ $ret -ne 0 ] || ! grep -q "string buffer too large" "$err"; then
     fail=1
 fi
 rm -f "$err" "$DIR/strbuf_overflow"
+# regression test for constant expression overflow handling
+err=$(mktemp)
+set +e
+"$DIR/consteval_overflow" 2> "$err"
+ret=$?
+set -e
+if [ $ret -ne 0 ] || ! grep -q "Constant overflow" "$err"; then
+    echo "Test consteval_overflow failed"
+    fail=1
+fi
+rm -f "$err" "$DIR/consteval_overflow"
 # regression test for collect_funcs overflow handling
 err=$(mktemp)
 set +e
