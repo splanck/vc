@@ -16,7 +16,7 @@ provides an overview of all available documentation.
 - Built-in macros – `__FILE__`, `__LINE__`, `__DATE__`, `__TIME__`,
   `__STDC__`, `__STDC_VERSION__` and `__func__` expand automatically.
 - [Supported language features](language_features.md) – syntax and semantics
-  currently implemented, including variadic functions.
+  currently implemented, including variadic functions and struct return values.
 - [Command-line usage](command_line.md) – available options and example
   invocations, including the `--intel-syntax` flag for Intel-style assembly.
 - [Optimization passes](optimization.md) – constant folding, propagation and
