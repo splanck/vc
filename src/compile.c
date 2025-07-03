@@ -129,7 +129,8 @@ static int compile_source_obj(const char *source, const cli_options_t *cli,
 #endif
 
 /* Build and run the final linker command. */
-static int run_link_command(const vector_t *objs, const char *output,
+static int run_link_command(const vector_t *objs, const vector_t *lib_dirs,
+                            const vector_t *libs, const char *output,
                             int use_x86_64);
 
 /* Spawn a command and wait for completion */
@@ -780,11 +781,12 @@ static int compile_source_files(const cli_options_t *cli, vector_t *objs)
 
 
 /* Construct and run the final cc link command. */
-static int run_link_command(const vector_t *objs, const char *output,
+static int run_link_command(const vector_t *objs, const vector_t *lib_dirs,
+                            const vector_t *libs, const char *output,
                             int use_x86_64)
 {
     const char *arch_flag = use_x86_64 ? "-m64" : "-m32";
-    size_t argc = objs->count + 5;
+    size_t argc = objs->count + lib_dirs->count * 2 + libs->count * 2 + 5;
     char **argv = vc_alloc_or_exit((argc + 1) * sizeof(char *));
 
     size_t idx = 0;
@@ -792,7 +794,15 @@ static int run_link_command(const vector_t *objs, const char *output,
     argv[idx++] = (char *)arch_flag;
     for (size_t i = 0; i < objs->count; i++)
         argv[idx++] = ((char **)objs->data)[i];
+    for (size_t i = 0; i < lib_dirs->count; i++) {
+        argv[idx++] = "-L";
+        argv[idx++] = ((char **)lib_dirs->data)[i];
+    }
     argv[idx++] = "-nostdlib";
+    for (size_t i = 0; i < libs->count; i++) {
+        argv[idx++] = "-l";
+        argv[idx++] = ((char **)libs->data)[i];
+    }
     argv[idx++] = "-o";
     argv[idx++] = (char *)output;
     argv[idx] = NULL;
@@ -821,7 +831,8 @@ static int build_and_link_objects(vector_t *objs, const cli_options_t *cli)
             free(stubobj);
             return 0;
         }
-        ok = run_link_command(objs, cli->output, cli->use_x86_64);
+        ok = run_link_command(objs, &cli->lib_dirs, &cli->libs,
+                              cli->output, cli->use_x86_64);
     }
     return ok;
 }

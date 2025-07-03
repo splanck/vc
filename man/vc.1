@@ -62,6 +62,12 @@ directories, then any paths from the \fBVCPATH\fR environment variable,
 followed by the standard locations such as \fI/usr/include\fR. Quoted
 includes also consult directories from \fBVCINC\fR.
 .TP
+.B \-L\fIdir\fR
+Add directory to the library search path when linking.
+.TP
+.B \-l\fIname\fR
+Link against the specified library.
+.TP
 .B \-D\fIname[=val]\fR
 Define a preprocessor macro before compilation. When no value is given,
 the macro is set to \fB1\fR.

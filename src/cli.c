@@ -31,6 +31,8 @@ static void print_usage(const char *prog)
     printf("  -o, --output <file>  Output path\n");
     printf("  -O<N>               Optimization level (0-3)\n");
     printf("  -I, --include <dir> Add directory to include search path\n");
+    printf("  -L<dir>             Add library search path\n");
+    printf("  -l<name>            Link against library\n");
     printf("  -Dname[=val]       Define a macro\n");
     printf("  -Uname             Undefine a macro\n");
     printf("      --std=<std>      Language standard (c99 or gnu99)\n");
@@ -81,6 +83,8 @@ static void init_default_opts(cli_options_t *opts)
     vector_init(&opts->sources, sizeof(char *));
     vector_init(&opts->defines, sizeof(char *));
     vector_init(&opts->undefines, sizeof(char *));
+    vector_init(&opts->lib_dirs, sizeof(char *));
+    vector_init(&opts->libs, sizeof(char *));
 }
 
 /*
@@ -103,6 +107,30 @@ static int push_source(cli_options_t *opts, const char *src)
 static int add_include_dir(cli_options_t *opts, const char *dir)
 {
     if (!vector_push(&opts->include_dirs, &dir)) {
+        fprintf(stderr, "Out of memory\n");
+        return -1;
+    }
+    return 0;
+}
+
+/*
+ * Add a library search directory to "opts->lib_dirs".
+ */
+static int add_lib_dir(cli_options_t *opts, const char *dir)
+{
+    if (!vector_push(&opts->lib_dirs, &dir)) {
+        fprintf(stderr, "Out of memory\n");
+        return -1;
+    }
+    return 0;
+}
+
+/*
+ * Add a library name to "opts->libs".
+ */
+static int add_library(cli_options_t *opts, const char *name)
+{
+    if (!vector_push(&opts->libs, &name)) {
         fprintf(stderr, "Out of memory\n");
         return -1;
     }
@@ -298,6 +326,26 @@ static int add_undef_opt(const char *arg, const char *prog, cli_options_t *opts)
     return 0;
 }
 
+static int add_lib_dir_opt(const char *arg, const char *prog, cli_options_t *opts)
+{
+    (void)prog;
+    if (!arg || !*arg) {
+        fprintf(stderr, "Missing argument for -L option\n");
+        return 1;
+    }
+    return add_lib_dir(opts, arg);
+}
+
+static int add_lib_opt(const char *arg, const char *prog, cli_options_t *opts)
+{
+    (void)prog;
+    if (!arg || !*arg) {
+        fprintf(stderr, "Missing argument for -l option\n");
+        return 1;
+    }
+    return add_library(opts, arg);
+}
+
 static int enable_link_opt(const char *arg, const char *prog, cli_options_t *opts)
 {
     (void)arg; (void)prog;
@@ -337,6 +385,8 @@ static int handle_option(int opt, const char *arg, const char *prog,
         {'D', add_define_opt},
         {'U', add_undef_opt},
         {'I', add_include},
+        {'L', add_lib_dir_opt},
+        {'l', add_lib_opt},
         {'O', set_level},
         {CLI_OPT_NO_FOLD,      disable_fold},
         {CLI_OPT_NO_DCE,       disable_dce},
@@ -408,7 +458,7 @@ int cli_parse_args(int argc, char **argv, cli_options_t *opts)
     init_default_opts(opts);
 
     int opt;
-    while ((opt = getopt_long(argc, argv, "hvo:O:cD:U:I:ES", long_opts, NULL)) != -1) {
+    while ((opt = getopt_long(argc, argv, "hvo:O:cD:U:I:L:l:ES", long_opts, NULL)) != -1) {
         if (handle_option(opt, optarg, argv[0], opts))
             return 1;
     }

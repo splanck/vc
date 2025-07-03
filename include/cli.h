@@ -61,6 +61,8 @@ typedef struct {
     vector_t sources;      /* input source files */
     vector_t defines;      /* command line macro definitions */
     vector_t undefines;    /* macros to undefine before compilation */
+    vector_t lib_dirs;     /* additional library search paths */
+    vector_t libs;         /* libraries to link against */
 } cli_options_t;
 
 /* Parse command line arguments. Returns 0 on success, non-zero on error. */
