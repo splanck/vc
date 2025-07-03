@@ -29,7 +29,8 @@ void opt_error(const char *msg);
  * 2. Common subexpression elimination
  * 3. Inline expansion
  * 4. Constant folding
- * 5. Dead code elimination
+ * 5. Unreachable block elimination
+ * 6. Dead code elimination
  */
 void opt_run(ir_builder_t *ir, const opt_config_t *cfg);
 
