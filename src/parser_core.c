@@ -193,7 +193,7 @@ static int parse_param_list(parser_t *p,
                 vector_free(&restrict_v);
                 return 0;
             }
-            size_t ps = basic_type_size(pt);
+            size_t ps = (pt == TYPE_STRUCT) ? 0 : basic_type_size(pt);
             int is_restrict = 0;
             if (match(p, TOK_STAR)) {
                 pt = TYPE_PTR;

@@ -73,6 +73,17 @@ static int parse_decl_specs(parser_t *p, int *is_extern, int *is_static,
         *type = TYPE_UNION;
         if (base_type)
             *base_type = *type;
+    } else if (match(p, TOK_KW_STRUCT)) {
+        token_t *tag = peek(p);
+        if (!tag || tag->type != TOK_IDENT)
+            return 0;
+        p->pos++;
+        *tag_name = vc_strdup(tag->lexeme);
+        if (!*tag_name)
+            return 0;
+        *type = TYPE_STRUCT;
+        if (base_type)
+            *base_type = *type;
     } else {
         if (!parse_basic_type(p, type))
             return 0;

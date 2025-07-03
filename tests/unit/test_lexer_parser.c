@@ -467,6 +467,44 @@ static void test_parser_bitfield(void)
     lexer_free_tokens(toks, count);
 }
 
+/* Parse a variable declaration using a struct tag. */
+static void test_parser_struct_tag_var(void)
+{
+    const char *src = "struct S x;";
+    size_t count = 0;
+    token_t *toks = lexer_tokenize(src, &count);
+    parser_t p; parser_init(&p, toks, count);
+    symtable_t funcs; symtable_init(&funcs);
+    func_t *fn = NULL; stmt_t *global = NULL;
+    ASSERT(parser_parse_toplevel(&p, &funcs, &fn, &global));
+    ASSERT(fn == NULL);
+    ASSERT(global && global->kind == STMT_VAR_DECL);
+    ASSERT(global->var_decl.type == TYPE_STRUCT);
+    ASSERT(strcmp(global->var_decl.tag, "S") == 0);
+    symtable_free(&funcs);
+    ast_free_stmt(global);
+    lexer_free_tokens(toks, count);
+}
+
+/* Parse a function prototype using struct tags. */
+static void test_parser_struct_tag_func(void)
+{
+    const char *src = "struct S foo(struct S a);";
+    size_t count = 0;
+    token_t *toks = lexer_tokenize(src, &count);
+    parser_t p; parser_init(&p, toks, count);
+    symtable_t funcs; symtable_init(&funcs);
+    func_t *fn = NULL; stmt_t *global = NULL;
+    ASSERT(parser_parse_toplevel(&p, &funcs, &fn, &global));
+    ASSERT(fn == NULL && global == NULL);
+    symbol_t *sym = symtable_lookup(&funcs, "foo");
+    ASSERT(sym && sym->type == TYPE_STRUCT);
+    ASSERT(sym->param_count == 1);
+    ASSERT(sym->param_types[0] == TYPE_STRUCT);
+    symtable_free(&funcs);
+    lexer_free_tokens(toks, count);
+}
+
 /* Verify that line directives influence token line/column fields. */
 static void test_line_directive(void)
 {
@@ -614,6 +652,8 @@ int main(void)
     test_parser_func();
     test_parser_block();
     test_parser_bitfield();
+    test_parser_struct_tag_var();
+    test_parser_struct_tag_func();
     test_line_directive();
     test_lexer_escapes();
     test_lexer_char_missing_quote();

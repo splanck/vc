@@ -46,6 +46,15 @@ int parse_basic_type(parser_t *p, type_kind_t *out)
         p->pos++;
         (void)is_unsigned;
         t = TYPE_ENUM;
+    } else if (match(p, TOK_KW_STRUCT)) {
+        token_t *id = peek(p);
+        if (!id || id->type != TOK_IDENT) {
+            p->pos = save;
+            return 0;
+        }
+        p->pos++;
+        (void)is_unsigned;
+        t = TYPE_STRUCT;
     } else {
         if (is_unsigned) {
             t = TYPE_UINT;
