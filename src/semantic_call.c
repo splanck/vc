@@ -93,11 +93,20 @@ type_kind_t check_call_expr(expr_t *expr, symtable_t *vars,
     }
     free(vals);
     free(atypes);
+    type_kind_t ret_type = via_ptr ? fsym->func_ret_type : fsym->type;
+    int is_aggr = ret_type == TYPE_STRUCT || ret_type == TYPE_UNION;
+    ir_value_t ret_ptr;
+    if (is_aggr) {
+        ir_value_t sz = ir_build_const(ir, 4);
+        ret_ptr = ir_build_alloca(ir, sz);
+        ir_build_arg(ir, ret_ptr, TYPE_PTR);
+    }
     ir_value_t call_val = via_ptr
-        ? ir_build_call_ptr(ir, func_val, expr->call.arg_count)
-        : ir_build_call(ir, expr->call.name, expr->call.arg_count);
+        ? ir_build_call_ptr(ir, func_val, expr->call.arg_count + (is_aggr ? 1 : 0))
+        : ir_build_call(ir, expr->call.name, expr->call.arg_count + (is_aggr ? 1 : 0));
     if (out)
-        *out = call_val;
-    return via_ptr ? fsym->func_ret_type : fsym->type;
+        *out = is_aggr ? ret_ptr : call_val;
+    (void)call_val;
+    return ret_type;
 }
 
