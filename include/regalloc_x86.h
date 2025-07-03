@@ -24,6 +24,9 @@
  */
 #define REGALLOC_NUM_REGS 6  /* size of the register pool used by regalloc */
 
+/* Register index used for aggregate return pointers. */
+#define REGALLOC_RET_REG 0
+
 /*
  * Return the textual CPU register name for the allocator index `idx`.
  * Indices outside the valid range fall back to the first register of
