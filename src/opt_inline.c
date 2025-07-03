@@ -316,6 +316,20 @@ static void recompute_tail(ir_builder_t *ir)
     ir->tail = t;
 }
 
+typedef struct {
+    int old_id;
+    int new_id;
+    ir_instr_t *ins;
+} map_entry_t;
+
+static int map_lookup(map_entry_t *map, size_t count, int old)
+{
+    for (size_t i = 0; i < count; i++)
+        if (map[i].old_id == old)
+            return map[i].new_id;
+    return old;
+}
+
 void inline_small_funcs(ir_builder_t *ir)
 {
     if (!ir)
@@ -344,6 +358,7 @@ void inline_small_funcs(ir_builder_t *ir)
         ir_instr_t *ins = list[i];
         if (ins->op != IR_CALL)
             continue;
+
         inline_func_t *fn = NULL;
         for (size_t j = 0; j < func_count; j++) {
             if (strcmp(funcs[j].name, ins->name) == 0) {
@@ -351,32 +366,86 @@ void inline_small_funcs(ir_builder_t *ir)
                 break;
             }
         }
-        if (!fn || fn->param_count != 2 || ins->imm != 2 || i < 2)
+        if (!fn || ins->imm != fn->param_count ||
+            i < (int)fn->param_count)
             continue;
-        if (fn->count != 4)
+
+        int argc = (int)fn->param_count;
+        int args[8];
+        if (argc > 8)
+            continue; /* limit to small functions */
+
+        int ok = 1;
+        for (int a = 0; a < argc; a++) {
+            ir_instr_t *arg = list[i - argc + a];
+            if (!arg || arg->op != IR_ARG) { ok = 0; break; }
+            args[a] = arg->src1;
+        }
+        if (!ok)
             continue;
-        ir_instr_t *seq = fn->body;
-        if (seq[0].op != IR_LOAD_PARAM || seq[0].imm != 0)
+
+        for (int a = 0; a < argc; a++) {
+            remove_instr(ir, list, &count, i-1);
+            i--;
+        }
+
+        map_entry_t map[32];
+        size_t mcount = 0;
+
+        /* helper to resolve old value ids to newly created ones */
+        int (*lookup)(map_entry_t *, size_t, int) = map_lookup;
+
+        ir_instr_t *pos = ins;
+        int ret_val = ins->dest;
+
+        for (size_t k = 0; k < fn->count; k++) {
+            ir_instr_t *orig = &fn->body[k];
+            if (orig->op == IR_LOAD_PARAM) {
+                if (orig->imm >= argc) { ok = 0; break; }
+                map[mcount++] = (map_entry_t){orig->dest, args[orig->imm], NULL};
+                continue;
+            }
+            if (orig->op == IR_RETURN) {
+                ret_val = lookup(map, mcount, orig->src1);
+                for (size_t m = 0; m < mcount; m++) {
+                    if (map[m].old_id == orig->src1 && map[m].ins) {
+                        map[m].ins->dest = ins->dest;
+                        map[m].new_id = ins->dest;
+                        ret_val = ins->dest;
+                        break;
+                    }
+                }
+                continue;
+            }
+
+            ir_instr_t *ni = ir_insert_after(ir, pos);
+            if (!ni) { ok = 0; break; }
+            ni->op = orig->op;
+            ni->imm = orig->imm;
+            ni->src1 = lookup(map, mcount, orig->src1);
+            ni->src2 = lookup(map, mcount, orig->src2);
+            ni->name = NULL;
+            ni->data = NULL;
+            ni->is_volatile = 0;
+            ni->dest = (int)ir->next_value_id++;
+            map[mcount++] = (map_entry_t){orig->dest, ni->dest, ni};
+            pos = ni;
+        }
+        if (!ok)
             continue;
-        if (seq[1].op != IR_LOAD_PARAM || seq[1].imm != 1)
-            continue;
-        if (!is_simple_op(seq[2].op))
-            continue;
-        if (seq[3].op != IR_RETURN || seq[3].src1 != seq[2].dest)
-            continue;
-        if (list[i-1]->op != IR_ARG || list[i-2]->op != IR_ARG)
-            continue;
-        int arg0 = list[i-2]->src1;
-        int arg1 = list[i-1]->src1;
-        remove_instr(ir, list, &count, i-1); /* remove second arg */
-        remove_instr(ir, list, &count, i-2); /* remove first arg */
-        i -= 2; /* adjust index to new position of call */
-        ins->op = seq[2].op;
-        ins->src1 = arg0;
-        ins->src2 = arg1;
-        ins->imm = 0;
+
+        for (int u = i + 1; u < count; u++) {
+            ir_instr_t *uins = list[u];
+            if (uins->src1 == ins->dest)
+                uins->src1 = ret_val;
+            if (uins->src2 == ins->dest)
+                uins->src2 = ret_val;
+        }
+
         free(ins->name);
         ins->name = NULL;
+        remove_instr(ir, list, &count, i);
+        i--;
     }
 
     recompute_tail(ir);
