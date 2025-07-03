@@ -330,7 +330,8 @@ static int parse_initializer(parser_t *p, type_kind_t type, expr_t **init,
 static int parse_global_var_init(parser_t *p, const char *name, type_kind_t type,
                                  size_t elem_size, int is_static, int is_register,
                                  int is_extern, int is_const, int is_volatile,
-                                 int is_restrict, size_t line, size_t column,
+                                 int is_restrict, const char *tag,
+                                 size_t line, size_t column,
                                  stmt_t **out_global)
 {
     size_t start = p->pos;
@@ -359,7 +360,7 @@ static int parse_global_var_init(parser_t *p, const char *name, type_kind_t type
                                         elem_size, is_static, is_register,
                                         is_extern, is_const, is_volatile,
                                         is_restrict, init, init_list,
-                                        init_count, NULL, NULL, 0,
+                                        init_count, tag, NULL, 0,
                                         line, column);
     return 1;
 
@@ -378,9 +379,24 @@ static int parse_function_or_var(parser_t *p, symtable_t *funcs,
     size_t save = spec_pos;
 
     type_kind_t t;
-    if (!parse_basic_type(p, &t))
+    char *tag_name = NULL;
+    if (match(p, TOK_KW_STRUCT)) {
+        token_t *tag = peek(p);
+        if (!tag || tag->type != TOK_IDENT) {
+            p->pos = save;
+            return 0;
+        }
+        p->pos++;
+        tag_name = vc_strdup(tag->lexeme);
+        if (!tag_name) {
+            p->pos = save;
+            return 0;
+        }
+        t = TYPE_STRUCT;
+    } else if (!parse_basic_type(p, &t)) {
         return 0;
-    size_t elem_size = basic_type_size(t);
+    }
+    size_t elem_size = (t == TYPE_STRUCT) ? 0 : basic_type_size(t);
     int is_restrict = 0;
     if (match(p, TOK_STAR)) {
         t = TYPE_PTR;
@@ -395,14 +411,19 @@ static int parse_function_or_var(parser_t *p, symtable_t *funcs,
     p->pos++;
 
     token_t *next_tok = peek(p);
-    if (next_tok && next_tok->type == TOK_LPAREN)
-        return parse_func_prototype(p, funcs, id->lexeme, t, spec_pos,
-                                    is_inline, out_func);
+    if (next_tok && next_tok->type == TOK_LPAREN) {
+        int res = parse_func_prototype(p, funcs, id->lexeme, t, spec_pos,
+                                       is_inline, out_func);
+        free(tag_name);
+        return res;
+    }
 
-    return parse_global_var_init(p, id->lexeme, t, elem_size, is_static,
-                                 is_register, is_extern, is_const,
-                                 is_volatile, is_restrict, line, column,
-                                 out_global);
+    int rv = parse_global_var_init(p, id->lexeme, t, elem_size, is_static,
+                                   is_register, is_extern, is_const,
+                                   is_volatile, is_restrict, tag_name,
+                                   line, column, out_global);
+    free(tag_name);
+    return rv;
 }
 
 /* Parse either a global variable declaration or a full function definition */
@@ -424,7 +445,21 @@ int parser_parse_toplevel(parser_t *p, symtable_t *funcs,
     if (!tok)
         return 0;
 
-    if (tok->type == TOK_KW_STRUCT || tok->type == TOK_KW_UNION) {
+    if (tok->type == TOK_KW_STRUCT) {
+        token_t *next = &p->tokens[p->pos + 1];
+        if ((next && next->type == TOK_IDENT &&
+             p->pos + 2 < p->count && p->tokens[p->pos + 2].type == TOK_LBRACE) ||
+            (next && next->type == TOK_LBRACE)) {
+            return parse_struct_or_union_global(p, start, out_global);
+        }
+        p->pos = spec_pos;
+        return parse_function_or_var(p, funcs, is_extern, is_static, is_register,
+                                     is_const, is_volatile, is_inline, spec_pos,
+                                     tok->line, tok->column,
+                                     out_func, out_global);
+    }
+
+    if (tok->type == TOK_KW_UNION) {
         return parse_struct_or_union_global(p, start, out_global);
     }
 
