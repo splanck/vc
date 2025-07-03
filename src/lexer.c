@@ -592,6 +592,9 @@ token_t *lexer_tokenize(const char *src, size_t *out_count)
 /* Free an array of tokens produced by lexer_tokenize */
 void lexer_free_tokens(token_t *tokens, size_t count)
 {
+    if (!tokens || count == 0)
+        return;
+
     for (size_t i = 0; i < count; i++)
         free(tokens[i].lexeme);
     free(tokens);
