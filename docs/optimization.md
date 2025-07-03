@@ -8,7 +8,8 @@ Five passes are currently available and are executed in order:
    known constants with immediate constants.
 2. **Common subexpression elimination** – reuses results of identical
    computations.
-3. **Inline expansion** – replaces calls to small inline functions with their body.
+3. **Inline expansion** – inlines functions containing up to four arithmetic
+   instructions or just a `return` when they are marked `inline`.
 4. **Constant folding** – evaluates arithmetic instructions whose operands are
    constants and replaces them with a single constant.
 5. **Dead code elimination** – removes instructions that produce values which
@@ -23,9 +24,10 @@ Common subexpression elimination scans previously seen computations and
 replaces duplicates with the existing value. This avoids emitting
 identical arithmetic instructions multiple times.
 
-Inline expansion scans for functions consisting of two parameter loads,
-a single arithmetic operation and a return statement. Calls to such
-functions are replaced by the equivalent operation in the caller. This
+Inline expansion now handles small inline functions containing up to
+four arithmetic instructions or just a single `return`. The source
+function must still be marked `inline`. When these criteria are met,
+calls are replaced by the equivalent operations in the caller. This
 reduces call overhead and allows the following passes to fold the
 resulting expression.
 
