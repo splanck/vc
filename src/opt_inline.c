@@ -1,8 +1,9 @@
 /*
  * Simple function inlining pass.
  *
- * Replaces calls to small functions consisting of two parameter loads,
- * a single binary operation and a return with the operation itself.
+ * Replaces calls to small functions with short bodies.  Functions
+ * consisting of two parameter loads and a single arithmetic operation
+ * are currently inlined directly into the call site.
  *
  * Part of vc under the BSD 2-Clause license.
  * See LICENSE for details.
@@ -22,7 +23,8 @@
 
 typedef struct {
     const char *name;
-    ir_op_t op;
+    ir_instr_t *body;
+    size_t count;
 } inline_func_t;
 
 /*
@@ -150,6 +152,59 @@ static int is_simple_op(ir_op_t op)
     }
 }
 
+/*
+ * Clone the instructions inside a function body.  `begin` must point
+ * to an IR_FUNC_BEGIN instruction.  On success, a newly allocated array
+ * of instructions is stored in `*out` and the number of entries in
+ * `*count`.  Only instructions recognised by `is_simple_op`,
+ * IR_LOAD_PARAM, IR_CONST and IR_RETURN are permitted.  The total number
+ * of arithmetic operations must not exceed four.
+ */
+static int clone_func_body(ir_instr_t *begin, ir_instr_t **out, size_t *count)
+{
+    *out = NULL;
+    *count = 0;
+    if (!begin || begin->op != IR_FUNC_BEGIN)
+        return 0;
+
+    size_t n = 0;
+    int arith = 0;
+    for (ir_instr_t *it = begin->next; it && it->op != IR_FUNC_END; it = it->next) {
+        if (is_simple_op(it->op)) {
+            if (++arith > 4)
+                return 0;
+        } else if (it->op != IR_LOAD_PARAM && it->op != IR_CONST && it->op != IR_RETURN) {
+            return 0;
+        }
+        n++;
+    }
+
+    ir_instr_t *end = begin->next;
+    while (end && end->op != IR_FUNC_END)
+        end = end->next;
+    if (!end)
+        return 0;
+
+    if (n == 0)
+        return 0;
+
+    ir_instr_t *buf = malloc(n * sizeof(*buf));
+    if (!buf) {
+        opt_error("out of memory");
+        return 0;
+    }
+
+    ir_instr_t *src = begin->next;
+    for (size_t i = 0; i < n; i++, src = src->next) {
+        buf[i] = *src;
+        buf[i].next = NULL;
+    }
+
+    *out = buf;
+    *count = n;
+    return 1;
+}
+
 /* Identify eligible functions and store their name/op pairs */
 static int collect_funcs(ir_builder_t *ir, inline_func_t **out, size_t *count)
 {
@@ -159,27 +214,14 @@ static int collect_funcs(ir_builder_t *ir, inline_func_t **out, size_t *count)
     for (ir_instr_t *ins = ir->head; ins; ins = ins->next) {
         if (ins->op != IR_FUNC_BEGIN)
             continue;
-        ir_instr_t *p1 = ins->next;
-        ir_instr_t *p2 = p1 ? p1->next : NULL;
-        ir_instr_t *op = p2 ? p2->next : NULL;
-        ir_instr_t *ret = op ? op->next : NULL;
-        ir_instr_t *end = ret ? ret->next : NULL;
-        if (!p1 || !p2 || !op || !ret || !end)
-            continue;
-        if (p1->op != IR_LOAD_PARAM || p1->imm != 0)
-            continue;
-        if (p2->op != IR_LOAD_PARAM || p2->imm != 1)
-            continue;
-        if (!is_simple_op(op->op))
-            continue;
-        if (ret->op != IR_RETURN || ret->src1 != op->dest)
-            continue;
-        if (end->op != IR_FUNC_END)
+        ir_instr_t *body = NULL;
+        size_t body_count = 0;
+        if (!clone_func_body(ins, &body, &body_count))
             continue;
 
         /* Check that the defining line marks the function as inline */
         int is_inline = 0;
-        const char *src_file = p1 ? p1->file : NULL;
+        const char *src_file = ins->next ? ins->next->file : NULL;
         if (src_file) {
             int r = is_inline_def(src_file, ins->name);
             if (r > 0) {
@@ -194,10 +236,12 @@ static int collect_funcs(ir_builder_t *ir, inline_func_t **out, size_t *count)
                 }
                 free(*out);
                 *out = NULL;
+                free(body);
                 return 0;
             }
         }
         if (!is_inline) {
+            free(body);
             continue;
         }
         if (*count == cap) {
@@ -208,6 +252,7 @@ static int collect_funcs(ir_builder_t *ir, inline_func_t **out, size_t *count)
                     opt_error("too many inline functions");
                     free(*out);
                     *out = NULL;
+                    free(body);
                     return 0;
                 }
                 new_cap = cap * 2;
@@ -219,12 +264,13 @@ static int collect_funcs(ir_builder_t *ir, inline_func_t **out, size_t *count)
             inline_func_t *tmp = realloc(*out, new_cap * sizeof(**out));
             if (!tmp) {
                 opt_error("out of memory");
+                free(body);
                 return 0;
             }
             *out = tmp;
             cap = new_cap;
         }
-        (*out)[(*count)++] = (inline_func_t){ins->name, op->op};
+        (*out)[(*count)++] = (inline_func_t){ins->name, body, body_count};
     }
     return 1;
 }
@@ -295,6 +341,17 @@ void inline_small_funcs(ir_builder_t *ir)
         }
         if (!fn || ins->imm != 2 || i < 2)
             continue;
+        if (fn->count != 4)
+            continue;
+        ir_instr_t *seq = fn->body;
+        if (seq[0].op != IR_LOAD_PARAM || seq[0].imm != 0)
+            continue;
+        if (seq[1].op != IR_LOAD_PARAM || seq[1].imm != 1)
+            continue;
+        if (!is_simple_op(seq[2].op))
+            continue;
+        if (seq[3].op != IR_RETURN || seq[3].src1 != seq[2].dest)
+            continue;
         if (list[i-1]->op != IR_ARG || list[i-2]->op != IR_ARG)
             continue;
         int arg0 = list[i-2]->src1;
@@ -302,7 +359,7 @@ void inline_small_funcs(ir_builder_t *ir)
         remove_instr(ir, list, &count, i-1); /* remove second arg */
         remove_instr(ir, list, &count, i-2); /* remove first arg */
         i -= 2; /* adjust index to new position of call */
-        ins->op = fn->op;
+        ins->op = seq[2].op;
         ins->src1 = arg0;
         ins->src2 = arg1;
         ins->imm = 0;
@@ -312,6 +369,8 @@ void inline_small_funcs(ir_builder_t *ir)
 
     recompute_tail(ir);
     free(list);
+    for (size_t j = 0; j < func_count; j++)
+        free(funcs[j].body);
     free(funcs);
 }
 
