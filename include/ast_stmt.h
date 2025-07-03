@@ -70,7 +70,9 @@ stmt_t *ast_make_block(stmt_t **stmts, size_t count,
 
 /* Create a function definition. */
 func_t *ast_make_func(const char *name, type_kind_t ret_type,
+                      const char *ret_tag,
                       char **param_names, type_kind_t *param_types,
+                      char **param_tags,
                       size_t *param_elem_sizes, int *param_is_restrict,
                       size_t param_count, int is_variadic,
                       stmt_t **body, size_t body_count,

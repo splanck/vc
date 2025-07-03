@@ -421,7 +421,7 @@ static void test_parser_func(void)
     size_t count = 0;
     token_t *toks = lexer_tokenize(src, &count);
     parser_t p; parser_init(&p, toks, count);
-    func_t *fn = parser_parse_func(&p, 0);
+    func_t *fn = parser_parse_func(&p, NULL, 0);
     ASSERT(fn);
     ASSERT(strcmp(fn->name, "main") == 0);
     ASSERT(fn->return_type == TYPE_INT);
@@ -502,6 +502,24 @@ static void test_parser_struct_tag_func(void)
     ASSERT(sym->param_count == 1);
     ASSERT(sym->param_types[0] == TYPE_STRUCT);
     symtable_free(&funcs);
+    lexer_free_tokens(toks, count);
+}
+
+/* Parse a function definition using struct tags. */
+static void test_parser_struct_tag_func_def(void)
+{
+    const char *src = "struct S foo(struct S a) { return a; }";
+    size_t count = 0;
+    token_t *toks = lexer_tokenize(src, &count);
+    parser_t p; parser_init(&p, toks, count);
+    func_t *fn = parser_parse_func(&p, NULL, 0);
+    ASSERT(fn);
+    ASSERT(fn->return_type == TYPE_STRUCT);
+    ASSERT(strcmp(fn->return_tag, "S") == 0);
+    ASSERT(fn->param_count == 1);
+    ASSERT(fn->param_types[0] == TYPE_STRUCT);
+    ASSERT(strcmp(fn->param_tags[0], "S") == 0);
+    ast_free_func(fn);
     lexer_free_tokens(toks, count);
 }
 
@@ -654,6 +672,7 @@ int main(void)
     test_parser_bitfield();
     test_parser_struct_tag_var();
     test_parser_struct_tag_func();
+    test_parser_struct_tag_func_def();
     test_line_directive();
     test_lexer_escapes();
     test_lexer_char_missing_quote();

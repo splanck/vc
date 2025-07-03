@@ -11,8 +11,23 @@
 #include "parser_types.h"
 #include "ast_stmt.h"
 #include "ast_expr.h"
+#include "symtable.h"
 #include "util.h"
 #include "error.h"
+
+static size_t lookup_aggr_size(symtable_t *tab, type_kind_t t, const char *tag)
+{
+    if (!tab || !tag)
+        return 0;
+    symbol_t *sym = NULL;
+    if (t == TYPE_STRUCT)
+        sym = symtable_lookup_struct(tab, tag);
+    else if (t == TYPE_UNION)
+        sym = symtable_lookup_union(tab, tag);
+    if (!sym)
+        return 0;
+    return (t == TYPE_STRUCT) ? sym->struct_total_size : sym->total_size;
+}
 
 /* Helper to parse enum declarations at global scope */
 static int parse_enum_global(parser_t *p, size_t start_pos, stmt_t **out)
@@ -153,7 +168,8 @@ static int parse_typedef_decl(parser_t *p, size_t start_pos, stmt_t **out)
  * prototypes or at the end of the function definition.  On failure the
  * parser position is left unchanged. */
 static int parse_func_prototype(parser_t *p, symtable_t *funcs, const char *name,
-                                type_kind_t ret_type, size_t spec_pos,
+                                type_kind_t ret_type, const char *ret_tag,
+                                size_t spec_pos,
                                 int is_inline, func_t **out_func)
 {
     size_t start = p->pos; /* at '(' */
@@ -171,13 +187,30 @@ static int parse_func_prototype(parser_t *p, symtable_t *funcs, const char *name
                 break;
             }
             type_kind_t pt;
-            if (!parse_basic_type(p, &pt)) {
+            char *tag = NULL;
+            if (match(p, TOK_KW_STRUCT) || match(p, TOK_KW_UNION)) {
+                token_type_t kw = p->tokens[p->pos - 1].type;
+                token_t *id = peek(p);
+                if (!id || id->type != TOK_IDENT) {
+                    vector_free(&param_types_v);
+                    vector_free(&param_sizes_v);
+                    p->pos = start;
+                    return 0;
+                }
+                p->pos++;
+                tag = id->lexeme;
+                pt = (kw == TOK_KW_STRUCT) ? TYPE_STRUCT : TYPE_UNION;
+            } else if (!parse_basic_type(p, &pt)) {
                 vector_free(&param_types_v);
                 vector_free(&param_sizes_v);
                 p->pos = start;
                 return 0;
             }
-            size_t ps = (pt == TYPE_STRUCT || pt == TYPE_UNION) ? 0 : basic_type_size(pt);
+            size_t ps;
+            if (pt == TYPE_STRUCT || pt == TYPE_UNION)
+                ps = lookup_aggr_size(funcs, pt, tag);
+            else
+                ps = basic_type_size(pt);
             if (match(p, TOK_STAR)) {
                 pt = TYPE_PTR;
                 match(p, TOK_KW_RESTRICT);
@@ -204,7 +237,8 @@ static int parse_func_prototype(parser_t *p, symtable_t *funcs, const char *name
     token_t *after = peek(p);
     if (after && after->type == TOK_SEMI) {
         p->pos++; /* ';' */
-        size_t rsz = (ret_type == TYPE_STRUCT || ret_type == TYPE_UNION) ? 4 : 0;
+        size_t rsz = (ret_type == TYPE_STRUCT || ret_type == TYPE_UNION) ?
+                     lookup_aggr_size(funcs, ret_type, ret_tag) : 0;
         symtable_add_func(funcs, name, ret_type, rsz,
                          (size_t *)param_sizes_v.data,
                          (type_kind_t *)param_types_v.data,
@@ -218,7 +252,7 @@ static int parse_func_prototype(parser_t *p, symtable_t *funcs, const char *name
         vector_free(&param_sizes_v);
         p->pos = spec_pos;
         if (out_func)
-            *out_func = parser_parse_func(p, is_inline);
+            *out_func = parser_parse_func(p, funcs, is_inline);
         return out_func ? *out_func != NULL : 0;
     }
 
@@ -422,8 +456,8 @@ static int parse_function_or_var(parser_t *p, symtable_t *funcs,
 
     token_t *next_tok = peek(p);
     if (next_tok && next_tok->type == TOK_LPAREN) {
-        int res = parse_func_prototype(p, funcs, id->lexeme, t, spec_pos,
-                                       is_inline, out_func);
+        int res = parse_func_prototype(p, funcs, id->lexeme, t, tag_name,
+                                       spec_pos, is_inline, out_func);
         free(tag_name);
         return res;
     }

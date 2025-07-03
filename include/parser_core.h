@@ -22,6 +22,6 @@ void parser_print_error(parser_t *p,
                         size_t expected_count);
 
 /* Parse a full function definition beginning with its return type */
-func_t *parser_parse_func(parser_t *p, int is_inline);
+func_t *parser_parse_func(parser_t *p, symtable_t *table, int is_inline);
 
 #endif /* VC_PARSER_CORE_H */

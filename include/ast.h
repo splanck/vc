@@ -351,8 +351,10 @@ struct struct_member {
 struct func {
     char *name;
     type_kind_t return_type;
+    char *return_tag;
     char **param_names;
     type_kind_t *param_types;
+    char **param_tags;
     size_t *param_elem_sizes;
     int *param_is_restrict;
     size_t param_count;
