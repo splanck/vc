@@ -350,8 +350,11 @@ static int register_function_prototypes(func_t **func_list, size_t fcount,
             if (func_list[i]->is_inline)
                 existing->is_inline = 1;
         } else {
+            size_t rsz = (func_list[i]->return_type == TYPE_STRUCT ||
+                          func_list[i]->return_type == TYPE_UNION) ? 4 : 0;
             symtable_add_func(funcs, func_list[i]->name,
                               func_list[i]->return_type,
+                              rsz,
                               func_list[i]->param_types,
                               func_list[i]->param_count,
                               func_list[i]->is_variadic,

@@ -33,6 +33,7 @@ typedef struct symbol {
     size_t struct_member_count;
     size_t struct_total_size;
     type_kind_t func_ret_type; /* for function pointers */
+    size_t ret_struct_size;    /* size of struct/union return value */
     type_kind_t *func_param_types;
     size_t func_param_count;
     int func_variadic;
@@ -82,6 +83,7 @@ int symtable_add_param(symtable_t *table, const char *name, type_kind_t type,
                        size_t elem_size, int index, int is_restrict);
 /* Functions record return and parameter types */
 int symtable_add_func(symtable_t *table, const char *name, type_kind_t ret_type,
+                      size_t ret_struct_size,
                       type_kind_t *param_types, size_t param_count,
                       int is_variadic, int is_prototype, int is_inline);
 /* Globals live in a separate list */

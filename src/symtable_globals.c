@@ -40,6 +40,7 @@ int symtable_add_global(symtable_t *table, const char *name, const char *ir_name
  * Insert a function symbol along with its return type and parameter types.
  */
 int symtable_add_func(symtable_t *table, const char *name, type_kind_t ret_type,
+                      size_t ret_struct_size,
                       type_kind_t *param_types, size_t param_count,
                       int is_variadic, int is_prototype, int is_inline)
 {
@@ -49,6 +50,7 @@ int symtable_add_func(symtable_t *table, const char *name, type_kind_t ret_type,
     if (!sym)
         return 0;
     sym->type = ret_type;
+    sym->ret_struct_size = ret_struct_size;
     sym->param_count = param_count;
     sym->is_variadic = is_variadic;
     if (param_count) {

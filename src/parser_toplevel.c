@@ -198,7 +198,8 @@ static int parse_func_prototype(parser_t *p, symtable_t *funcs, const char *name
     token_t *after = peek(p);
     if (after && after->type == TOK_SEMI) {
         p->pos++; /* ';' */
-        symtable_add_func(funcs, name, ret_type,
+        size_t rsz = (ret_type == TYPE_STRUCT || ret_type == TYPE_UNION) ? 4 : 0;
+        symtable_add_func(funcs, name, ret_type, rsz,
                          (type_kind_t *)param_types_v.data,
                          param_types_v.count, is_variadic, 1,
                          is_inline);
