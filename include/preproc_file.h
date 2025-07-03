@@ -21,6 +21,6 @@
  * Returns NULL on failure.
  */
 char *preproc_run(const char *path, const vector_t *include_dirs,
-                  const vector_t *defines);
+                  const vector_t *defines, const vector_t *undefines);
 
 #endif /* VC_PREPROC_FILE_H */

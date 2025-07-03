@@ -32,6 +32,7 @@ static void print_usage(const char *prog)
     printf("  -O<N>               Optimization level (0-3)\n");
     printf("  -I, --include <dir> Add directory to include search path\n");
     printf("  -Dname[=val]       Define a macro\n");
+    printf("  -Uname             Undefine a macro\n");
     printf("      --std=<std>      Language standard (c99 or gnu99)\n");
     printf("  -h, --help           Display this help and exit\n");
     printf("  -v, --version        Print version information and exit\n");
@@ -79,6 +80,7 @@ static void init_default_opts(cli_options_t *opts)
     vector_init(&opts->include_dirs, sizeof(char *));
     vector_init(&opts->sources, sizeof(char *));
     vector_init(&opts->defines, sizeof(char *));
+    vector_init(&opts->undefines, sizeof(char *));
 }
 
 /*
@@ -282,6 +284,20 @@ static int add_define_opt(const char *arg, const char *prog, cli_options_t *opts
     return 0;
 }
 
+static int add_undef_opt(const char *arg, const char *prog, cli_options_t *opts)
+{
+    (void)prog;
+    if (!arg || !*arg) {
+        fprintf(stderr, "Missing argument for -U option\n");
+        return 1;
+    }
+    if (!vector_push(&opts->undefines, &arg)) {
+        fprintf(stderr, "Out of memory\n");
+        return 1;
+    }
+    return 0;
+}
+
 static int enable_link_opt(const char *arg, const char *prog, cli_options_t *opts)
 {
     (void)arg; (void)prog;
@@ -319,6 +335,7 @@ static int handle_option(int opt, const char *arg, const char *prog,
         {'o', set_output_path},
         {'c', enable_compile},
         {'D', add_define_opt},
+        {'U', add_undef_opt},
         {'I', add_include},
         {'O', set_level},
         {CLI_OPT_NO_FOLD,      disable_fold},
@@ -333,6 +350,7 @@ static int handle_option(int opt, const char *arg, const char *prog,
         {CLI_OPT_NO_INLINE,    disable_inline_opt},
         {'E', enable_preproc},
         {CLI_OPT_DEFINE,       add_define_opt},
+        {CLI_OPT_UNDEFINE,     add_undef_opt},
         {CLI_OPT_LINK,         enable_link_opt},
         {CLI_OPT_STD,          handle_std},
         {CLI_OPT_OBJ_DIR,      set_obj_dir_opt},
@@ -379,6 +397,7 @@ int cli_parse_args(int argc, char **argv, cli_options_t *opts)
         {"dump-ir", no_argument,      0, CLI_OPT_DUMP_IR},
         {"debug", no_argument,       0, CLI_OPT_DEBUG},
         {"define", required_argument, 0, CLI_OPT_DEFINE},
+        {"undefine", required_argument, 0, CLI_OPT_UNDEFINE},
         {"preprocess", no_argument,  0, 'E'},
         {"link", no_argument,        0, CLI_OPT_LINK},
         {"std", required_argument,   0, CLI_OPT_STD},
@@ -389,7 +408,7 @@ int cli_parse_args(int argc, char **argv, cli_options_t *opts)
     init_default_opts(opts);
 
     int opt;
-    while ((opt = getopt_long(argc, argv, "hvo:O:cD:I:ES", long_opts, NULL)) != -1) {
+    while ((opt = getopt_long(argc, argv, "hvo:O:cD:U:I:ES", long_opts, NULL)) != -1) {
         if (handle_option(opt, optarg, argv[0], opts))
             return 1;
     }
