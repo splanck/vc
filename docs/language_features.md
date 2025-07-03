@@ -12,6 +12,7 @@ See the [documentation index](index.md) for a list of all available pages.
 - [64-bit integers](#64-bit-integers)
 - [Numeric constants](#numeric-constants)
 - [Function calls](#function-calls)
+- [Returning structs](#returning-structs)
 - [Variadic functions](#variadic-functions)
 - [Loops](#loops)
 - [Pointers](#pointers)
@@ -170,6 +171,26 @@ int main() {
 Compile with:
 ```sh
 vc -o call.s call.c
+```
+
+### Returning structs
+```c
+/* struct_ret.c */
+struct pair { int a; int b; };
+
+struct pair make_pair(int x, int y) {
+    struct pair p = { x, y };
+    return p;
+}
+
+int main() {
+    struct pair p = make_pair(1, 2);
+    return p.a + p.b;
+}
+```
+Compile with:
+```sh
+vc -o struct_ret.s struct_ret.c
 ```
 
 ### Variadic functions
