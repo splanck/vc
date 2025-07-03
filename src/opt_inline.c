@@ -24,7 +24,8 @@
 typedef struct {
     const char *name;
     ir_instr_t *body;
-    size_t count;
+    size_t count;      /* number of instructions in body */
+    int param_count;   /* number of parameters */
 } inline_func_t;
 
 /*
@@ -206,6 +207,11 @@ static int clone_func_body(ir_instr_t *begin, ir_instr_t **out, size_t *count)
 }
 
 /* Identify eligible functions and store their name/op pairs */
+/*
+ * Identify inline functions with bodies accepted by clone_func_body.
+ * For each candidate, store a copy of the instructions (excluding
+ * FUNC_BEGIN/END) and the number of parameters used.
+ */
 static int collect_funcs(ir_builder_t *ir, inline_func_t **out, size_t *count)
 {
     *out = NULL;
@@ -218,6 +224,11 @@ static int collect_funcs(ir_builder_t *ir, inline_func_t **out, size_t *count)
         size_t body_count = 0;
         if (!clone_func_body(ins, &body, &body_count))
             continue;
+
+        int param_count = 0;
+        for (size_t i = 0; i < body_count; i++)
+            if (body[i].op == IR_LOAD_PARAM && body[i].imm + 1 > param_count)
+                param_count = body[i].imm + 1;
 
         /* Check that the defining line marks the function as inline */
         int is_inline = 0;
@@ -270,7 +281,8 @@ static int collect_funcs(ir_builder_t *ir, inline_func_t **out, size_t *count)
             *out = tmp;
             cap = new_cap;
         }
-        (*out)[(*count)++] = (inline_func_t){ins->name, body, body_count};
+        (*out)[(*count)++] =
+            (inline_func_t){ins->name, body, body_count, param_count};
     }
     return 1;
 }
@@ -339,7 +351,7 @@ void inline_small_funcs(ir_builder_t *ir)
                 break;
             }
         }
-        if (!fn || ins->imm != 2 || i < 2)
+        if (!fn || fn->param_count != 2 || ins->imm != 2 || i < 2)
             continue;
         if (fn->count != 4)
             continue;
