@@ -112,6 +112,9 @@ void ir_builder_set_loc(ir_builder_t *b, const char *file, size_t line, size_t c
 /* Release all memory owned by the builder, including instruction nodes. */
 void ir_builder_free(ir_builder_t *b);
 
+/* Allocate and insert a blank instruction after `pos`. */
+ir_instr_t *ir_insert_after(ir_builder_t *b, ir_instr_t *pos);
+
 /* Emit IR_CONST for `value` and return the resulting value id. */
 ir_value_t ir_build_const(ir_builder_t *b, long long value);
 
