@@ -97,7 +97,7 @@ type_kind_t check_call_expr(expr_t *expr, symtable_t *vars,
     int is_aggr = ret_type == TYPE_STRUCT || ret_type == TYPE_UNION;
     ir_value_t ret_ptr;
     if (is_aggr) {
-        ir_value_t sz = ir_build_const(ir, 4);
+        ir_value_t sz = ir_build_const(ir, (int)fsym->ret_struct_size);
         ret_ptr = ir_build_alloca(ir, sz);
         ir_build_arg(ir, ret_ptr, TYPE_PTR);
     }

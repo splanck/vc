@@ -51,6 +51,7 @@ symbol_t *symtable_create_symbol(const char *name, const char *ir_name)
     sym->struct_member_count = 0;
     sym->struct_total_size = 0;
     sym->func_ret_type = TYPE_UNKNOWN;
+    sym->ret_struct_size = 0;
     sym->func_param_types = NULL;
     sym->func_param_count = 0;
     sym->func_variadic = 0;
