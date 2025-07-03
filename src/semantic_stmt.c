@@ -615,6 +615,27 @@ static int handle_return_stmt(stmt_t *stmt, symtable_t *vars,
             error_set(stmt->ret.expr->line, stmt->ret.expr->column, error_current_file, error_current_function);
             return 0;
         }
+        symbol_t *func_sym = symtable_lookup(funcs, error_current_function ? error_current_function : "");
+        size_t expected = func_sym ? func_sym->ret_struct_size : 0;
+        size_t actual = 0;
+        if (stmt->ret.expr->kind == EXPR_IDENT) {
+            symbol_t *vsym = symtable_lookup(vars, stmt->ret.expr->ident.name);
+            if (vsym) {
+                actual = (vt == TYPE_STRUCT) ? vsym->struct_total_size : vsym->total_size;
+            }
+        } else if (stmt->ret.expr->kind == EXPR_CALL) {
+            symbol_t *fsym = symtable_lookup(funcs, stmt->ret.expr->call.name);
+            if (!fsym)
+                fsym = symtable_lookup(vars, stmt->ret.expr->call.name);
+            if (fsym)
+                actual = fsym->ret_struct_size;
+        } else if (stmt->ret.expr->kind == EXPR_COMPLIT) {
+            actual = stmt->ret.expr->compound.elem_size;
+        }
+        if (expected && actual && expected != actual) {
+            error_set(stmt->ret.expr->line, stmt->ret.expr->column, error_current_file, error_current_function);
+            return 0;
+        }
         ir_value_t ret_ptr = ir_build_load_param(ir, 0);
         ir_build_store_ptr(ir, ret_ptr, val);
         ir_build_return_agg(ir, ret_ptr);
