@@ -32,7 +32,8 @@ void strbuf_init(strbuf_t *sb)
 /*
  * Ensure the buffer can hold at least "extra" additional bytes.
  * Returns 0 on success and -1 on failure.  On failure an error message
- * is printed and no reallocation is performed.
+ * is printed and no reallocation is performed.  Memory allocation
+ * failures are fatal and terminate the process.
  */
 static int sb_ensure(strbuf_t *sb, size_t extra)
 {
@@ -56,8 +57,6 @@ static int sb_ensure(strbuf_t *sb, size_t extra)
             new_cap *= 2;
         }
         char *n = vc_realloc_or_exit(sb->data, new_cap);
-        if (!n)
-            return -1;
         sb->data = n;
         sb->cap = new_cap;
     }
