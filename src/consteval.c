@@ -7,6 +7,8 @@
 
 #include <stdlib.h>
 #include <errno.h>
+#include <limits.h>
+#include "error.h"
 #include "consteval.h"
 #include "symtable.h"
 
@@ -21,6 +23,14 @@ static int eval_conditional(expr_t *expr, symtable_t *vars,
                             int use_x86_64, long long *out);
 static int eval_ident(expr_t *expr, symtable_t *vars, long long *out);
 static int eval_sizeof(expr_t *expr, int use_x86_64, long long *out);
+
+/* Report a constant overflow error and return 0 */
+static int report_overflow(expr_t *expr)
+{
+    error_set(expr->line, expr->column, error_current_file, error_current_function);
+    error_print("Constant overflow");
+    return 0;
+}
 
 int is_intlike(type_kind_t t)
 {
@@ -76,6 +86,8 @@ static int eval_unary(expr_t *expr, symtable_t *vars,
     if (expr->unary.op == UNOP_NEG) {
         long long val;
         if (eval_const_expr(expr->unary.operand, vars, use_x86_64, &val)) {
+            if (val == LLONG_MIN)
+                return report_overflow(expr);
             if (out)
                 *out = -val;
             return 1;
@@ -95,11 +107,33 @@ static int eval_binary(expr_t *expr, symtable_t *vars,
         !eval_const_expr(expr->binary.right, vars, use_x86_64, &b))
         return 0;
 
+    long long tmp;
     switch (expr->binary.op) {
-    case BINOP_ADD:     if (out) *out = a + b; break;
-    case BINOP_SUB:     if (out) *out = a - b; break;
-    case BINOP_MUL:     if (out) *out = a * b; break;
-    case BINOP_DIV:     if (out) *out = b != 0 ? a / b : 0; break;
+    case BINOP_ADD:
+        if (__builtin_add_overflow(a, b, &tmp))
+            return report_overflow(expr);
+        if (out) *out = tmp;
+        break;
+    case BINOP_SUB:
+        if (__builtin_sub_overflow(a, b, &tmp))
+            return report_overflow(expr);
+        if (out) *out = tmp;
+        break;
+    case BINOP_MUL:
+        if (__builtin_mul_overflow(a, b, &tmp))
+            return report_overflow(expr);
+        if (out) *out = tmp;
+        break;
+    case BINOP_DIV:
+        if (b != 0) {
+            if (a == LLONG_MIN && b == -1)
+                return report_overflow(expr);
+            tmp = a / b;
+        } else {
+            tmp = 0;
+        }
+        if (out) *out = tmp;
+        break;
     case BINOP_MOD:     if (out) *out = b != 0 ? a % b : 0; break;
     case BINOP_SHL:     if (out) *out = a << b; break;
     case BINOP_SHR:     if (out) *out = a >> b; break;
