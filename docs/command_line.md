@@ -29,6 +29,8 @@ The compiler supports the following options:
 - `--std=<c99|gnu99>` – select the language standard (default is `c99`).
 - `-E`, `--preprocess` – print the preprocessed source to stdout and exit.
 - `-I`, `--include <dir>` – add directory to the `#include` search path.
+- `-L<dir>` – add a directory to the library search path when linking.
+- `-l<name>` – link against the specified library.
 - `-Dname[=val]` – define a preprocessor macro before compilation.
 - `-Uname` – undefine a macro before compilation.
 - `-O<N>` – set optimization level (0 disables all passes).

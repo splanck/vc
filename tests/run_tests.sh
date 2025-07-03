@@ -10,7 +10,7 @@ for cfile in "$DIR"/fixtures/*.c; do
     base=$(basename "$cfile" .c)
 
     case "$base" in
-        *_x86-64|struct_*|bitfield_rw|include_search|include_angle|include_env|macro_bad_define|preproc_blank|macro_cli|include_once)
+        *_x86-64|struct_*|bitfield_rw|include_search|include_angle|include_env|macro_bad_define|preproc_blank|macro_cli|include_once|libm_program)
             continue;;
     esac
     expect="$DIR/fixtures/$base.s"
@@ -497,6 +497,15 @@ if ! od -An -t x1 "${exe_semi}" | head -n 1 | grep -q "7f 45 4c 46"; then
 fi
 rm -f "${exe_space}" "${exe_semi}"
 rmdir "${link_tmpdir}"
+
+# link program against libm using -l and -L options
+libm_exe=$(mktemp)
+"$BINARY" --x86-64 --link -o "${libm_exe}" "$DIR/fixtures/libm_program.c" -L/usr/lib -lm
+if ! od -An -t x1 "${libm_exe}" | head -n 1 | grep -q "7f 45 4c 46"; then
+    echo "Test link_libm failed"
+    fail=1
+fi
+rm -f "${libm_exe}"
 
 # test --std option
 std_out=$(mktemp)
