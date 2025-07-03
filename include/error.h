@@ -9,6 +9,7 @@
 #define VC_ERROR_H
 
 #include <stddef.h>
+#include <stdbool.h>
 
 /*
  * Save the given 1-based line and column so that the next call to
@@ -31,5 +32,6 @@ void error_print(const char *msg);
 /* Current context used by error diagnostics */
 extern const char *error_current_file;
 extern const char *error_current_function;
+extern bool error_use_color;
 
 #endif /* VC_ERROR_H */

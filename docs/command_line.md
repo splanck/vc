@@ -18,6 +18,7 @@ The compiler supports the following options:
 - `--no-cprop` – disable constant propagation.
 - `--no-inline` – disable inline expansion of small functions.
 - `--debug` – emit `.file` and `.loc` directives in the assembly output.
+- `--no-color` – disable ANSI colors in diagnostics.
 - `--x86-64` – generate 64‑bit x86 assembly.
 - `--intel-syntax` – enable Intel-style x86 assembly output. When used
   together with `--compile` or `--link`, the assembler must be `nasm`.

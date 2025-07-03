@@ -15,6 +15,7 @@
 
 #include "cli.h"
 #include "compile.h"
+#include "error.h"
 
 /*
  * Program entry point. Parses command line options and coordinates
@@ -27,6 +28,8 @@ int main(int argc, char **argv)
 
     if (cli_parse_args(argc, argv, &cli) != 0)
         goto cleanup;
+
+    error_use_color = cli.color_diag;
 
     if (!cli.link && cli.sources.count != 1) {
         fprintf(stderr, "Error: multiple input files require --link\n");
