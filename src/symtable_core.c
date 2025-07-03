@@ -90,7 +90,9 @@ static void free_symbol_list(symbol_t *sym)
             free(sym->struct_members[i].name);
         free(sym->struct_members);
         free(sym->param_types);
+        /* free any tracked aggregate parameter sizes */
         free(sym->param_struct_sizes);
+        sym->param_struct_sizes = NULL;
         free(sym->func_param_types);
         free(sym);
         sym = next;
