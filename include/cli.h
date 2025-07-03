@@ -40,7 +40,8 @@ typedef enum {
     CLI_OPT_NO_INLINE,
     CLI_OPT_INTEL_SYNTAX = 12,
     CLI_OPT_DEFINE,
-    CLI_OPT_UNDEFINE
+    CLI_OPT_UNDEFINE,
+    CLI_OPT_NO_COLOR
 } cli_opt_id;
 
 /* Command line options parsed from argv */
@@ -54,6 +55,7 @@ typedef struct {
     bool dump_ir;       /* dump IR to stdout */
     bool preprocess;    /* run preprocessor only and print to stdout */
     bool debug;         /* emit debug directives */
+    bool color_diag;    /* use ANSI colors in diagnostics */
     asm_syntax_t asm_syntax; /* assembly syntax flavor */
     c_std_t std;        /* language standard */
     char *obj_dir;      /* directory for temporary object files */

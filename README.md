@@ -46,6 +46,8 @@ Enable debug directives with `--debug`:
 vc --debug -S source.c
 ```
 
+Disable colored diagnostics with `--no-color` when capturing output.
+
 ## Testing
 
 The project ships with a small unit and integration test suite. A C99

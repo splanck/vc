@@ -46,6 +46,7 @@ static void print_usage(const char *prog)
     printf("      --no-cprop       Disable constant propagation\n");
     printf("      --no-inline      Disable inline expansion\n");
     printf("      --debug          Emit .file/.loc directives\n");
+    printf("      --no-color       Disable colored diagnostics\n");
     printf("      --x86-64         Generate 64-bit x86 assembly\n");
     printf("      --intel-syntax    Use Intel assembly syntax\n");
     printf("  -S, --dump-asm       Print assembly to stdout and exit\n");
@@ -76,6 +77,7 @@ static void init_default_opts(cli_options_t *opts)
     opts->dump_ir = false;
     opts->preprocess = false;
     opts->debug = false;
+    opts->color_diag = true;
     opts->asm_syntax = ASM_ATT;
     opts->std = STD_C99;
     opts->obj_dir = "/tmp";
@@ -291,6 +293,13 @@ static int enable_debug_opt(const char *arg, const char *prog, cli_options_t *op
     return 0;
 }
 
+static int disable_color_opt(const char *arg, const char *prog, cli_options_t *opts)
+{
+    (void)arg; (void)prog;
+    opts->color_diag = false;
+    return 0;
+}
+
 static int enable_preproc(const char *arg, const char *prog, cli_options_t *opts)
 {
     (void)arg; (void)prog;
@@ -398,6 +407,7 @@ static int handle_option(int opt, const char *arg, const char *prog,
         {CLI_OPT_DUMP_IR,      enable_dump_ir_opt},
         {CLI_OPT_DEBUG,        enable_debug_opt},
         {CLI_OPT_NO_INLINE,    disable_inline_opt},
+        {CLI_OPT_NO_COLOR,     disable_color_opt},
         {'E', enable_preproc},
         {CLI_OPT_DEFINE,       add_define_opt},
         {CLI_OPT_UNDEFINE,     add_undef_opt},
@@ -452,6 +462,7 @@ int cli_parse_args(int argc, char **argv, cli_options_t *opts)
         {"link", no_argument,        0, CLI_OPT_LINK},
         {"std", required_argument,   0, CLI_OPT_STD},
         {"obj-dir", required_argument, 0, CLI_OPT_OBJ_DIR},
+        {"no-color", no_argument, 0, CLI_OPT_NO_COLOR},
         {0, 0, 0, 0}
     };
 

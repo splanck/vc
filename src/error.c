@@ -1,3 +1,4 @@
+#define _POSIX_C_SOURCE 200809L
 /*
  * Simple error reporting utilities.
  *
@@ -6,11 +7,14 @@
  */
 
 #include <stdio.h>
+#include <unistd.h>
+#include <stdbool.h>
 #include "error.h"
 
 /* Active file and function for diagnostics */
 const char *error_current_file = "";
 const char *error_current_function = NULL;
+bool error_use_color = true;
 
 /* Stored source location for the next error message. */
 static const char *error_file = "";
@@ -38,11 +42,17 @@ void error_set(size_t line, size_t col, const char *file, const char *func)
  */
 void error_print(const char *msg)
 {
+    int color = error_use_color && isatty(fileno(stderr));
+    if (color)
+        fprintf(stderr, "\x1b[1;31m");
     if (error_func)
-        fprintf(stderr, "%s:%zu:%zu: %s: %s\n", error_file, error_line, error_column,
-                error_func, msg);
+        fprintf(stderr, "%s:%zu:%zu: %s: %s", error_file, error_line,
+                error_column, error_func, msg);
     else
-        fprintf(stderr, "%s:%zu:%zu: %s\n", error_file, error_line, error_column,
-                msg);
+        fprintf(stderr, "%s:%zu:%zu: %s", error_file, error_line,
+                error_column, msg);
+    if (color)
+        fprintf(stderr, "\x1b[0m");
+    fputc('\n', stderr);
 }
 
