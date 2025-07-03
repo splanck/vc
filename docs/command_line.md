@@ -29,6 +29,7 @@ The compiler supports the following options:
 - `--std=<c99|gnu99>` – select the language standard (default is `c99`).
 - `-E`, `--preprocess` – print the preprocessed source to stdout and exit.
 - `-I`, `--include <dir>` – add directory to the `#include` search path.
+- `-Dname[=val]` – define a preprocessor macro before compilation.
 - `-O<N>` – set optimization level (0 disables all passes).
 
 Temporary object and assembly files are written to `/tmp` by default. Use the

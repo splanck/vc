@@ -1026,13 +1026,37 @@ static void cleanup_preproc_vectors(vector_t *macros, vector_t *conds,
  * Entry point used by the compiler.  Sets up include search paths,
  * invokes the file processor and returns the resulting text.
  */
-char *preproc_run(const char *path, const vector_t *include_dirs)
+char *preproc_run(const char *path, const vector_t *include_dirs,
+                  const vector_t *defines)
 {
     vector_t search_dirs, macros, conds, stack;
     strbuf_t out;
     if (!collect_include_dirs(&search_dirs, include_dirs))
         return NULL;
     init_preproc_vectors(&macros, &conds, &stack, &out);
+
+    if (defines) {
+        for (size_t i = 0; i < defines->count; i++) {
+            const char *def = ((const char **)defines->data)[i];
+            const char *eq = strchr(def, '=');
+            const char *val = "1";
+            char *name;
+            if (eq) {
+                name = vc_strndup(def, (size_t)(eq - def));
+                val = eq + 1;
+            } else {
+                name = vc_strdup(def);
+            }
+            vector_t params;
+            vector_init(&params, sizeof(char *));
+            if (!add_macro(name, val, &params, &macros)) {
+                free(name);
+                cleanup_preproc_vectors(&macros, &conds, &stack, &search_dirs, &out);
+                return NULL;
+            }
+            free(name);
+        }
+    }
 
     int ok = process_file(path, &macros, &conds, &out, &search_dirs, &stack);
 

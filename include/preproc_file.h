@@ -20,6 +20,7 @@
  * The returned string must be freed by the caller.
  * Returns NULL on failure.
  */
-char *preproc_run(const char *path, const vector_t *include_dirs);
+char *preproc_run(const char *path, const vector_t *include_dirs,
+                  const vector_t *defines);
 
 #endif /* VC_PREPROC_FILE_H */
