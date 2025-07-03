@@ -3,7 +3,7 @@
 See the [documentation index](index.md) for a list of all available pages.
 
 The optimizer in **vc** operates on the intermediate representation (IR).
-Five passes are currently available and are executed in order:
+Six passes are currently available and are executed in order:
 1. **Constant propagation** – replaces loads of variables whose values are
    known constants with immediate constants.
 2. **Common subexpression elimination** – reuses results of identical
@@ -12,7 +12,9 @@ Five passes are currently available and are executed in order:
    instructions or just a `return` when they are marked `inline`.
 4. **Constant folding** – evaluates arithmetic instructions whose operands are
    constants and replaces them with a single constant.
-5. **Dead code elimination** – removes instructions that produce values which
+5. **Unreachable block elimination** – removes instructions that cannot be
+   executed from the start of the function.
+6. **Dead code elimination** – removes instructions that produce values which
    are never used and have no side effects.
 
 Constant propagation tracks variables written with constants. When a later
@@ -41,6 +43,11 @@ includes the long double operations `IR_LFADD`, `IR_LFSUB`, `IR_LFMUL` and
 arithmetic.
 For example, an expression such as `1.0L + 2.0L` is folded to a single
 constant at compile time.
+
+The unreachable block pass scans each function and removes any instructions
+that cannot be reached from its `IR_FUNC_BEGIN`.  Blocks that follow an
+unconditional branch or `IR_RETURN` are pruned even when they contain side
+effects.
 
 Dead code elimination scans the instruction stream and removes operations that
 have no side effects and whose results are never referenced.

@@ -109,11 +109,31 @@ cc -Iinclude -Wall -Wextra -std=c99 -DUNIT_TESTING -Dcompile_unit=test_compile_u
 cc -Iinclude -Wall -Wextra -std=c99 -c "$DIR/unit/test_compile_obj_fail.c" -o "$DIR/test_compile_obj_fail.o"
 cc -Wl,--gc-sections -o "$DIR/compile_obj_fail" compile_obj_fail.o "$DIR/test_compile_obj_fail.o"
 rm -f compile_obj_fail.o "$DIR/test_compile_obj_fail.o"
+# build unreachable block elimination test
+cc -Iinclude -Wall -Wextra -std=c99 -c src/ir_core.c -o ir_unreach.o
+cc -Iinclude -Wall -Wextra -std=c99 -c src/util.c -o util_unreach.o
+cc -Iinclude -Wall -Wextra -std=c99 -c src/label.c -o label_unreach.o
+cc -Iinclude -Wall -Wextra -std=c99 -c src/error.c -o error_unreach.o
+cc -Iinclude -Wall -Wextra -std=c99 -c src/opt.c -o opt_main.o
+cc -Iinclude -Wall -Wextra -std=c99 -c src/opt_constprop.c -o opt_constprop_unreach.o
+cc -Iinclude -Wall -Wextra -std=c99 -c src/opt_cse.c -o opt_cse_unreach.o
+cc -Iinclude -Wall -Wextra -std=c99 -c src/opt_fold.c -o opt_fold_unreach.o
+cc -Iinclude -Wall -Wextra -std=c99 -c src/opt_dce.c -o opt_dce_unreach.o
+cc -Iinclude -Wall -Wextra -std=c99 -c src/opt_inline.c -o opt_inline_unreach.o
+cc -Iinclude -Wall -Wextra -std=c99 -c src/opt_unreachable.c -o opt_unreach.o
+cc -Iinclude -Wall -Wextra -std=c99 -c "$DIR/unit/test_opt_unreachable.c" -o "$DIR/test_opt_unreachable.o"
+cc -o "$DIR/opt_unreachable_tests" ir_unreach.o util_unreach.o label_unreach.o error_unreach.o \
+    opt_main.o opt_constprop_unreach.o opt_cse_unreach.o opt_fold_unreach.o \
+    opt_dce_unreach.o opt_inline_unreach.o opt_unreach.o "$DIR/test_opt_unreachable.o"
+rm -f ir_unreach.o util_unreach.o label_unreach.o error_unreach.o opt_main.o \
+      opt_constprop_unreach.o opt_cse_unreach.o opt_fold_unreach.o \
+      opt_dce_unreach.o opt_inline_unreach.o opt_unreach.o "$DIR/test_opt_unreachable.o"
 # run unit tests
 "$DIR/unit_tests"
 "$DIR/cli_tests"
 "$DIR/parser_alloc_tests"
 "$DIR/ir_core_tests"
+"$DIR/opt_unreachable_tests"
 # remaining unit test binaries
 "$DIR/cond_expr_tests"
 "$DIR/eval_sizeof_tests"
