@@ -28,7 +28,7 @@ static void test_param_alloc_fail(void)
     token_t *toks = lexer_tokenize(src, &count);
     parser_t p; parser_init(&p, toks, count);
     fail_push = 1;
-    func_t *fn = parser_parse_func(&p, 0);
+    func_t *fn = parser_parse_func(&p, NULL, 0);
     ASSERT(fn == NULL);
     fail_push = 0;
     lexer_free_tokens(toks, count);

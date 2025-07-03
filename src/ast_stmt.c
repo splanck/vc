@@ -332,7 +332,9 @@ stmt_t *ast_make_block(stmt_t **stmts, size_t count,
 
 /* Create a function definition node with parameters and body. */
 func_t *ast_make_func(const char *name, type_kind_t ret_type,
+                      const char *ret_tag,
                       char **param_names, type_kind_t *param_types,
+                      char **param_tags,
                       size_t *param_elem_sizes, int *param_is_restrict,
                       size_t param_count, int is_variadic,
                       stmt_t **body, size_t body_count,
@@ -347,33 +349,42 @@ func_t *ast_make_func(const char *name, type_kind_t ret_type,
         return NULL;
     }
     fn->return_type = ret_type;
+    fn->return_tag = vc_strdup(ret_tag ? ret_tag : "");
     fn->param_count = param_count;
     fn->is_variadic = is_variadic;
     fn->param_names = malloc(param_count * sizeof(*fn->param_names));
     fn->param_types = malloc(param_count * sizeof(*fn->param_types));
+    fn->param_tags = malloc(param_count * sizeof(*fn->param_tags));
     fn->param_elem_sizes = malloc(param_count * sizeof(*fn->param_elem_sizes));
     fn->param_is_restrict = malloc(param_count * sizeof(*fn->param_is_restrict));
-    if ((param_count && (!fn->param_names || !fn->param_types || !fn->param_elem_sizes || !fn->param_is_restrict))) {
+    if ((param_count && (!fn->param_names || !fn->param_types || !fn->param_tags || !fn->param_elem_sizes || !fn->param_is_restrict)) || !fn->return_tag) {
         free(fn->name);
         free(fn->param_names);
         free(fn->param_types);
+        free(fn->param_tags);
         free(fn->param_elem_sizes);
         free(fn->param_is_restrict);
+        free(fn->return_tag);
         free(fn);
         return NULL;
     }
     for (size_t i = 0; i < param_count; i++) {
         fn->param_names[i] = vc_strdup(param_names[i] ? param_names[i] : "");
         fn->param_types[i] = param_types[i];
+        fn->param_tags[i] = vc_strdup(param_tags && param_tags[i] ? param_tags[i] : "");
         fn->param_elem_sizes[i] = param_elem_sizes ? param_elem_sizes[i] : 4;
         fn->param_is_restrict[i] = param_is_restrict ? param_is_restrict[i] : 0;
-        if (!fn->param_names[i]) {
+        if (!fn->param_names[i] || !fn->param_tags[i]) {
             for (size_t j = 0; j < i; j++)
                 free(fn->param_names[j]);
+            for (size_t j = 0; j < i; j++)
+                free(fn->param_tags[j]);
             free(fn->param_names);
             free(fn->param_types);
+            free(fn->param_tags);
             free(fn->param_elem_sizes);
             free(fn->param_is_restrict);
+            free(fn->return_tag);
             free(fn->name);
             free(fn);
             return NULL;
@@ -581,10 +592,14 @@ void ast_free_func(func_t *func)
     free(func->body);
     for (size_t i = 0; i < func->param_count; i++)
         free(func->param_names[i]);
+    for (size_t i = 0; i < func->param_count; i++)
+        free(func->param_tags[i]);
     free(func->param_names);
     free(func->param_types);
+    free(func->param_tags);
     free(func->param_elem_sizes);
     free(func->param_is_restrict);
+    free(func->return_tag);
     free(func->name);
     free(func);
 }
