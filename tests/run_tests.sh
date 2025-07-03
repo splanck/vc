@@ -136,6 +136,15 @@ if ! diff -u "$DIR/fixtures/macro_cli.s" "${macro_out}"; then
 fi
 rm -f "${macro_out}"
 
+# verify command-line macro undefinition
+macro_u_out=$(mktemp)
+"$BINARY" -DFLAG -UFLAG -o "${macro_u_out}" "$DIR/fixtures/macro_cli_undef.c"
+if ! diff -u "$DIR/fixtures/macro_cli_undef.s" "${macro_u_out}"; then
+    echo "Test undef_option failed"
+    fail=1
+fi
+rm -f "${macro_u_out}"
+
 # negative test for parse error message
 err=$(mktemp)
 out=$(mktemp)

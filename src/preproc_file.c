@@ -1027,7 +1027,7 @@ static void cleanup_preproc_vectors(vector_t *macros, vector_t *conds,
  * invokes the file processor and returns the resulting text.
  */
 char *preproc_run(const char *path, const vector_t *include_dirs,
-                  const vector_t *defines)
+                  const vector_t *defines, const vector_t *undefines)
 {
     vector_t search_dirs, macros, conds, stack;
     strbuf_t out;
@@ -1055,6 +1055,13 @@ char *preproc_run(const char *path, const vector_t *include_dirs,
                 return NULL;
             }
             free(name);
+        }
+    }
+
+    if (undefines) {
+        for (size_t i = 0; i < undefines->count; i++) {
+            const char *name = ((const char **)undefines->data)[i];
+            remove_macro(&macros, name);
         }
     }
 
