@@ -598,6 +598,11 @@ static int load_file_lines(const char *path, char ***out_lines,
     if (slash) {
         size_t len = (size_t)(slash - path) + 1;
         dir = vc_strndup(path, len);
+        if (!dir) {
+            free(lines);
+            free(text);
+            return 0;
+        }
     }
 
     *out_lines = lines;
