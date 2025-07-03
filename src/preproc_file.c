@@ -52,6 +52,9 @@ typedef struct {
     int taken;
 } cond_state_t;
 
+/* Files processed after encountering '#pragma once' */
+static vector_t pragma_once_files;
+
 /* Return 1 if all conditional states on the stack are active */
 static int stack_active(vector_t *conds)
 {
@@ -110,6 +113,48 @@ static void include_stack_pop(vector_t *stack)
         free(((char **)stack->data)[stack->count - 1]);
         stack->count--;
     }
+}
+
+/* Return non-zero when the pragma_once list contains PATH */
+static int pragma_once_contains(const char *path)
+{
+    char *canon = realpath(path, NULL);
+    if (!canon)
+        canon = vc_strdup(path);
+    if (!canon)
+        return 0;
+    for (size_t i = 0; i < pragma_once_files.count; i++) {
+        const char *p = ((const char **)pragma_once_files.data)[i];
+        if (strcmp(p, canon) == 0) {
+            free(canon);
+            return 1;
+        }
+    }
+    free(canon);
+    return 0;
+}
+
+/* Canonicalize PATH and store it in the pragma_once list */
+static int pragma_once_add(const char *path)
+{
+    char *canon = realpath(path, NULL);
+    if (!canon)
+        canon = vc_strdup(path);
+    if (!canon)
+        return 0;
+    for (size_t i = 0; i < pragma_once_files.count; i++) {
+        const char *p = ((const char **)pragma_once_files.data)[i];
+        if (strcmp(p, canon) == 0) {
+            free(canon);
+            return 1;
+        }
+    }
+    if (!vector_push(&pragma_once_files, &canon)) {
+        free(canon);
+        fprintf(stderr, "Out of memory\n");
+        return 0;
+    }
+    return 1;
 }
 
 /* forward declaration for recursive include handling */
@@ -227,7 +272,7 @@ static int handle_include(char *line, const char *dir, vector_t *macros,
             if (!chosen) {
                 fprintf(stderr, "%s: No such file or directory\n", fname);
                 ok = 0;
-            } else {
+            } else if (!pragma_once_contains(chosen)) {
                 if (include_stack_contains(stack, chosen)) {
                     fprintf(stderr, "Include cycle detected: %s\n", chosen);
                     ok = 0;
@@ -790,7 +835,19 @@ static int handle_pragma_directive(char *line, const char *dir,
                                    const vector_t *incdirs,
                                    vector_t *stack)
 {
-    (void)dir; (void)macros; (void)incdirs; (void)stack;
+    (void)dir; (void)macros; (void)incdirs;
+    char *p = line + 7; /* skip '#pragma' */
+    p = skip_ws(p);
+    if (strncmp(p, "once", 4) == 0) {
+        p += 4;
+        p = skip_ws(p);
+        if (*p == '\0' && stack->count) {
+            const char *cur = ((const char **)stack->data)[stack->count - 1];
+            if (!pragma_once_add(cur))
+                return 0;
+        }
+    }
+    (void)stack;
     return handle_pragma(line, conds, out);
 }
 
@@ -1003,6 +1060,7 @@ static void init_preproc_vectors(vector_t *macros, vector_t *conds,
     vector_init(macros, sizeof(macro_t));
     vector_init(conds, sizeof(cond_state_t));
     vector_init(stack, sizeof(char *));
+    vector_init(&pragma_once_files, sizeof(char *));
     strbuf_init(out);
 }
 
@@ -1019,6 +1077,9 @@ static void cleanup_preproc_vectors(vector_t *macros, vector_t *conds,
     for (size_t i = 0; i < search_dirs->count; i++)
         free(((char **)search_dirs->data)[i]);
     vector_free(search_dirs);
+    for (size_t i = 0; i < pragma_once_files.count; i++)
+        free(((char **)pragma_once_files.data)[i]);
+    vector_free(&pragma_once_files);
     strbuf_free(out);
 }
 
