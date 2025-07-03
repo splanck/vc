@@ -41,6 +41,7 @@ int symtable_add_global(symtable_t *table, const char *name, const char *ir_name
  */
 int symtable_add_func(symtable_t *table, const char *name, type_kind_t ret_type,
                       size_t ret_struct_size,
+                      size_t *param_struct_sizes,
                       type_kind_t *param_types, size_t param_count,
                       int is_variadic, int is_prototype, int is_inline)
 {
@@ -55,14 +56,19 @@ int symtable_add_func(symtable_t *table, const char *name, type_kind_t ret_type,
     sym->is_variadic = is_variadic;
     if (param_count) {
         sym->param_types = malloc(param_count * sizeof(*sym->param_types));
-        if (!sym->param_types) {
+        sym->param_struct_sizes = malloc(param_count * sizeof(*sym->param_struct_sizes));
+        if (!sym->param_types || !sym->param_struct_sizes) {
             free(sym->name);
             free(sym->ir_name);
+            free(sym->param_types);
+            free(sym->param_struct_sizes);
             free(sym);
             return 0;
         }
-        for (size_t i = 0; i < param_count; i++)
+        for (size_t i = 0; i < param_count; i++) {
             sym->param_types[i] = param_types[i];
+            sym->param_struct_sizes[i] = param_struct_sizes ? param_struct_sizes[i] : 0;
+        }
     }
     sym->next = table->head;
     table->head = sym;
