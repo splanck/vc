@@ -216,21 +216,42 @@ static int handle_struct_init(stmt_t *stmt, symbol_t *sym, symtable_t *vars, ir_
  * union members are assigned offsets and the resulting element size is
  * stored back into the declaration.
  */
-static void compute_var_layout(stmt_t *stmt)
+static int compute_var_layout(stmt_t *stmt, symtable_t *vars)
 {
     if (stmt->var_decl.type == TYPE_UNION) {
-        size_t max = layout_union_members(stmt->var_decl.members,
-                                          stmt->var_decl.member_count);
-        stmt->var_decl.elem_size = max;
+        if (stmt->var_decl.member_count) {
+            size_t max = layout_union_members(stmt->var_decl.members,
+                                              stmt->var_decl.member_count);
+            stmt->var_decl.elem_size = max;
+        } else if (stmt->var_decl.tag) {
+            symbol_t *utype = symtable_lookup_union(vars, stmt->var_decl.tag);
+            if (!utype) {
+                error_set(stmt->line, stmt->column, error_current_file,
+                          error_current_function);
+                return 0;
+            }
+            stmt->var_decl.elem_size = utype->total_size;
+        }
     }
 
     if (stmt->var_decl.type == TYPE_STRUCT) {
-        size_t total = layout_struct_members(
-            (struct_member_t *)stmt->var_decl.members,
-            stmt->var_decl.member_count);
-        if (stmt->var_decl.member_count || stmt->var_decl.tag)
+        if (stmt->var_decl.member_count) {
+            size_t total = layout_struct_members(
+                (struct_member_t *)stmt->var_decl.members,
+                stmt->var_decl.member_count);
             stmt->var_decl.elem_size = total;
+        } else if (stmt->var_decl.tag) {
+            symbol_t *stype = symtable_lookup_struct(vars, stmt->var_decl.tag);
+            if (!stype) {
+                error_set(stmt->line, stmt->column, error_current_file,
+                          error_current_function);
+                return 0;
+            }
+            stmt->var_decl.elem_size = stype->struct_total_size;
+        }
     }
+
+    return 1;
 }
 
 /*
@@ -278,7 +299,8 @@ static symbol_t *register_var_symbol(stmt_t *stmt, symtable_t *vars)
         ir_name = ir_name_buf;
     }
 
-    compute_var_layout(stmt);
+    if (!compute_var_layout(stmt, vars))
+        return NULL;
     if (stmt->var_decl.is_const && !stmt->var_decl.init &&
         !stmt->var_decl.init_list) {
         error_set(stmt->line, stmt->column, error_current_file, error_current_function);

@@ -173,7 +173,7 @@ int symtable_add_union_global(symtable_t *table, const char *tag,
  * Look up a union type definition by tag by scanning both lists.
  * Returns NULL if the tag is not defined.
  */
-static symbol_t *symtable_lookup_union(symtable_t *table, const char *tag)
+symbol_t *symtable_lookup_union(symtable_t *table, const char *tag)
 {
     for (symbol_t *sym = table->head; sym; sym = sym->next) {
         if (sym->type == TYPE_UNION && sym->member_count > 0 &&
