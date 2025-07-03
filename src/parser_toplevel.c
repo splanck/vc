@@ -159,8 +159,9 @@ static int parse_func_prototype(parser_t *p, symtable_t *funcs, const char *name
     size_t start = p->pos; /* at '(' */
     p->pos++; /* consume '(' */
 
-    vector_t param_types_v;
+    vector_t param_types_v, param_sizes_v;
     vector_init(&param_types_v, sizeof(type_kind_t));
+    vector_init(&param_sizes_v, sizeof(size_t));
     int is_variadic = 0;
 
     if (!match(p, TOK_RPAREN)) {
@@ -172,9 +173,11 @@ static int parse_func_prototype(parser_t *p, symtable_t *funcs, const char *name
             type_kind_t pt;
             if (!parse_basic_type(p, &pt)) {
                 vector_free(&param_types_v);
+                vector_free(&param_sizes_v);
                 p->pos = start;
                 return 0;
             }
+            size_t ps = (pt == TYPE_STRUCT || pt == TYPE_UNION) ? 0 : basic_type_size(pt);
             if (match(p, TOK_STAR)) {
                 pt = TYPE_PTR;
                 match(p, TOK_KW_RESTRICT);
@@ -182,14 +185,17 @@ static int parse_func_prototype(parser_t *p, symtable_t *funcs, const char *name
             token_t *tmp = peek(p);
             if (tmp && tmp->type == TOK_IDENT)
                 p->pos++; /* optional name */
-            if (!vector_push(&param_types_v, &pt)) {
+            if (!vector_push(&param_types_v, &pt) ||
+                !vector_push(&param_sizes_v, &ps)) {
                 vector_free(&param_types_v);
+                vector_free(&param_sizes_v);
                 p->pos = start;
                 return 0;
             }
         } while (match(p, TOK_COMMA));
         if (!match(p, TOK_RPAREN)) {
             vector_free(&param_types_v);
+            vector_free(&param_sizes_v);
             p->pos = start;
             return 0;
         }
@@ -200,13 +206,16 @@ static int parse_func_prototype(parser_t *p, symtable_t *funcs, const char *name
         p->pos++; /* ';' */
         size_t rsz = (ret_type == TYPE_STRUCT || ret_type == TYPE_UNION) ? 4 : 0;
         symtable_add_func(funcs, name, ret_type, rsz,
+                         (size_t *)param_sizes_v.data,
                          (type_kind_t *)param_types_v.data,
                          param_types_v.count, is_variadic, 1,
                          is_inline);
         vector_free(&param_types_v);
+        vector_free(&param_sizes_v);
         return 1;
     } else if (after && after->type == TOK_LBRACE) {
         vector_free(&param_types_v);
+        vector_free(&param_sizes_v);
         p->pos = spec_pos;
         if (out_func)
             *out_func = parser_parse_func(p, is_inline);
