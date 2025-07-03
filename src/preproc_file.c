@@ -527,12 +527,15 @@ static int handle_conditional(char *line, vector_t *macros, vector_t *conds)
  * Append a #pragma directive to the output when the current
  * conditional stack is active.  Pragmas are otherwise ignored.
  */
-static void handle_pragma(char *line, vector_t *conds, strbuf_t *out)
+static int handle_pragma(char *line, vector_t *conds, strbuf_t *out)
 {
     if (stack_active(conds)) {
-        strbuf_append(out, line);
-        strbuf_append(out, "\n");
+        if (strbuf_append(out, line) != 0)
+            return 0;
+        if (strbuf_append(out, "\n") != 0)
+            return 0;
     }
+    return 1;
 }
 
 /* Small helpers used by process_file */
@@ -775,8 +778,7 @@ static int handle_pragma_directive(char *line, const char *dir,
                                    vector_t *stack)
 {
     (void)dir; (void)macros; (void)incdirs; (void)stack;
-    handle_pragma(line, conds, out);
-    return 1;
+    return handle_pragma(line, conds, out);
 }
 
 /* Update conditional state based on #if/#else/#endif directives. */
