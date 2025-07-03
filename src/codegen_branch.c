@@ -78,25 +78,28 @@ static const char *loc_str(char buf[32], regalloc_t *ra, int id, int x64,
     return buf;
 }
 
-/* Emit a return instruction (IR_RETURN). */
+/* Emit a return instruction (IR_RETURN or IR_RETURN_AGG). */
 static void emit_return(strbuf_t *sb, ir_instr_t *ins,
                         regalloc_t *ra, int x64,
                         const char *sfx, const char *ax,
                         asm_syntax_t syntax)
 {
     char buf[32];
-    if (syntax == ASM_INTEL)
-        strbuf_appendf(sb, "    mov%s %s, %s\n", sfx, ax,
-                       loc_str(buf, ra, ins->src1, x64, syntax));
-    else
-        strbuf_appendf(sb, "    mov%s %s, %s\n", sfx,
-                       loc_str(buf, ra, ins->src1, x64, syntax), ax);
-    strbuf_append(sb, "    ret\n");
-}
-
-/* Emit a return instruction for aggregate values (IR_RETURN_AGG). */
-static void emit_return_agg(strbuf_t *sb)
-{
+    if (ins->op == IR_RETURN) {
+        if (syntax == ASM_INTEL)
+            strbuf_appendf(sb, "    mov%s %s, %s\n", sfx, ax,
+                           loc_str(buf, ra, ins->src1, x64, syntax));
+        else
+            strbuf_appendf(sb, "    mov%s %s, %s\n", sfx,
+                           loc_str(buf, ra, ins->src1, x64, syntax), ax);
+    } else { /* IR_RETURN_AGG */
+        if (syntax == ASM_INTEL)
+            strbuf_appendf(sb, "    mov%s [%s], %s\n", sfx, ax,
+                           loc_str(buf, ra, ins->src1, x64, syntax));
+        else
+            strbuf_appendf(sb, "    mov%s %s, (%s)\n", sfx,
+                           loc_str(buf, ra, ins->src1, x64, syntax), ax);
+    }
     strbuf_append(sb, "    ret\n");
 }
 
@@ -116,12 +119,14 @@ static void emit_call(strbuf_t *sb, ir_instr_t *ins,
             strbuf_appendf(sb, "    add%s $%d, %s\n", sfx,
                            ins->imm * (x64 ? 8 : 4), sp);
     }
-    if (syntax == ASM_INTEL)
-        strbuf_appendf(sb, "    mov%s %s, %s\n", sfx,
-                       loc_str(buf, ra, ins->dest, x64, syntax), ax);
-    else
-        strbuf_appendf(sb, "    mov%s %s, %s\n", sfx, ax,
-                       loc_str(buf, ra, ins->dest, x64, syntax));
+    if (ins->dest > 0) {
+        if (syntax == ASM_INTEL)
+            strbuf_appendf(sb, "    mov%s %s, %s\n", sfx,
+                           loc_str(buf, ra, ins->dest, x64, syntax), ax);
+        else
+            strbuf_appendf(sb, "    mov%s %s, %s\n", sfx, ax,
+                           loc_str(buf, ra, ins->dest, x64, syntax));
+    }
 }
 
 /* Emit an indirect call instruction (IR_CALL_PTR). */
@@ -143,12 +148,14 @@ static void emit_call_ptr(strbuf_t *sb, ir_instr_t *ins,
             strbuf_appendf(sb, "    add%s $%d, %s\n", sfx,
                            ins->imm * (x64 ? 8 : 4), sp);
     }
-    if (syntax == ASM_INTEL)
-        strbuf_appendf(sb, "    mov%s %s, %s\n", sfx,
-                       loc_str(buf, ra, ins->dest, x64, syntax), ax);
-    else
-        strbuf_appendf(sb, "    mov%s %s, %s\n", sfx, ax,
-                       loc_str(buf, ra, ins->dest, x64, syntax));
+    if (ins->dest > 0) {
+        if (syntax == ASM_INTEL)
+            strbuf_appendf(sb, "    mov%s %s, %s\n", sfx,
+                           loc_str(buf, ra, ins->dest, x64, syntax), ax);
+        else
+            strbuf_appendf(sb, "    mov%s %s, %s\n", sfx, ax,
+                           loc_str(buf, ra, ins->dest, x64, syntax));
+    }
 }
 
 /* Emit function prologue and epilogue. */
@@ -247,10 +254,8 @@ void emit_branch_instr(strbuf_t *sb, ir_instr_t *ins,
 
     switch (ins->op) {
     case IR_RETURN:
-        emit_return(sb, ins, ra, x64, sfx, ax, syntax);
-        break;
     case IR_RETURN_AGG:
-        emit_return_agg(sb);
+        emit_return(sb, ins, ra, x64, sfx, ax, syntax);
         break;
     case IR_CALL:
         emit_call(sb, ins, ra, x64, sfx, ax, sp, syntax);
