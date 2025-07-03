@@ -12,6 +12,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdint.h>
 #include <errno.h>
 #include <spawn.h>
 #include <sys/wait.h>
@@ -25,30 +26,38 @@ extern char **environ;
 /* Build a printable string representation of an argv array. */
 char *command_to_string(char *const argv[])
 {
-    size_t cap = 256;
-    char *cmd = vc_alloc_or_exit(cap);
     size_t len = 0;
-    cmd[0] = '\0';
 
-    for (size_t i = 0; argv[i] && len < cap - 1; i++) {
-        if (i > 0 && len < cap - 1)
-            cmd[len++] = ' ';
-        if (len >= cap - 1)
-            break;
-        int n = snprintf(cmd + len, cap - len, "%s", argv[i]);
-        if (n < 0)
-            break;
-        if ((size_t)n >= cap - len) {
-            len = cap - 1;
+    /* First determine required length */
+    for (size_t i = 0; argv[i]; i++) {
+        size_t alen = strlen(argv[i]);
+        if (len > SIZE_MAX - alen - 1) {
+            fprintf(stderr, "vc: command string too large\n");
+            exit(1);
+        }
+        len += alen;
+        if (argv[i + 1]) {
+            if (len == SIZE_MAX) {
+                fprintf(stderr, "vc: command string too large\n");
+                exit(1);
+            }
+            len += 1; /* space */
+        }
+    }
+
+    char *cmd = vc_alloc_or_exit(len + 1);
+    size_t pos = 0;
+    for (size_t i = 0; argv[i]; i++) {
+        if (i > 0)
+            cmd[pos++] = ' ';
+        int n = snprintf(cmd + pos, len + 1 - pos, "%s", argv[i]);
+        if (n < 0) {
+            cmd[pos] = '\0';
             break;
         }
-        len += (size_t)n;
+        pos += (size_t)n;
     }
     cmd[len] = '\0';
-    if (len == cap - 1 && cap > 4) {
-        memcpy(cmd + cap - 4, "...", 3);
-        cmd[cap - 1] = '\0';
-    }
     return cmd;
 }
 
