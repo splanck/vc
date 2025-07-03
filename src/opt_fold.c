@@ -207,6 +207,7 @@ void fold_constants(ir_builder_t *ir)
             update_const(ins, 0, 0, max_id, is_const, values);
             break;
         case IR_RETURN:
+        case IR_RETURN_AGG:
             /* nothing to do */
             break;
         case IR_GLOB_STRING:

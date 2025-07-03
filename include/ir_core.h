@@ -61,6 +61,7 @@ typedef enum {
     IR_ALLOCA,
     IR_ARG,
     IR_RETURN,
+    IR_RETURN_AGG,
     IR_CALL,
     IR_CALL_PTR,
     IR_FUNC_BEGIN,
@@ -184,6 +185,9 @@ ir_value_t ir_build_alloca(ir_builder_t *b, ir_value_t size);
 
 /* Emit IR_RETURN of `val`. */
 void ir_build_return(ir_builder_t *b, ir_value_t val);
+
+/* Emit IR_RETURN_AGG writing the aggregate pointed to by `ptr`. */
+void ir_build_return_agg(ir_builder_t *b, ir_value_t ptr);
 
 /* Push `val` as an argument via IR_ARG. The argument's type is stored in imm. */
 void ir_build_arg(ir_builder_t *b, ir_value_t val, type_kind_t type);

@@ -595,7 +595,7 @@ static int handle_return_stmt(stmt_t *stmt, symtable_t *vars,
         }
         ir_value_t ret_ptr = ir_build_load_param(ir, 0);
         ir_build_store_ptr(ir, ret_ptr, val);
-        ir_build_return(ir, ir_build_const(ir, 0));
+        ir_build_return_agg(ir, ret_ptr);
         return 1;
     }
 
