@@ -429,6 +429,23 @@ if ! grep -q "call add" "${inline_out}"; then
 fi
 rm -f "${inline_out}"
 
+# verify additional inline fixtures
+multi_out=$(mktemp)
+"$BINARY" -o "${multi_out}" "$DIR/fixtures/inline_multi.c"
+if ! diff -u "$DIR/fixtures/inline_multi.s" "${multi_out}"; then
+    echo "Test inline_multi failed"
+    fail=1
+fi
+rm -f "${multi_out}"
+
+return_out=$(mktemp)
+"$BINARY" -o "${return_out}" "$DIR/fixtures/inline_return.c"
+if ! diff -u "$DIR/fixtures/inline_return.s" "${return_out}"; then
+    echo "Test inline_return failed"
+    fail=1
+fi
+rm -f "${return_out}"
+
 # test --debug option
 debug_out=$(mktemp)
 "$BINARY" --debug -S "$DIR/fixtures/simple_add.c" > "${debug_out}"
