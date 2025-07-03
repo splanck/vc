@@ -236,21 +236,42 @@ static int check_union_decl_global(stmt_t *decl, symtable_t *globals)
  * union members are assigned offsets and the resulting element size is stored
  * back into the declaration for later use.
  */
-static void compute_global_layout(stmt_t *decl)
+static int compute_global_layout(stmt_t *decl, symtable_t *globals)
 {
     if (decl->var_decl.type == TYPE_UNION) {
-        size_t max = layout_union_members(decl->var_decl.members,
-                                          decl->var_decl.member_count);
-        decl->var_decl.elem_size = max;
+        if (decl->var_decl.member_count) {
+            size_t max = layout_union_members(decl->var_decl.members,
+                                              decl->var_decl.member_count);
+            decl->var_decl.elem_size = max;
+        } else if (decl->var_decl.tag) {
+            symbol_t *utype = symtable_lookup_union(globals, decl->var_decl.tag);
+            if (!utype) {
+                error_set(decl->line, decl->column, error_current_file,
+                          error_current_function);
+                return 0;
+            }
+            decl->var_decl.elem_size = utype->total_size;
+        }
     }
 
     if (decl->var_decl.type == TYPE_STRUCT) {
-        size_t total =
-            layout_struct_members((struct_member_t *)decl->var_decl.members,
-                                  decl->var_decl.member_count);
-        if (decl->var_decl.member_count || decl->var_decl.tag)
+        if (decl->var_decl.member_count) {
+            size_t total =
+                layout_struct_members((struct_member_t *)decl->var_decl.members,
+                                      decl->var_decl.member_count);
             decl->var_decl.elem_size = total;
+        } else if (decl->var_decl.tag) {
+            symbol_t *stype = symtable_lookup_struct(globals, decl->var_decl.tag);
+            if (!stype) {
+                error_set(decl->line, decl->column, error_current_file,
+                          error_current_function);
+                return 0;
+            }
+            decl->var_decl.elem_size = stype->struct_total_size;
+        }
     }
+
+    return 1;
 }
 
 /*
@@ -335,7 +356,8 @@ static int copy_aggregate_metadata(stmt_t *decl, symbol_t *sym)
  */
 static symbol_t *register_global_symbol(stmt_t *decl, symtable_t *globals)
 {
-    compute_global_layout(decl);
+    if (!compute_global_layout(decl, globals))
+        return NULL;
 
     if (!symtable_add_global(globals, decl->var_decl.name,
                              decl->var_decl.name, decl->var_decl.type,

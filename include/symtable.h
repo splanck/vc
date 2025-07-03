@@ -107,6 +107,7 @@ int symtable_add_struct(symtable_t *table, const char *tag,
 int symtable_add_struct_global(symtable_t *table, const char *tag,
                                struct_member_t *members, size_t member_count);
 symbol_t *symtable_lookup_struct(symtable_t *table, const char *tag);
+symbol_t *symtable_lookup_union(symtable_t *table, const char *tag);
 
 /*
  * Look up a symbol by name.
