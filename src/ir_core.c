@@ -114,6 +114,38 @@ static void remove_instr(ir_builder_t *b, ir_instr_t *ins)
     free(cur);
 }
 
+/* Allocate a blank instruction after `pos` and insert it into the list */
+ir_instr_t *ir_insert_after(ir_builder_t *b, ir_instr_t *pos)
+{
+    if (!b)
+        return NULL;
+
+    ir_instr_t *ins = calloc(1, sizeof(*ins));
+    if (!ins)
+        return NULL;
+    ins->dest = -1;
+    ins->name = NULL;
+    ins->data = NULL;
+    ins->is_volatile = 0;
+    ins->file = b->cur_file;
+    ins->line = b->cur_line;
+    ins->column = b->cur_column;
+
+    if (!pos) {
+        ins->next = b->head;
+        b->head = ins;
+        if (!b->tail)
+            b->tail = ins;
+    } else {
+        ins->next = pos->next;
+        pos->next = ins;
+        if (b->tail == pos)
+            b->tail = ins;
+    }
+
+    return ins;
+}
+
 /*
  * Emit IR_CONST. dest gets a fresh id and imm stores the constant
  * value.
