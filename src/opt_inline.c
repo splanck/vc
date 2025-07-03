@@ -96,14 +96,14 @@ static int is_inline_def(const char *file, const char *name)
             continue;
 
         /* tokenize the prefix before the function name */
-        char prefix[512];
         size_t pre_len = (size_t)(pos - s);
-        if (pre_len >= sizeof(prefix)) {
+        char *prefix = malloc(pre_len + 1);
+        if (!prefix) {
             error_set(0, 0, file, name);
-            error_print("Function definition prefix too long");
+            error_print("out of memory");
             free(line);
             fclose(f);
-            errno = ENAMETOOLONG;
+            errno = ENOMEM;
             return -1;
         }
         memcpy(prefix, s, pre_len);
@@ -122,6 +122,7 @@ static int is_inline_def(const char *file, const char *name)
                 break;
             }
         }
+        free(prefix);
         break; /* processed definition line */
     }
 
