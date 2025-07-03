@@ -580,11 +580,25 @@ static int handle_return_stmt(stmt_t *stmt, symtable_t *vars,
         ir_build_return(ir, zero);
         return 1;
     }
+
     ir_value_t val;
-    if (check_expr(stmt->ret.expr, vars, funcs, ir, &val) == TYPE_UNKNOWN) {
+    type_kind_t vt = check_expr(stmt->ret.expr, vars, funcs, ir, &val);
+    if (vt == TYPE_UNKNOWN) {
         error_set(stmt->ret.expr->line, stmt->ret.expr->column, error_current_file, error_current_function);
         return 0;
     }
+
+    if (func_ret_type == TYPE_STRUCT || func_ret_type == TYPE_UNION) {
+        if (vt != func_ret_type) {
+            error_set(stmt->ret.expr->line, stmt->ret.expr->column, error_current_file, error_current_function);
+            return 0;
+        }
+        ir_value_t ret_ptr = ir_build_load_param(ir, 0);
+        ir_build_store_ptr(ir, ret_ptr, val);
+        ir_build_return(ir, ir_build_const(ir, 0));
+        return 1;
+    }
+
     ir_build_return(ir, val);
     return 1;
 }
