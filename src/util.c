@@ -14,6 +14,7 @@
 #include <errno.h>
 #include <limits.h>
 #include "util.h"
+#include "preproc_macros.h"
 
 /*
  * Allocate "size" bytes of memory.  If the allocation fails the process
@@ -141,5 +142,34 @@ int vc_strtoul_unsigned(const char *s, unsigned *out)
         return 0;
     *out = (unsigned)val;
     return 1;
+}
+
+/*
+ * Release all strings stored in a vector and free the vector itself.
+ *
+ * Each element of the vector must be a pointer returned by malloc.
+ */
+void free_string_vector(vector_t *v)
+{
+    if (!v)
+        return;
+    for (size_t i = 0; i < v->count; i++)
+        free(((char **)v->data)[i]);
+    vector_free(v);
+}
+
+/*
+ * Release all macros stored in a vector and free the vector itself.
+ *
+ * Each macro must have been created by add_macro() so that macro_free()
+ * can correctly release the heap allocated strings.
+ */
+void free_macro_vector(vector_t *v)
+{
+    if (!v)
+        return;
+    for (size_t i = 0; i < v->count; i++)
+        macro_free(&((macro_t *)v->data)[i]);
+    vector_free(v);
 }
 

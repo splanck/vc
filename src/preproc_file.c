@@ -709,30 +709,8 @@ static int load_and_register_file(const char *path, vector_t *stack,
     return 1;
 }
 
-/*
- * Free all macros stored in a vector.
- *
- * Each macro must have been created by add_macro() so that macro_free()
- * can correctly release the heap allocated strings.  The vector itself
- * is also freed.
- */
-static void free_macro_vector(vector_t *v)
-{
-    for (size_t i = 0; i < v->count; i++)
-        macro_free(&((macro_t *)v->data)[i]);
-    vector_free(v);
-}
-
 /* Free a vector of parameter names */
 static void free_param_vector(vector_t *v)
-{
-    for (size_t i = 0; i < v->count; i++)
-        free(((char **)v->data)[i]);
-    vector_free(v);
-}
-
-/* Free a vector of strings */
-static void free_string_vector(vector_t *v)
 {
     for (size_t i = 0; i < v->count; i++)
         free(((char **)v->data)[i]);
@@ -1100,9 +1078,7 @@ static void cleanup_preproc_vectors(vector_t *macros, vector_t *conds,
     vector_free(stack);
     vector_free(conds);
     free_macro_vector(macros);
-    for (size_t i = 0; i < search_dirs->count; i++)
-        free(((char **)search_dirs->data)[i]);
-    vector_free(search_dirs);
+    free_string_vector(search_dirs);
     for (size_t i = 0; i < pragma_once_files.count; i++)
         free(((char **)pragma_once_files.data)[i]);
     vector_free(&pragma_once_files);
