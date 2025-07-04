@@ -329,9 +329,11 @@ static int tokenize_param_list(char *list, vector_t *out)
  * strings are freed and vector_free() leaves "out" reusable via
  * vector_init().
  */
-static char *parse_macro_params(char *p, vector_t *out)
+static char *parse_macro_params(char *p, vector_t *out, int *variadic)
 {
     vector_init(out, sizeof(char *));
+    if (variadic)
+        *variadic = 0;
     if (*p == '(') {
         *p++ = '\0';
         char *start = p;
@@ -360,6 +362,15 @@ static char *parse_macro_params(char *p, vector_t *out)
     } else if (*p) {
         *p++ = '\0';
     }
+    if (variadic && out->count) {
+        size_t last = out->count - 1;
+        char *name = ((char **)out->data)[last];
+        if (strcmp(name, "...") == 0) {
+            *variadic = 1;
+            free(name);
+            out->count--;
+        }
+    }
     return p;
 }
 
@@ -376,7 +387,7 @@ static char *parse_macro_params(char *p, vector_t *out)
  * being released and zero being returned.
  */
 static int add_macro(const char *name, const char *value, vector_t *params,
-                     vector_t *macros)
+                     int variadic, vector_t *macros)
 {
     macro_t m;
     m.name = vc_strdup(name);
@@ -395,6 +406,7 @@ static int add_macro(const char *name, const char *value, vector_t *params,
         }
     }
     vector_free(params);
+    m.variadic = variadic;
     m.value = vc_strdup(value);
     if (!vector_push(macros, &m)) {
         for (size_t i = 0; i < m.params.count; i++)
@@ -420,7 +432,8 @@ static int handle_define(char *line, vector_t *macros, vector_t *conds)
     while (*n && !isspace((unsigned char)*n) && *n != '(')
         n++;
     vector_t params;
-    n = parse_macro_params(n, &params);
+    int variadic = 0;
+    n = parse_macro_params(n, &params, &variadic);
     if (!n) {
         vector_free(&params);
         fprintf(stderr, "Missing ')' in macro definition\n");
@@ -430,7 +443,7 @@ static int handle_define(char *line, vector_t *macros, vector_t *conds)
     char *val = *n ? n : "";
     int ok = 1;
     if (stack_active(conds)) {
-        ok = add_macro(name, val, &params, macros);
+        ok = add_macro(name, val, &params, variadic, macros);
     } else {
         for (size_t t = 0; t < params.count; t++)
             free(((char **)params.data)[t]);
@@ -1110,7 +1123,7 @@ char *preproc_run(const char *path, const vector_t *include_dirs,
             }
             vector_t params;
             vector_init(&params, sizeof(char *));
-            if (!add_macro(name, val, &params, &macros)) {
+            if (!add_macro(name, val, &params, 0, &macros)) {
                 free(name);
                 cleanup_preproc_vectors(&macros, &conds, &stack, &search_dirs, &out);
                 return NULL;

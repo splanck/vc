@@ -63,11 +63,11 @@ cc -Iinclude -Wall -Wextra -std=c99 \
 # eval sizeof with small helper modules
 cc -Iinclude -Wall -Wextra -std=c99 \
     -o "$DIR/eval_sizeof_tests" "$DIR/unit/test_eval_sizeof.c" \
-    src/ast_expr.c src/consteval.c src/symtable_core.c src/util.c
+    src/ast_expr.c src/consteval.c src/symtable_core.c src/util.c src/error.c
 # build numeric constant overflow regression test
 cc -Iinclude -Wall -Wextra -std=c99 \
     -o "$DIR/number_overflow" "$DIR/unit/test_number_overflow.c" \
-    src/ast_expr.c src/consteval.c src/symtable_core.c src/util.c
+    src/ast_expr.c src/consteval.c src/symtable_core.c src/util.c src/error.c
 # build constant arithmetic overflow regression test
 cc -Iinclude -Wall -Wextra -std=c99 \
     -o "$DIR/consteval_overflow" "$DIR/unit/test_consteval_overflow.c" \
@@ -103,6 +103,14 @@ cc -Iinclude -Wall -Wextra -std=c99 -Dvector_push=test_vector_push -c "$DIR/unit
 cc -Iinclude -Wall -Wextra -std=c99 -c src/vector.c -o vector_addmacro.o
 cc -o "$DIR/add_macro_fail_tests" "$DIR/test_add_macro_fail.o" vector_addmacro.o
 rm -f "$DIR/test_add_macro_fail.o" vector_addmacro.o
+# build variadic macro tests
+cc -Iinclude -Wall -Wextra -std=c99 -c src/preproc_macros.c -o preproc_variadic.o
+cc -Iinclude -Wall -Wextra -std=c99 -c src/strbuf.c -o strbuf_variadic.o
+cc -Iinclude -Wall -Wextra -std=c99 -c src/vector.c -o vector_variadic.o
+cc -Iinclude -Wall -Wextra -std=c99 -c src/util.c -o util_variadic.o
+cc -Iinclude -Wall -Wextra -std=c99 -c "$DIR/unit/test_variadic_macro.c" -o "$DIR/test_variadic_macro.o"
+cc -o "$DIR/variadic_macro_tests" preproc_variadic.o strbuf_variadic.o vector_variadic.o util_variadic.o "$DIR/test_variadic_macro.o"
+rm -f preproc_variadic.o strbuf_variadic.o vector_variadic.o util_variadic.o "$DIR/test_variadic_macro.o"
 # build create_temp_file path length regression test
 cc -Iinclude -Wall -Wextra -std=c99 -DUNIT_TESTING -ffunction-sections -fdata-sections -c src/compile.c -o compile_temp.o
 cc -Iinclude -Wall -Wextra -std=c99 -c "$DIR/unit/test_temp_file.c" -o "$DIR/test_temp_file.o"
@@ -147,6 +155,7 @@ rm -f ir_unreach.o util_unreach.o label_unreach.o error_unreach.o opt_main.o \
 "$DIR/compile_obj_fail"
 "$DIR/preproc_alloc_tests"
 "$DIR/add_macro_fail_tests"
+"$DIR/variadic_macro_tests"
 "$DIR/invalid_macro_tests"
 # separator for clarity
 echo "======="
