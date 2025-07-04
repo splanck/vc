@@ -462,8 +462,27 @@ static int copy_aggregate_metadata(stmt_t *stmt, symbol_t *sym)
 }
 
 /*
- * Emit IR for a static initializer.  This simply wraps the existing helper
- * used to handle constant expression initializers for scalars and aggregates.
+ * Evaluate the element count of a variable-length array and allocate
+ * the required storage on the stack.  The resulting base pointer and
+ * runtime length are stored in the symbol record.
+ */
+static int handle_vla_size(stmt_t *stmt, symbol_t *sym, symtable_t *vars,
+                           symtable_t *funcs, ir_builder_t *ir)
+{
+    ir_value_t lenv;
+    if (check_expr(stmt->var_decl.size_expr, vars, funcs, ir, &lenv) ==
+        TYPE_UNKNOWN)
+        return 0;
+    ir_value_t eszv = ir_build_const(ir, (int)stmt->var_decl.elem_size);
+    ir_value_t total = ir_build_binop(ir, IR_MUL, lenv, eszv);
+    sym->vla_addr = ir_build_alloca(ir, total);
+    sym->vla_size = lenv;
+    return 1;
+}
+
+/*
+ * Case 1: initialization with a constant expression.  The value can be
+ * emitted directly into the data section and requires no runtime code.
  */
 static int emit_static_init(stmt_t *stmt, symbol_t *sym, symtable_t *vars,
                             ir_builder_t *ir)
@@ -472,8 +491,8 @@ static int emit_static_init(stmt_t *stmt, symbol_t *sym, symtable_t *vars,
 }
 
 /*
- * Emit IR for a dynamic initializer evaluated at run time.  The expression is
- * validated and then stored to the variable.
+ * Case 2: scalar initializer evaluated at runtime for automatic storage.
+ * The initializer expression is validated and stored through generated IR.
  */
 static int emit_dynamic_init(stmt_t *stmt, symbol_t *sym, symtable_t *vars,
                              symtable_t *funcs, ir_builder_t *ir)
@@ -482,8 +501,8 @@ static int emit_dynamic_init(stmt_t *stmt, symbol_t *sym, symtable_t *vars,
 }
 
 /*
- * Emit IR for an initializer list of an aggregate type.  This delegates to the
- * array or struct handlers via the existing aggregate initializer helper.
+ * Case 3: initializer list for an array or struct.  Elements are expanded
+ * and stored sequentially via the aggregate initializer helper.
  */
 static int emit_aggregate_init(stmt_t *stmt, symbol_t *sym,
                                symtable_t *vars, ir_builder_t *ir)
@@ -536,14 +555,8 @@ static int check_var_decl_stmt(stmt_t *stmt, symtable_t *vars,
         return 0;
     if (stmt->var_decl.type == TYPE_ARRAY && stmt->var_decl.array_size == 0 &&
         stmt->var_decl.size_expr) {
-        ir_value_t lenv;
-        if (check_expr(stmt->var_decl.size_expr, vars, funcs, ir, &lenv) ==
-            TYPE_UNKNOWN)
+        if (!handle_vla_size(stmt, sym, vars, funcs, ir))
             return 0;
-        ir_value_t eszv = ir_build_const(ir, (int)stmt->var_decl.elem_size);
-        ir_value_t total = ir_build_binop(ir, IR_MUL, lenv, eszv);
-        sym->vla_addr = ir_build_alloca(ir, total);
-        sym->vla_size = lenv;
     }
     return emit_var_initializer(stmt, sym, vars, funcs, ir);
 }
