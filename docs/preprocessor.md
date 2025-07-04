@@ -36,7 +36,10 @@ Macros are stored in a simple vector declared in `preproc_macros.h`.  Each
 for identifiers or `emit_plain_char` otherwise.  The invocation helper parses
 any argument list and calls `expand_macro_call` so expansion remains recursive.
 `expand_params` continues to rely on helper routines that perform parameter
-lookup, handle the `#` stringize operator and manage `##` token pasting.
+lookup, handle the `#` stringize operator and manage `##` token pasting.  A
+macro may be declared variadic by using `...` as the final parameter.  When such
+a macro is invoked `__VA_ARGS__` within its body is replaced by the remaining
+arguments.
 Macro expansion is recursive so macro bodies may reference other macros. To
 avoid infinite loops a hard limit of 100 nested expansions is enforced.  When
 this limit is hit `expand_line` returns zero and the compiler aborts

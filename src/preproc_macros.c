@@ -107,7 +107,7 @@ static const char *lookup_param(const char *name, size_t len,
  */
 static size_t append_stringized_param(const char *value, size_t i,
                                       const vector_t *params, char **args,
-                                      strbuf_t *sb)
+                                      int variadic, strbuf_t *sb)
 {
     size_t j = i + 1;
     while (value[j] == ' ' || value[j] == '\t')
@@ -115,6 +115,9 @@ static size_t append_stringized_param(const char *value, size_t i,
     size_t len = parse_ident(value + j);
     if (len) {
         const char *rep = lookup_param(value + j, len, params, args);
+        if (!rep && variadic && len == 11 &&
+            strncmp(value + j, "__VA_ARGS__", 11) == 0)
+            rep = args[params->count];
         if (rep) {
             strbuf_appendf(sb, "\"%s\"", rep);
             return j + len;
@@ -132,7 +135,8 @@ static size_t append_stringized_param(const char *value, size_t i,
  */
 static int append_pasted_tokens(const char *value, size_t i, size_t len,
                                 const char *rep, const vector_t *params,
-                                char **args, strbuf_t *sb, size_t *out_i)
+                                char **args, int variadic, strbuf_t *sb,
+                                size_t *out_i)
 {
     size_t k = i + len;
     while (value[k] == ' ' || value[k] == '\t')
@@ -146,6 +150,9 @@ static int append_pasted_tokens(const char *value, size_t i, size_t len,
     if (isalpha((unsigned char)value[k]) || value[k] == '_') {
         size_t l = parse_ident(value + k);
         const char *rep2 = lookup_param(value + k, l, params, args);
+        if (!rep2 && variadic && l == 11 &&
+            strncmp(value + k, "__VA_ARGS__", 11) == 0)
+            rep2 = args[params->count];
         trim_trailing_ws(sb);
         if (rep)
             strbuf_append(sb, rep);
@@ -173,21 +180,25 @@ static int append_pasted_tokens(const char *value, size_t i, size_t len,
  * Handles substitution, stringification (#) and token pasting (##)
  * using the provided argument array.
  */
-static char *expand_params(const char *value, const vector_t *params, char **args)
+static char *expand_params(const char *value, const vector_t *params, char **args,
+                           int variadic)
 {
     strbuf_t sb;
     strbuf_init(&sb);
     for (size_t i = 0; value[i];) {
         if (value[i] == '#' && value[i + 1] != '#') {
-            i = append_stringized_param(value, i, params, args, &sb);
+            i = append_stringized_param(value, i, params, args, variadic, &sb);
             continue;
         }
 
         size_t len = parse_ident(value + i);
         if (len) {
             const char *rep = lookup_param(value + i, len, params, args);
+            if (!rep && variadic && len == 11 &&
+                strncmp(value + i, "__VA_ARGS__", 11) == 0)
+                rep = args[params->count];
             size_t next;
-            if (append_pasted_tokens(value, i, len, rep, params, args, &sb, &next)) {
+            if (append_pasted_tokens(value, i, len, rep, params, args, variadic, &sb, &next)) {
                 i = next;
                 continue;
             }
@@ -293,8 +304,8 @@ static int expand_macro_call(macro_t *m, char **args, vector_t *macros,
     strbuf_t tmp;
     strbuf_init(&tmp);
     int ok;
-    if (m->params.count) {
-        char *body = expand_params(m->value, &m->params, args);
+    if (m->params.count || m->variadic) {
+        char *body = expand_params(m->value, &m->params, args, m->variadic);
         ok = expand_line(body, macros, &tmp, builtin_column, depth);
         free(body);
     } else {
@@ -383,20 +394,55 @@ static int parse_macro_invocation(const char *line, size_t *pos,
         macro_t *m = &((macro_t *)macros->data)[k];
         if (strlen(m->name) == len && strncmp(m->name, line + i, len) == 0) {
             preproc_set_location(NULL, builtin_line, column);
-            if (m->params.count) {
+            if (m->params.count || m->variadic) {
                 size_t pos2 = j;
                 vector_t args;
                 if (parse_macro_args(line, &pos2, &args) &&
-                    args.count == m->params.count) {
-                    if (!expand_macro_call(m, (char **)args.data, macros, out, depth + 1)) {
+                    ((m->variadic && args.count >= m->params.count) ||
+                     (!m->variadic && args.count == m->params.count))) {
+                    char **ap = (char **)args.data;
+                    char *va = NULL;
+                    if (m->variadic) {
+                        size_t fixed = m->params.count;
+                        strbuf_t sb;
+                        strbuf_init(&sb);
+                        for (size_t a = fixed; a < args.count; a++) {
+                            if (a > fixed)
+                                strbuf_append(&sb, ",");
+                            strbuf_append(&sb, ((char **)args.data)[a]);
+                        }
+                        va = vc_strdup(sb.data ? sb.data : "");
+                        strbuf_free(&sb);
+                        ap = malloc((fixed + 1) * sizeof(char *));
+                        if (!ap) {
+                            fprintf(stderr, "Out of memory\n");
+                            for (size_t t = 0; t < args.count; t++)
+                                free(((char **)args.data)[t]);
+                            vector_free(&args);
+                            free(va);
+                            return -1;
+                        }
+                        for (size_t a = 0; a < fixed; a++)
+                            ap[a] = ((char **)args.data)[a];
+                        ap[fixed] = va;
+                    }
+                    if (!expand_macro_call(m, ap, macros, out, depth + 1)) {
                         for (size_t t = 0; t < args.count; t++)
                             free(((char **)args.data)[t]);
                         vector_free(&args);
+                        if (m->variadic) {
+                            free(va);
+                            free(ap);
+                        }
                         return -1;
                     }
                     for (size_t t = 0; t < args.count; t++)
                         free(((char **)args.data)[t]);
                     vector_free(&args);
+                    if (m->variadic) {
+                        free(va);
+                        free(ap);
+                    }
                     *pos = pos2;
                     return 1;
                 }

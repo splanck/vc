@@ -28,6 +28,7 @@
 typedef struct {
     char *name;       /* malloc'd name string */
     vector_t params;  /* vector of malloc'd char* parameter names */
+    int variadic;     /* non-zero when macro accepts variable arguments */
     char *value;      /* malloc'd macro body */
 } macro_t;
 
