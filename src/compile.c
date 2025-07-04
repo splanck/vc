@@ -133,6 +133,16 @@ static int run_link_command(const vector_t *objs, const vector_t *lib_dirs,
                             const vector_t *libs, const char *output,
                             int use_x86_64);
 
+/* Allocate and populate argv array for the linker. */
+static char **build_linker_args(const vector_t *objs,
+                                const vector_t *lib_dirs,
+                                const vector_t *libs,
+                                const char *output,
+                                int use_x86_64);
+
+/* Free argv array returned by build_linker_args. */
+static void free_linker_args(char **argv);
+
 /* Spawn a command and wait for completion */
 
 static const char nasm_macros[] =
@@ -783,11 +793,10 @@ static int compile_source_files(const cli_options_t *cli, vector_t *objs)
     return ok;
 }
 
-
-/* Construct and run the final cc link command. */
-static int run_link_command(const vector_t *objs, const vector_t *lib_dirs,
-                            const vector_t *libs, const char *output,
-                            int use_x86_64)
+/* Allocate and populate the argument vector for the linker command. */
+static char **
+build_linker_args(const vector_t *objs, const vector_t *lib_dirs,
+                  const vector_t *libs, const char *output, int use_x86_64)
 {
     const char *arch_flag = use_x86_64 ? "-m64" : "-m32";
     size_t argc = objs->count + lib_dirs->count * 2 + libs->count * 2 + 5;
@@ -810,9 +819,25 @@ static int run_link_command(const vector_t *objs, const vector_t *lib_dirs,
     argv[idx++] = "-o";
     argv[idx++] = (char *)output;
     argv[idx] = NULL;
+    return argv;
+}
+
+/* Free argument vector returned by build_linker_args. */
+static void free_linker_args(char **argv)
+{
+    free(argv);
+}
+
+/* Construct and run the final cc link command. */
+static int run_link_command(const vector_t *objs, const vector_t *lib_dirs,
+                            const vector_t *libs, const char *output,
+                            int use_x86_64)
+{
+    char **argv = build_linker_args(objs, lib_dirs, libs, output,
+                                    use_x86_64);
 
     int rc = command_run(argv);
-    free(argv);
+    free_linker_args(argv);
     if (rc != 1) {
         if (rc == 0)
             fprintf(stderr, "cc failed\n");
