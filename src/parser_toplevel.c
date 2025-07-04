@@ -261,6 +261,72 @@ static int parse_func_prototype(parser_t *p, symtable_t *funcs, const char *name
     return 0;
 }
 
+/* Parse a fundamental or struct/union type specifier optionally followed by
+ * a '*' pointer suffix.  spec_pos should mark the start position so the
+ * parser can rewind on failure.  On success the parsed type information is
+ * returned through the out parameters and the parser is left after the
+ * optional pointer token. */
+static int parse_type_specifier(parser_t *p, size_t spec_pos, type_kind_t *type,
+                                size_t *elem_size, int *is_restrict,
+                                char **tag_name)
+{
+    size_t save = spec_pos;
+    char *tag = NULL;
+    type_kind_t t;
+
+    if (match(p, TOK_KW_STRUCT) || match(p, TOK_KW_UNION)) {
+        token_type_t kw = p->tokens[p->pos - 1].type;
+        token_t *id = peek(p);
+        if (!id || id->type != TOK_IDENT) {
+            p->pos = save;
+            return 0;
+        }
+        p->pos++;
+        tag = vc_strdup(id->lexeme);
+        if (!tag) {
+            p->pos = save;
+            return 0;
+        }
+        t = (kw == TOK_KW_STRUCT) ? TYPE_STRUCT : TYPE_UNION;
+    } else if (!parse_basic_type(p, &t)) {
+        return 0;
+    }
+
+    size_t esz = (t == TYPE_STRUCT || t == TYPE_UNION) ? 0 : basic_type_size(t);
+    int restr = 0;
+    if (match(p, TOK_STAR)) {
+        t = TYPE_PTR;
+        restr = match(p, TOK_KW_RESTRICT);
+    }
+
+    if (type) *type = t;
+    if (elem_size) *elem_size = esz;
+    if (is_restrict) *is_restrict = restr;
+    if (tag_name)
+        *tag_name = tag;
+    else
+        free(tag);
+
+    return 1;
+}
+
+/* Check for and parse a function prototype or definition following an
+ * identifier.  The parser must be positioned just past the identifier.
+ * If a '(' token is present parse_func_prototype is invoked and the parser is
+ * left after the prototype or definition. */
+static int parse_function_prototype(parser_t *p, symtable_t *funcs,
+                                    const char *name, type_kind_t ret_type,
+                                    const char *ret_tag, size_t spec_pos,
+                                    int is_inline, func_t **out_func)
+{
+    token_t *tok = peek(p);
+    if (!tok || tok->type != TOK_LPAREN)
+        return 0;
+
+    return parse_func_prototype(p, funcs, name, ret_type, ret_tag,
+                                spec_pos, is_inline, out_func);
+}
+
 /* Parse a global variable after its name handling optional array sizes and
  * initializer expressions.  The parser must start immediately after the
  * identifier.  On success the parser is positioned after the terminating
@@ -413,53 +479,48 @@ fail:
     return 0;
 }
 
-/* Helper to parse a function definition or variable declaration */
+/* Helper to parse a function definition or variable declaration.
+ *
+ * p         - parser instance
+ * funcs     - symbol table used for function prototypes and aggregate sizes
+ * is_extern - extern storage class
+ * is_static - static storage class
+ * is_register - register storage class
+ * is_const  - const qualifier
+ * is_volatile - volatile qualifier
+ * is_inline - inline specifier for functions
+ * spec_pos  - start position of the declaration for rewinding
+ * line,column - source location for error reporting and AST nodes
+ * out_func  - returns parsed function definition when present
+ * out_global- returns parsed variable declaration when present
+ */
 static int parse_function_or_var(parser_t *p, symtable_t *funcs,
                                  int is_extern, int is_static, int is_register,
                                  int is_const, int is_volatile, int is_inline,
                                  size_t spec_pos, size_t line, size_t column,
                                  func_t **out_func, stmt_t **out_global)
 {
-    size_t save = spec_pos;
-
     type_kind_t t;
+    size_t elem_size;
+    int is_restrict;
     char *tag_name = NULL;
-    if (match(p, TOK_KW_STRUCT)) {
-        token_t *tag = peek(p);
-        if (!tag || tag->type != TOK_IDENT) {
-            p->pos = save;
-            return 0;
-        }
-        p->pos++;
-        tag_name = vc_strdup(tag->lexeme);
-        if (!tag_name) {
-            p->pos = save;
-            return 0;
-        }
-        t = TYPE_STRUCT;
-    } else if (!parse_basic_type(p, &t)) {
+
+    if (!parse_type_specifier(p, spec_pos, &t, &elem_size,
+                              &is_restrict, &tag_name))
         return 0;
-    }
-    size_t elem_size = (t == TYPE_STRUCT) ? 0 : basic_type_size(t);
-    int is_restrict = 0;
-    if (match(p, TOK_STAR)) {
-        t = TYPE_PTR;
-        is_restrict = match(p, TOK_KW_RESTRICT);
-    }
 
     token_t *id = peek(p);
     if (!id || id->type != TOK_IDENT) {
-        p->pos = save;
+        free(tag_name);
+        p->pos = spec_pos;
         return 0;
     }
     p->pos++;
 
-    token_t *next_tok = peek(p);
-    if (next_tok && next_tok->type == TOK_LPAREN) {
-        int res = parse_func_prototype(p, funcs, id->lexeme, t, tag_name,
-                                       spec_pos, is_inline, out_func);
+    if (parse_function_prototype(p, funcs, id->lexeme, t, tag_name,
+                                 spec_pos, is_inline, out_func)) {
         free(tag_name);
-        return res;
+        return 1;
     }
 
     int rv = parse_global_var_init(p, id->lexeme, t, elem_size, is_static,
