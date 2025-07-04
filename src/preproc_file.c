@@ -55,6 +55,8 @@ typedef struct {
 /* Files processed after encountering '#pragma once' */
 static vector_t pragma_once_files;
 
+static void free_param_vector(vector_t *v);
+
 /* Return 1 if all conditional states on the stack are active */
 static int stack_active(vector_t *conds)
 {
@@ -64,6 +66,12 @@ static int stack_active(vector_t *conds)
             return 0;
     }
     return 1;
+}
+
+/* Wrapper used by directive handlers */
+static int is_active(vector_t *conds)
+{
+    return stack_active(conds);
 }
 
 /* Return non-zero when the include stack already contains PATH.
@@ -268,7 +276,7 @@ static int handle_include(char *line, const char *dir, vector_t *macros,
         vector_t subconds;
         vector_init(&subconds, sizeof(cond_state_t));
         int ok = 1;
-        if (stack_active(conds)) {
+        if (is_active(conds)) {
             if (!chosen) {
                 fprintf(stderr, "%s: No such file or directory\n", fname);
                 ok = 0;
@@ -281,6 +289,8 @@ static int handle_include(char *line, const char *dir, vector_t *macros,
                     ok = 0;
                 }
             }
+        } else {
+            /* directive ignored when conditions are inactive */
         }
         vector_free(&subconds);
         if (!ok)
@@ -344,9 +354,7 @@ static char *parse_macro_params(char *p, vector_t *out, int *variadic)
             if (!tokenize_param_list(plist, out)) {
                 free(plist);
                 /* cleanup partially collected parameters */
-                for (size_t i = 0; i < out->count; i++)
-                    free(((char **)out->data)[i]);
-                vector_free(out); /* leaves vector reusable */
+                free_param_vector(out); /* leaves vector reusable */
                 return NULL;
             }
             free(plist);
@@ -354,9 +362,7 @@ static char *parse_macro_params(char *p, vector_t *out, int *variadic)
         } else {
             p = start - 1; /* restore '(' position */
             *p = '('; /* undo temporary termination */
-            for (size_t i = 0; i < out->count; i++)
-                free(((char **)out->data)[i]);
-            vector_free(out); /* leaves vector reusable */
+            free_param_vector(out); /* leaves vector reusable */
             return NULL;
         }
     } else if (*p) {
@@ -435,19 +441,18 @@ static int handle_define(char *line, vector_t *macros, vector_t *conds)
     int variadic = 0;
     n = parse_macro_params(n, &params, &variadic);
     if (!n) {
-        vector_free(&params);
+        free_param_vector(&params);
         fprintf(stderr, "Missing ')' in macro definition\n");
         return 0;
     }
     n = skip_ws(n);
     char *val = *n ? n : "";
     int ok = 1;
-    if (stack_active(conds)) {
+    if (is_active(conds)) {
         ok = add_macro(name, val, &params, variadic, macros);
     } else {
-        for (size_t t = 0; t < params.count; t++)
-            free(((char **)params.data)[t]);
-        vector_free(&params);
+        /* directive ignored when conditions are inactive */
+        free_param_vector(&params);
     }
     return ok;
 }
@@ -464,7 +469,7 @@ static int cond_push_ifdef_common(char *line, vector_t *macros,
         n++;
     *n = '\0';
     cond_state_t st;
-    st.parent_active = stack_active(conds);
+    st.parent_active = is_active(conds);
     st.taken = 0;
     int defined = is_macro_defined(macros, id);
     if (st.parent_active && (neg ? !defined : defined)) {
@@ -497,7 +502,7 @@ static int cond_push_ifexpr(char *line, vector_t *macros, vector_t *conds)
 {
     char *expr = line + 3;
     cond_state_t st;
-    st.parent_active = stack_active(conds);
+    st.parent_active = is_active(conds);
     st.taken = 0;
     if (st.parent_active && eval_expr(expr, macros)) {
         st.taking = 1;
@@ -587,7 +592,7 @@ static int handle_conditional(char *line, vector_t *macros, vector_t *conds)
  */
 static int handle_pragma(char *line, vector_t *conds, strbuf_t *out)
 {
-    if (stack_active(conds)) {
+    if (is_active(conds)) {
         if (strbuf_append(out, line) != 0)
             return 0;
         if (strbuf_append(out, "\n") != 0)
@@ -718,6 +723,14 @@ static void free_macro_vector(vector_t *v)
     vector_free(v);
 }
 
+/* Free a vector of parameter names */
+static void free_param_vector(vector_t *v)
+{
+    for (size_t i = 0; i < v->count; i++)
+        free(((char **)v->data)[i]);
+    vector_free(v);
+}
+
 /* Free a vector of strings */
 static void free_string_vector(vector_t *v)
 {
@@ -777,7 +790,7 @@ static int handle_line_directive(char *line, const char *dir, vector_t *macros,
         if (*p == '"')
             fname = vc_strndup(fstart, (size_t)(p - fstart));
     }
-    if (stack_active(conds)) {
+    if (is_active(conds)) {
         if (strbuf_appendf(out, "# %d", lineno) < 0) {
             free(fname);
             return 0;
@@ -819,7 +832,7 @@ static int handle_undef_directive(char *line, const char *dir, vector_t *macros,
     while (isalnum((unsigned char)*n) || *n == '_')
         n++;
     *n = '\0';
-    if (stack_active(conds))
+    if (is_active(conds))
         remove_macro(macros, id);
     return 1;
 }
@@ -834,7 +847,7 @@ static int handle_error_directive(char *line, const char *dir,
     (void)dir; (void)macros; (void)out; (void)incdirs; (void)stack;
     char *msg = line + 6; /* skip '#error' */
     msg = skip_ws(msg);
-    if (stack_active(conds)) {
+    if (is_active(conds)) {
         fprintf(stderr, "%s\n", *msg ? msg : "preprocessor error");
         return 0;
     }
@@ -885,7 +898,7 @@ static int handle_text_line(char *line, const char *dir, vector_t *macros,
 {
     (void)dir; (void)incdirs; (void)stack;
     int ok = 1;
-    if (stack_active(conds)) {
+    if (is_active(conds)) {
         strbuf_t tmp;
         strbuf_init(&tmp);
         if (!expand_line(line, macros, &tmp, 0, 0))
