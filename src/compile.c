@@ -165,6 +165,13 @@ static const char nasm_macros[] =
 int create_temp_file(const cli_options_t *cli, const char *prefix,
                      char **out_path);
 
+/* Assemble the template path for a temporary file. */
+static char *create_temp_template(const cli_options_t *cli,
+                                  const char *prefix);
+
+/* Wrapper around mkstemp that sets FD_CLOEXEC on the returned descriptor. */
+static int open_temp_file(char *tmpl);
+
 /* Create an object file containing the entry stub for linking. */
 static int create_startup_object(const cli_options_t *cli, int use_x86_64,
                                  char **out_path);
@@ -661,54 +668,87 @@ int compile_unit(const char *source, const cli_options_t *cli,
 }
 #endif /* !UNIT_TESTING */
 
-/* Create a temporary file and return its descriptor. */
-int create_temp_file(const cli_options_t *cli, const char *prefix,
-                     char **out_path)
+/*
+ * Assemble mkstemp template path using cli->obj_dir (or /tmp) and the
+ * given prefix.  Returns a newly allocated string or NULL on error.
+ *
+ * errno will be ENAMETOOLONG if the resulting path would exceed PATH_MAX
+ * or snprintf detected truncation.
+ */
+static char *
+create_temp_template(const cli_options_t *cli, const char *prefix)
 {
     const char *dir = cli->obj_dir ? cli->obj_dir : "/tmp";
-    /* dir + '/' + prefix + "XXXXXX" + NUL */
     size_t len = strlen(dir) + strlen(prefix) + sizeof("/XXXXXX");
     if (len >= PATH_MAX) {
-        *out_path = NULL;
         errno = ENAMETOOLONG;
-        return -1;
+        return NULL;
     }
     char *tmpl = malloc(len + 1);
-    if (!tmpl) {
-        *out_path = NULL;
-        return -1;
-    }
+    if (!tmpl)
+        return NULL;
+
     errno = 0;
     int n = snprintf(tmpl, len + 1, "%s/%sXXXXXX", dir, prefix);
     int err = errno;
     if (n < 0) {
         free(tmpl);
-        *out_path = NULL;
         errno = err;
-        return -1;
+        return NULL;
     }
     if ((size_t)n >= len + 1) {
         free(tmpl);
-        *out_path = NULL;
         errno = ENAMETOOLONG;
-        return -1;
+        return NULL;
     }
+
+    return tmpl;
+}
+
+/*
+ * Create and open the temporary file described by tmpl.  Returns the file
+ * descriptor on success or -1 on failure.  On error the file is unlinked
+ * and errno is preserved.
+ */
+static int
+open_temp_file(char *tmpl)
+{
     int fd = mkstemp(tmpl);
-    if (fd < 0) {
-        perror("mkstemp");
-        free(tmpl);
-        *out_path = NULL;
+    if (fd < 0)
         return -1;
-    }
     if (fcntl(fd, F_SETFD, FD_CLOEXEC) != 0) {
         int err = errno;
         close(fd);
         unlink(tmpl);
-        free(tmpl);
-        *out_path = NULL;
         errno = err;
         return -1;
     }
+    return fd;
+}
+
+/*
+ * Create a temporary file and return its descriptor.  On success the path
+ * is stored in *out_path.  On failure -1 is returned, *out_path is set to
+ * NULL and errno indicates the error:
+ *   ENAMETOOLONG - path would exceed PATH_MAX or snprintf truncated
+ *   others       - from malloc, mkstemp or fcntl
+ */
+int create_temp_file(const cli_options_t *cli, const char *prefix,
+                     char **out_path)
+{
+    char *tmpl = create_temp_template(cli, prefix);
+    if (!tmpl) {
+        *out_path = NULL;
+        return -1;
+    }
+
+    int fd = open_temp_file(tmpl);
+    if (fd < 0) {
+        free(tmpl);
+        *out_path = NULL;
+        return -1;
+    }
+
     *out_path = tmpl;
     return fd;
 }
