@@ -14,6 +14,7 @@
 #include <errno.h>
 #include <limits.h>
 #include "util.h"
+#include "ast.h"
 
 /*
  * Allocate "size" bytes of memory.  If the allocation fails the process
@@ -140,6 +141,32 @@ int vc_strtoul_unsigned(const char *s, unsigned *out)
     if (errno == ERANGE || val > UINT_MAX || *end != '\0')
         return 0;
     *out = (unsigned)val;
+    return 1;
+}
+
+/*
+ * Allocate and duplicate an array of members.
+ * Each name string is duplicated using vc_strdup.
+ * Returns non-zero on success.
+ */
+int copy_members(union_member_t **dst, const union_member_t *src, size_t count)
+{
+    if (!count) {
+        *dst = NULL;
+        return 1;
+    }
+    union_member_t *out = malloc(count * sizeof(*out));
+    if (!out)
+        return 0;
+    for (size_t i = 0; i < count; i++) {
+        out[i].name = vc_strdup(src[i].name);
+        out[i].type = src[i].type;
+        out[i].elem_size = src[i].elem_size;
+        out[i].offset = src[i].offset;
+        out[i].bit_width = src[i].bit_width;
+        out[i].bit_offset = src[i].bit_offset;
+    }
+    *dst = out;
     return 1;
 }
 

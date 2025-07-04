@@ -335,21 +335,9 @@ static int copy_union_metadata(symbol_t *sym, union_member_t *members,
                                size_t count, size_t total)
 {
     sym->total_size = total;
-    if (!count)
-        return 1;
-    sym->members = malloc(count * sizeof(*sym->members));
-    if (!sym->members)
+    if (!copy_members(&sym->members, members, count))
         return 0;
     sym->member_count = count;
-    for (size_t i = 0; i < count; i++) {
-        union_member_t *m = &members[i];
-        sym->members[i].name = vc_strdup(m->name);
-        sym->members[i].type = m->type;
-        sym->members[i].elem_size = m->elem_size;
-        sym->members[i].offset = m->offset;
-        sym->members[i].bit_width = m->bit_width;
-        sym->members[i].bit_offset = m->bit_offset;
-    }
     return 1;
 }
 
@@ -362,21 +350,10 @@ static int copy_struct_metadata(symbol_t *sym, struct_member_t *members,
                                 size_t count, size_t total)
 {
     sym->struct_total_size = total;
-    if (!count)
-        return 1;
-    sym->struct_members = malloc(count * sizeof(*sym->struct_members));
-    if (!sym->struct_members)
+    if (!copy_members((union_member_t **)&sym->struct_members,
+                      (union_member_t *)members, count))
         return 0;
     sym->struct_member_count = count;
-    for (size_t i = 0; i < count; i++) {
-        struct_member_t *m = &members[i];
-        sym->struct_members[i].name = vc_strdup(m->name);
-        sym->struct_members[i].type = m->type;
-        sym->struct_members[i].elem_size = m->elem_size;
-        sym->struct_members[i].offset = m->offset;
-        sym->struct_members[i].bit_width = m->bit_width;
-        sym->struct_members[i].bit_offset = m->bit_offset;
-    }
     return 1;
 }
 

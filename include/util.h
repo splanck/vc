@@ -8,6 +8,8 @@
 #ifndef VC_UTIL_H
 #define VC_UTIL_H
 
+#include "ast.h"
+
 /* Duplicate a string using malloc. Returns NULL on allocation failure */
 char *vc_strdup(const char *s);
 
@@ -28,5 +30,8 @@ int vc_strtoul_size(const char *s, size_t *out);
 
 /* Convert string to unsigned, returning 1 on success */
 int vc_strtoul_unsigned(const char *s, unsigned *out);
+
+/* Allocate and duplicate an array of members */
+int copy_members(union_member_t **dst, const union_member_t *src, size_t count);
 
 #endif /* VC_UTIL_H */
