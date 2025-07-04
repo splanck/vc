@@ -1096,6 +1096,55 @@ static void cleanup_preproc_vectors(vector_t *macros, vector_t *conds,
     strbuf_free(out);
 }
 
+/* Apply macro definitions specified on the command line */
+static int apply_cli_defines(vector_t *macros, const vector_t *defines)
+{
+    if (!defines)
+        return 1;
+
+    for (size_t i = 0; i < defines->count; i++) {
+        const char *def = ((const char **)defines->data)[i];
+        const char *eq = strchr(def, '=');
+        const char *val = "1";
+        char *name;
+        if (eq) {
+            name = vc_strndup(def, (size_t)(eq - def));
+            val = eq + 1;
+        } else {
+            name = vc_strdup(def);
+        }
+        vector_t params;
+        vector_init(&params, sizeof(char *));
+        if (!add_macro(name, val, &params, 0, macros)) {
+            free(name);
+            return 0;
+        }
+        free(name);
+    }
+
+    return 1;
+}
+
+/* Remove macros listed via the command line */
+static void apply_cli_undefines(vector_t *macros, const vector_t *undefines)
+{
+    if (!undefines)
+        return;
+
+    for (size_t i = 0; i < undefines->count; i++) {
+        const char *name = ((const char **)undefines->data)[i];
+        remove_macro(macros, name);
+    }
+}
+
+/* Wrapper around process_file used by the entry point */
+static int process_input_file(const char *path, vector_t *macros,
+                              vector_t *conds, strbuf_t *out,
+                              const vector_t *incdirs, vector_t *stack)
+{
+    return process_file(path, macros, conds, out, incdirs, stack);
+}
+
 /*
  * Entry point used by the compiler.  Sets up include search paths,
  * invokes the file processor and returns the resulting text.
@@ -1105,41 +1154,26 @@ char *preproc_run(const char *path, const vector_t *include_dirs,
 {
     vector_t search_dirs, macros, conds, stack;
     strbuf_t out;
+
+    /* Build include search list from CLI options and environment */
     if (!collect_include_dirs(&search_dirs, include_dirs))
         return NULL;
+
+    /* Prepare all vectors used during preprocessing */
     init_preproc_vectors(&macros, &conds, &stack, &out);
 
-    if (defines) {
-        for (size_t i = 0; i < defines->count; i++) {
-            const char *def = ((const char **)defines->data)[i];
-            const char *eq = strchr(def, '=');
-            const char *val = "1";
-            char *name;
-            if (eq) {
-                name = vc_strndup(def, (size_t)(eq - def));
-                val = eq + 1;
-            } else {
-                name = vc_strdup(def);
-            }
-            vector_t params;
-            vector_init(&params, sizeof(char *));
-            if (!add_macro(name, val, &params, 0, &macros)) {
-                free(name);
-                cleanup_preproc_vectors(&macros, &conds, &stack, &search_dirs, &out);
-                return NULL;
-            }
-            free(name);
-        }
+    /* Import any -D command line definitions */
+    if (!apply_cli_defines(&macros, defines)) {
+        cleanup_preproc_vectors(&macros, &conds, &stack, &search_dirs, &out);
+        return NULL;
     }
 
-    if (undefines) {
-        for (size_t i = 0; i < undefines->count; i++) {
-            const char *name = ((const char **)undefines->data)[i];
-            remove_macro(&macros, name);
-        }
-    }
+    /* Remove macros listed with -U */
+    apply_cli_undefines(&macros, undefines);
 
-    int ok = process_file(path, &macros, &conds, &out, &search_dirs, &stack);
+    /* Process the initial source file */
+    int ok = process_input_file(path, &macros, &conds, &out,
+                                &search_dirs, &stack);
 
     char *res = NULL;
     if (ok)
