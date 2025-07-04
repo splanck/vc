@@ -53,6 +53,14 @@ Translates raw characters into tokens for the parser.
 ### parser
 Constructs the AST and reports syntax errors.
 
+Assignment parsing relies on `consume_assign_op` which now returns an
+`assign_op_t` enumerator describing the operator token.  The helper
+records the source position so `parse_assignment` can build the
+appropriate AST node.  `create_assignment_node` chooses between
+`EXPR_ASSIGN`, `EXPR_ASSIGN_INDEX` and `EXPR_ASSIGN_MEMBER` based on the
+left-hand expression.  If the left side is not a valid l-value all
+allocated nodes are freed and `NULL` is returned.
+
 ### semantic
 Performs type checking and converts the AST into IR.  The
 implementation in [`src/semantic.c`](../src/semantic.c) relies on a
