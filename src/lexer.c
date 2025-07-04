@@ -547,6 +547,50 @@ static int scan_punct_table(const char *src, size_t *i, size_t *col,
     return 0;
 }
 
+/* Scan and append the next token from the source. Returns 1 on success,
+ * 0 when end of input is reached and -1 on error. */
+static int scan_next_token(const char *src, size_t *i, size_t *line,
+                           size_t *col, vector_t *tokens)
+{
+    skip_whitespace(src, i, line, col);
+    if (!src[*i])
+        return 0;
+
+    int res;
+
+    res = scan_wstring(src, i, col, tokens, *line);
+    if (res)
+        return res;
+
+    res = scan_wchar(src, i, col, tokens, *line);
+    if (res)
+        return res;
+
+    res = scan_identifier(src, i, col, tokens, *line);
+    if (res)
+        return 1;
+
+    res = scan_number(src, i, col, tokens, *line);
+    if (res)
+        return 1;
+
+    res = scan_string(src, i, col, tokens, *line);
+    if (res)
+        return res;
+
+    res = scan_char(src, i, col, tokens, *line);
+    if (res)
+        return 1;
+
+    if (scan_punct_table(src, i, col, tokens, *line))
+        return 1;
+
+    char c = src[*i];
+    read_punct(c, tokens, *line, *col);
+    (*i)++; (*col)++;
+    return 1;
+}
+
 /* Public API */
 
 /* Tokenize the entire source string */
@@ -556,31 +600,14 @@ token_t *lexer_tokenize(const char *src, size_t *out_count)
     vector_init(&vec, sizeof(token_t));
 
     size_t i = 0, line = 1, col = 1;
-    while (src[i]) {
-        skip_whitespace(src, &i, &line, &col);
-        if (!src[i])
+    while (1) {
+        int res = scan_next_token(src, &i, &line, &col, &vec);
+        if (res < 0) {
+            vector_free(&vec);
+            return NULL;
+        }
+        if (res == 0)
             break;
-        char c = src[i];
-
-        int res;
-        res = scan_wstring(src, &i, &col, &vec, line);
-        if (res) { if (res < 0) { vector_free(&vec); return NULL; } else continue; }
-        res = scan_wchar(src, &i, &col, &vec, line);
-        if (res) { if (res < 0) { vector_free(&vec); return NULL; } else continue; }
-        res = scan_identifier(src, &i, &col, &vec, line);
-        if (res) { continue; }
-        res = scan_number(src, &i, &col, &vec, line);
-        if (res) { continue; }
-        res = scan_string(src, &i, &col, &vec, line);
-        if (res) { if (res < 0) { vector_free(&vec); return NULL; } else continue; }
-        res = scan_char(src, &i, &col, &vec, line);
-        if (res) { continue; }
-
-        if (scan_punct_table(src, &i, &col, &vec, line))
-            continue;
-
-        read_punct(c, &vec, line, col);
-        i++; col++;
     }
 
     append_token(&vec, TOK_EOF, "", 0, line, col);
