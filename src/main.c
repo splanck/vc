@@ -72,5 +72,9 @@ int main(int argc, char **argv)
 cleanup:
     vector_free(&cli.sources);
     vector_free(&cli.include_dirs);
+    vector_free(&cli.defines);
+    vector_free(&cli.undefines);
+    vector_free(&cli.lib_dirs);
+    vector_free(&cli.libs);
     return ret;
 }

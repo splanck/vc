@@ -35,6 +35,10 @@ static void test_parse_success(void)
     ASSERT(opts.asm_syntax == ASM_ATT);
     vector_free(&opts.sources);
     vector_free(&opts.include_dirs);
+    vector_free(&opts.defines);
+    vector_free(&opts.undefines);
+    vector_free(&opts.lib_dirs);
+    vector_free(&opts.libs);
 }
 
 static void test_intel_syntax_option(void)
@@ -46,6 +50,10 @@ static void test_intel_syntax_option(void)
     ASSERT(opts.asm_syntax == ASM_INTEL);
     vector_free(&opts.sources);
     vector_free(&opts.include_dirs);
+    vector_free(&opts.defines);
+    vector_free(&opts.undefines);
+    vector_free(&opts.lib_dirs);
+    vector_free(&opts.libs);
 }
 
 static void test_parse_failure(void)
@@ -81,6 +89,12 @@ static void test_parse_failure(void)
 
     ASSERT(ret != 0);
     ASSERT(strstr(buf, "Out of memory") != NULL);
+    vector_free(&opts.sources);
+    vector_free(&opts.include_dirs);
+    vector_free(&opts.defines);
+    vector_free(&opts.undefines);
+    vector_free(&opts.lib_dirs);
+    vector_free(&opts.libs);
 }
 
 int main(void)
