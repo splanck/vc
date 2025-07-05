@@ -71,7 +71,8 @@ typedef struct compile_context {
 } compile_context_t;
 
 /* Stage implementations */
-static int compile_tokenize_impl(const char *source, const vector_t *incdirs,
+static int compile_tokenize_impl(const char *source, const cli_options_t *cli,
+                                 const vector_t *incdirs,
                                  const vector_t *defines,
                                  const vector_t *undefines,
                                  char **out_src, token_t **out_toks,
@@ -92,6 +93,7 @@ static int compile_output_impl(ir_builder_t *ir, const char *output,
 static void compile_ctx_init(compile_context_t *ctx);
 static void compile_ctx_cleanup(compile_context_t *ctx);
 static int compile_tokenize_stage(compile_context_t *ctx, const char *source,
+                                  const cli_options_t *cli,
                                   const vector_t *incdirs,
                                   const vector_t *defines,
                                   const vector_t *undefines);
@@ -112,7 +114,9 @@ static int check_function_defs(func_t **func_list, size_t fcount,
 static int emit_output_file(ir_builder_t *ir, const char *output,
                             int use_x86_64, int compile_obj,
                             const cli_options_t *cli);
-static int read_stdin_source(const vector_t *incdirs, const vector_t *defines,
+static int read_stdin_source(const cli_options_t *cli,
+                             const vector_t *incdirs,
+                             const vector_t *defines,
                              const vector_t *undefines,
                              char **out_path, char **out_text);
 
@@ -190,14 +194,20 @@ int run_preprocessor(const cli_options_t *cli);
 int link_sources(const cli_options_t *cli);
 
 /* Read source from stdin into a temporary file and run the preprocessor */
-static int read_stdin_source(const vector_t *incdirs, const vector_t *defines,
+static int read_stdin_source(const cli_options_t *cli,
+                             const vector_t *incdirs,
+                             const vector_t *defines,
                              const vector_t *undefines,
                              char **out_path, char **out_text)
 {
-    char tmpl[] = "/tmp/vcstdinXXXXXX";
-    int fd = mkstemp(tmpl);
+    char *tmpl = create_temp_template(cli, "vcstdin");
+    if (!tmpl)
+        return 0;
+
+    int fd = open_temp_file(tmpl);
     if (fd < 0) {
         perror("mkstemp");
+        free(tmpl);
         return 0;
     }
     FILE *f = fdopen(fd, TEMP_FOPEN_MODE);
@@ -205,6 +215,7 @@ static int read_stdin_source(const vector_t *incdirs, const vector_t *defines,
         perror("fdopen");
         close(fd);
         unlink(tmpl);
+        free(tmpl);
         return 0;
     }
 
@@ -216,6 +227,7 @@ static int read_stdin_source(const vector_t *incdirs, const vector_t *defines,
             if (fclose(f) == EOF)
                 perror("fclose");
             unlink(tmpl);
+            free(tmpl);
             return 0;
         }
     }
@@ -224,11 +236,13 @@ static int read_stdin_source(const vector_t *incdirs, const vector_t *defines,
         if (fclose(f) == EOF)
             perror("fclose");
         unlink(tmpl);
+        free(tmpl);
         return 0;
     }
     if (fclose(f) == EOF) {
         perror("fclose");
         unlink(tmpl);
+        free(tmpl);
         return 0;
     }
 
@@ -236,8 +250,10 @@ static int read_stdin_source(const vector_t *incdirs, const vector_t *defines,
     if (!path) {
         fprintf(stderr, "Out of memory\n");
         unlink(tmpl);
+        free(tmpl);
         return 0;
     }
+    free(tmpl);
 
     char *text = preproc_run(path, incdirs, defines, undefines);
     if (!text) {
@@ -253,7 +269,8 @@ static int read_stdin_source(const vector_t *incdirs, const vector_t *defines,
 }
 
 /* Tokenize the preprocessed source file */
-static int compile_tokenize_impl(const char *source, const vector_t *incdirs,
+static int compile_tokenize_impl(const char *source, const cli_options_t *cli,
+                            const vector_t *incdirs,
                             const vector_t *defines,
                             const vector_t *undefines,
                             char **out_src, token_t **out_toks,
@@ -265,7 +282,8 @@ static int compile_tokenize_impl(const char *source, const vector_t *incdirs,
     char *stdin_path = NULL;
     char *text = NULL;
     if (source && strcmp(source, "-") == 0) {
-        if (!read_stdin_source(incdirs, defines, undefines, &stdin_path, &text))
+        if (!read_stdin_source(cli, incdirs, defines, undefines,
+                               &stdin_path, &text))
             return 0;
         if (tmp_path)
             *tmp_path = stdin_path;
@@ -492,11 +510,12 @@ static void compile_ctx_cleanup(compile_context_t *ctx)
 
 /* Run tokenization stage */
 static int compile_tokenize_stage(compile_context_t *ctx, const char *source,
+                                  const cli_options_t *cli,
                                   const vector_t *incdirs,
                                   const vector_t *defines,
                                   const vector_t *undefines)
 {
-    return compile_tokenize_impl(source, incdirs, defines, undefines,
+    return compile_tokenize_impl(source, cli, incdirs, defines, undefines,
                                  &ctx->src_text,
                                  &ctx->tokens, &ctx->tok_count,
                                  &ctx->stdin_tmp);
@@ -641,7 +660,8 @@ int compile_unit(const char *source, const cli_options_t *cli,
     compile_context_t ctx;
     compile_ctx_init(&ctx);
 
-    ok = compile_tokenize_stage(&ctx, source, &cli->include_dirs,
+    ok = compile_tokenize_stage(&ctx, source, cli,
+                                &cli->include_dirs,
                                 &cli->defines, &cli->undefines);
     if (ok)
         ok = compile_parse_stage(&ctx);
