@@ -194,10 +194,14 @@ static int read_stdin_source(const vector_t *incdirs, const vector_t *defines,
                              const vector_t *undefines,
                              char **out_path, char **out_text)
 {
+    if (out_path)
+        *out_path = NULL;
     char tmpl[] = "/tmp/vcstdinXXXXXX";
     int fd = mkstemp(tmpl);
     if (fd < 0) {
         perror("mkstemp");
+        if (out_path)
+            *out_path = NULL;
         return 0;
     }
     FILE *f = fdopen(fd, TEMP_FOPEN_MODE);
@@ -205,6 +209,8 @@ static int read_stdin_source(const vector_t *incdirs, const vector_t *defines,
         perror("fdopen");
         close(fd);
         unlink(tmpl);
+        if (out_path)
+            *out_path = NULL;
         return 0;
     }
 
@@ -216,6 +222,8 @@ static int read_stdin_source(const vector_t *incdirs, const vector_t *defines,
             if (fclose(f) == EOF)
                 perror("fclose");
             unlink(tmpl);
+            if (out_path)
+                *out_path = NULL;
             return 0;
         }
     }
@@ -224,11 +232,15 @@ static int read_stdin_source(const vector_t *incdirs, const vector_t *defines,
         if (fclose(f) == EOF)
             perror("fclose");
         unlink(tmpl);
+        if (out_path)
+            *out_path = NULL;
         return 0;
     }
     if (fclose(f) == EOF) {
         perror("fclose");
         unlink(tmpl);
+        if (out_path)
+            *out_path = NULL;
         return 0;
     }
 
@@ -236,6 +248,8 @@ static int read_stdin_source(const vector_t *incdirs, const vector_t *defines,
     if (!path) {
         fprintf(stderr, "Out of memory\n");
         unlink(tmpl);
+        if (out_path)
+            *out_path = NULL;
         return 0;
     }
 
@@ -244,6 +258,8 @@ static int read_stdin_source(const vector_t *incdirs, const vector_t *defines,
         perror("preproc_run");
         unlink(path);
         free(path);
+        if (out_path)
+            *out_path = NULL;
         return 0;
     }
 
@@ -290,6 +306,8 @@ static int compile_tokenize_impl(const char *source, const vector_t *incdirs,
         if (stdin_path) {
             unlink(stdin_path);
             free(stdin_path);
+            if (tmp_path)
+                *tmp_path = NULL;
         }
         return 0;
     }
