@@ -31,10 +31,6 @@ int main(int argc, char **argv)
 
     error_use_color = cli.color_diag;
 
-    if (!cli.link && cli.sources.count != 1) {
-        fprintf(stderr, "Error: multiple input files require --link\n");
-        goto cleanup;
-    }
 
     if (cli.preprocess) {
         ret = run_preprocessor(&cli);
@@ -59,6 +55,8 @@ int main(int argc, char **argv)
         else if (cli.dump_asm)
             printf("Compiling %s (assembly dumped to stdout)\n",
                    ((const char **)cli.sources.data)[0]);
+        else if (cli.compile && cli.sources.count > 1)
+            printf("Compiled %zu files to objects\n", cli.sources.count);
         else if (cli.compile)
             printf("Compiling %s -> %s (object)\n",
                    ((const char **)cli.sources.data)[0], cli.output);

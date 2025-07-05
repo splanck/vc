@@ -33,6 +33,10 @@ To generate an object file instead, pass `-c`:
 vc -c -o out.o source.c
 ```
 
+When `-c` is given more than once source file may be listed.  An object
+file named after each input (e.g. `foo.o`) will be produced in the
+current directory.
+
 To print the generated assembly to stdout instead of creating a file,
 pass `--dump-asm`:
 
