@@ -30,8 +30,7 @@ Inline expansion now handles small inline functions containing up to
 four arithmetic instructions or just a single `return`. The source
 function must still be marked `inline`. When these criteria are met,
 calls are replaced by the equivalent operations in the caller. This
-reduces call overhead and allows the following passes to fold the
-resulting expression.
+reduces call overhead and allows the following passes to fold the resulting expression.
 
 If the optimizer cannot open the source file referenced by a candidate
 function, a warning is printed and the call remains non-inline.
