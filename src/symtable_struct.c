@@ -74,23 +74,6 @@ int symtable_add_enum_tag_global(symtable_t *table, const char *tag)
     return 1;
 }
 
-/*
- * Search for an enum tag in both the local and global lists.
- * Returns NULL if no matching tag exists.
- */
-static symbol_t *symtable_lookup_enum_tag(symtable_t *table, const char *tag)
-{
-    for (symbol_t *sym = table->head; sym; sym = sym->next) {
-        if (sym->type == TYPE_ENUM && strcmp(sym->name, tag) == 0)
-            return sym;
-    }
-    for (symbol_t *sym = table->globals; sym; sym = sym->next) {
-        if (sym->type == TYPE_ENUM && strcmp(sym->name, tag) == 0)
-            return sym;
-    }
-    return NULL;
-}
-
 /* Insert a union type definition in the current scope */
 int symtable_add_union(symtable_t *table, const char *tag,
                        union_member_t *members, size_t member_count)
