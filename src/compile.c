@@ -647,8 +647,8 @@ static int emit_output_file(ir_builder_t *ir, const char *output,
 
 /* Compile a single translation unit */
 #ifndef UNIT_TESTING
-int compile_unit(const char *source, const cli_options_t *cli,
-                 const char *output, int compile_obj)
+static int compile_single_unit(const char *source, const cli_options_t *cli,
+                               const char *output, int compile_obj)
 {
     error_current_file = source ? source : "";
     error_current_function = NULL;
@@ -686,6 +686,33 @@ int compile_unit(const char *source, const cli_options_t *cli,
     label_reset();
 
     return ok;
+}
+
+int compile_unit(const char *source, const cli_options_t *cli,
+                 const char *output, int compile_obj)
+{
+    if (!cli->link && compile_obj && cli->sources.count > 1) {
+        int ok = 1;
+        for (size_t i = 0; i < cli->sources.count && ok; i++) {
+            const char *src = ((const char **)cli->sources.data)[i];
+            const char *base = strrchr(src, '/');
+            base = base ? base + 1 : src;
+            const char *dot = strrchr(base, '.');
+            size_t len = dot ? (size_t)(dot - base) : strlen(base);
+            char *obj = malloc(len + 3);
+            if (!obj) {
+                fprintf(stderr, "Out of memory\n");
+                return 0;
+            }
+            memcpy(obj, base, len);
+            strcpy(obj + len, ".o");
+            ok = compile_single_unit(src, cli, obj, 1);
+            free(obj);
+        }
+        return ok;
+    }
+
+    return compile_single_unit(source, cli, output, compile_obj);
 }
 #endif /* !UNIT_TESTING */
 

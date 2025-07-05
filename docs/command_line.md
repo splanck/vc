@@ -43,6 +43,8 @@ Use `vc -o out.s source.c` to compile a file, `vc -c -o out.o source.c` to
 produce an object, `vc --link -o prog main.c util.c` to build an executable
 from multiple sources, `vc -S source.c` to print the assembly to the
 terminal, or pipe code into `vc -o out.s -` to read from standard input.
+When `-c` is combined with several inputs an object named after each
+source (for example `file.o`) is created in the current directory.
 
 ## Preprocessor Usage
 

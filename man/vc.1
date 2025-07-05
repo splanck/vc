@@ -105,7 +105,9 @@ Use Intel-style x86 assembly output. When combined with
 assemble the generated code.
 .TP
 .BR -c "," \fB--compile\fR
-Assemble the output into an object file using \fBcc -c\fR.
+Assemble the output into an object file using \fBcc -c\fR. When multiple
+input files are provided an object is created for each source in the
+current directory.
 .TP
 .B --link
 Assemble and link the output to create an executable with \fBcc\fR.
@@ -132,6 +134,10 @@ Compile a source file to \fIout.s\fR:
 Create an object file:
 .PP
 .B vc -c -o out.o source.c
+.PP
+Compile multiple sources to objects:
+.PP
+.B vc -c foo.c bar.c
 .PP
 Build an executable:
 .PP
