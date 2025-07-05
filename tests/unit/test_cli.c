@@ -33,12 +33,7 @@ static void test_parse_success(void)
     ASSERT(opts.sources.count == 1);
     ASSERT(strcmp(((char **)opts.sources.data)[0], "file.c") == 0);
     ASSERT(opts.asm_syntax == ASM_ATT);
-    vector_free(&opts.sources);
-    vector_free(&opts.include_dirs);
-    vector_free(&opts.defines);
-    vector_free(&opts.undefines);
-    vector_free(&opts.lib_dirs);
-    vector_free(&opts.libs);
+    cli_free_opts(&opts);
 }
 
 static void test_intel_syntax_option(void)
@@ -48,12 +43,7 @@ static void test_intel_syntax_option(void)
     int ret = cli_parse_args(5, argv, &opts);
     ASSERT(ret == 0);
     ASSERT(opts.asm_syntax == ASM_INTEL);
-    vector_free(&opts.sources);
-    vector_free(&opts.include_dirs);
-    vector_free(&opts.defines);
-    vector_free(&opts.undefines);
-    vector_free(&opts.lib_dirs);
-    vector_free(&opts.libs);
+    cli_free_opts(&opts);
 }
 
 static void test_parse_failure(void)
@@ -89,12 +79,6 @@ static void test_parse_failure(void)
 
     ASSERT(ret != 0);
     ASSERT(strstr(buf, "Out of memory") != NULL);
-    vector_free(&opts.sources);
-    vector_free(&opts.include_dirs);
-    vector_free(&opts.defines);
-    vector_free(&opts.undefines);
-    vector_free(&opts.lib_dirs);
-    vector_free(&opts.libs);
 }
 
 int main(void)

@@ -70,4 +70,7 @@ typedef struct {
 /* Parse command line arguments. Returns 0 on success, non-zero on error. */
 int cli_parse_args(int argc, char **argv, cli_options_t *opts);
 
+/* Free option vectors allocated by cli_parse_args */
+void cli_free_opts(cli_options_t *opts);
+
 #endif /* VC_CLI_H */
