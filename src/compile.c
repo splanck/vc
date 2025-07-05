@@ -12,6 +12,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <limits.h>
+#include <stdint.h>
 #ifndef PATH_MAX
 # include <sys/param.h>
 #endif
@@ -839,8 +840,27 @@ build_linker_args(const vector_t *objs, const vector_t *lib_dirs,
                   const vector_t *libs, const char *output, int use_x86_64)
 {
     const char *arch_flag = use_x86_64 ? "-m64" : "-m32";
-    size_t argc = objs->count + lib_dirs->count * 2 + libs->count * 2 + 5;
-    char **argv = vc_alloc_or_exit((argc + 1) * sizeof(char *));
+
+    /* calculate required argument count and detect overflow */
+    size_t argc = 0;
+    if (objs->count > SIZE_MAX - argc)
+        goto arg_overflow;
+    argc += objs->count;
+    if (lib_dirs->count > (SIZE_MAX - argc) / 2)
+        goto arg_overflow;
+    argc += lib_dirs->count * 2;
+    if (libs->count > (SIZE_MAX - argc) / 2)
+        goto arg_overflow;
+    argc += libs->count * 2;
+    if (5 > SIZE_MAX - argc)
+        goto arg_overflow;
+    argc += 5;
+
+    size_t n = argc + 1; /* plus NULL terminator */
+    if (n > SIZE_MAX / sizeof(char *))
+        goto arg_overflow;
+
+    char **argv = vc_alloc_or_exit(n * sizeof(char *));
 
     size_t idx = 0;
     argv[idx++] = "cc";
@@ -860,6 +880,10 @@ build_linker_args(const vector_t *objs, const vector_t *lib_dirs,
     argv[idx++] = (char *)output;
     argv[idx] = NULL;
     return argv;
+
+arg_overflow:
+    fprintf(stderr, "vc: argument vector too large\n");
+    exit(1);
 }
 
 /* Free argument vector returned by build_linker_args. */
