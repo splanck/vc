@@ -603,6 +603,9 @@ token_t *lexer_tokenize(const char *src, size_t *out_count)
     while (1) {
         int res = scan_next_token(src, &i, &line, &col, &vec);
         if (res < 0) {
+            token_t *tokens = (token_t *)vec.data;
+            for (size_t j = 0; j < vec.count; j++)
+                free(tokens[j].lexeme);
             vector_free(&vec);
             return NULL;
         }
