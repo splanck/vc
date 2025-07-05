@@ -20,45 +20,56 @@
 
 #include "command.h"
 #include "util.h"
+#include "strbuf.h"
 
 extern char **environ;
+
+/* Determine if an argument contains characters that require shell quoting */
+static int needs_quotes(const char *arg)
+{
+    if (!arg)
+        return 0;
+    for (const char *p = arg; *p; p++) {
+        if (strchr(" \t\n\'\"`$&;|<>*?()", *p))
+            return 1;
+    }
+    return 0;
+}
 
 /* Build a printable string representation of an argv array. */
 char *command_to_string(char *const argv[])
 {
-    size_t len = 0;
-
-    /* First determine required length */
+    strbuf_t sb;
+    strbuf_init(&sb);
     for (size_t i = 0; argv[i]; i++) {
-        size_t alen = strlen(argv[i]);
-        if (len > SIZE_MAX - alen - 1) {
-            fprintf(stderr, "vc: command string too large\n");
-            exit(1);
-        }
-        len += alen;
-        if (argv[i + 1]) {
-            if (len == SIZE_MAX) {
-                fprintf(stderr, "vc: command string too large\n");
-                exit(1);
+        if (i > 0 && strbuf_append(&sb, " ") < 0)
+            goto overflow;
+        const char *arg = argv[i];
+        if (!needs_quotes(arg)) {
+            if (strbuf_append(&sb, arg) < 0)
+                goto overflow;
+        } else {
+            if (strbuf_append(&sb, "'") < 0)
+                goto overflow;
+            for (const char *p = arg; *p; p++) {
+                if (*p == '\'') {
+                    if (strbuf_append(&sb, "'\\''") < 0)
+                        goto overflow;
+                } else {
+                    char tmp[2] = {*p, '\0'};
+                    if (strbuf_append(&sb, tmp) < 0)
+                        goto overflow;
+                }
             }
-            len += 1; /* space */
+            if (strbuf_append(&sb, "'") < 0)
+                goto overflow;
         }
     }
+    return sb.data;
 
-    char *cmd = vc_alloc_or_exit(len + 1);
-    size_t pos = 0;
-    for (size_t i = 0; argv[i]; i++) {
-        if (i > 0)
-            cmd[pos++] = ' ';
-        int n = snprintf(cmd + pos, len + 1 - pos, "%s", argv[i]);
-        if (n < 0) {
-            cmd[pos] = '\0';
-            break;
-        }
-        pos += (size_t)n;
-    }
-    cmd[len] = '\0';
-    return cmd;
+overflow:
+    strbuf_free(&sb);
+    return NULL;
 }
 
 /*
@@ -71,7 +82,10 @@ int command_run(char *const argv[])
     int ret = posix_spawnp(&pid, argv[0], NULL, NULL, argv, environ);
     if (ret != 0) {
         char *cmd = command_to_string(argv);
-        fprintf(stderr, "posix_spawnp %s: %s\n", cmd, strerror(ret));
+        if (cmd)
+            fprintf(stderr, "posix_spawnp %s: %s\n", cmd, strerror(ret));
+        else
+            fprintf(stderr, "posix_spawnp %s: %s\n", argv[0], strerror(ret));
         free(cmd);
         return 0;
     }

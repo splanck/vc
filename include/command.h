@@ -12,7 +12,10 @@
 #define VC_COMMAND_H
 
 /* Convert an argument vector into a single string for debugging.
- * The returned buffer is heap allocated and must be freed by the caller.
+ * Arguments containing spaces or shell metacharacters are quoted using
+ * single quotes. The returned buffer is heap allocated and must be freed
+ * by the caller. Returns NULL if the result would exceed implementation
+ * limits.
  */
 char *command_to_string(char *const argv[]);
 
