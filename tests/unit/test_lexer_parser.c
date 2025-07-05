@@ -90,14 +90,15 @@ static void test_lexer_percent(void)
 /* Lexer support for new type keywords such as short, long and bool. */
 static void test_lexer_new_types(void)
 {
-    const char *src = "short s; long l; bool b; unsigned long long u;";
+    const char *src = "short s; long l; bool b; _Bool x; unsigned long long u;";
     size_t count = 0;
     token_t *toks = lexer_tokenize(src, &count);
     ASSERT(toks[0].type == TOK_KW_SHORT);
     ASSERT(toks[3].type == TOK_KW_LONG);
     ASSERT(toks[6].type == TOK_KW_BOOL);
-    ASSERT(toks[9].type == TOK_KW_UNSIGNED);
-    ASSERT(toks[10].type == TOK_KW_LONG && toks[11].type == TOK_KW_LONG);
+    ASSERT(toks[9].type == TOK_KW_BOOL);
+    ASSERT(toks[12].type == TOK_KW_UNSIGNED);
+    ASSERT(toks[13].type == TOK_KW_LONG && toks[14].type == TOK_KW_LONG);
     lexer_free_tokens(toks, count);
 }
 
@@ -189,6 +190,20 @@ static void test_parser_short_decl(void)
 static void test_parser_bool_decl(void)
 {
     const char *src = "bool b;";
+    size_t count = 0;
+    token_t *toks = lexer_tokenize(src, &count);
+    parser_t p; parser_init(&p, toks, count);
+    stmt_t *stmt = parser_parse_stmt(&p);
+    ASSERT(stmt && stmt->kind == STMT_VAR_DECL);
+    ASSERT(stmt->var_decl.type == TYPE_BOOL);
+    ast_free_stmt(stmt);
+    lexer_free_tokens(toks, count);
+}
+
+/* Declaration using the _Bool type. */
+static void test_parser__Bool_decl(void)
+{
+    const char *src = "_Bool b;";
     size_t count = 0;
     token_t *toks = lexer_tokenize(src, &count);
     parser_t p; parser_init(&p, toks, count);
@@ -653,6 +668,7 @@ int main(void)
     test_parser_var_decl_init();
     test_parser_short_decl();
     test_parser_bool_decl();
+    test_parser__Bool_decl();
     test_lexer_static_kw();
     test_parser_static_local();
     test_parser_array_decl();

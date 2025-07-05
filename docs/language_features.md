@@ -53,6 +53,7 @@ See the [documentation index](index.md) for a list of all available pages.
 - `#undef` to remove a previously defined macro
 - Conditional preprocessing directives (`#if`, `#ifdef`, `#ifndef`, `#elif`, `#else`, `#endif`)
 - 64-bit integer literals and arithmetic when using `long long`
+- Boolean type using the `_Bool` keyword
 - Hexadecimal (`0x`) and octal (leading `0`) integer literals
 - String literals which evaluate to a `char *`
 - Character and string literal escapes such as `\n`, `\t`, `\r`, `\b`, `\f`,
