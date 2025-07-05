@@ -90,6 +90,21 @@ static void init_default_opts(cli_options_t *opts)
 }
 
 /*
+ * Free all dynamic option vectors within "opts".
+ */
+void cli_free_opts(cli_options_t *opts)
+{
+    if (!opts)
+        return;
+    vector_free(&opts->sources);
+    vector_free(&opts->include_dirs);
+    vector_free(&opts->defines);
+    vector_free(&opts->undefines);
+    vector_free(&opts->lib_dirs);
+    vector_free(&opts->libs);
+}
+
+/*
  * Append a source file path to "opts->sources".  Returns 0 on success and
  * non-zero on failure.
  */
@@ -470,24 +485,30 @@ int cli_parse_args(int argc, char **argv, cli_options_t *opts)
 
     int opt;
     while ((opt = getopt_long(argc, argv, "hvo:O:cD:U:I:L:l:ES", long_opts, NULL)) != -1) {
-        if (handle_option(opt, optarg, argv[0], opts))
+        if (handle_option(opt, optarg, argv[0], opts)) {
+            cli_free_opts(opts);
             return 1;
+        }
     }
 
     if (optind >= argc) {
         fprintf(stderr, "Error: no source file specified.\n");
         print_usage(argv[0]);
+        cli_free_opts(opts);
         return 1;
     }
 
     for (int i = optind; i < argc; i++) {
-        if (push_source(opts, argv[i]))
+        if (push_source(opts, argv[i])) {
+            cli_free_opts(opts);
             return 1;
+        }
     }
 
     if (!opts->output && !opts->dump_asm && !opts->dump_ir && !opts->preprocess) {
         fprintf(stderr, "Error: no output path specified.\n");
         print_usage(argv[0]);
+        cli_free_opts(opts);
         return 1;
     }
 
