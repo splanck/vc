@@ -28,6 +28,7 @@ typedef struct symbol {
     type_kind_t alias_type;
     union_member_t *members; /* for union declarations */
     size_t member_count;
+    char *active_member;     /* last written union field */
     size_t total_size;
     struct_member_t *struct_members; /* for struct declarations */
     size_t struct_member_count;

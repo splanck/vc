@@ -137,8 +137,8 @@ Structures and unions are declared with the `struct` or `union` keyword.
 Members are accessed using `.` for objects or `->` when working through a pointer.
 For structures each member has its own storage in the order declared.
 Union members share the same storage with size determined by the largest field.
-
-The compiler currently parses member access but does not verify which union member is active.
+The compiler tracks which union member was last written and reports a semantic
+error if code reads a different member.
 
 #### Typedef aliases
 

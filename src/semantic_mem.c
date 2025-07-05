@@ -240,11 +240,19 @@ type_kind_t check_assign_member_expr(expr_t *expr, symtable_t *vars,
         ir_build_store_ptr(ir, addr, word);
         if (out)
             *out = val;
+        if (!expr->assign_member.via_ptr && obj_sym && obj_sym->type == TYPE_UNION) {
+            free(obj_sym->active_member);
+            obj_sym->active_member = vc_strdup(expr->assign_member.member);
+        }
         return TYPE_INT;
     } else {
         ir_build_store_ptr(ir, addr, val);
         if (out)
             *out = val;
+        if (!expr->assign_member.via_ptr && obj_sym && obj_sym->type == TYPE_UNION) {
+            free(obj_sym->active_member);
+            obj_sym->active_member = vc_strdup(expr->assign_member.member);
+        }
         return mtype;
     }
 }
@@ -295,6 +303,12 @@ type_kind_t check_member_expr(expr_t *expr, symtable_t *vars,
     unsigned mbw = 0, mbo = 0;
     if (!find_member(obj_sym, expr->member.member, &mtype, &moff,
                      &mbw, &mbo)) {
+        error_set(expr->line, expr->column, error_current_file, error_current_function);
+        return TYPE_UNKNOWN;
+    }
+
+    if (!expr->member.via_ptr && obj_sym && obj_sym->type == TYPE_UNION &&
+        obj_sym->active_member && strcmp(obj_sym->active_member, expr->member.member) != 0) {
         error_set(expr->line, expr->column, error_current_file, error_current_function);
         return TYPE_UNKNOWN;
     }
