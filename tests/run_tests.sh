@@ -483,6 +483,7 @@ fi
 
 # test --link option with spaces and semicolons in output path
 link_tmpdir=$(mktemp -d)
+trap 'rm -rf "$link_tmpdir"' EXIT
 exe_space="${link_tmpdir}/out with space"
 "$BINARY" --x86-64 --link -o "${exe_space}" "$DIR/fixtures/simple_add.c"
 if ! od -An -t x1 "${exe_space}" | head -n 1 | grep -q "7f 45 4c 46"; then
