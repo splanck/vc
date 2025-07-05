@@ -10,7 +10,7 @@ for cfile in "$DIR"/fixtures/*.c; do
     base=$(basename "$cfile" .c)
 
     case "$base" in
-        *_x86-64|struct_*|bitfield_rw|include_search|include_angle|include_env|macro_bad_define|preproc_blank|macro_cli|include_once|libm_program)
+        *_x86-64|struct_*|bitfield_rw|include_search|include_angle|include_env|macro_bad_define|preproc_blank|macro_cli|include_once|libm_program|union_example)
             continue;;
     esac
     expect="$DIR/fixtures/$base.s"
@@ -336,6 +336,19 @@ ret=$?
 set -e
 if [ $ret -eq 0 ] || ! grep -q "Semantic error" "${err}"; then
     echo "Test duplicate_case failed"
+    fail=1
+fi
+rm -f "${out}" "${err}"
+
+# negative test for invalid union member access
+err=$(mktemp)
+out=$(mktemp)
+set +e
+"$BINARY" -o "${out}" "$DIR/invalid/union_bad_access.c" 2> "${err}"
+ret=$?
+set -e
+if [ $ret -eq 0 ] || ! grep -q "Semantic error" "${err}"; then
+    echo "Test union_bad_access failed"
     fail=1
 fi
 rm -f "${out}" "${err}"

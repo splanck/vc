@@ -46,6 +46,7 @@ symbol_t *symtable_create_symbol(const char *name, const char *ir_name)
     sym->elem_size = 0;
     sym->members = NULL;
     sym->member_count = 0;
+    sym->active_member = NULL;
     sym->total_size = 0;
     sym->struct_members = NULL;
     sym->struct_member_count = 0;
@@ -89,6 +90,7 @@ static void free_symbol_list(symbol_t *sym)
         for (size_t i = 0; i < sym->struct_member_count; i++)
             free(sym->struct_members[i].name);
         free(sym->struct_members);
+        free(sym->active_member);
         free(sym->param_types);
         /* free any tracked aggregate parameter sizes */
         free(sym->param_struct_sizes);
