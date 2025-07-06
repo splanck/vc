@@ -1,6 +1,6 @@
 # Optimization Passes
 
-See the [documentation index](index.md) for a list of all available pages.
+See the [documentation index](README.md) for a list of all available pages.
 
 The optimizer in **vc** operates on the intermediate representation (IR).
 Six passes are currently available and are executed in order:
