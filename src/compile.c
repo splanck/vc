@@ -104,6 +104,7 @@ static int compile_optimize_stage(compile_context_t *ctx,
 static int compile_output_stage(compile_context_t *ctx, const char *output,
                                 int dump_ir, int dump_asm, int use_x86_64,
                                 int compile_obj, const cli_options_t *cli);
+static char *vc_obj_name(const char *source);
 static int register_function_prototypes(func_t **func_list, size_t fcount,
                                         symtable_t *funcs);
 static int check_global_decls(stmt_t **glob_list, size_t gcount,
@@ -647,6 +648,28 @@ static int emit_output_file(ir_builder_t *ir, const char *output,
     return 1;
 }
 
+/*
+ * Return a newly allocated object file name for the given source path.
+ * The caller must free the returned string.  NULL is returned on memory
+ * allocation failure.
+ */
+static char *
+vc_obj_name(const char *source)
+{
+    const char *base = strrchr(source, '/');
+    base = base ? base + 1 : source;
+    const char *dot = strrchr(base, '.');
+    size_t len = dot ? (size_t)(dot - base) : strlen(base);
+
+    char *obj = malloc(len + 3);
+    if (!obj)
+        return NULL;
+
+    memcpy(obj, base, len);
+    strcpy(obj + len, ".o");
+    return obj;
+}
+
 /* Compile a single translation unit */
 #ifndef UNIT_TESTING
 static int compile_single_unit(const char *source, const cli_options_t *cli,
@@ -697,17 +720,11 @@ int compile_unit(const char *source, const cli_options_t *cli,
         int ok = 1;
         for (size_t i = 0; i < cli->sources.count && ok; i++) {
             const char *src = ((const char **)cli->sources.data)[i];
-            const char *base = strrchr(src, '/');
-            base = base ? base + 1 : src;
-            const char *dot = strrchr(base, '.');
-            size_t len = dot ? (size_t)(dot - base) : strlen(base);
-            char *obj = malloc(len + 3);
+            char *obj = vc_obj_name(src);
             if (!obj) {
                 vc_oom();
                 return 0;
             }
-            memcpy(obj, base, len);
-            strcpy(obj + len, ".o");
             ok = compile_single_unit(src, cli, obj, 1);
             free(obj);
         }
