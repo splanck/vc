@@ -14,12 +14,31 @@ Intel-style assembly output may be selected with \fB--intel-syntax\fR.
 When this mode is combined with \fB--compile\fR or \fB--link\fR the
 \fInasm\fR assembler must be available.
 Functions may return \fBstruct\fR or \fBunion\fR values via a hidden pointer.
-Supported constructs include arrays (including variable length arrays inside functions with sizes determined at runtime, size inference from initializer lists and designated initializers using \fB[index]\fR or \fB.member\fR designators), pointer arithmetic (including pointer subtraction and pointer increments), loops (\fBfor\fR, \fBwhile\fR and \fBdo\fR\~\fBwhile\fR), global variable declarations, external declarations using \fBextern\fR, floating-point variables including \fBlong double\fR, the boolean type via \fB_Bool\fR, the
-\fBchar\fR type, support for 64-bit integer constants including hexadecimal and octal literals, string literals usable as \fBchar\fR pointers with standard escape sequences such as \n, \t, \r, \b, \f, \v and numeric forms like \e123 or \ex7F, complete \fBstruct\fR and \fBunion\fR declarations with bit-field members, enum variables, typedef declarations, the
-compiler tracks which \fBunion\fR member was last written and reports an error when a different member is read.
-Wide character and string literals may be written using L'c' and L"text".
-\fBconst\fR (which requires an initializer), \fBvolatile\fR and \fBrestrict\fR and \fBregister\fR qualifiers, and the \fBbreak\fR and \fBcontinue\fR statements, \fBswitch\fR with \fBcase\fR and \fBdefault\fR labels, variadic functions using \fB...\fR (including \fBfloat\fR, \fBdouble\fR and \fBlong double\fR arguments), as well as labels and \fBgoto\fR.
-Function definitions may also use the \fBinline\fR keyword.
+Supported constructs include:
+.IP \[bu] 2
+Arrays with variable length support (block scope only), size inference from initializer lists and designated initializers using \fB[index]\fR or \fB.member\fR designators.
+.IP \[bu] 2
+Pointer arithmetic, including subtraction and increment operations.
+.IP \[bu] 2
+Control flow with \fBfor\fR, \fBwhile\fR and \fBdo\fR\~\fBwhile\fR loops.
+.IP \[bu] 2
+Global and external variable declarations.
+.IP \[bu] 2
+Floating\-point types (including \fBlong double\fR) and the boolean type via \fB_Bool\fR.
+.IP \[bu] 2
+64\-bit integer constants (hexadecimal and octal) and character or string literals with standard escape sequences.
+.IP \[bu] 2
+Complete \fBstruct\fR and \fBunion\fR declarations with bit fields, enumeration types and typedefs.
+.IP \[bu] 2
+Union access tracking which reports an error if a different member is read after writing another.
+.IP \[bu] 2
+Wide character and string literals using L'c' and L"text".
+.IP \[bu] 2
+Qualifiers such as \fBconst\fR (requires an initializer), \fBvolatile\fR, \fBrestrict\fR and \fBregister\fR.
+.IP \[bu] 2
+Statements like \fBbreak\fR, \fBcontinue\fR, \fBswitch\fR with \fBcase\fR/\fBdefault\fR labels, variadic functions using \fB...\fR (including floating\-point arguments), labels and \fBgoto\fR.
+.IP \[bu] 2
+Inline function definitions.
 .PP
 Variable length arrays are supported only for block scope variables.
 They may be sized using any runtime expression and are fully compatible
@@ -152,13 +171,6 @@ Read source from standard input:
 .PP
 .B cat prog.c \| vc -o out.s -
 .PP
-Compile a program using pointer increments:
-.PP
-.B vc -o ptr_inc.s ptr_inc.c
-.PP
-Call a function via a pointer variable:
-.PP
-.B vc -o func_ptr.s func_ptr.c
 .SH ENVIRONMENT
 .TP
 .B VCPATH
@@ -171,4 +183,4 @@ Colon separated list of directories added to the include search path after any
 .B -I
 paths are processed.
 .SH SEE ALSO
-README.md, docs/language_features.md (see the "Union declarations" section).
+README.md, docs/command_line.md, docs/language_features.md (see the "Union declarations" section).
