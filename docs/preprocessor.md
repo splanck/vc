@@ -65,3 +65,11 @@ an explicit `#define`:
 - `__STDC__` evaluates to `1` to indicate standard compliance.
 - `__STDC_VERSION__` expands to `199901L` for C99 support.
 - `__func__` yields the enclosing function name as a string literal.
+
+These macros are always available and cannot be undefined. They are useful for
+diagnostics and logging as they convey file names, line numbers and build
+timestamps.
+
+Additional macros may be defined on the command line using `-Dname=value` or in
+source files with `#define`. After preprocessing the expanded text is handed to
+the lexer for tokenization.

@@ -2,6 +2,9 @@
 
 See the [documentation index](README.md) for a list of all available pages.
 
+This page describes the available flags and demonstrates how to compile a
+simple program with **vc**.
+
 ## Table of Contents
 
 - [Command-line Options](#command-line-options)
