@@ -2,6 +2,9 @@
 
 See the [documentation index](README.md) for a list of all available pages.
 
+This page lists the C constructs currently implemented in **vc**.  Each section
+shows a short example and how to compile it.
+
 ## Table of Contents
 
 - [Basic arithmetic](#basic-arithmetic)
