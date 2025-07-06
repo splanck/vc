@@ -11,7 +11,8 @@ provides an overview of the available documentation.
 3. [Preprocessor workflow](preprocessor.md) – how macros and directives are
    handled before lexing. The standard macros `__FILE__`, `__LINE__`,
    `__DATE__`, `__TIME__`, `__STDC__`, `__STDC_VERSION__` and `__func__` are
-   documented there.
+   documented there. The [preprocessor context](preprocessor.md#preprocessor-context)
+   explains how reentrant preprocessing is achieved.
 4. [Compiler architecture](architecture.md) – overview of the compiler modules
    and their interaction.
 5. [Compilation pipeline](pipeline.md) – detailed description of each stage of
