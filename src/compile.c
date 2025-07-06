@@ -248,7 +248,7 @@ static int read_stdin_source(const cli_options_t *cli,
 
     char *path = vc_strdup(tmpl);
     if (!path) {
-        fprintf(stderr, "Out of memory\n");
+        vc_oom();
         unlink(tmpl);
         free(tmpl);
         return 0;
@@ -701,7 +701,7 @@ int compile_unit(const char *source, const cli_options_t *cli,
             size_t len = dot ? (size_t)(dot - base) : strlen(base);
             char *obj = malloc(len + 3);
             if (!obj) {
-                fprintf(stderr, "Out of memory\n");
+                vc_oom();
                 return 0;
             }
             memcpy(obj, base, len);
@@ -862,7 +862,7 @@ static int compile_source_files(const cli_options_t *cli, vector_t *objs)
         }
 
         if (!vector_push(objs, &obj)) {
-            fprintf(stderr, "Out of memory\n");
+            vc_oom();
             ok = 0;
             unlink(obj);
             free(obj);
@@ -966,7 +966,7 @@ static int build_and_link_objects(vector_t *objs, const cli_options_t *cli)
     int ok = create_startup_object(cli, cli->use_x86_64, &stubobj);
     if (ok) {
         if (!vector_push(objs, &stubobj)) {
-            fprintf(stderr, "Out of memory\n");
+            vc_oom();
             unlink(stubobj);
             free(stubobj);
             return 0;

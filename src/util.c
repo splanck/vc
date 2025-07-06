@@ -16,6 +16,12 @@
 #include "util.h"
 #include "preproc_macros.h"
 
+/* Print a generic out of memory message */
+void vc_oom(void)
+{
+    fprintf(stderr, "Out of memory\n");
+}
+
 /*
  * Allocate "size" bytes of memory.  If the allocation fails the process
  * prints an error message and terminates.  The returned block is

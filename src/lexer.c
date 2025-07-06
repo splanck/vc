@@ -108,13 +108,13 @@ static void append_token(vector_t *vec, token_type_t type, const char *lexeme,
 {
     char *text = vc_strndup(lexeme, len);
     if (!text) {
-        fprintf(stderr, "Out of memory\n");
+        vc_oom();
         exit(1);
     }
     token_t tok = { type, text, line, column };
     if (!vector_push(vec, &tok)) {
         free(text);
-        fprintf(stderr, "Out of memory\n");
+        vc_oom();
         exit(1);
     }
 }
@@ -410,7 +410,7 @@ static int read_string_lit(const char *src, size_t *i, size_t *col,
             (*i)++; /* consume character */
         }
         if (!vector_push(&buf_v, &c)) {
-            fprintf(stderr, "Out of memory\n");
+            vc_oom();
             vector_free(&buf_v);
             return 0;
         }
@@ -419,7 +419,7 @@ static int read_string_lit(const char *src, size_t *i, size_t *col,
     /* NUL-terminate the buffer for convenience */
     char nul = '\0';
     if (!vector_push(&buf_v, &nul)) {
-        fprintf(stderr, "Out of memory\n");
+        vc_oom();
         vector_free(&buf_v);
         return 0;
     }
