@@ -102,13 +102,13 @@ static int include_stack_push(vector_t *stack, const char *path)
     if (!canon) {
         canon = vc_strdup(path);
         if (!canon) {
-            fprintf(stderr, "Out of memory\n");
+            vc_oom();
             return 0;
         }
     }
     if (!vector_push(stack, &canon)) {
         free(canon);
-        fprintf(stderr, "Out of memory\n");
+        vc_oom();
         return 0;
     }
     return 1;
@@ -159,7 +159,7 @@ static int pragma_once_add(const char *path)
     }
     if (!vector_push(&pragma_once_files, &canon)) {
         free(canon);
-        fprintf(stderr, "Out of memory\n");
+        vc_oom();
         return 0;
     }
     return 1;
@@ -407,7 +407,7 @@ static int add_macro(const char *name, const char *value, vector_t *params,
                 free(((char **)params->data)[j]);
             vector_free(params);
             macro_free(&m);
-            fprintf(stderr, "Out of memory\n");
+            vc_oom();
             return 0;
         }
     }
@@ -419,7 +419,7 @@ static int add_macro(const char *name, const char *value, vector_t *params,
             free(((char **)m.params.data)[i]);
         m.params.count = 0;
         macro_free(&m);
-        fprintf(stderr, "Out of memory\n");
+        vc_oom();
         return 0;
     }
     return 1;
@@ -479,7 +479,7 @@ static int cond_push_ifdef_common(char *line, vector_t *macros,
         st.taking = 0;
     }
     if (!vector_push(conds, &st)) {
-        fprintf(stderr, "Out of memory\n");
+        vc_oom();
         return 0;
     }
     return 1;
@@ -511,7 +511,7 @@ static int cond_push_ifexpr(char *line, vector_t *macros, vector_t *conds)
         st.taking = 0;
     }
     if (!vector_push(conds, &st)) {
-        fprintf(stderr, "Out of memory\n");
+        vc_oom();
         return 0;
     }
     return 1;

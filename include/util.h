@@ -17,6 +17,9 @@ char *vc_strdup(const char *s);
 /* Duplicate at most 'n' characters of a string. Returns NULL on allocation failure */
 char *vc_strndup(const char *s, size_t n);
 
+/* Print an out of memory message to stderr */
+void vc_oom(void);
+
 /* Allocate memory or exit on failure */
 void *vc_alloc_or_exit(size_t size);
 

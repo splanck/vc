@@ -17,6 +17,7 @@
 #include <unistd.h>
 
 #include "cli.h"
+#include "util.h"
 
 #define VERSION "0.1.0"
 
@@ -111,7 +112,7 @@ void cli_free_opts(cli_options_t *opts)
 static int push_source(cli_options_t *opts, const char *src)
 {
     if (!vector_push(&opts->sources, &src)) {
-        fprintf(stderr, "Out of memory\n");
+        vc_oom();
         return -1;
     }
     return 0;
@@ -124,7 +125,7 @@ static int push_source(cli_options_t *opts, const char *src)
 static int add_include_dir(cli_options_t *opts, const char *dir)
 {
     if (!vector_push(&opts->include_dirs, &dir)) {
-        fprintf(stderr, "Out of memory\n");
+        vc_oom();
         return -1;
     }
     return 0;
@@ -136,7 +137,7 @@ static int add_include_dir(cli_options_t *opts, const char *dir)
 static int add_lib_dir(cli_options_t *opts, const char *dir)
 {
     if (!vector_push(&opts->lib_dirs, &dir)) {
-        fprintf(stderr, "Out of memory\n");
+        vc_oom();
         return -1;
     }
     return 0;
@@ -148,7 +149,7 @@ static int add_lib_dir(cli_options_t *opts, const char *dir)
 static int add_library(cli_options_t *opts, const char *name)
 {
     if (!vector_push(&opts->libs, &name)) {
-        fprintf(stderr, "Out of memory\n");
+        vc_oom();
         return -1;
     }
     return 0;
@@ -330,7 +331,7 @@ static int add_define_opt(const char *arg, const char *prog, cli_options_t *opts
         return 1;
     }
     if (!vector_push(&opts->defines, &arg)) {
-        fprintf(stderr, "Out of memory\n");
+        vc_oom();
         return 1;
     }
     return 0;
@@ -344,7 +345,7 @@ static int add_undef_opt(const char *arg, const char *prog, cli_options_t *opts)
         return 1;
     }
     if (!vector_push(&opts->undefines, &arg)) {
-        fprintf(stderr, "Out of memory\n");
+        vc_oom();
         return 1;
     }
     return 0;

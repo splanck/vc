@@ -415,7 +415,7 @@ static int parse_macro_invocation(const char *line, size_t *pos,
                         strbuf_free(&sb);
                         ap = malloc((fixed + 1) * sizeof(char *));
                         if (!ap) {
-                            fprintf(stderr, "Out of memory\n");
+                            vc_oom();
                             for (size_t t = 0; t < args.count; t++)
                                 free(((char **)args.data)[t]);
                             vector_free(&args);
