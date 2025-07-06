@@ -23,3 +23,4 @@ provides an overview of the available documentation.
 8. [Development roadmap](roadmap.md) – planned milestones and compatibility
    goals.
 9. [Contributing](../CONTRIBUTING.md) – how to submit patches and bug reports.
+10. [Memory helpers](memory_helpers.md) – cleaning up vectors of strings or macros.

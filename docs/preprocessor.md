@@ -7,7 +7,7 @@ are produced.  `preproc_run` in `src/preproc_file.c` drives this process.
 ## File processing
 
 `preproc_run` builds a list of include search paths then calls `process_file` to
-read the initial source.  Each line is inspected in order and any recognised
+read the initial source.  The list is released with [`free_string_vector`](memory_helpers.md) once preprocessing finishes.  Each line is inspected in order and any recognised
 preprocessor directive is handled immediately:
 
 - `#include` resolves the requested path and recursively invokes `process_file`
@@ -40,6 +40,7 @@ lookup, handle the `#` stringize operator and manage `##` token pasting.  A
 macro may be declared variadic by using `...` as the final parameter.  When such
 a macro is invoked `__VA_ARGS__` within its body is replaced by the remaining
 arguments.
+The macro table is cleaned up with [`free_macro_vector`](memory_helpers.md) once preprocessing is complete.
 Macro expansion is recursive so macro bodies may reference other macros. To
 avoid infinite loops a hard limit of 100 nested expansions is enforced.  When
 this limit is hit `expand_line` returns zero and the compiler aborts
