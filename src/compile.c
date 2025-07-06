@@ -584,8 +584,16 @@ static int emit_output_file(ir_builder_t *ir, const char *output,
             free(tmpname);
             return 0;
         }
-        if (cli->asm_syntax == ASM_INTEL)
-            fputs(nasm_macros, tmpf);
+        if (cli->asm_syntax == ASM_INTEL) {
+            int rc = fputs(nasm_macros, tmpf);
+            if (rc == EOF) {
+                perror("fputs");
+                fclose(tmpf);
+                unlink(tmpname);
+                free(tmpname);
+                return 0;
+            }
+        }
         codegen_emit_x86(tmpf, ir, use_x86_64,
                         cli->asm_syntax);
         if (fflush(tmpf) == EOF) {

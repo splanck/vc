@@ -569,6 +569,25 @@ if [ $ret -eq 0 ] || ! grep -q "No space left on device" "$err"; then
 fi
 rm -f "$out" "$err" "$lib"
 
+# simulate disk full during macro write
+if command -v nasm >/dev/null; then
+    lib="$DIR/libfail_fputs.so"
+    cc -shared -fPIC -o "$lib" "$DIR/unit/fail_fputs.c"
+    out=$(mktemp)
+    err=$(mktemp)
+    set +e
+    LD_PRELOAD="$lib" "$BINARY" --intel-syntax -c -o "$out" "$DIR/fixtures/simple_add.c" 2> "$err"
+    ret=$?
+    set -e
+    if [ $ret -eq 0 ] || ! grep -q "No space left on device" "$err"; then
+        echo "Test disk_full_fputs failed"
+        fail=1
+    fi
+    rm -f "$out" "$err" "$lib"
+else
+    echo "Skipping disk_full_fputs (nasm not found)"
+fi
+
 # regression test for long command error message
 long_tmpdir=$(mktemp -d)
 long_out="$long_tmpdir/$(printf 'a%.0s' {1..50})/$(printf 'b%.0s' {1..50})/$(printf 'c%.0s' {1..50})/$(printf 'd%.0s' {1..50})/$(printf 'e%.0s' {1..50})/out.o"
