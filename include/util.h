@@ -8,6 +8,7 @@
 #ifndef VC_UTIL_H
 #define VC_UTIL_H
 
+#include <stddef.h>
 #include "vector.h"
 
 /* Duplicate a string using malloc. Returns NULL on allocation failure */
