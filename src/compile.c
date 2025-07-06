@@ -71,23 +71,23 @@ typedef struct compile_context {
 } compile_context_t;
 
 /* Stage implementations */
-static int compile_tokenize_impl(const char *source, const cli_options_t *cli,
-                                 const vector_t *incdirs,
-                                 const vector_t *defines,
-                                 const vector_t *undefines,
-                                 char **out_src, token_t **out_toks,
-                                 size_t *out_count, char **tmp_path);
-static int compile_parse_impl(token_t *toks, size_t count,
-                              vector_t *funcs_v, vector_t *globs_v,
-                              symtable_t *funcs);
+int compile_tokenize_impl(const char *source, const cli_options_t *cli,
+                          const vector_t *incdirs,
+                          const vector_t *defines,
+                          const vector_t *undefines,
+                          char **out_src, token_t **out_toks,
+                          size_t *out_count, char **tmp_path);
+int compile_parse_impl(token_t *toks, size_t count,
+                       vector_t *funcs_v, vector_t *globs_v,
+                       symtable_t *funcs);
 static int compile_semantic_impl(func_t **func_list, size_t fcount,
                                  stmt_t **glob_list, size_t gcount,
                                  symtable_t *funcs, symtable_t *globals,
                                  ir_builder_t *ir);
 static int compile_optimize_impl(ir_builder_t *ir, const opt_config_t *cfg);
-static int compile_output_impl(ir_builder_t *ir, const char *output,
-                               int dump_ir, int dump_asm, int use_x86_64,
-                               int compile, const cli_options_t *cli);
+int compile_output_impl(ir_builder_t *ir, const char *output,
+                        int dump_ir, int dump_asm, int use_x86_64,
+                        int compile, const cli_options_t *cli);
 
 /* Stage helpers */
 static void compile_ctx_init(compile_context_t *ctx);
@@ -112,14 +112,6 @@ static int check_global_decls(stmt_t **glob_list, size_t gcount,
 static int check_function_defs(func_t **func_list, size_t fcount,
                                symtable_t *funcs, symtable_t *globals,
                                ir_builder_t *ir);
-static int emit_output_file(ir_builder_t *ir, const char *output,
-                            int use_x86_64, int compile_obj,
-                            const cli_options_t *cli);
-static int read_stdin_source(const cli_options_t *cli,
-                             const vector_t *incdirs,
-                             const vector_t *defines,
-                             const vector_t *undefines,
-                             char **out_path, char **out_text);
 
 /* Compile one translation unit to the given output path. */
 int compile_unit(const char *source, const cli_options_t *cli,
@@ -151,21 +143,6 @@ static void free_linker_args(char **argv);
 
 /* Spawn a command and wait for completion */
 
-static const char nasm_macros[] =
-    "%macro movl 2\n    mov %1, %2\n%endmacro\n"
-    "%macro movq 2\n    mov %1, %2\n%endmacro\n"
-    "%macro addl 2\n    add %1, %2\n%endmacro\n"
-    "%macro addq 2\n    add %1, %2\n%endmacro\n"
-    "%macro subl 2\n    sub %1, %2\n%endmacro\n"
-    "%macro subq 2\n    sub %1, %2\n%endmacro\n"
-    "%macro imull 2\n    imul %1, %2\n%endmacro\n"
-    "%macro imulq 2\n    imul %1, %2\n%endmacro\n"
-    "%macro cmpl 2\n    cmp %1, %2\n%endmacro\n"
-    "%macro cmpq 2\n    cmp %1, %2\n%endmacro\n"
-    "%macro pushl 1\n    push %1\n%endmacro\n"
-    "%macro pushq 1\n    push %1\n%endmacro\n"
-    "%macro popl 1\n    pop %1\n%endmacro\n"
-    "%macro popq 1\n    pop %1\n%endmacro\n";
 
 /* Create a temporary file and return its descriptor. */
 int create_temp_file(const cli_options_t *cli, const char *prefix,
@@ -195,177 +172,6 @@ int run_preprocessor(const cli_options_t *cli);
 int link_sources(const cli_options_t *cli);
 
 /* Read source from stdin into a temporary file and run the preprocessor */
-static int read_stdin_source(const cli_options_t *cli,
-                             const vector_t *incdirs,
-                             const vector_t *defines,
-                             const vector_t *undefines,
-                             char **out_path, char **out_text)
-{
-    char *tmpl = create_temp_template(cli, "vcstdin");
-    if (!tmpl)
-        return 0;
-
-    int fd = open_temp_file(tmpl);
-    if (fd < 0) {
-        perror("mkstemp");
-        free(tmpl);
-        return 0;
-    }
-    FILE *f = fdopen(fd, TEMP_FOPEN_MODE);
-    if (!f) {
-        perror("fdopen");
-        close(fd);
-        unlink(tmpl);
-        free(tmpl);
-        return 0;
-    }
-
-    char buf[4096];
-    size_t n;
-    while ((n = fread(buf, 1, sizeof(buf), stdin)) > 0) {
-        if (fwrite(buf, 1, n, f) != n) {
-            perror("fwrite");
-            if (fclose(f) == EOF)
-                perror("fclose");
-            unlink(tmpl);
-            free(tmpl);
-            return 0;
-        }
-    }
-    if (ferror(stdin)) {
-        perror("fread");
-        if (fclose(f) == EOF)
-            perror("fclose");
-        unlink(tmpl);
-        free(tmpl);
-        return 0;
-    }
-    if (fclose(f) == EOF) {
-        perror("fclose");
-        unlink(tmpl);
-        free(tmpl);
-        return 0;
-    }
-
-    char *path = vc_strdup(tmpl);
-    if (!path) {
-        vc_oom();
-        unlink(tmpl);
-        free(tmpl);
-        return 0;
-    }
-    free(tmpl);
-
-    preproc_context_t ctx;
-    char *text = preproc_run(&ctx, path, incdirs, defines, undefines);
-    if (!text) {
-        perror("preproc_run");
-        unlink(path);
-        free(path);
-        return 0;
-    }
-
-    *out_path = path;
-    *out_text = text;
-    return 1;
-}
-
-/* Tokenize the preprocessed source file */
-static int compile_tokenize_impl(const char *source, const cli_options_t *cli,
-                            const vector_t *incdirs,
-                            const vector_t *defines,
-                            const vector_t *undefines,
-                            char **out_src, token_t **out_toks,
-                            size_t *out_count, char **tmp_path)
-{
-    if (tmp_path)
-        *tmp_path = NULL;
-
-    char *stdin_path = NULL;
-    char *text = NULL;
-    if (source && strcmp(source, "-") == 0) {
-        if (!read_stdin_source(cli, incdirs, defines, undefines,
-                               &stdin_path, &text))
-            return 0;
-        if (tmp_path)
-            *tmp_path = stdin_path;
-        else {
-            unlink(stdin_path);
-            free(stdin_path);
-            stdin_path = NULL;
-        }
-    } else {
-        preproc_context_t ctx;
-        text = preproc_run(&ctx, source, incdirs, defines, undefines);
-        if (!text) {
-            perror("preproc_run");
-            return 0;
-        }
-    }
-
-    size_t count = 0;
-    token_t *toks = lexer_tokenize(text, &count);
-    if (!toks) {
-        fprintf(stderr, "Tokenization failed\n");
-        free(text);
-        if (stdin_path) {
-            unlink(stdin_path);
-            free(stdin_path);
-        }
-        return 0;
-    }
-    *out_src = text;
-    *out_toks = toks;
-    if (out_count)
-        *out_count = count;
-    return 1;
-}
-
-/* Parse tokens into AST lists */
-static int compile_parse_impl(token_t *toks, size_t count,
-                         vector_t *funcs_v, vector_t *globs_v,
-                         symtable_t *funcs)
-{
-    parser_t parser;
-    parser_init(&parser, toks, count);
-    symtable_init(funcs);
-    vector_init(funcs_v, sizeof(func_t *));
-    vector_init(globs_v, sizeof(stmt_t *));
-
-    int ok = 1;
-    func_t *err_fn = NULL;
-    stmt_t *err_g = NULL;
-    while (ok && !parser_is_eof(&parser)) {
-        func_t *fn = NULL;
-        stmt_t *g = NULL;
-        if (!parser_parse_toplevel(&parser, funcs, &fn, &g)) {
-            token_type_t expected[] = { TOK_KW_INT, TOK_KW_VOID };
-            parser_print_error(&parser, expected, 2);
-            err_fn = fn;
-            err_g = g;
-            ok = 0;
-            break;
-        }
-        if (fn) {
-            if (!vector_push(funcs_v, &fn)) {
-                ok = 0;
-                ast_free_func(fn);
-            }
-        } else if (g) {
-            if (!vector_push(globs_v, &g)) {
-                ok = 0;
-                ast_free_stmt(g);
-            }
-        }
-    }
-    if (!ok) {
-        if (err_fn)
-            ast_free_func(err_fn);
-        if (err_g)
-            ast_free_stmt(err_g);
-    }
-    return ok;
-}
 
 /* Register function prototypes and definitions in the symbol table */
 static int register_function_prototypes(func_t **func_list, size_t fcount,
@@ -457,32 +263,6 @@ static int compile_optimize_impl(ir_builder_t *ir, const opt_config_t *cfg)
     return 1;
 }
 
-/* Emit the requested output */
-static int compile_output_impl(ir_builder_t *ir, const char *output,
-                          int dump_ir, int dump_asm, int use_x86_64,
-                          int compile, const cli_options_t *cli)
-{
-    if (dump_ir) {
-        char *text = ir_to_string(ir);
-        if (text) {
-            printf("%s", text);
-            free(text);
-        }
-        return 1;
-    }
-    if (dump_asm) {
-        char *text = codegen_ir_to_string(ir, use_x86_64,
-                                          cli->asm_syntax);
-        if (text) {
-            printf("%s", text);
-            free(text);
-        }
-        return 1;
-    }
-
-    return emit_output_file(ir, output, use_x86_64, compile, cli);
-}
-
 /* Initialize compilation context */
 static void compile_ctx_init(compile_context_t *ctx)
 {
@@ -566,95 +346,6 @@ static int compile_output_stage(compile_context_t *ctx, const char *output,
 }
 
 /* Emit assembly or an object file */
-static int emit_output_file(ir_builder_t *ir, const char *output,
-                            int use_x86_64, int compile_obj,
-                            const cli_options_t *cli)
-{
-    if (compile_obj) {
-        char *tmpname = NULL;
-        int fd = create_temp_file(cli, "vc", &tmpname);
-        if (fd < 0) {
-            return 0;
-        }
-        FILE *tmpf = fdopen(fd, TEMP_FOPEN_MODE);
-        if (!tmpf) {
-            perror("fdopen");
-            close(fd);
-            unlink(tmpname);
-            free(tmpname);
-            return 0;
-        }
-        if (cli->asm_syntax == ASM_INTEL) {
-            int rc = fputs(nasm_macros, tmpf);
-            if (rc == EOF) {
-                perror("fputs");
-                fclose(tmpf);
-                unlink(tmpname);
-                free(tmpname);
-                return 0;
-            }
-        }
-        codegen_emit_x86(tmpf, ir, use_x86_64,
-                        cli->asm_syntax);
-        if (fflush(tmpf) == EOF) {
-            perror("fflush");
-            fclose(tmpf);
-            unlink(tmpname);
-            free(tmpname);
-            return 0;
-        }
-        if (fclose(tmpf) == EOF) {
-            perror("fclose");
-            unlink(tmpname);
-            free(tmpname);
-            return 0;
-        }
-
-        int rc;
-        if (cli->asm_syntax == ASM_INTEL) {
-            const char *fmt = use_x86_64 ? "elf64" : "elf32";
-            char *argv[] = {"nasm", "-f", (char *)fmt, tmpname, "-o",
-                            (char *)output, NULL};
-            rc = command_run(argv);
-        } else {
-            const char *arch_flag = use_x86_64 ? "-m64" : "-m32";
-            char *argv[] = {"cc", "-x", "assembler", (char *)arch_flag, "-c",
-                            tmpname, "-o", (char *)output, NULL};
-            rc = command_run(argv);
-        }
-        unlink(tmpname);
-        free(tmpname);
-        if (rc != 1) {
-            if (rc == 0) {
-                if (cli->asm_syntax == ASM_INTEL)
-                    fprintf(stderr, "assembly failed\n");
-                else
-                    fprintf(stderr, "cc failed\n");
-            } else if (rc == -1) {
-                if (cli->asm_syntax == ASM_INTEL)
-                    fprintf(stderr, "nasm terminated by signal\n");
-                else
-                    fprintf(stderr, "cc terminated by signal\n");
-            }
-            return 0;
-        }
-        return 1;
-    }
-
-    FILE *outf = fopen(output, "wb");
-    if (!outf) {
-        perror("fopen");
-        return 0;
-    }
-    codegen_emit_x86(outf, ir, use_x86_64,
-                    cli->asm_syntax);
-    if (fclose(outf) == EOF) {
-        perror("fclose");
-        unlink(output);
-        return 0;
-    }
-    return 1;
-}
 
 /*
  * Return a newly allocated object file name for the given source path.
