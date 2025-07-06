@@ -66,9 +66,9 @@ void codegen_set_debug(int flag)
  * register allocator state `ra` provides operand locations and `x64`
  * selects the 32- or 64-bit instruction forms used by the helper.
  */
-static void emit_instr(strbuf_t *sb, ir_instr_t *ins,
-                       regalloc_t *ra, int x64,
-                       asm_syntax_t syntax)
+static int emit_instr(strbuf_t *sb, ir_instr_t *ins,
+                      regalloc_t *ra, int x64,
+                      asm_syntax_t syntax)
 {
     switch (ins->op) {
     case IR_CONST: case IR_LOAD: case IR_STORE:
@@ -80,7 +80,7 @@ static void emit_instr(strbuf_t *sb, ir_instr_t *ins,
     case IR_GLOB_VAR: case IR_GLOB_ARRAY:
     case IR_GLOB_UNION: case IR_GLOB_STRUCT:
         emit_memory_instr(sb, ins, ra, x64, syntax);
-        break;
+        return 0;
 
     case IR_PTR_ADD: case IR_PTR_DIFF:
     case IR_FADD: case IR_FSUB: case IR_FMUL: case IR_FDIV:
@@ -93,12 +93,12 @@ static void emit_instr(strbuf_t *sb, ir_instr_t *ins,
     case IR_CMPLE: case IR_CMPGE:
     case IR_LOGAND: case IR_LOGOR:
         emit_arith_instr(sb, ins, ra, x64, syntax);
-        break;
+        return 0;
 
     default:
-        emit_branch_instr(sb, ins, ra, x64, syntax);
-        break;
+        return emit_branch_instr(sb, ins, ra, x64, syntax);
     }
+    return 0;
 }
 
 /*
@@ -127,7 +127,11 @@ char *codegen_ir_to_string(ir_builder_t *ir, int x64,
     for (ir_instr_t *ins = ir->head; ins; ins = ins->next) {
         if (debug_info && ins->file && ins->line)
             strbuf_appendf(&sb, ".loc 1 %zu %zu\n", ins->line, ins->column);
-        emit_instr(&sb, ins, &ra, x64, syntax);
+        if (emit_instr(&sb, ins, &ra, x64, syntax) < 0) {
+            regalloc_free(&ra);
+            strbuf_free(&sb);
+            return NULL;
+        }
     }
 
     regalloc_free(&ra);
