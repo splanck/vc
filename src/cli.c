@@ -227,12 +227,6 @@ static int set_output_path(const char *arg, const char *prog, cli_options_t *opt
     return 0;
 }
 
-static int enable_compile(const char *arg, const char *prog, cli_options_t *opts)
-{
-    (void)arg; (void)prog;
-    opts->compile = true;
-    return 0;
-}
 
 static int add_include(const char *arg, const char *prog, cli_options_t *opts)
 {
@@ -246,82 +240,16 @@ static int set_level(const char *arg, const char *prog, cli_options_t *opts)
     return set_opt_level(opts, arg);
 }
 
-static int disable_fold(const char *arg, const char *prog, cli_options_t *opts)
-{
-    (void)arg; (void)prog;
-    opts->opt_cfg.fold_constants = 0;
-    return 0;
-}
 
-static int disable_dce(const char *arg, const char *prog, cli_options_t *opts)
-{
-    (void)arg; (void)prog;
-    opts->opt_cfg.dead_code = 0;
-    return 0;
-}
 
-static int enable_x86(const char *arg, const char *prog, cli_options_t *opts)
-{
-    (void)arg; (void)prog;
-    opts->use_x86_64 = true;
-    return 0;
-}
 
-static int enable_intel_syntax(const char *arg, const char *prog, cli_options_t *opts)
-{
-    (void)arg; (void)prog;
-    opts->asm_syntax = ASM_INTEL;
-    return 0;
-}
 
-static int enable_dump(const char *arg, const char *prog, cli_options_t *opts)
-{
-    (void)arg; (void)prog;
-    opts->dump_asm = true;
-    return 0;
-}
 
-static int disable_cprop(const char *arg, const char *prog, cli_options_t *opts)
-{
-    (void)arg; (void)prog;
-    opts->opt_cfg.const_prop = 0;
-    return 0;
-}
 
-static int disable_inline_opt(const char *arg, const char *prog, cli_options_t *opts)
-{
-    (void)arg; (void)prog;
-    opts->opt_cfg.inline_funcs = 0;
-    return 0;
-}
 
-static int enable_dump_ir_opt(const char *arg, const char *prog, cli_options_t *opts)
-{
-    (void)arg; (void)prog;
-    opts->dump_ir = true;
-    return 0;
-}
 
-static int enable_debug_opt(const char *arg, const char *prog, cli_options_t *opts)
-{
-    (void)arg; (void)prog;
-    opts->debug = true;
-    return 0;
-}
 
-static int disable_color_opt(const char *arg, const char *prog, cli_options_t *opts)
-{
-    (void)arg; (void)prog;
-    opts->color_diag = false;
-    return 0;
-}
 
-static int enable_preproc(const char *arg, const char *prog, cli_options_t *opts)
-{
-    (void)arg; (void)prog;
-    opts->preprocess = true;
-    return 0;
-}
 
 static int add_define_opt(const char *arg, const char *prog, cli_options_t *opts)
 {
@@ -371,12 +299,6 @@ static int add_lib_opt(const char *arg, const char *prog, cli_options_t *opts)
     return add_library(opts, arg);
 }
 
-static int enable_link_opt(const char *arg, const char *prog, cli_options_t *opts)
-{
-    (void)arg; (void)prog;
-    opts->link = true;
-    return 0;
-}
 
 static int set_obj_dir_opt(const char *arg, const char *prog, cli_options_t *opts)
 {
@@ -392,6 +314,20 @@ static int handle_std(const char *arg, const char *prog, cli_options_t *opts)
 }
 
 /*
+ * Generic helper to set a boolean or enum field at the given offset
+ * within cli_options_t. "is_bool" determines whether the field should
+ * be treated as a bool or as an int/enum.
+ */
+static int set_flag(cli_options_t *opts, size_t off, int val, bool is_bool)
+{
+    if (is_bool)
+        *(bool *)((char *)opts + off) = val != 0;
+    else
+        *(int *)((char *)opts + off) = val;
+    return 0;
+}
+
+/*
  * Handle a single getopt option by dispatching to the appropriate helper
  * function from a small lookup table. "opt" is the value returned by
  * getopt_long(), "arg" is the option argument if any and "prog" is used for
@@ -401,41 +337,51 @@ static int handle_std(const char *arg, const char *prog, cli_options_t *opts)
 static int handle_option(int opt, const char *arg, const char *prog,
                          cli_options_t *opts)
 {
+    struct opt_flag { int opt; size_t off; int val; bool is_bool; };
+    static const struct opt_flag flags[] = {
+        {'c', offsetof(cli_options_t, compile), 1, true},
+        {CLI_OPT_NO_FOLD,   offsetof(cli_options_t, opt_cfg.fold_constants), 0, false},
+        {CLI_OPT_NO_DCE,    offsetof(cli_options_t, opt_cfg.dead_code), 0, false},
+        {CLI_OPT_X86_64,    offsetof(cli_options_t, use_x86_64), 1, true},
+        {CLI_OPT_INTEL_SYNTAX, offsetof(cli_options_t, asm_syntax), ASM_INTEL, false},
+        {'S', offsetof(cli_options_t, dump_asm), 1, true},
+        {CLI_OPT_DUMP_ASM_LONG, offsetof(cli_options_t, dump_asm), 1, true},
+        {CLI_OPT_NO_CPROP,  offsetof(cli_options_t, opt_cfg.const_prop), 0, false},
+        {CLI_OPT_DUMP_IR,   offsetof(cli_options_t, dump_ir), 1, true},
+        {CLI_OPT_DEBUG,     offsetof(cli_options_t, debug), 1, true},
+        {CLI_OPT_NO_INLINE, offsetof(cli_options_t, opt_cfg.inline_funcs), 0, false},
+        {CLI_OPT_NO_COLOR,  offsetof(cli_options_t, color_diag), 0, true},
+        {'E', offsetof(cli_options_t, preprocess), 1, true},
+        {CLI_OPT_LINK,      offsetof(cli_options_t, link), 1, true},
+        {0, 0, 0, false}
+    };
+
+    for (size_t i = 0; flags[i].opt; i++) {
+        if (flags[i].opt == opt)
+            return set_flag(opts, flags[i].off, flags[i].val, flags[i].is_bool);
+    }
+
     struct opt_handler { int opt; int (*func)(const char *, const char *, cli_options_t *); };
-    static const struct opt_handler table[] = {
+    static const struct opt_handler funcs[] = {
         {'h', handle_help},
         {'v', handle_version},
         {'o', set_output_path},
-        {'c', enable_compile},
         {'D', add_define_opt},
         {'U', add_undef_opt},
         {'I', add_include},
         {'L', add_lib_dir_opt},
         {'l', add_lib_opt},
         {'O', set_level},
-        {CLI_OPT_NO_FOLD,      disable_fold},
-        {CLI_OPT_NO_DCE,       disable_dce},
-        {CLI_OPT_X86_64,       enable_x86},
-        {CLI_OPT_INTEL_SYNTAX, enable_intel_syntax},
-        {'S', enable_dump},
-        {CLI_OPT_DUMP_ASM_LONG, enable_dump},
-        {CLI_OPT_NO_CPROP,     disable_cprop},
-        {CLI_OPT_DUMP_IR,      enable_dump_ir_opt},
-        {CLI_OPT_DEBUG,        enable_debug_opt},
-        {CLI_OPT_NO_INLINE,    disable_inline_opt},
-        {CLI_OPT_NO_COLOR,     disable_color_opt},
-        {'E', enable_preproc},
-        {CLI_OPT_DEFINE,       add_define_opt},
-        {CLI_OPT_UNDEFINE,     add_undef_opt},
-        {CLI_OPT_LINK,         enable_link_opt},
-        {CLI_OPT_STD,          handle_std},
-        {CLI_OPT_OBJ_DIR,      set_obj_dir_opt},
-        {0,   NULL}
+        {CLI_OPT_DEFINE,   add_define_opt},
+        {CLI_OPT_UNDEFINE, add_undef_opt},
+        {CLI_OPT_STD,      handle_std},
+        {CLI_OPT_OBJ_DIR,  set_obj_dir_opt},
+        {0, NULL}
     };
 
-    for (size_t i = 0; table[i].func; i++) {
-        if (table[i].opt == opt)
-            return table[i].func(arg, prog, opts);
+    for (size_t i = 0; funcs[i].func; i++) {
+        if (funcs[i].opt == opt)
+            return funcs[i].func(arg, prog, opts);
     }
 
     print_usage(prog);
