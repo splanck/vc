@@ -120,12 +120,34 @@ static void test_tmpdir(void)
     rmdir(tmpdir);
 }
 
+static void test_tmpdir_mkdtemp(void)
+{
+    char template[] = "/tmp/vcXXXXXX";
+    char *dir = mkdtemp(template);
+    ASSERT(dir != NULL);
+    setenv("TMPDIR", dir, 1);
+
+    cli_options_t cli;
+    memset(&cli, 0, sizeof(cli));
+    const char *prefix = "vc";
+    char *path = NULL;
+    int fd = create_temp_file(&cli, prefix, &path);
+    ASSERT(fd >= 0);
+    ASSERT(strncmp(path, dir, strlen(dir)) == 0 && path[strlen(dir)] == '/');
+    close(fd);
+    unlink(path);
+    free(path);
+    unsetenv("TMPDIR");
+    rmdir(dir);
+}
+
 int main(void)
 {
     test_reject_long_path();
     test_reject_pathmax_dir();
     test_snprintf_overflow();
     test_tmpdir();
+    test_tmpdir_mkdtemp();
     if (failures == 0)
         printf("All create_temp_file tests passed\n");
     else
