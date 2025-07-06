@@ -81,7 +81,7 @@ static void init_default_opts(cli_options_t *opts)
     opts->color_diag = true;
     opts->asm_syntax = ASM_ATT;
     opts->std = STD_C99;
-    opts->obj_dir = "/tmp";
+    opts->obj_dir = NULL;
     vector_init(&opts->include_dirs, sizeof(char *));
     vector_init(&opts->sources, sizeof(char *));
     vector_init(&opts->defines, sizeof(char *));

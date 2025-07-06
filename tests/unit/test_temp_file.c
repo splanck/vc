@@ -1,3 +1,4 @@
+#define _POSIX_C_SOURCE 200809L
 #include <stdio.h>
 #include <stdarg.h>
 #include <stdlib.h>
@@ -10,6 +11,8 @@
 # define PATH_MAX 4096
 #endif
 #include <errno.h>
+#include <sys/stat.h>
+#include <unistd.h>
 #include "cli.h"
 
 int create_temp_file(const cli_options_t *cli, const char *prefix, char **out_path);
@@ -97,11 +100,32 @@ static void test_snprintf_overflow(void)
     force_snprintf_overflow = 0;
 }
 
+static void test_tmpdir(void)
+{
+    const char *tmpdir = "./tmp_test_dir";
+    mkdir(tmpdir, 0700);
+    setenv("TMPDIR", tmpdir, 1);
+
+    cli_options_t cli;
+    memset(&cli, 0, sizeof(cli));
+    const char *prefix = "vc";
+    char *path = NULL;
+    int fd = create_temp_file(&cli, prefix, &path);
+    ASSERT(fd >= 0);
+    ASSERT(strncmp(path, "./tmp_test_dir/", strlen("./tmp_test_dir/")) == 0);
+    close(fd);
+    unlink(path);
+    free(path);
+    unsetenv("TMPDIR");
+    rmdir(tmpdir);
+}
+
 int main(void)
 {
     test_reject_long_path();
     test_reject_pathmax_dir();
     test_snprintf_overflow();
+    test_tmpdir();
     if (failures == 0)
         printf("All create_temp_file tests passed\n");
     else

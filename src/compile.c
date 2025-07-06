@@ -744,8 +744,9 @@ int compile_unit(const char *source, const cli_options_t *cli,
 #endif /* !UNIT_TESTING */
 
 /*
- * Assemble mkstemp template path using cli->obj_dir (or /tmp) and the
- * given prefix.  Returns a newly allocated string or NULL on error.
+ * Assemble mkstemp template path using cli->obj_dir (or the process
+ * temporary directory) and the given prefix.  Returns a newly allocated
+ * string or NULL on error.
  *
  * errno will be ENAMETOOLONG if the resulting path would exceed PATH_MAX
  * or snprintf detected truncation.
@@ -753,7 +754,17 @@ int compile_unit(const char *source, const cli_options_t *cli,
 static char *
 create_temp_template(const cli_options_t *cli, const char *prefix)
 {
-    const char *dir = cli->obj_dir ? cli->obj_dir : "/tmp";
+    const char *dir = cli->obj_dir;
+    if (!dir || !*dir) {
+        dir = getenv("TMPDIR");
+        if (!dir || !*dir) {
+#ifdef P_tmpdir
+            dir = P_tmpdir;
+#else
+            dir = "/tmp";
+#endif
+        }
+    }
     size_t len = strlen(dir) + strlen(prefix) + sizeof("/XXXXXX");
     if (len >= PATH_MAX) {
         errno = ENAMETOOLONG;
