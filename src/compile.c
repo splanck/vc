@@ -255,7 +255,8 @@ static int read_stdin_source(const cli_options_t *cli,
     }
     free(tmpl);
 
-    char *text = preproc_run(path, incdirs, defines, undefines);
+    preproc_context_t ctx;
+    char *text = preproc_run(&ctx, path, incdirs, defines, undefines);
     if (!text) {
         perror("preproc_run");
         unlink(path);
@@ -293,7 +294,8 @@ static int compile_tokenize_impl(const char *source, const cli_options_t *cli,
             stdin_path = NULL;
         }
     } else {
-        text = preproc_run(source, incdirs, defines, undefines);
+        preproc_context_t ctx;
+        text = preproc_run(&ctx, source, incdirs, defines, undefines);
         if (!text) {
             perror("preproc_run");
             return 0;
@@ -982,7 +984,8 @@ int run_preprocessor(const cli_options_t *cli)
 {
     for (size_t i = 0; i < cli->sources.count; i++) {
         const char *src = ((const char **)cli->sources.data)[i];
-        char *text = preproc_run(src, &cli->include_dirs, &cli->defines,
+        preproc_context_t ctx;
+        char *text = preproc_run(&ctx, src, &cli->include_dirs, &cli->defines,
                                 &cli->undefines);
         if (!text) {
             perror("preproc_run");
