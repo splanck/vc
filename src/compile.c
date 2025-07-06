@@ -659,7 +659,7 @@ build_linker_args(const vector_t *objs, const vector_t *lib_dirs,
 
 arg_overflow:
     fprintf(stderr, "vc: argument vector too large\n");
-    exit(1);
+    return NULL;
 }
 
 /* Free argument vector returned by build_linker_args. */
@@ -675,6 +675,8 @@ static int run_link_command(const vector_t *objs, const vector_t *lib_dirs,
 {
     char **argv = build_linker_args(objs, lib_dirs, libs, output,
                                     use_x86_64);
+    if (!argv)
+        return 0;
 
     int rc = command_run(argv);
     free_linker_args(argv);
