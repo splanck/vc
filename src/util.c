@@ -16,6 +16,10 @@
 #include "util.h"
 #include "preproc_macros.h"
 
+#ifdef MACRO_FREE_STUB
+void macro_free(macro_t *m) { (void)m; }
+#endif
+
 /* Print a generic out of memory message */
 void vc_oom(void)
 {
@@ -170,6 +174,7 @@ void free_string_vector(vector_t *v)
  * Each macro must have been created by add_macro() so that macro_free()
  * can correctly release the heap allocated strings.
  */
+#ifndef MACRO_FREE_STUB
 void free_macro_vector(vector_t *v)
 {
     if (!v)
@@ -178,4 +183,5 @@ void free_macro_vector(vector_t *v)
         macro_free(&((macro_t *)v->data)[i]);
     vector_free(v);
 }
+#endif
 
