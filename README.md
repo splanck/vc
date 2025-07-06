@@ -68,7 +68,7 @@ Both scripts exit with status 0 when all checks pass. The output ends with
 
 ## Documentation
 
-The [documentation index](docs/index.md) provides an overview of all available
+The [documentation index](docs/README.md) provides an overview of all available
 pages. Key documents include:
 
 - [Compiler architecture](docs/architecture.md)

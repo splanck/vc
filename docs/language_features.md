@@ -1,6 +1,6 @@
 ## Supported Language Features
 
-See the [documentation index](index.md) for a list of all available pages.
+See the [documentation index](README.md) for a list of all available pages.
 
 ## Table of Contents
 
