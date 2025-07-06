@@ -133,8 +133,10 @@ current directory.
 Assemble and link the output to create an executable with \fBcc\fR.
 .TP
 .BR --obj-dir " " \fIdir\fR
-Place temporary object files in \fIdir\fR instead of the directory selected
-via \fBTMPDIR\fR or the system default (usually \fB/tmp\fR).
+Place temporary object files in \fIdir\fR.  When this option is
+omitted the compiler first checks \fBTMPDIR\fR and \fBP_tmpdir\fR for
+a directory.  Only if neither variable is set does it default to
+\fB/tmp\fR.
 .TP
 .BR -S "," \fB--dump-asm\fR
 Print generated assembly to stdout rather than creating a file.
@@ -183,5 +185,11 @@ paths are processed.
 Colon separated list of directories added to the include search path after any
 .B -I
 paths are processed.
+.TP
+.B TMPDIR
+Directory for temporary object files when \fB--obj-dir\fR is not used.
+.TP
+.B P_tmpdir
+Alternative directory for temporary files if \fBTMPDIR\fR is unset.
 .SH SEE ALSO
 README.md, docs/command_line.md, docs/language_features.md (see the "Union declarations" section).
