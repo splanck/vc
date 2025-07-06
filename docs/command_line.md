@@ -39,7 +39,9 @@ The compiler supports the following options:
 - `-Uname` – undefine a macro before compilation.
 - `-O<N>` – set optimization level (0 disables all passes).
 
-Temporary object and assembly files are written to `/tmp` by default. Use the
+Temporary object and assembly files are written to the directory specified
+by the `TMPDIR` environment variable when set.  If `TMPDIR` is not set,
+the system default (from `P_tmpdir`, usually `/tmp`) is used.  Use the
 `--obj-dir` option to select a different directory if desired.
 
 Use `vc -o out.s source.c` to compile a file, `vc -c -o out.o source.c` to
