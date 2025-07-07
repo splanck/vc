@@ -119,9 +119,14 @@ char *ir_to_string(ir_builder_t *ir)
         strbuf_appendf(&sb, " src2=%d", ins->src2);
         if (ins->src2 > 0 && ra.loc[ins->src2] < 0)
             strbuf_appendf(&sb, "[slot%d]", -ra.loc[ins->src2]);
-        strbuf_appendf(&sb, " imm=%lld name=%s data=%s\n", ins->imm,
+        strbuf_appendf(&sb, " imm=%lld name=%s data=%s", ins->imm,
                        ins->name ? ins->name : "",
                        ins->data ? ins->data : "");
+        if (ins->is_restrict)
+            strbuf_append(&sb, " restrict");
+        if (ins->is_volatile)
+            strbuf_append(&sb, " volatile");
+        strbuf_append(&sb, "\n");
     }
     regalloc_free(&ra);
     return sb.data; /* caller frees */

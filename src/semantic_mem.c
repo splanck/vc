@@ -227,8 +227,16 @@ type_kind_t check_assign_member_expr(expr_t *expr, symtable_t *vars,
 
     ir_value_t idx = ir_build_const(ir, (int)moff);
     ir_value_t addr = ir_build_ptr_add(ir, base_addr, idx, 1);
+    int restr = 0;
+    if (expr->assign_member.via_ptr &&
+        expr->assign_member.object->kind == EXPR_IDENT) {
+        symbol_t *rsym = symtable_lookup(vars,
+                                         expr->assign_member.object->ident.name);
+        restr = rsym ? rsym->is_restrict : 0;
+    }
     if (mbw > 0) {
-        ir_value_t word = ir_build_load_ptr(ir, addr);
+        ir_value_t word = restr ? ir_build_load_ptr_res(ir, addr)
+                               : ir_build_load_ptr(ir, addr);
         unsigned mask_bits = (mbw == 32) ? 0xFFFFFFFFu : ((1u << mbw) - 1u);
         ir_value_t maskv = ir_build_const(ir, (int)mask_bits);
         ir_value_t clear_mask = ir_build_const(ir, ~(int)(mask_bits << mbo));
@@ -237,7 +245,10 @@ type_kind_t check_assign_member_expr(expr_t *expr, symtable_t *vars,
         if (mbo)
             new_val = ir_build_binop(ir, IR_SHL, new_val, ir_build_const(ir, (int)mbo));
         word = ir_build_binop(ir, IR_OR, word, new_val);
-        ir_build_store_ptr(ir, addr, word);
+        if (restr)
+            ir_build_store_ptr_res(ir, addr, word);
+        else
+            ir_build_store_ptr(ir, addr, word);
         if (out)
             *out = val;
         if (!expr->assign_member.via_ptr && obj_sym && obj_sym->type == TYPE_UNION) {
@@ -246,7 +257,10 @@ type_kind_t check_assign_member_expr(expr_t *expr, symtable_t *vars,
         }
         return TYPE_INT;
     } else {
-        ir_build_store_ptr(ir, addr, val);
+        if (restr)
+            ir_build_store_ptr_res(ir, addr, val);
+        else
+            ir_build_store_ptr(ir, addr, val);
         if (out)
             *out = val;
         if (!expr->assign_member.via_ptr && obj_sym && obj_sym->type == TYPE_UNION) {
@@ -316,7 +330,14 @@ type_kind_t check_member_expr(expr_t *expr, symtable_t *vars,
     if (out) {
         ir_value_t idx = ir_build_const(ir, (int)moff);
         ir_value_t addr = ir_build_ptr_add(ir, base_addr, idx, 1);
-        ir_value_t word = ir_build_load_ptr(ir, addr);
+        int restr = 0;
+        if (expr->member.via_ptr && expr->member.object->kind == EXPR_IDENT) {
+            symbol_t *rsym = symtable_lookup(vars,
+                                            expr->member.object->ident.name);
+            restr = rsym ? rsym->is_restrict : 0;
+        }
+        ir_value_t word = restr ? ir_build_load_ptr_res(ir, addr)
+                                : ir_build_load_ptr(ir, addr);
         if (mbw > 0) {
             if (mbo)
                 word = ir_build_binop(ir, IR_SHR, word,

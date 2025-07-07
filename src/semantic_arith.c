@@ -133,8 +133,15 @@ static type_kind_t unary_deref(expr_t *opnd, symtable_t *vars,
 {
     ir_value_t addr;
     if (check_expr(opnd, vars, funcs, ir, &addr) == TYPE_PTR) {
-        if (out)
-            *out = ir_build_load_ptr(ir, addr);
+        if (out) {
+            int restr = 0;
+            if (opnd->kind == EXPR_IDENT) {
+                symbol_t *s = symtable_lookup(vars, opnd->ident.name);
+                restr = s ? s->is_restrict : 0;
+            }
+            *out = restr ? ir_build_load_ptr_res(ir, addr)
+                         : ir_build_load_ptr(ir, addr);
+        }
         return TYPE_INT;
     }
     error_set(opnd->line, opnd->column, error_current_file, error_current_function);

@@ -69,6 +69,8 @@ static ir_instr_t *append_instr(ir_builder_t *b)
     ins->name = NULL;
     ins->data = NULL;
     ins->is_volatile = 0;
+    ins->is_restrict = 0;
+    ins->is_restrict = 0;
     ins->file = b->cur_file;
     ins->line = b->cur_line;
     ins->column = b->cur_column;
@@ -362,6 +364,18 @@ ir_value_t ir_build_load_ptr(ir_builder_t *b, ir_value_t addr)
     return (ir_value_t){ins->dest};
 }
 
+ir_value_t ir_build_load_ptr_res(ir_builder_t *b, ir_value_t addr)
+{
+    ir_instr_t *ins = append_instr(b);
+    if (!ins)
+        return (ir_value_t){0};
+    ins->op = IR_LOAD_PTR;
+    ins->dest = alloc_value_id(b);
+    ins->src1 = addr.id;
+    ins->is_restrict = 1;
+    return (ir_value_t){ins->dest};
+}
+
 /*
  * Emit IR_STORE_PTR storing `val` through pointer `addr`.
  */
@@ -373,6 +387,17 @@ void ir_build_store_ptr(ir_builder_t *b, ir_value_t addr, ir_value_t val)
     ins->op = IR_STORE_PTR;
     ins->src1 = addr.id;
     ins->src2 = val.id;
+}
+
+void ir_build_store_ptr_res(ir_builder_t *b, ir_value_t addr, ir_value_t val)
+{
+    ir_instr_t *ins = append_instr(b);
+    if (!ins)
+        return;
+    ins->op = IR_STORE_PTR;
+    ins->src1 = addr.id;
+    ins->src2 = val.id;
+    ins->is_restrict = 1;
 }
 
 /* Emit IR_PTR_ADD adding `idx` (scaled by element size) to pointer `ptr`. */

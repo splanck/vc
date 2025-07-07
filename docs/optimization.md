@@ -53,6 +53,12 @@ effects.
 Dead code elimination scans the instruction stream and removes operations that
 have no side effects and whose results are never referenced.
 
+Pointers declared with the `restrict` qualifier participate in a simple alias
+analysis.  Loads through restrict-qualified pointers are treated as pure
+operations and may be merged by the common subexpression pass.  Stores through
+such pointers no longer invalidate cached values of unrelated objects, allowing
+more aggressive propagation.
+
 All optimizations are enabled by default. Constant folding and dead code
 elimination may be toggled from the
 command line:
