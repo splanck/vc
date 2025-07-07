@@ -200,22 +200,21 @@ vc -o struct_ret.s struct_ret.c
 ### Variadic functions
 Functions may accept a variable number of arguments by placing `...` at the end
 of the parameter list.  The extra parameters are pushed on the stack and can be
-accessed with the standard `<stdarg.h>` macros.  At present only integer and
-pointer values are handled reliably; passing floating‑point arguments is not
-yet supported.
+accessed with the standard `<stdarg.h>` macros.  Both integer and
+floating‑point arguments are supported.
 ```c
 /* var_args.c */
 #include <stdarg.h>
-int sum(int n, ...) {
+double sumd(int n, ...) {
     va_list ap;
     va_start(ap, n);
-    int t = 0;
+    double t = 0;
     for (int i = 0; i < n; i++)
-        t += va_arg(ap, int);
+        t += va_arg(ap, double);
     va_end(ap);
     return t;
 }
-int main() { return sum(3, 1, 2, 3); }
+int main() { return (int)sumd(2, 1.0, 2.0); }
 ```
 Compile with:
 ```sh

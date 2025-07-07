@@ -27,4 +27,7 @@ void emit_memory_instr(strbuf_t *sb, ir_instr_t *ins,
                        regalloc_t *ra, int x64,
                        asm_syntax_t syntax);
 
+/* bytes pushed for the current argument list */
+extern size_t arg_stack_bytes;
+
 #endif /* VC_CODEGEN_MEM_H */
