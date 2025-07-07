@@ -59,12 +59,21 @@ int is_floatlike(type_kind_t t)
 static int eval_number(expr_t *expr, long long *out)
 {
     errno = 0;
-    long long val = strtoll(expr->number.value, NULL, 0);
-    if (errno != 0)
-        return 0;
-    if (out)
-        *out = val;
-    return 1;
+    if (expr->number.is_unsigned) {
+        unsigned long long val = strtoull(expr->number.value, NULL, 0);
+        if (errno != 0)
+            return 0;
+        if (out)
+            *out = (long long)val;
+        return 1;
+    } else {
+        long long val = strtoll(expr->number.value, NULL, 0);
+        if (errno != 0)
+            return 0;
+        if (out)
+            *out = val;
+        return 1;
+    }
 }
 
 /*
