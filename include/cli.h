@@ -32,13 +32,14 @@ typedef enum {
     CLI_OPT_X86_64,
     CLI_OPT_DUMP_ASM_LONG,
     CLI_OPT_NO_CPROP,
+    CLI_OPT_DUMP_AST,
     CLI_OPT_DUMP_IR,
-    CLI_OPT_LINK = 7,
+    CLI_OPT_LINK = 8,
     CLI_OPT_STD,
     CLI_OPT_OBJ_DIR,
-    CLI_OPT_DEBUG = 10,
+    CLI_OPT_DEBUG = 11,
     CLI_OPT_NO_INLINE,
-    CLI_OPT_INTEL_SYNTAX = 12,
+    CLI_OPT_INTEL_SYNTAX = 13,
     CLI_OPT_DEFINE,
     CLI_OPT_UNDEFINE,
     CLI_OPT_NO_COLOR
@@ -52,6 +53,7 @@ typedef struct {
     bool compile;       /* assemble to object */
     bool link;          /* build executable */
     bool dump_asm;      /* dump assembly to stdout (-S/--dump-asm) */
+    bool dump_ast;      /* dump AST to stdout */
     bool dump_ir;       /* dump IR to stdout */
     bool preprocess;    /* run preprocessor only and print to stdout */
     bool debug;         /* emit debug directives */

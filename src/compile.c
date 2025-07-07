@@ -38,6 +38,7 @@
 #include "error.h"
 #include "ir_core.h"
 #include "ir_dump.h"
+#include "ast_dump.h"
 #include "opt.h"
 #include "codegen.h"
 #include "label.h"
@@ -389,9 +390,19 @@ static int compile_single_unit(const char *source, const cli_options_t *cli,
                                 &cli->defines, &cli->undefines);
     if (ok)
         ok = compile_parse_stage(&ctx);
-    if (ok)
+    if (ok && cli->dump_ast) {
+        char *text = ast_to_string((func_t **)ctx.func_list_v.data,
+                                   ctx.func_list_v.count,
+                                   (stmt_t **)ctx.glob_list_v.data,
+                                   ctx.glob_list_v.count);
+        if (text) {
+            printf("%s", text);
+            free(text);
+        }
+    }
+    if (ok && !cli->dump_ast)
         ok = compile_semantic_stage(&ctx);
-    if (ok) {
+    if (ok && !cli->dump_ast) {
         ok = compile_optimize_stage(&ctx, &cli->opt_cfg);
         if (ok)
             ok = compile_output_stage(&ctx, output, cli->dump_ir,

@@ -46,6 +46,16 @@ static void test_intel_syntax_option(void)
     cli_free_opts(&opts);
 }
 
+static void test_dump_ast_option(void)
+{
+    cli_options_t opts;
+    char *argv[] = {"vc", "--dump-ast", "file.c", NULL};
+    int ret = cli_parse_args(3, argv, &opts);
+    ASSERT(ret == 0);
+    ASSERT(opts.dump_ast);
+    cli_free_opts(&opts);
+}
+
 static void test_parse_failure(void)
 {
     cli_options_t opts;
@@ -85,6 +95,7 @@ int main(void)
 {
     test_parse_success();
     test_intel_syntax_option();
+    test_dump_ast_option();
     test_parse_failure();
     if (failures == 0)
         printf("All cli tests passed\n");

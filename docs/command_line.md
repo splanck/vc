@@ -29,6 +29,7 @@ The compiler supports the following options:
 - `--link` – build an executable by assembling and linking with `cc`.
 - `--obj-dir <path>` – directory for temporary object files.
 - `-S`, `--dump-asm` – print the generated assembly to stdout instead of creating a file.
+- `--dump-ast` – print the AST to stdout after parsing.
 - `--dump-ir` – print the IR to stdout before code generation.
 - `--std=<c99|gnu99>` – select the language standard (default is `c99`).
 - `-E`, `--preprocess` – print the preprocessed source to stdout and exit.
