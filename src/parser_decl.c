@@ -241,19 +241,25 @@ static int parse_member(parser_t *p, int is_union,
     p->pos++;
     size_t arr_size = 0;
     if (match(p, TOK_LBRACKET)) {
-        token_t *num = peek(p);
-        if (!num || num->type != TOK_NUMBER)
-            return 0;
-        p->pos++;
-        if (!vc_strtoul_size(num->lexeme, &arr_size)) {
-            error_set(num->line, num->column,
-                      error_current_file, error_current_function);
-            error_print("Integer constant out of range");
-            return 0;
+        if (match(p, TOK_RBRACKET)) {
+            if (is_union)
+                return 0;
+            mt = TYPE_ARRAY;
+        } else {
+            token_t *num = peek(p);
+            if (!num || num->type != TOK_NUMBER)
+                return 0;
+            p->pos++;
+            if (!vc_strtoul_size(num->lexeme, &arr_size)) {
+                error_set(num->line, num->column,
+                          error_current_file, error_current_function);
+                error_print("Integer constant out of range");
+                return 0;
+            }
+            if (!match(p, TOK_RBRACKET))
+                return 0;
+            mt = TYPE_ARRAY;
         }
-        if (!match(p, TOK_RBRACKET))
-            return 0;
-        mt = TYPE_ARRAY;
     }
 
     unsigned bit_width = 0;
@@ -335,6 +341,11 @@ static int parse_member_list(parser_t *p, int is_union, vector_t *members_v)
             if (!vector_push(members_v, &sm)) {
                 free(sm.name);
                 goto fail;
+            }
+            if (sm.type == TYPE_ARRAY && sm.elem_size == 0) {
+                token_t *next = peek(p);
+                if (next && next->type != TOK_RBRACE)
+                    goto fail;
             }
         }
     }
@@ -626,6 +637,11 @@ stmt_t *parser_parse_struct_decl(parser_t *p)
         if (!vector_push(&members_v, &m)) {
             free(m.name);
             goto fail;
+        }
+        if (m.type == TYPE_ARRAY && m.elem_size == 0) {
+            token_t *next = peek(p);
+            if (next && next->type != TOK_RBRACE)
+                goto fail;
         }
     }
 
