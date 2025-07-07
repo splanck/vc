@@ -37,6 +37,11 @@ int main(int argc, char **argv)
         goto cleanup;
     }
 
+    if (cli.dep_only) {
+        ret = generate_dependencies(&cli);
+        goto cleanup;
+    }
+
     int ok = 1;
     if (cli.link) {
         ok = link_sources(&cli);

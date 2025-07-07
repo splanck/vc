@@ -79,16 +79,18 @@ source files with `#define`. After preprocessing the expanded text is handed to
 the lexer for tokenization.
 ## Preprocessor context
 
-`preproc_context_t` is defined in `include/preproc_file.h` and is passed to `preproc_run`. It currently contains one field:
+`preproc_context_t` is defined in `include/preproc_file.h` and is passed to `preproc_run`. It contains two vectors:
 
 ```c
-vector_t pragma_once_files; /* vector of malloc'd char* paths */
+vector_t pragma_once_files; /* headers marked with #pragma once */
+vector_t deps;              /* all processed files */
 ```
 
-The vector tracks files that issued `#pragma once` so that they are not
-processed again within the same invocation. Because the entire context is
-provided by the caller rather than stored globally, multiple preprocessing
-operations can run independently. Each call initializes and cleans up the
-vector, allowing the preprocessor to be used reentrantly by simply
-supplying a separate `preproc_context_t` instance.
+`pragma_once_files` tracks headers that issued `#pragma once` so they are not
+processed again. `deps` records every file read during preprocessing, enabling
+dependency generation. Because the entire context is provided by the caller
+rather than stored globally, multiple preprocessing operations can run
+independently. Each call initializes and cleans up the vectors, allowing the
+preprocessor to be used reentrantly by supplying a separate
+`preproc_context_t` instance.
 

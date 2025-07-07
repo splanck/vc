@@ -16,12 +16,20 @@
 
 #include "vector.h"
 
-/* Context used by the preprocessor.  Currently only tracks files
- * processed after encountering '#pragma once'.
+/* Context used by the preprocessor.
+ *
+ * `pragma_once_files` stores headers that emitted `#pragma once` so
+ * subsequent includes are ignored. `deps` records every file processed
+ * including the initial source and all headers. The caller is
+ * responsible for freeing both vectors via `preproc_context_free()`.
  */
 typedef struct {
     vector_t pragma_once_files; /* vector of malloc'd char* paths */
+    vector_t deps;              /* vector of malloc'd char* paths */
 } preproc_context_t;
+
+/* Free the dependency lists stored in the context */
+void preproc_context_free(preproc_context_t *ctx);
 
 /* Preprocess the file at the given path.
  * The returned string must be freed by the caller.

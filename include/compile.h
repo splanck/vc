@@ -24,6 +24,9 @@ char *tokens_to_string(const token_t *toks, size_t count);
 /* Run only the preprocessor stage and print the result. */
 int run_preprocessor(const cli_options_t *cli);
 
+/* Generate dependency files without compiling */
+int generate_dependencies(const cli_options_t *cli);
+
 /* Compile multiple sources and link them into an executable. */
 int link_sources(const cli_options_t *cli);
 

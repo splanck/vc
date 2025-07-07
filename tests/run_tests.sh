@@ -543,6 +543,26 @@ if ! od -An -t x1 "${libm_exe}" | head -n 1 | grep -q "7f 45 4c 46"; then
 fi
 rm -f "${libm_exe}"
 
+# dependency generation with -MD
+dep_obj=depobj$$.o
+"$BINARY" -MD -c -I "$DIR/includes" -o "$dep_obj" "$DIR/fixtures/include_search.c"
+dep_file="${dep_obj%.o}.d"
+if [ ! -f "$dep_file" ] || ! grep -q "val.h" "$dep_file"; then
+    echo "Test dep_md failed"
+    fail=1
+fi
+rm -f "$dep_obj" "$dep_file"
+
+# dependency generation with -M
+dep_src="include_search.d"
+rm -f "$dep_src"
+"$BINARY" -M -I "$DIR/includes" "$DIR/fixtures/include_search.c"
+if [ ! -f "$dep_src" ] || ! grep -q "val.h" "$dep_src"; then
+    echo "Test dep_M failed"
+    fail=1
+fi
+rm -f "$dep_src"
+
 # test --std option
 std_out=$(mktemp)
 "$BINARY" --std=gnu99 -o "${std_out}" "$DIR/fixtures/simple_add.c"

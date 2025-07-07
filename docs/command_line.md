@@ -32,6 +32,8 @@ The compiler supports the following options:
 - `--dump-ast` – print the AST to stdout after parsing.
 - `--dump-ir` – print the IR to stdout before code generation.
 - `--dump-tokens` – print the token list to stdout after preprocessing.
+- `-M` – generate a `.d` file listing the source and headers.
+- `-MD` – like `-M` but also compile the source.
 - `--std=<c99|gnu99>` – select the language standard (default is `c99`).
 - `-E`, `--preprocess` – print the preprocessed source to stdout and exit.
 - `-I`, `--include <dir>` – add directory to the `#include` search path.

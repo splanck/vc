@@ -58,6 +58,32 @@ typedef struct {
     size_t dir_index;
 } include_entry_t;
 
+/* Record PATH in the dependency list if not already present */
+static int record_dependency(preproc_context_t *ctx, const char *path)
+{
+    char *canon = realpath(path, NULL);
+    if (!canon)
+        canon = vc_strdup(path);
+    if (!canon)
+        return 0;
+
+    for (size_t i = 0; i < ctx->deps.count; i++) {
+        const char *p = ((const char **)ctx->deps.data)[i];
+        if (strcmp(p, canon) == 0) {
+            free(canon);
+            return 1;
+        }
+    }
+
+    if (!vector_push(&ctx->deps, &canon)) {
+        free(canon);
+        vc_oom();
+        return 0;
+    }
+
+    return 1;
+}
+
 
 
 static void free_param_vector(vector_t *v);
@@ -797,13 +823,20 @@ static void cleanup_file_resources(char *text, char **lines, char *dir)
 static int load_and_register_file(const char *path, vector_t *stack,
                                   size_t idx,
                                   char ***out_lines, char **out_dir,
-                                  char **out_text)
+                                  char **out_text,
+                                  preproc_context_t *ctx)
 {
     if (!load_file_lines(path, out_lines, out_dir, out_text))
         return 0;
 
     if (!include_stack_push(stack, path, idx)) {
         cleanup_file_resources(*out_text, *out_lines, *out_dir);
+        return 0;
+    }
+
+    if (!record_dependency(ctx, path)) {
+        cleanup_file_resources(*out_text, *out_lines, *out_dir);
+        include_stack_pop(stack);
         return 0;
     }
 
@@ -1109,7 +1142,7 @@ static int process_file(const char *path, vector_t *macros,
     char *dir;
     char *text;
 
-    if (!load_and_register_file(path, stack, idx, &lines, &dir, &text))
+    if (!load_and_register_file(path, stack, idx, &lines, &dir, &text, ctx))
         return 0;
 
     int ok = process_all_lines(lines, path, dir, macros, conds, out, incdirs,
@@ -1182,6 +1215,7 @@ static void init_preproc_vectors(preproc_context_t *ctx, vector_t *macros,
     vector_init(conds, sizeof(cond_state_t));
     vector_init(stack, sizeof(include_entry_t));
     vector_init(&ctx->pragma_once_files, sizeof(char *));
+    vector_init(&ctx->deps, sizeof(char *));
     strbuf_init(out);
 }
 
@@ -1202,6 +1236,14 @@ static void cleanup_preproc_vectors(preproc_context_t *ctx, vector_t *macros,
         free(((char **)ctx->pragma_once_files.data)[i]);
     vector_free(&ctx->pragma_once_files);
     strbuf_free(out);
+}
+
+/* Free dependency lists stored in the context */
+void preproc_context_free(preproc_context_t *ctx)
+{
+    for (size_t i = 0; i < ctx->deps.count; i++)
+        free(((char **)ctx->deps.data)[i]);
+    vector_free(&ctx->deps);
 }
 
 /* Apply macro definitions specified on the command line */
@@ -1272,6 +1314,10 @@ char *preproc_run(preproc_context_t *ctx, const char *path,
 
     /* Prepare all vectors used during preprocessing */
     init_preproc_vectors(ctx, &macros, &conds, &stack, &out);
+    if (!record_dependency(ctx, path)) {
+        cleanup_preproc_vectors(ctx, &macros, &conds, &stack, &search_dirs, &out);
+        return NULL;
+    }
 
     /* Import any -D command line definitions */
     if (!apply_cli_defines(&macros, defines)) {
