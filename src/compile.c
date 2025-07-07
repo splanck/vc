@@ -78,6 +78,7 @@ int compile_tokenize_impl(const char *source, const cli_options_t *cli,
                           const vector_t *undefines,
                           char **out_src, token_t **out_toks,
                           size_t *out_count, char **tmp_path);
+char *tokens_to_string(const token_t *toks, size_t count);
 int compile_parse_impl(token_t *toks, size_t count,
                        vector_t *funcs_v, vector_t *globs_v,
                        symtable_t *funcs);
@@ -388,9 +389,16 @@ static int compile_single_unit(const char *source, const cli_options_t *cli,
     ok = compile_tokenize_stage(&ctx, source, cli,
                                 &cli->include_dirs,
                                 &cli->defines, &cli->undefines);
-    if (ok)
+    if (ok && cli->dump_tokens) {
+        char *text = tokens_to_string(ctx.tokens, ctx.tok_count);
+        if (text) {
+            printf("%s", text);
+            free(text);
+        }
+    }
+    if (ok && !cli->dump_tokens)
         ok = compile_parse_stage(&ctx);
-    if (ok && cli->dump_ast) {
+    if (ok && cli->dump_ast && !cli->dump_tokens) {
         char *text = ast_to_string((func_t **)ctx.func_list_v.data,
                                    ctx.func_list_v.count,
                                    (stmt_t **)ctx.glob_list_v.data,
@@ -400,9 +408,9 @@ static int compile_single_unit(const char *source, const cli_options_t *cli,
             free(text);
         }
     }
-    if (ok && !cli->dump_ast)
+    if (ok && !cli->dump_ast && !cli->dump_tokens)
         ok = compile_semantic_stage(&ctx);
-    if (ok && !cli->dump_ast) {
+    if (ok && !cli->dump_ast && !cli->dump_tokens) {
         ok = compile_optimize_stage(&ctx, &cli->opt_cfg);
         if (ok)
             ok = compile_output_stage(&ctx, output, cli->dump_ir,
