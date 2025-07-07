@@ -31,6 +31,7 @@ The compiler supports the following options:
 - `-S`, `--dump-asm` – print the generated assembly to stdout instead of creating a file.
 - `--dump-ast` – print the AST to stdout after parsing.
 - `--dump-ir` – print the IR to stdout before code generation.
+- `--dump-tokens` – print the token list to stdout after preprocessing.
 - `--std=<c99|gnu99>` – select the language standard (default is `c99`).
 - `-E`, `--preprocess` – print the preprocessed source to stdout and exit.
 - `-I`, `--include <dir>` – add directory to the `#include` search path.

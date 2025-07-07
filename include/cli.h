@@ -42,7 +42,8 @@ typedef enum {
     CLI_OPT_INTEL_SYNTAX = 13,
     CLI_OPT_DEFINE,
     CLI_OPT_UNDEFINE,
-    CLI_OPT_NO_COLOR
+    CLI_OPT_NO_COLOR,
+    CLI_OPT_DUMP_TOKENS
 } cli_opt_id;
 
 /* Command line options parsed from argv */
@@ -55,6 +56,7 @@ typedef struct {
     bool dump_asm;      /* dump assembly to stdout (-S/--dump-asm) */
     bool dump_ast;      /* dump AST to stdout */
     bool dump_ir;       /* dump IR to stdout */
+    bool dump_tokens;   /* dump token list to stdout */
     bool preprocess;    /* run preprocessor only and print to stdout */
     bool debug;         /* emit debug directives */
     bool color_diag;    /* use ANSI colors in diagnostics */
