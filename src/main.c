@@ -52,6 +52,9 @@ int main(int argc, char **argv)
         else if (cli.dump_ir)
             printf("Compiling %s (IR dumped to stdout)\n",
                    ((const char **)cli.sources.data)[0]);
+        else if (cli.dump_ast)
+            printf("Compiling %s (AST dumped to stdout)\n",
+                   ((const char **)cli.sources.data)[0]);
         else if (cli.dump_asm)
             printf("Compiling %s (assembly dumped to stdout)\n",
                    ((const char **)cli.sources.data)[0]);

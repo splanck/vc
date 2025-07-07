@@ -348,6 +348,7 @@ static int handle_option(int opt, const char *arg, const char *prog,
         {CLI_OPT_DUMP_ASM_LONG, offsetof(cli_options_t, dump_asm), 1, true},
         {CLI_OPT_NO_CPROP,  offsetof(cli_options_t, opt_cfg.const_prop), 0, false},
         {CLI_OPT_DUMP_IR,   offsetof(cli_options_t, dump_ir), 1, true},
+        {CLI_OPT_DUMP_AST, offsetof(cli_options_t, dump_ast), 1, true},
         {CLI_OPT_DEBUG,     offsetof(cli_options_t, debug), 1, true},
         {CLI_OPT_NO_INLINE, offsetof(cli_options_t, opt_cfg.inline_funcs), 0, false},
         {CLI_OPT_NO_COLOR,  offsetof(cli_options_t, color_diag), 0, true},
@@ -414,6 +415,7 @@ int cli_parse_args(int argc, char **argv, cli_options_t *opts)
         {"x86-64",  no_argument,       0, CLI_OPT_X86_64},
         {"intel-syntax", no_argument, 0, CLI_OPT_INTEL_SYNTAX},
         {"dump-asm", no_argument,     0, CLI_OPT_DUMP_ASM_LONG},
+        {"dump-ast", no_argument,     0, CLI_OPT_DUMP_AST},
         {"no-cprop", no_argument,     0, CLI_OPT_NO_CPROP},
         {"no-inline", no_argument,   0, CLI_OPT_NO_INLINE},
         {"dump-ir", no_argument,      0, CLI_OPT_DUMP_IR},
@@ -452,7 +454,8 @@ int cli_parse_args(int argc, char **argv, cli_options_t *opts)
         }
     }
 
-    if (!opts->output && !opts->dump_asm && !opts->dump_ir && !opts->preprocess) {
+    if (!opts->output && !opts->dump_asm && !opts->dump_ir &&
+        !opts->dump_ast && !opts->preprocess) {
         fprintf(stderr, "Error: no output path specified.\n");
         print_usage(argv[0]);
         cli_free_opts(opts);
