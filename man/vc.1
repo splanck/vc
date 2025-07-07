@@ -46,7 +46,8 @@ Inline function definitions.
 .PP
 Variable length arrays are supported only for block scope variables.
 They may be sized using any runtime expression and are fully compatible
-with \fBsizeof\fR, but cannot appear at file scope or as struct members.
+with \fBsizeof\fR, but cannot appear at file scope.  Structures may end
+with a flexible array member declared using an empty bracket pair.
 .PP
 The built-in preprocessor expands \fB#include\fR and \fB#include_next\fR
 directives, object-like

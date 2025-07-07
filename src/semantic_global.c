@@ -65,7 +65,9 @@ size_t layout_struct_members(struct_member_t *members, size_t count)
             members[i].bit_offset = 0;
             if (bit_off)
                 byte_off++, bit_off = 0;
-            byte_off += members[i].elem_size;
+            if (!(i == count - 1 && members[i].type == TYPE_ARRAY &&
+                  members[i].elem_size == 0))
+                byte_off += members[i].elem_size;
         }
     }
     if (bit_off)

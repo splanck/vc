@@ -28,6 +28,7 @@ shows a short example and how to compile it.
 - [Switch statements](#switch-statements)
 - [Logical operators](#logical-operators)
 - [Enum declarations](#enum-declarations)
+- [Flexible array members](#flexible-array-members)
 
 - Basic arithmetic expressions
 - Function definitions and calls
@@ -52,7 +53,8 @@ shows a short example and how to compile it.
 - `struct` and `union` objects with member assignments
 - `typedef` declarations creating type aliases
 - Bit-field members using `type name : width`
-- Object-like and multi-parameter `#define` macros with recursive expansion
+- Flexible array members as the final struct field
+ - Object-like and multi-parameter `#define` macros with recursive expansion
 - `#undef` to remove a previously defined macro
 - Conditional preprocessing directives (`#if`, `#ifdef`, `#ifndef`, `#elif`, `#else`, `#endif`)
 - 64-bit integer literals and arithmetic when using `long long`
@@ -657,6 +659,23 @@ int main() {
 Compile with:
 ```sh
 vc -o union_char.s union_char.c
+```
+
+### Flexible array members
+Structures may end with a member declared using empty brackets. The flexible
+member occupies no space in `sizeof` calculations and allows extra storage to be
+appended at runtime.
+
+```c
+/* flex_size.c */
+struct Flex { int len; int data[]; };
+int main() {
+    return sizeof(struct Flex);
+}
+```
+Compile with:
+```sh
+vc -o flex_size.s flex_size.c
 ```
 
 ### Typedef declarations
