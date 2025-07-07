@@ -12,6 +12,8 @@ preprocessor directive is handled immediately:
 
 - `#include` resolves the requested path and recursively invokes `process_file`
   on the included file when the current conditional state is active.
+- `#include_next` continues the search from the directory following the one
+  that contained the current file.
 - `#define` adds a new macro definition.  Parameterised forms are supported and
   stored in a `macro_t` structure.  Lines ending in `\` are joined so a macro
   body may span multiple lines.
