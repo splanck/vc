@@ -148,6 +148,8 @@ int vc_strtoul_size(const char *s, size_t *out)
     errno = 0;
     char *end;
     unsigned long val = strtoul(s, &end, 10);
+    while (*end == 'u' || *end == 'U' || *end == 'l' || *end == 'L')
+        end++;
     if (errno == ERANGE || val > SIZE_MAX || *end != '\0')
         return 0;
     *out = (size_t)val;
@@ -162,6 +164,8 @@ int vc_strtoul_unsigned(const char *s, unsigned *out)
     errno = 0;
     char *end;
     unsigned long val = strtoul(s, &end, 10);
+    while (*end == 'u' || *end == 'U' || *end == 'l' || *end == 'L')
+        end++;
     if (errno == ERANGE || val > UINT_MAX || *end != '\0')
         return 0;
     *out = (unsigned)val;

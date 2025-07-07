@@ -126,6 +126,8 @@ struct expr {
     union {
         struct {
             char *value;
+            int is_unsigned;
+            int long_count; /* 0=int,1=long,2=long long */
         } number;
         struct {
             char *name;

@@ -14,21 +14,51 @@
 #include <stdlib.h>
 #include "ast_expr.h"
 #include "util.h"
+#include <string.h>
+
+static char *strip_suffix(const char *tok, int *is_unsigned, int *long_count)
+{
+    *is_unsigned = 0;
+    *long_count = 0;
+    size_t len = strlen(tok);
+    size_t i = len;
+    while (i > 0) {
+        char c = tok[i-1];
+        if (c == 'u' || c == 'U') {
+            *is_unsigned = 1;
+            i--;
+        } else if (c == 'l' || c == 'L') {
+            i--;
+            (*long_count)++;
+            if (i > 0 && (tok[i-1] == 'l' || tok[i-1] == 'L')) {
+                (*long_count)++;
+                i--;
+            }
+        } else {
+            break;
+        }
+    }
+    return vc_strndup(tok, i);
+}
 /* Constructors for expressions */
 /* Create a numeric literal expression node. */
 expr_t *ast_make_number(const char *value, size_t line, size_t column)
 {
-    expr_t *expr = malloc(sizeof(*expr));
-    if (!expr)
+    int is_unsigned, long_count;
+    char *val = strip_suffix(value ? value : "", &is_unsigned, &long_count);
+    if (!val)
         return NULL;
+    expr_t *expr = malloc(sizeof(*expr));
+    if (!expr) {
+        free(val);
+        return NULL;
+    }
     expr->kind = EXPR_NUMBER;
     expr->line = line;
     expr->column = column;
-    expr->number.value = vc_strdup(value ? value : "");
-    if (!expr->number.value) {
-        free(expr);
-        return NULL;
-    }
+    expr->number.value = val;
+    expr->number.is_unsigned = is_unsigned;
+    expr->number.long_count = long_count;
     return expr;
 }
 

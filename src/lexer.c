@@ -258,8 +258,8 @@ static void read_number(const char *src, size_t *i, size_t *col,
             (*i)++;
     }
 
-    if (src[*i] == 'f' || src[*i] == 'F' ||
-        src[*i] == 'l' || src[*i] == 'L') {
+    while (src[*i] == 'u' || src[*i] == 'U' ||
+           src[*i] == 'l' || src[*i] == 'L') {
         (*i)++;
     }
 

@@ -68,6 +68,13 @@ cc -Iinclude -Wall -Wextra -std=c99 \
 cc -Iinclude -Wall -Wextra -std=c99 \
     -o "$DIR/number_overflow" "$DIR/unit/test_number_overflow.c" \
     src/ast_expr.c src/consteval.c src/symtable_core.c src/util.c src/error.c
+# build numeric literal suffix tests
+cc -Iinclude -Wall -Wextra -std=c99 \
+    -o "$DIR/number_suffix" "$DIR/unit/test_number_suffix.c" \
+    src/ast_expr.c src/semantic_expr.c src/semantic_arith.c \
+    src/semantic_mem.c src/semantic_call.c src/consteval.c \
+    src/symtable_core.c src/vector.c src/util.c src/ir_core.c \
+    src/error.c src/label.c
 # build constant arithmetic overflow regression test
 cc -Iinclude -Wall -Wextra -std=c99 \
     -o "$DIR/consteval_overflow" "$DIR/unit/test_consteval_overflow.c" \
@@ -150,6 +157,7 @@ rm -f ir_unreach.o util_unreach.o label_unreach.o error_unreach.o opt_main.o \
 "$DIR/cond_expr_tests"
 "$DIR/eval_sizeof_tests"
 "$DIR/number_overflow"
+"$DIR/number_suffix"
 "$DIR/waitpid_retry"
 "$DIR/temp_file_tests"
 "$DIR/compile_obj_fail"

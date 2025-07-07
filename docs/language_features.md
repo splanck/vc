@@ -162,6 +162,11 @@ int b = 0755;  /* octal */
 int c = 10;    /* decimal */
 ```
 
+Integer literals may optionally end with `u`/`U` to make the
+constant unsigned and `l`/`L` or `ll`/`LL` to select `long` or
+`long long`.  These suffixes can be mixed in any order such as
+`1ul` or `3llu`.
+
 ### Function calls
 ```c
 /* call.c */
