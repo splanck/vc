@@ -69,6 +69,7 @@ typedef struct compile_context {
     symtable_t  funcs;
     symtable_t  globals;
     ir_builder_t ir;
+    vector_t    deps;
 } compile_context_t;
 
 /* Stage implementations */
@@ -77,7 +78,8 @@ int compile_tokenize_impl(const char *source, const cli_options_t *cli,
                           const vector_t *defines,
                           const vector_t *undefines,
                           char **out_src, token_t **out_toks,
-                          size_t *out_count, char **tmp_path);
+                          size_t *out_count, char **tmp_path,
+                          vector_t *deps);
 char *tokens_to_string(const token_t *toks, size_t count);
 int compile_parse_impl(token_t *toks, size_t count,
                        vector_t *funcs_v, vector_t *globs_v,
@@ -169,6 +171,8 @@ static int build_and_link_objects(vector_t *objs, const cli_options_t *cli);
 
 /* Run only the preprocessor stage on each input source. */
 int run_preprocessor(const cli_options_t *cli);
+
+int generate_dependencies(const cli_options_t *cli);
 
 /* Link multiple object files into the final executable. */
 int link_sources(const cli_options_t *cli);
@@ -274,6 +278,7 @@ static void compile_ctx_init(compile_context_t *ctx)
     symtable_init(&ctx->funcs);
     symtable_init(&ctx->globals);
     ir_builder_init(&ctx->ir);
+    vector_init(&ctx->deps, sizeof(char *));
 }
 
 /* Free resources allocated during compilation */
@@ -289,6 +294,8 @@ static void compile_ctx_cleanup(compile_context_t *ctx)
     ir_builder_free(&ctx->ir);
     symtable_free(&ctx->globals);
 
+    free_string_vector(&ctx->deps);
+
     lexer_free_tokens(ctx->tokens, ctx->tok_count);
     free(ctx->src_text);
 }
@@ -303,7 +310,7 @@ static int compile_tokenize_stage(compile_context_t *ctx, const char *source,
     return compile_tokenize_impl(source, cli, incdirs, defines, undefines,
                                  &ctx->src_text,
                                  &ctx->tokens, &ctx->tok_count,
-                                 &ctx->stdin_tmp);
+                                 &ctx->stdin_tmp, &ctx->deps);
 }
 
 /* Run parsing stage */
@@ -371,6 +378,45 @@ vc_obj_name(const char *source)
     return obj;
 }
 
+/* Return a dependency file name derived from TARGET */
+static char *vc_dep_name(const char *target)
+{
+    const char *base = strrchr(target, '/');
+    base = base ? base + 1 : target;
+    const char *dot = strrchr(base, '.');
+    size_t len = dot ? (size_t)(dot - base) : strlen(base);
+    char *dep = malloc(len + 3);
+    if (!dep)
+        return NULL;
+    memcpy(dep, base, len);
+    strcpy(dep + len, ".d");
+    return dep;
+}
+
+static int write_dep_file(const char *target, const vector_t *deps)
+{
+    char *dep = vc_dep_name(target);
+    if (!dep) {
+        vc_oom();
+        return 0;
+    }
+    FILE *f = fopen(dep, "w");
+    if (!f) {
+        perror(dep);
+        free(dep);
+        return 0;
+    }
+    fprintf(f, "%s:", target);
+    for (size_t i = 0; i < deps->count; i++)
+        fprintf(f, " %s", ((const char **)deps->data)[i]);
+    fprintf(f, "\n");
+    int ok = (fclose(f) == 0);
+    if (!ok)
+        perror(dep);
+    free(dep);
+    return ok;
+}
+
 /* Compile a single translation unit */
 #ifndef UNIT_TESTING
 static int compile_single_unit(const char *source, const cli_options_t *cli,
@@ -417,6 +463,9 @@ static int compile_single_unit(const char *source, const cli_options_t *cli,
                                      cli->dump_asm, cli->use_x86_64,
                                      compile_obj, cli);
     }
+
+    if (ok && cli->deps)
+        ok = write_dep_file(output ? output : source, &ctx.deps);
 
     compile_ctx_cleanup(&ctx);
     semantic_global_cleanup();
@@ -758,6 +807,28 @@ int run_preprocessor(const cli_options_t *cli)
             return 1;
         }
         free(text);
+    }
+    return 0;
+}
+
+/* Generate dependency files without compiling */
+int generate_dependencies(const cli_options_t *cli)
+{
+    for (size_t i = 0; i < cli->sources.count; i++) {
+        const char *src = ((const char **)cli->sources.data)[i];
+        preproc_context_t ctx;
+        char *text = preproc_run(&ctx, src, &cli->include_dirs,
+                                 &cli->defines, &cli->undefines);
+        if (!text) {
+            perror("preproc_run");
+            return 1;
+        }
+        free(text);
+        if (!write_dep_file(src, &ctx.deps)) {
+            preproc_context_free(&ctx);
+            return 1;
+        }
+        preproc_context_free(&ctx);
     }
     return 0;
 }

@@ -193,6 +193,7 @@ static int read_stdin_source(const cli_options_t *cli,
         free(path);
         return 0;
     }
+    preproc_context_free(&ctx);
 
     *out_path = path;
     *out_text = text;
@@ -203,7 +204,7 @@ int compile_tokenize_impl(const char *source, const cli_options_t *cli,
                           const vector_t *incdirs, const vector_t *defines,
                           const vector_t *undefines, char **out_src,
                           token_t **out_toks, size_t *out_count,
-                          char **tmp_path)
+                          char **tmp_path, vector_t *deps)
 {
     if (tmp_path)
         *tmp_path = NULL;
@@ -228,6 +229,19 @@ int compile_tokenize_impl(const char *source, const cli_options_t *cli,
             perror("preproc_run");
             return 0;
         }
+        if (deps) {
+            for (size_t i = 0; i < ctx.deps.count; i++) {
+                const char *p = ((const char **)ctx.deps.data)[i];
+                char *dup = vc_strdup(p);
+                if (!dup || !vector_push(deps, &dup)) {
+                    free(dup);
+                    preproc_context_free(&ctx);
+                    free(text);
+                    return 0;
+                }
+            }
+        }
+        preproc_context_free(&ctx);
     }
 
     size_t count = 0;

@@ -53,6 +53,8 @@ static void print_usage(const char *prog)
     printf("  -S, --dump-asm       Print assembly to stdout and exit\n");
     printf("      --dump-ir        Print IR to stdout and exit\n");
     printf("      --dump-tokens    Print tokens to stdout and exit\n");
+    printf("  -M                   Generate dependency file and exit\n");
+    printf("  -MD                  Generate dependency file during compilation\n");
     printf("  -E, --preprocess     Run only the preprocessor and print the result\n");
     printf("  Provide '-' as a source file to read from standard input.\n");
 }
@@ -81,6 +83,8 @@ static void init_default_opts(cli_options_t *opts)
     opts->preprocess = false;
     opts->debug = false;
     opts->color_diag = true;
+    opts->dep_only = false;
+    opts->deps = false;
     opts->asm_syntax = ASM_ATT;
     opts->std = STD_C99;
     opts->obj_dir = NULL;
@@ -355,6 +359,8 @@ static int handle_option(int opt, const char *arg, const char *prog,
         {CLI_OPT_DEBUG,     offsetof(cli_options_t, debug), 1, true},
         {CLI_OPT_NO_INLINE, offsetof(cli_options_t, opt_cfg.inline_funcs), 0, false},
         {CLI_OPT_NO_COLOR,  offsetof(cli_options_t, color_diag), 0, true},
+        {CLI_OPT_DEP_ONLY, offsetof(cli_options_t, dep_only), 1, true},
+        {CLI_OPT_DEP,      offsetof(cli_options_t, deps), 1, true},
         {'E', offsetof(cli_options_t, preprocess), 1, true},
         {CLI_OPT_LINK,      offsetof(cli_options_t, link), 1, true},
         {0, 0, 0, false}
@@ -407,6 +413,19 @@ int cli_parse_args(int argc, char **argv, cli_options_t *opts)
     optreset = 1;
 #endif
 
+    /* Pre-scan argv for -M and -MD options */
+    int new_argc = 1;
+    for (int i = 1; i < argc; i++) {
+        if (strcmp(argv[i], "-MD") == 0) {
+            argv[new_argc++] = "--MD";
+        } else if (strcmp(argv[i], "-M") == 0) {
+            argv[new_argc++] = "--M";
+        } else {
+            argv[new_argc++] = argv[i];
+        }
+    }
+    argc = new_argc;
+
     static struct option long_opts[] = {
         {"help",    no_argument,       0, 'h'},
         {"version", no_argument,       0, 'v'},
@@ -428,6 +447,8 @@ int cli_parse_args(int argc, char **argv, cli_options_t *opts)
         {"undefine", required_argument, 0, CLI_OPT_UNDEFINE},
         {"preprocess", no_argument,  0, 'E'},
         {"link", no_argument,        0, CLI_OPT_LINK},
+        {"MD", no_argument,         0, CLI_OPT_DEP},
+        {"M", no_argument,          0, CLI_OPT_DEP_ONLY},
         {"std", required_argument,   0, CLI_OPT_STD},
         {"obj-dir", required_argument, 0, CLI_OPT_OBJ_DIR},
         {"no-color", no_argument, 0, CLI_OPT_NO_COLOR},
@@ -459,7 +480,8 @@ int cli_parse_args(int argc, char **argv, cli_options_t *opts)
     }
 
     if (!opts->output && !opts->dump_asm && !opts->dump_ir &&
-        !opts->dump_tokens && !opts->dump_ast && !opts->preprocess) {
+        !opts->dump_tokens && !opts->dump_ast && !opts->preprocess &&
+        !opts->dep_only) {
         fprintf(stderr, "Error: no output path specified.\n");
         print_usage(argv[0]);
         cli_free_opts(opts);
