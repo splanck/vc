@@ -304,6 +304,23 @@ expr_t *ast_make_sizeof_expr(expr_t *e, size_t line, size_t column)
     return expr;
 }
 
+/* Create a type cast expression node. */
+expr_t *ast_make_cast(type_kind_t type, size_t array_size, size_t elem_size,
+                      expr_t *e, size_t line, size_t column)
+{
+    expr_t *expr = malloc(sizeof(*expr));
+    if (!expr)
+        return NULL;
+    expr->kind = EXPR_CAST;
+    expr->line = line;
+    expr->column = column;
+    expr->cast.type = type;
+    expr->cast.array_size = array_size;
+    expr->cast.elem_size = elem_size;
+    expr->cast.expr = e;
+    return expr;
+}
+
 /* Create a function call expression node. */
 expr_t *ast_make_call(const char *name, expr_t **args, size_t arg_count,
                       size_t line, size_t column)
@@ -406,6 +423,9 @@ void ast_free_expr(expr_t *expr)
             ast_free_expr(expr->call.args[i]);
         free(expr->call.args);
         free(expr->call.name);
+        break;
+    case EXPR_CAST:
+        ast_free_expr(expr->cast.expr);
         break;
     case EXPR_COMPLIT:
         ast_free_expr(expr->compound.init);

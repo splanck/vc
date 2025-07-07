@@ -54,6 +54,7 @@ typedef enum {
     EXPR_COND,
     EXPR_ASSIGN,
     EXPR_CALL,
+    EXPR_CAST,
     EXPR_INDEX,
     EXPR_ASSIGN_INDEX,
     EXPR_ASSIGN_MEMBER,
@@ -183,6 +184,12 @@ struct expr {
             expr_t **args;
             size_t arg_count;
         } call;
+        struct {
+            type_kind_t type;
+            size_t array_size;
+            size_t elem_size;
+            expr_t *expr;
+        } cast;
         struct {
             int is_type;
             type_kind_t type;

@@ -56,6 +56,9 @@ expr_t *ast_make_sizeof_type(type_kind_t type, size_t array_size,
                              size_t elem_size, size_t line, size_t column);
 /* Create a sizeof expression for another expression. */
 expr_t *ast_make_sizeof_expr(expr_t *expr, size_t line, size_t column);
+/* Create a type cast expression. */
+expr_t *ast_make_cast(type_kind_t type, size_t array_size, size_t elem_size,
+                      expr_t *expr, size_t line, size_t column);
 /* Create a function call expression. */
 expr_t *ast_make_call(const char *name, expr_t **args, size_t arg_count,
                       size_t line, size_t column);
