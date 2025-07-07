@@ -22,7 +22,20 @@
 /* Duplicate a numeric literal expression node. */
 static expr_t *clone_number(const expr_t *expr)
 {
-    return ast_make_number(expr->number.value, expr->line, expr->column);
+    expr_t *n = malloc(sizeof(*n));
+    if (!n)
+        return NULL;
+    n->kind = EXPR_NUMBER;
+    n->line = expr->line;
+    n->column = expr->column;
+    n->number.value = vc_strdup(expr->number.value);
+    if (!n->number.value) {
+        free(n);
+        return NULL;
+    }
+    n->number.is_unsigned = expr->number.is_unsigned;
+    n->number.long_count = expr->number.long_count;
+    return n;
 }
 
 /* Duplicate an identifier expression node. */

@@ -42,6 +42,12 @@ static type_kind_t check_number_expr(expr_t *expr, symtable_t *vars,
     }
     if (out)
         *out = ir_build_const(ir, val);
+    if (expr->number.long_count == 2)
+        return expr->number.is_unsigned ? TYPE_ULLONG : TYPE_LLONG;
+    if (expr->number.long_count == 1)
+        return expr->number.is_unsigned ? TYPE_ULONG : TYPE_LONG;
+    if (expr->number.is_unsigned)
+        return TYPE_UINT;
     if (val > INT_MAX || val < INT_MIN)
         return TYPE_LLONG;
     return TYPE_INT;
