@@ -32,6 +32,7 @@ static stmt_t *parse_tagged_decl(parser_t *p, token_type_t keyword,
                                  stmt_t *(*decl_fn)(parser_t *),
                                  stmt_t *(*var_decl_fn)(parser_t *));
 static stmt_t *parse_enum_declaration(parser_t *p);
+stmt_t *parser_parse_static_assert(parser_t *p);
 static stmt_t *parse_struct_declaration(parser_t *p);
 static stmt_t *parse_union_declaration(parser_t *p);
 static stmt_t *maybe_parse_var_decl(parser_t *p);
@@ -158,7 +159,9 @@ static stmt_t *maybe_parse_var_decl(parser_t *p)
  */
 static stmt_t *parse_declaration_stmt(parser_t *p)
 {
-    stmt_t *s = parse_enum_declaration(p);
+    stmt_t *s = parser_parse_static_assert(p);
+    if (!s)
+        s = parse_enum_declaration(p);
     if (!s)
         s = parse_struct_declaration(p);
     if (!s)

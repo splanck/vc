@@ -52,6 +52,9 @@ stmt_t *ast_make_continue(size_t line, size_t column);
 stmt_t *ast_make_label(const char *name, size_t line, size_t column);
 /* Create a goto statement. */
 stmt_t *ast_make_goto(const char *name, size_t line, size_t column);
+/* Create a _Static_assert statement. */
+stmt_t *ast_make_static_assert(expr_t *expr, const char *msg,
+                               size_t line, size_t column);
 /* Create a typedef declaration. */
 stmt_t *ast_make_typedef(const char *name, type_kind_t type, size_t array_size,
                          size_t elem_size, size_t line, size_t column);

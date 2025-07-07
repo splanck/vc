@@ -234,6 +234,25 @@ stmt_t *ast_make_goto(const char *name, size_t line, size_t column)
     return stmt;
 }
 
+/* Create a _Static_assert statement */
+stmt_t *ast_make_static_assert(expr_t *expr, const char *msg,
+                               size_t line, size_t column)
+{
+    stmt_t *stmt = malloc(sizeof(*stmt));
+    if (!stmt)
+        return NULL;
+    stmt->kind = STMT_STATIC_ASSERT;
+    stmt->line = line;
+    stmt->column = column;
+    stmt->static_assert.expr = expr;
+    stmt->static_assert.message = vc_strdup(msg ? msg : "");
+    if (!stmt->static_assert.message) {
+        free(stmt);
+        return NULL;
+    }
+    return stmt;
+}
+
 /* Create a typedef declaration */
 stmt_t *ast_make_typedef(const char *name, type_kind_t type, size_t array_size,
                          size_t elem_size, size_t line, size_t column)
@@ -474,6 +493,12 @@ static void free_goto_stmt(stmt_t *stmt)
     free(stmt->goto_stmt.name);
 }
 
+static void free_static_assert_stmt(stmt_t *stmt)
+{
+    ast_free_expr(stmt->static_assert.expr);
+    free(stmt->static_assert.message);
+}
+
 static void free_typedef_stmt(stmt_t *stmt)
 {
     free(stmt->typedef_decl.name);
@@ -556,6 +581,9 @@ void ast_free_stmt(stmt_t *stmt)
         break;
     case STMT_GOTO:
         free_goto_stmt(stmt);
+        break;
+    case STMT_STATIC_ASSERT:
+        free_static_assert_stmt(stmt);
         break;
     case STMT_TYPEDEF:
         free_typedef_stmt(stmt);

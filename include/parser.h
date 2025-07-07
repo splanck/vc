@@ -73,4 +73,7 @@ stmt_t *parser_parse_struct_decl(parser_t *p);
 /* Parse a struct variable declaration with inline members. */
 stmt_t *parser_parse_struct_var_decl(parser_t *p);
 
+/* Parse a _Static_assert declaration. */
+stmt_t *parser_parse_static_assert(parser_t *p);
+
 #endif /* VC_PARSER_H */

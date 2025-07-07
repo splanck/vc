@@ -574,6 +574,15 @@ int parser_parse_toplevel(parser_t *p, symtable_t *funcs,
         tok = peek(p); /* restored by helper */
     }
 
+    if (tok->type == TOK_KW_STATIC_ASSERT) {
+        p->pos = spec_pos;
+        if (out_global)
+            *out_global = parser_parse_static_assert(p);
+        else
+            parser_parse_static_assert(p);
+        return 1;
+    }
+
     if (tok->type == TOK_KW_TYPEDEF)
         return parse_typedef_decl(p, start, out_global);
 

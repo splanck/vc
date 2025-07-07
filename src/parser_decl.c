@@ -32,6 +32,7 @@ static int parse_array_initializer(parser_t *p, init_entry_t **init_list,
 static int parse_expr_initializer(parser_t *p, expr_t **init);
 static int parse_initializer(parser_t *p, type_kind_t type, expr_t **init,
                              init_entry_t **init_list, size_t *init_count);
+stmt_t *parser_parse_static_assert(parser_t *p);
 
 /* Parse a sequence of union or struct members enclosed in braces. */
 static int parse_member_list(parser_t *p, int is_union, vector_t *members_v);
@@ -193,6 +194,35 @@ static int parse_initializer(parser_t *p, type_kind_t type, expr_t **init,
             return 0;
     }
     return 1;
+}
+
+/* Parse a _Static_assert statement */
+stmt_t *parser_parse_static_assert(parser_t *p)
+{
+    if (!match(p, TOK_KW_STATIC_ASSERT))
+        return NULL;
+    token_t *kw = &p->tokens[p->pos - 1];
+    if (!match(p, TOK_LPAREN))
+        return NULL;
+    expr_t *expr = parser_parse_expr(p);
+    if (!expr)
+        return NULL;
+    if (!match(p, TOK_COMMA)) {
+        ast_free_expr(expr);
+        return NULL;
+    }
+    token_t *msg = peek(p);
+    if (!msg || msg->type != TOK_STRING) {
+        ast_free_expr(expr);
+        return NULL;
+    }
+    p->pos++;
+    char *str = msg->lexeme;
+    if (!match(p, TOK_RPAREN) || !match(p, TOK_SEMI)) {
+        ast_free_expr(expr);
+        return NULL;
+    }
+    return ast_make_static_assert(expr, str, kw->line, kw->column);
 }
 
 /* Parse a single struct or union member. */
