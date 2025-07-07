@@ -622,6 +622,19 @@ static char *read_file_lines(const char *path, char ***out_lines)
         return NULL;
 
     size_t len = strlen(text);
+
+    /* splice lines ending with a backslash */
+    size_t w = 0;
+    for (size_t r = 0; r < len; r++) {
+        if (text[r] == '\\' && r + 1 < len && text[r + 1] == '\n') {
+            r++; /* skip the newline */
+            continue;
+        }
+        text[w++] = text[r];
+    }
+    text[w] = '\0';
+    len = w;
+
     size_t line_count = 1;
     for (char *p = text; *p; p++)
         if (*p == '\n')
