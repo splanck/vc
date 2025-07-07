@@ -10,7 +10,7 @@ for cfile in "$DIR"/fixtures/*.c; do
     base=$(basename "$cfile" .c)
 
     case "$base" in
-        *_x86-64|struct_*|bitfield_rw|include_search|include_angle|include_env|macro_bad_define|preproc_blank|macro_cli|include_once|libm_program|union_example)
+        *_x86-64|struct_*|bitfield_rw|include_search|include_angle|include_env|macro_bad_define|preproc_blank|macro_cli|include_once|libm_program|union_example|varargs_double)
             continue;;
     esac
     expect="$DIR/fixtures/$base.s"

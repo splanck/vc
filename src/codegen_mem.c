@@ -16,6 +16,9 @@
 #include "regalloc_x86.h"
 #include "ast.h"
 
+/* total bytes pushed for the current function call */
+size_t arg_stack_bytes = 0;
+
 #define SCRATCH_REG 0
 
 /*
@@ -411,6 +414,13 @@ static void emit_arg(strbuf_t *sb, ir_instr_t *ins,
                      ? (x64 ? "rsp" : "esp")
                      : (x64 ? "%rsp" : "%esp");
     type_kind_t t = (type_kind_t)ins->imm;
+    size_t sz = x64 ? 8 : 4;
+    if (t == TYPE_FLOAT)
+        sz = 4;
+    else if (t == TYPE_DOUBLE)
+        sz = 8;
+    else if (t == TYPE_LDOUBLE)
+        sz = 10;
     if (t == TYPE_FLOAT) {
         if (syntax == ASM_INTEL)
             strbuf_appendf(sb, "    sub %s, 4\n", sp);
@@ -439,6 +449,7 @@ static void emit_arg(strbuf_t *sb, ir_instr_t *ins,
         strbuf_appendf(sb, "    push%s %s\n", sfx,
                        loc_str(b1, ra, ins->src1, x64, syntax));
     }
+    arg_stack_bytes += sz;
 }
 
 /* Load address of a string literal (IR_GLOB_STRING). */

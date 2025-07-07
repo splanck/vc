@@ -16,6 +16,7 @@
 
 
 extern int export_syms;
+extern size_t arg_stack_bytes;
 
 /* Forward declarations for small helpers. */
 static void emit_return(strbuf_t *sb, ir_instr_t *ins,
@@ -111,14 +112,15 @@ static void emit_call(strbuf_t *sb, ir_instr_t *ins,
 {
     char buf[32];
     strbuf_appendf(sb, "    call %s\n", ins->name);
-    if (ins->imm > 0) {
+    if (ins->imm > 0 && arg_stack_bytes > 0) {
         if (syntax == ASM_INTEL)
-            strbuf_appendf(sb, "    add%s %s, %d\n", sfx, sp,
-                           ins->imm * (x64 ? 8 : 4));
+            strbuf_appendf(sb, "    add%s %s, %zu\n", sfx, sp,
+                           arg_stack_bytes);
         else
-            strbuf_appendf(sb, "    add%s $%d, %s\n", sfx,
-                           ins->imm * (x64 ? 8 : 4), sp);
+            strbuf_appendf(sb, "    add%s $%zu, %s\n", sfx,
+                           arg_stack_bytes, sp);
     }
+    arg_stack_bytes = 0;
     if (ins->dest > 0) {
         if (syntax == ASM_INTEL)
             strbuf_appendf(sb, "    mov%s %s, %s\n", sfx,
@@ -140,14 +142,15 @@ static void emit_call_ptr(strbuf_t *sb, ir_instr_t *ins,
         strbuf_appendf(sb, "    call %s\n", loc_str(buf, ra, ins->src1, x64, syntax));
     else
         strbuf_appendf(sb, "    call *%s\n", loc_str(buf, ra, ins->src1, x64, syntax));
-    if (ins->imm > 0) {
+    if (ins->imm > 0 && arg_stack_bytes > 0) {
         if (syntax == ASM_INTEL)
-            strbuf_appendf(sb, "    add%s %s, %d\n", sfx, sp,
-                           ins->imm * (x64 ? 8 : 4));
+            strbuf_appendf(sb, "    add%s %s, %zu\n", sfx, sp,
+                           arg_stack_bytes);
         else
-            strbuf_appendf(sb, "    add%s $%d, %s\n", sfx,
-                           ins->imm * (x64 ? 8 : 4), sp);
+            strbuf_appendf(sb, "    add%s $%zu, %s\n", sfx,
+                           arg_stack_bytes, sp);
     }
+    arg_stack_bytes = 0;
     if (ins->dest > 0) {
         if (syntax == ASM_INTEL)
             strbuf_appendf(sb, "    mov%s %s, %s\n", sfx,
