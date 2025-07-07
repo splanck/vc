@@ -31,6 +31,7 @@ static expr_t *parse_bitxor(parser_t *p);
 static expr_t *parse_bitor(parser_t *p);
 static expr_t *parse_primary(parser_t *p);
 static expr_t *parse_prefix_expr(parser_t *p);
+static expr_t *parse_cast(parser_t *p);
 static expr_t *parse_preinc(parser_t *p);
 static expr_t *parse_predec(parser_t *p);
 static expr_t *parse_deref(parser_t *p);
@@ -408,6 +409,37 @@ static expr_t *parse_sizeof(parser_t *p)
     return ast_make_sizeof_expr(e, kw->line, kw->column);
 }
 
+/* Parse a cast expression '(type)expr'. */
+static expr_t *parse_cast(parser_t *p)
+{
+    size_t save = p->pos;
+    if (!match(p, TOK_LPAREN))
+        return NULL;
+
+    token_t *lp = &p->tokens[p->pos - 1];
+    type_kind_t t; size_t sz; size_t esz;
+
+    if (!parse_type(p, &t, &sz, &esz) || !match(p, TOK_RPAREN)) {
+        p->pos = save;
+        return NULL;
+    }
+
+    expr_t *inner = parse_cast(p);
+    if (!inner)
+        inner = parse_prefix_expr(p);
+    if (!inner) {
+        p->pos = save;
+        return NULL;
+    }
+
+    expr_t *res = ast_make_cast(t, sz, esz, inner, lp->line, lp->column);
+    if (!res) {
+        ast_free_expr(inner);
+        p->pos = save;
+    }
+    return res;
+}
+
 /* Handle prefix unary operators before a primary expression. */
 static expr_t *parse_prefix_expr(parser_t *p)
 {
@@ -439,6 +471,9 @@ static expr_t *parse_prefix_expr(parser_t *p)
 /* Wrapper to start prefix expression parsing. */
 static expr_t *parse_primary(parser_t *p)
 {
+    expr_t *cast = parse_cast(p);
+    if (cast)
+        return cast;
     return parse_prefix_expr(p);
 }
 
