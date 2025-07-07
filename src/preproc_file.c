@@ -18,6 +18,7 @@
 #include <ctype.h>
 #include <errno.h>
 #include <limits.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -52,6 +53,11 @@ typedef struct {
     int taken;
 } cond_state_t;
 
+typedef struct {
+    char *path;
+    size_t dir_index;
+} include_entry_t;
+
 
 
 static void free_param_vector(vector_t *v);
@@ -84,8 +90,8 @@ static int include_stack_contains(vector_t *stack, const char *path)
         return 0;
     }
     for (size_t i = 0; i < stack->count; i++) {
-        const char *p = ((const char **)stack->data)[i];
-        if (strcmp(p, canon) == 0) {
+        const include_entry_t *e = &((include_entry_t *)stack->data)[i];
+        if (strcmp(e->path, canon) == 0) {
             free(canon);
             return 1;
         }
@@ -95,7 +101,7 @@ static int include_stack_contains(vector_t *stack, const char *path)
 }
 
 /* Canonicalize PATH and push it on the include stack */
-static int include_stack_push(vector_t *stack, const char *path)
+static int include_stack_push(vector_t *stack, const char *path, size_t idx)
 {
     char *canon = realpath(path, NULL);
     if (!canon) {
@@ -105,7 +111,8 @@ static int include_stack_push(vector_t *stack, const char *path)
             return 0;
         }
     }
-    if (!vector_push(stack, &canon)) {
+    include_entry_t ent = { canon, idx };
+    if (!vector_push(stack, &ent)) {
         free(canon);
         vc_oom();
         return 0;
@@ -117,7 +124,8 @@ static int include_stack_push(vector_t *stack, const char *path)
 static void include_stack_pop(vector_t *stack)
 {
     if (stack->count) {
-        free(((char **)stack->data)[stack->count - 1]);
+        include_entry_t *e = &((include_entry_t *)stack->data)[stack->count - 1];
+        free(e->path);
         stack->count--;
     }
 }
@@ -168,7 +176,7 @@ static int pragma_once_add(preproc_context_t *ctx, const char *path)
 static int process_file(const char *path, vector_t *macros,
                         vector_t *conds, strbuf_t *out,
                         const vector_t *incdirs, vector_t *stack,
-                        preproc_context_t *ctx);
+                        preproc_context_t *ctx, size_t idx);
 
 /*
  * Locate the full path of an include file.
@@ -187,11 +195,13 @@ static int process_file(const char *path, vector_t *macros,
 */
 static char *find_include_path(const char *fname, char endc,
                                const char *dir,
-                               const vector_t *incdirs)
+                               const vector_t *incdirs,
+                               size_t start,
+                               size_t *out_idx)
 {
     size_t fname_len = strlen(fname);
     size_t max_len = fname_len;
-    if (endc == '"' && dir) {
+    if (endc == '"' && dir && start == 0) {
         size_t len = strlen(dir) + fname_len;
         if (len > max_len)
             max_len = len;
@@ -212,37 +222,56 @@ static char *find_include_path(const char *fname, char endc,
 
     char *out_path = vc_alloc_or_exit(max_len + 1);
 
-    if (endc == '"' && dir) {
+    if (endc == '"' && dir && start == 0) {
         snprintf(out_path, max_len + 1, "%s%s", dir, fname);
-        if (access(out_path, R_OK) == 0)
+        if (access(out_path, R_OK) == 0) {
+            if (out_idx)
+                *out_idx = (size_t)-1;
             return out_path;
+        }
     }
 
-    for (size_t i = 0; i < incdirs->count; i++) {
+    for (size_t i = start; i < incdirs->count; i++) {
         const char *base = ((const char **)incdirs->data)[i];
         snprintf(out_path, max_len + 1, "%s/%s", base, fname);
-        if (access(out_path, R_OK) == 0)
+        if (access(out_path, R_OK) == 0) {
+            if (out_idx)
+                *out_idx = i;
             return out_path;
+        }
     }
 
+    size_t builtin_start = 0;
+    if (start > incdirs->count)
+        builtin_start = start - incdirs->count;
+
     if (endc == '<') {
-        for (size_t i = 0; std_include_dirs[i]; i++) {
+        for (size_t i = builtin_start; std_include_dirs[i]; i++) {
             snprintf(out_path, max_len + 1, "%s/%s", std_include_dirs[i], fname);
-            if (access(out_path, R_OK) == 0)
+            if (access(out_path, R_OK) == 0) {
+                if (out_idx)
+                    *out_idx = incdirs->count + i;
                 return out_path;
+            }
         }
         free(out_path);
         return NULL;
     }
 
     snprintf(out_path, max_len + 1, "%s", fname);
-    if (access(out_path, R_OK) == 0)
+    if (access(out_path, R_OK) == 0) {
+        if (out_idx)
+            *out_idx = (size_t)-1;
         return out_path;
+    }
 
-    for (size_t i = 0; std_include_dirs[i]; i++) {
+    for (size_t i = builtin_start; std_include_dirs[i]; i++) {
         snprintf(out_path, max_len + 1, "%s/%s", std_include_dirs[i], fname);
-        if (access(out_path, R_OK) == 0)
+        if (access(out_path, R_OK) == 0) {
+            if (out_idx)
+                *out_idx = incdirs->count + i;
             return out_path;
+        }
     }
 
     free(out_path);
@@ -272,7 +301,8 @@ static int handle_include(char *line, const char *dir, vector_t *macros,
     if (start && end) {
         size_t len = (size_t)(end - start - 1);
         fname = vc_strndup(start + 1, len);
-        incpath = find_include_path(fname, endc, dir, incdirs);
+        size_t idx = SIZE_MAX;
+        incpath = find_include_path(fname, endc, dir, incdirs, 0, &idx);
         const char *chosen = incpath;
         vector_t subconds;
         vector_init(&subconds, sizeof(cond_state_t));
@@ -286,12 +316,66 @@ static int handle_include(char *line, const char *dir, vector_t *macros,
                     fprintf(stderr, "Include cycle detected: %s\n", chosen);
                     ok = 0;
                 } else if (!process_file(chosen, macros, &subconds, out,
-                                         incdirs, stack, ctx)) {
+                                         incdirs, stack, ctx, idx)) {
                     ok = 0;
                 }
             }
         } else {
             /* directive ignored when conditions are inactive */
+        }
+        vector_free(&subconds);
+        if (!ok)
+            result = 0;
+    }
+    free(incpath);
+    free(fname);
+    return result;
+}
+
+/*
+ * Handle the #include_next directive. The search continues after the
+ * directory of the current file in the include list.
+ */
+static int handle_include_next(char *line, const char *dir, vector_t *macros,
+                               vector_t *conds, strbuf_t *out,
+                               const vector_t *incdirs, vector_t *stack,
+                               preproc_context_t *ctx)
+{
+    (void)dir;
+    char *start = strchr(line, '<');
+    char *end = start ? strchr(start + 1, '>') : NULL;
+    char *fname = NULL;
+    char *incpath = NULL;
+    int result = 1;
+    if (start && end) {
+        size_t len = (size_t)(end - start - 1);
+        fname = vc_strndup(start + 1, len);
+        size_t cur = SIZE_MAX;
+        if (stack->count) {
+            const include_entry_t *e =
+                &((include_entry_t *)stack->data)[stack->count - 1];
+            cur = e->dir_index;
+        }
+        size_t idx = SIZE_MAX;
+        size_t start_idx = (cur == (size_t)-1) ? 0 : cur + 1;
+        incpath = find_include_path(fname, '>', NULL, incdirs, start_idx, &idx);
+        const char *chosen = incpath;
+        vector_t subconds;
+        vector_init(&subconds, sizeof(cond_state_t));
+        int ok = 1;
+        if (is_active(conds)) {
+            if (!chosen) {
+                fprintf(stderr, "%s: No such file or directory\n", fname);
+                ok = 0;
+            } else if (!pragma_once_contains(ctx, chosen)) {
+                if (include_stack_contains(stack, chosen)) {
+                    fprintf(stderr, "Include cycle detected: %s\n", chosen);
+                    ok = 0;
+                } else if (!process_file(chosen, macros, &subconds, out,
+                                         incdirs, stack, ctx, idx)) {
+                    ok = 0;
+                }
+            }
         }
         vector_free(&subconds);
         if (!ok)
@@ -711,13 +795,14 @@ static void cleanup_file_resources(char *text, char **lines, char *dir)
 /* Load PATH and push it onto the include stack.  On failure any allocated
  * resources are released and zero is returned. */
 static int load_and_register_file(const char *path, vector_t *stack,
+                                  size_t idx,
                                   char ***out_lines, char **out_dir,
                                   char **out_text)
 {
     if (!load_file_lines(path, out_lines, out_dir, out_text))
         return 0;
 
-    if (!include_stack_push(stack, path)) {
+    if (!include_stack_push(stack, path, idx)) {
         cleanup_file_resources(*out_text, *out_lines, *out_dir);
         return 0;
     }
@@ -869,7 +954,9 @@ static int handle_pragma_directive(char *line, const char *dir,
         p += 4;
         p = skip_ws(p);
         if (*p == '\0' && stack->count) {
-            const char *cur = ((const char **)stack->data)[stack->count - 1];
+            const include_entry_t *e =
+                &((include_entry_t *)stack->data)[stack->count - 1];
+            const char *cur = e->path;
             if (!pragma_once_add(ctx, cur))
                 return 0;
         }
@@ -946,8 +1033,9 @@ static const directive_entry_t directive_table[] = {
     {"#ifdef",   SPACE_ANY,   handle_conditional_directive},
     {"#ifndef",  SPACE_ANY,   handle_conditional_directive},
     {"#if",      SPACE_ANY,   handle_conditional_directive},
-    {"#include", SPACE_BLANK, handle_include_directive},
-    {"#line",    SPACE_ANY,   handle_line_directive},
+    {"#include",      SPACE_BLANK, handle_include_directive},
+    {"#include_next", SPACE_BLANK, handle_include_next},
+    {"#line",         SPACE_ANY,   handle_line_directive},
     {"#pragma",  SPACE_ANY,   handle_pragma_directive},
     {"#undef",   SPACE_ANY,   handle_undef_directive},
 };
@@ -955,10 +1043,10 @@ static const directive_entry_t directive_table[] = {
 static const directive_bucket_t directive_buckets[26] = {
     ['d' - 'a'] = {0, 1},  /* #define */
     ['e' - 'a'] = {1, 4},  /* #elif, #else, #endif, #error */
-    ['i' - 'a'] = {5, 4},  /* #ifdef, #ifndef, #if, #include */
-    ['l' - 'a'] = {9, 1},  /* #line */
-    ['p' - 'a'] = {10, 1}, /* #pragma */
-    ['u' - 'a'] = {11, 1}, /* #undef */
+    ['i' - 'a'] = {5, 5},  /* #ifdef, #ifndef, #if, #include, #include_next */
+    ['l' - 'a'] = {10, 1}, /* #line */
+    ['p' - 'a'] = {11, 1}, /* #pragma */
+    ['u' - 'a'] = {12, 1}, /* #undef */
 };
 
 static const directive_entry_t *lookup_directive(const char *line)
@@ -1011,7 +1099,7 @@ static int handle_directive(char *line, const char *dir, vector_t *macros,
 static int process_file(const char *path, vector_t *macros,
                         vector_t *conds, strbuf_t *out,
                         const vector_t *incdirs, vector_t *stack,
-                        preproc_context_t *ctx)
+                        preproc_context_t *ctx, size_t idx)
 {
     if (stack->count >= MAX_INCLUDE_DEPTH) {
         fprintf(stderr, "Include depth limit exceeded\n");
@@ -1021,7 +1109,7 @@ static int process_file(const char *path, vector_t *macros,
     char *dir;
     char *text;
 
-    if (!load_and_register_file(path, stack, &lines, &dir, &text))
+    if (!load_and_register_file(path, stack, idx, &lines, &dir, &text))
         return 0;
 
     int ok = process_all_lines(lines, path, dir, macros, conds, out, incdirs,
@@ -1092,7 +1180,7 @@ static void init_preproc_vectors(preproc_context_t *ctx, vector_t *macros,
 {
     vector_init(macros, sizeof(macro_t));
     vector_init(conds, sizeof(cond_state_t));
-    vector_init(stack, sizeof(char *));
+    vector_init(stack, sizeof(include_entry_t));
     vector_init(&ctx->pragma_once_files, sizeof(char *));
     strbuf_init(out);
 }
@@ -1102,8 +1190,10 @@ static void cleanup_preproc_vectors(preproc_context_t *ctx, vector_t *macros,
                                     vector_t *conds, vector_t *stack,
                                     vector_t *search_dirs, strbuf_t *out)
 {
-    for (size_t i = 0; i < stack->count; i++)
-        free(((char **)stack->data)[i]);
+    for (size_t i = 0; i < stack->count; i++) {
+        include_entry_t *e = &((include_entry_t *)stack->data)[i];
+        free(e->path);
+    }
     vector_free(stack);
     vector_free(conds);
     free_macro_vector(macros);
@@ -1161,7 +1251,8 @@ static int process_input_file(const char *path, vector_t *macros,
                               const vector_t *incdirs, vector_t *stack,
                               preproc_context_t *ctx)
 {
-    return process_file(path, macros, conds, out, incdirs, stack, ctx);
+    return process_file(path, macros, conds, out, incdirs, stack, ctx,
+                        (size_t)-1);
 }
 
 /*

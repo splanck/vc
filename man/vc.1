@@ -48,7 +48,8 @@ Variable length arrays are supported only for block scope variables.
 They may be sized using any runtime expression and are fully compatible
 with \fBsizeof\fR, but cannot appear at file scope or as struct members.
 .PP
-The built-in preprocessor expands \fB#include\fR directives, object-like
+The built-in preprocessor expands \fB#include\fR and \fB#include_next\fR
+directives, object-like
 and parameterized macros defined with \fB#define\fR. Lines ending with
 \fB\\\fR are joined so a macro body may span multiple lines. Macro bodies may be
 expanded recursively. The \fB#\fR operator stringizes a parameter and

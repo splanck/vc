@@ -10,7 +10,7 @@ for cfile in "$DIR"/fixtures/*.c; do
     base=$(basename "$cfile" .c)
 
     case "$base" in
-        *_x86-64|struct_*|bitfield_rw|include_search|include_angle|include_env|macro_bad_define|preproc_blank|macro_cli|include_once|libm_program|union_example|varargs_double)
+        *_x86-64|struct_*|bitfield_rw|include_search|include_angle|include_env|macro_bad_define|preproc_blank|macro_cli|include_once|include_next|libm_program|union_example|varargs_double)
             continue;;
     esac
     expect="$DIR/fixtures/$base.s"
@@ -126,6 +126,15 @@ if ! diff -u "$DIR/fixtures/include_search.s" "${inc_env_out}"; then
     fail=1
 fi
 rm -f "${inc_env_out}"
+
+# verify #include_next directive
+next_out=$(mktemp)
+"$BINARY" -I "$DIR/include_next/dir1" -I "$DIR/include_next/dir2" -I "$DIR/include_next/dir3" -o "${next_out}" "$DIR/fixtures/include_next.c"
+if ! diff -u "$DIR/fixtures/include_next.s" "${next_out}"; then
+    echo "Test include_next failed"
+    fail=1
+fi
+rm -f "${next_out}"
 
 # verify command-line macro definitions
 macro_out=$(mktemp)
