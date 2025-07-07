@@ -231,6 +231,23 @@ static int check_union_decl_global(stmt_t *decl, symtable_t *globals)
     return 1;
 }
 
+/* Evaluate a _Static_assert at global scope */
+static int check_static_assert_stmt(stmt_t *stmt, symtable_t *globals)
+{
+    long long val;
+    if (!eval_const_expr(stmt->static_assert.expr, globals, 0, &val)) {
+        error_set(stmt->static_assert.expr->line, stmt->static_assert.expr->column,
+                  error_current_file, error_current_function);
+        return 0;
+    }
+    if (val == 0) {
+        error_set(stmt->line, stmt->column, error_current_file, error_current_function);
+        error_print(stmt->static_assert.message);
+        return 0;
+    }
+    return 1;
+}
+
 /*
  * Compute layout information for an aggregate global variable.  Struct and
  * union members are assigned offsets and the resulting element size is stored
@@ -492,6 +509,8 @@ int check_global(stmt_t *decl, symtable_t *globals, ir_builder_t *ir)
         return check_struct_decl_global(decl, globals);
     case STMT_UNION_DECL:
         return check_union_decl_global(decl, globals);
+    case STMT_STATIC_ASSERT:
+        return check_static_assert_stmt(decl, globals);
     case STMT_TYPEDEF:
         if (!symtable_add_typedef_global(globals, decl->typedef_decl.name,
                                          decl->typedef_decl.type,

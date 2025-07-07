@@ -213,6 +213,7 @@ typedef enum {
     STMT_CONTINUE,
     STMT_LABEL,
     STMT_GOTO,
+    STMT_STATIC_ASSERT,
     STMT_TYPEDEF,
     STMT_ENUM_DECL,
     STMT_STRUCT_DECL,
@@ -290,6 +291,10 @@ struct stmt {
         struct {
             char *name;
         } goto_stmt;
+        struct {
+            expr_t *expr;
+            char *message;
+        } static_assert;
         struct {
             char *name;
             type_kind_t type;

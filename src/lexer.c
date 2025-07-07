@@ -54,6 +54,7 @@ static const keyword_t keyword_table[] = {
     { "restrict", TOK_KW_RESTRICT },
     { "register", TOK_KW_REGISTER },
     { "inline",   TOK_KW_INLINE },
+    { "_Static_assert", TOK_KW_STATIC_ASSERT },
     { "return",   TOK_KW_RETURN }
 };
 

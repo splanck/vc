@@ -713,3 +713,18 @@ Compile with:
 vc -o goto.s goto_example.c
 ```
 
+### _Static_assert
+Compile-time assertions may be written using the `_Static_assert(expr, "msg")`
+syntax. The expression must be a constant expression and triggers an error with
+the provided message when it evaluates to zero.
+
+```c
+/* assert_example.c */
+_Static_assert(1 < 2, "math works");
+int main() { return 0; }
+```
+Compile with:
+```sh
+vc -o assert_example.s assert_example.c
+```
+

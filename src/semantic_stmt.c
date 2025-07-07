@@ -796,6 +796,23 @@ static int check_continue_stmt(stmt_t *stmt, const char *continue_label,
     return handle_loop_stmt(stmt, continue_label, ir);
 }
 
+/* Evaluate a _Static_assert expression and emit an error if zero */
+static int check_static_assert_stmt(stmt_t *stmt, symtable_t *vars)
+{
+    long long val;
+    if (!eval_const_expr(stmt->static_assert.expr, vars, 0, &val)) {
+        error_set(stmt->static_assert.expr->line, stmt->static_assert.expr->column,
+                  error_current_file, error_current_function);
+        return 0;
+    }
+    if (val == 0) {
+        error_set(stmt->line, stmt->column, error_current_file, error_current_function);
+        error_print(stmt->static_assert.message);
+        return 0;
+    }
+    return 1;
+}
+
 /*
  * Validate a compound statement by recursively checking each contained
  * statement and restoring the variable scope on exit.
@@ -899,6 +916,8 @@ int check_stmt(stmt_t *stmt, symtable_t *vars, symtable_t *funcs,
         return handle_label_stmt(stmt, labels, ir);
     case STMT_GOTO:
         return check_goto_stmt(stmt, labels, ir);
+    case STMT_STATIC_ASSERT:
+        return check_static_assert_stmt(stmt, vars);
     case STMT_BREAK:
         return check_break_stmt(stmt, break_label, ir);
     case STMT_CONTINUE:
