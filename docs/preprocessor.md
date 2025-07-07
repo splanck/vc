@@ -13,7 +13,8 @@ preprocessor directive is handled immediately:
 - `#include` resolves the requested path and recursively invokes `process_file`
   on the included file when the current conditional state is active.
 - `#define` adds a new macro definition.  Parameterised forms are supported and
-  stored in a `macro_t` structure.
+  stored in a `macro_t` structure.  Lines ending in `\` are joined so a macro
+  body may span multiple lines.
 - `#undef` removes existing definitions.
 - `#error` prints the given message to stderr and aborts preprocessing when
   encountered in an active block.
