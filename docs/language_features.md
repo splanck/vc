@@ -11,6 +11,7 @@ shows a short example and how to compile it.
 - [Compound assignment](#compound-assignment)
 - [Increment and decrement](#increment-and-decrement)
 - [Floating-point arithmetic](#floating-point-arithmetic)
+- [Complex numbers](#complex-numbers)
 - [Bitwise operations](#bitwise-operations)
 - [64-bit integers](#64-bit-integers)
 - [Numeric constants](#numeric-constants)
@@ -46,6 +47,7 @@ shows a short example and how to compile it.
 - `switch` statements with `case` and `default`
 - Bitwise operators (`&`, `|`, `^`, `<<`, `>>` and compound forms)
 - Floating-point types (`float`, `double`, `long double`)
+- Complex numbers using the `_Complex` keyword
 - `sizeof` operator
 - Global variables
 - Variadic functions using `...`
@@ -123,6 +125,24 @@ float main() {
 Compile with:
 ```sh
 vc -o float_add.s float_add.c
+```
+
+### Complex numbers
+The `_Complex` keyword introduces complex floating-point types. Complex
+literals use `a+bi` syntax with `i` denoting the imaginary part.
+Addition, subtraction, multiplication and division are supported.
+
+```c
+/* complex_add.c */
+double _Complex main() {
+    double _Complex a = 1.0 + 2.0i;
+    double _Complex b = 3.0 - 1.0i;
+    return a + b;
+}
+```
+Compile with:
+```sh
+vc -o complex_add.s complex_add.c
 ```
 
 ### Bitwise operations
