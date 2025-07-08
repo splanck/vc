@@ -13,6 +13,7 @@
 
 #include <stdio.h>
 #include "codegen_mem.h"
+#include "codegen_loadstore.h"
 #include "regalloc_x86.h"
 #include "ast.h"
 
@@ -114,38 +115,14 @@ static void emit_const(strbuf_t *sb, ir_instr_t *ins,
  *  dest - result register
  *  name - symbol to read from
  */
-static void emit_load(strbuf_t *sb, ir_instr_t *ins,
-                      regalloc_t *ra, int x64,
-                      asm_syntax_t syntax)
-{
-    char destb[32];
-    char mem[32];
-    const char *sfx = x64 ? "q" : "l";
-    int spill = (ra && ins->dest > 0 && ra->loc[ins->dest] < 0);
-    const char *dest = spill ? reg_str(SCRATCH_REG, syntax)
-                             : loc_str(destb, ra, ins->dest, x64, syntax);
-    const char *slot = loc_str(mem, ra, ins->dest, x64, syntax);
-    emit_move_with_spill(sb, sfx, ins->name, dest, slot, spill, syntax);
-}
+
 
 /* Store a value to a variable (IR_STORE).
  *
  *  src1 - value to store
  *  name - destination symbol
  */
-static void emit_store(strbuf_t *sb, ir_instr_t *ins,
-                       regalloc_t *ra, int x64,
-                       asm_syntax_t syntax)
-{
-    char b1[32];
-    const char *sfx = x64 ? "q" : "l";
-    if (syntax == ASM_INTEL)
-        strbuf_appendf(sb, "    mov%s %s, %s\n", sfx, ins->name,
-                       loc_str(b1, ra, ins->src1, x64, syntax));
-    else
-        strbuf_appendf(sb, "    mov%s %s, %s\n", sfx,
-                       loc_str(b1, ra, ins->src1, x64, syntax), ins->name);
-}
+
 
 /* Load a function parameter (IR_LOAD_PARAM).
  *
@@ -227,49 +204,7 @@ static void emit_addr(strbuf_t *sb, ir_instr_t *ins,
  *  src1 - address to read from
  *  dest - result location
  */
-static void emit_load_ptr(strbuf_t *sb, ir_instr_t *ins,
-                          regalloc_t *ra, int x64,
-                          asm_syntax_t syntax)
-{
-    char b1[32];
-    char destb[32];
-    char mem[32];
-    const char *sfx = x64 ? "q" : "l";
-    int spill = (ra && ins->dest > 0 && ra->loc[ins->dest] < 0);
-    const char *dest = spill ? reg_str(SCRATCH_REG, syntax)
-                             : loc_str(destb, ra, ins->dest, x64, syntax);
-    const char *slot = loc_str(mem, ra, ins->dest, x64, syntax);
-    char srcbuf[32];
-    if (syntax == ASM_INTEL)
-        snprintf(srcbuf, sizeof(srcbuf), "[%s]",
-                 loc_str(b1, ra, ins->src1, x64, syntax));
-    else
-        snprintf(srcbuf, sizeof(srcbuf), "(%s)",
-                 loc_str(b1, ra, ins->src1, x64, syntax));
-    emit_move_with_spill(sb, sfx, srcbuf, dest, slot, spill, syntax);
-}
 
-/* Store through a pointer (IR_STORE_PTR).
- *
- *  src1 - pointer
- *  src2 - value to store
- */
-static void emit_store_ptr(strbuf_t *sb, ir_instr_t *ins,
-                           regalloc_t *ra, int x64,
-                           asm_syntax_t syntax)
-{
-    char b1[32];
-    char b2[32];
-    const char *sfx = x64 ? "q" : "l";
-    if (syntax == ASM_INTEL)
-        strbuf_appendf(sb, "    mov%s [%s], %s\n", sfx,
-                       loc_str(b2, ra, ins->src1, x64, syntax),
-                       loc_str(b1, ra, ins->src2, x64, syntax));
-    else
-        strbuf_appendf(sb, "    mov%s %s, (%s)\n", sfx,
-                       loc_str(b1, ra, ins->src2, x64, syntax),
-                       loc_str(b2, ra, ins->src1, x64, syntax));
-}
 
 /* Load from an indexed symbol (IR_LOAD_IDX).
  *
@@ -277,47 +212,7 @@ static void emit_store_ptr(strbuf_t *sb, ir_instr_t *ins,
  *  name - base symbol
  *  dest - result
  */
-static void emit_load_idx(strbuf_t *sb, ir_instr_t *ins,
-                          regalloc_t *ra, int x64,
-                          asm_syntax_t syntax)
-{
-    char b1[32];
-    char destb[32];
-    char mem[32];
-    const char *sfx = x64 ? "q" : "l";
-    int spill = (ra && ins->dest > 0 && ra->loc[ins->dest] < 0);
-    const char *dest = spill ? reg_str(SCRATCH_REG, syntax)
-                             : loc_str(destb, ra, ins->dest, x64, syntax);
-    const char *slot = loc_str(mem, ra, ins->dest, x64, syntax);
-    char srcbuf[64];
-    snprintf(srcbuf, sizeof(srcbuf), "%s(,%s,4)",
-             ins->name, loc_str(b1, ra, ins->src1, x64, syntax));
-    emit_move_with_spill(sb, sfx, srcbuf, dest, slot, spill, syntax);
-}
 
-/* Store to an indexed symbol (IR_STORE_IDX).
- *
- *  src1 - index
- *  src2 - value
- *  name - base symbol
- */
-static void emit_store_idx(strbuf_t *sb, ir_instr_t *ins,
-                           regalloc_t *ra, int x64,
-                           asm_syntax_t syntax)
-{
-    char b1[32];
-    char b2[32];
-    const char *sfx = x64 ? "q" : "l";
-    if (syntax == ASM_INTEL)
-        strbuf_appendf(sb, "    mov%s %s(,%s,4), %s\n", sfx, ins->name,
-                       loc_str(b2, ra, ins->src1, x64, syntax),
-                       loc_str(b1, ra, ins->src2, x64, syntax));
-    else
-        strbuf_appendf(sb, "    mov%s %s, %s(,%s,4)\n", sfx,
-                       loc_str(b1, ra, ins->src2, x64, syntax),
-                       ins->name,
-                       loc_str(b2, ra, ins->src1, x64, syntax));
-}
 
 /* Load a bit-field value (IR_BFLOAD). */
 static void emit_bfload(strbuf_t *sb, ir_instr_t *ins,
