@@ -66,6 +66,9 @@ For example, an expression such as `1.0L + 2.0L` is folded to a single
 constant at compile time.
 Intermediate results are checked for overflow; if a computation exceeds the
 range of `long long` the compiler emits a `Constant overflow` diagnostic.
+Pointer arithmetic can also be simplified. When both operands of `IR_PTR_ADD`
+or `IR_PTR_DIFF` are constants the result is computed during this pass,
+eliminating the run-time address calculation.
 
 The loop-invariant code motion pass looks for pure computations inside a loop
 whose operands are defined outside the loop body. Such instructions are moved

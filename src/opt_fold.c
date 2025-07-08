@@ -80,6 +80,18 @@ static uint64_t eval_long_float_op(ir_op_t op, long double a, long double b)
     return out;
 }
 
+/* Evaluate pointer addition for constant folding */
+static int eval_ptr_add(int base, int idx, int esz)
+{
+    return base + idx * esz;
+}
+
+/* Evaluate pointer difference for constant folding */
+static int eval_ptr_diff(int a, int b, int esz)
+{
+    return esz ? (a - b) / esz : 0;
+}
+
 /* Update destination entry in constant tracking tables */
 static void update_const(ir_instr_t *ins, int val, int cst,
                          size_t max_id, int *is_const, int *values)
@@ -153,6 +165,42 @@ static void fold_long_float_instr(ir_instr_t *ins, size_t max_id,
     }
 }
 
+/* Try folding pointer addition */
+static void fold_ptr_add_instr(ir_instr_t *ins, size_t max_id,
+                               int *is_const, int *values)
+{
+    if ((size_t)ins->src1 < max_id && (size_t)ins->src2 < max_id &&
+        is_const[ins->src1] && is_const[ins->src2]) {
+        int base = values[ins->src1];
+        int idx = values[ins->src2];
+        int result = eval_ptr_add(base, idx, (int)ins->imm);
+        ins->op = IR_CONST;
+        ins->imm = result;
+        ins->src1 = ins->src2 = 0;
+        update_const(ins, result, 1, max_id, is_const, values);
+    } else {
+        update_const(ins, 0, 0, max_id, is_const, values);
+    }
+}
+
+/* Try folding pointer difference */
+static void fold_ptr_diff_instr(ir_instr_t *ins, size_t max_id,
+                                int *is_const, int *values)
+{
+    if ((size_t)ins->src1 < max_id && (size_t)ins->src2 < max_id &&
+        is_const[ins->src1] && is_const[ins->src2]) {
+        int a = values[ins->src1];
+        int b = values[ins->src2];
+        int result = eval_ptr_diff(a, b, (int)ins->imm);
+        ins->op = IR_CONST;
+        ins->imm = result;
+        ins->src1 = ins->src2 = 0;
+        update_const(ins, result, 1, max_id, is_const, values);
+    } else {
+        update_const(ins, 0, 0, max_id, is_const, values);
+    }
+}
+
 /* Perform simple constant folding */
 void fold_constants(ir_builder_t *ir)
 {
@@ -201,8 +249,14 @@ void fold_constants(ir_builder_t *ir)
         case IR_ADDR:
         case IR_LOAD_PTR:
         case IR_STORE_PTR:
+            update_const(ins, 0, 0, max_id, is_const, values);
+            break;
         case IR_PTR_ADD:
+            fold_ptr_add_instr(ins, max_id, is_const, values);
+            break;
         case IR_PTR_DIFF:
+            fold_ptr_diff_instr(ins, max_id, is_const, values);
+            break;
         case IR_ALLOCA:
             update_const(ins, 0, 0, max_id, is_const, values);
             break;
