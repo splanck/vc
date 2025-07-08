@@ -851,3 +851,17 @@ Compile with:
 vc -o qualifiers.s qualifiers.c
 ```
 
+Pointers qualified with `restrict` can be passed to functions to promise
+that they do not alias each other. This enables additional optimizations.
+
+```c
+/* restrict_ptr.c */
+int sum(int *restrict a, int *restrict b) {
+    return *a + *b;
+}
+```
+Compile with:
+```sh
+vc -o restrict_ptr.s restrict_ptr.c
+```
+
