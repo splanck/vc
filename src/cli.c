@@ -412,6 +412,45 @@ int cli_parse_args(int argc, char **argv, cli_options_t *opts)
     optreset = 1;
 #endif
 
+    /* Prepend flags from VCFLAGS environment variable */
+    char **vcflags_argv = NULL;
+    char *vcflags_buf = NULL;
+    int vcflags_argc = 0;
+    const char *env = getenv("VCFLAGS");
+    if (env && *env) {
+        vcflags_buf = vc_strdup(env);
+        if (!vcflags_buf) {
+            fprintf(stderr, "Out of memory while processing VCFLAGS.\n");
+            return 1;
+        }
+
+        /* Count tokens */
+        char *tmp = vc_strdup(env);
+        if (!tmp) {
+            fprintf(stderr, "Out of memory while processing VCFLAGS.\n");
+            return 1;
+        }
+        for (char *t = strtok(tmp, " "); t; t = strtok(NULL, " "))
+            vcflags_argc++;
+        free(tmp);
+
+        vcflags_argv = malloc(sizeof(char *) * (argc + vcflags_argc));
+        if (!vcflags_argv) {
+            fprintf(stderr, "Out of memory while processing VCFLAGS.\n");
+            return 1;
+        }
+
+        vcflags_argv[0] = argv[0];
+        int idx = 1;
+        for (char *t = strtok(vcflags_buf, " "); t; t = strtok(NULL, " "))
+            vcflags_argv[idx++] = t;
+        for (int i = 1; i < argc; i++)
+            vcflags_argv[idx++] = argv[i];
+
+        argv = vcflags_argv;
+        argc += vcflags_argc;
+    }
+
     /* Pre-scan argv for -M and -MD options */
     int new_argc = 1;
     for (int i = 1; i < argc; i++) {
@@ -482,9 +521,9 @@ int cli_parse_args(int argc, char **argv, cli_options_t *opts)
             continue;
         }
 
-        print_usage(argv[0]);
-        cli_free_opts(opts);
-        return 1;
+    print_usage(argv[0]);
+    cli_free_opts(opts);
+    return 1;
     }
 
     if (optind >= argc) {
