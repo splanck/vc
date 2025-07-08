@@ -52,6 +52,12 @@ vc --debug -S source.c
 
 Disable colored diagnostics with `--no-color` when capturing output.
 
+## Examples
+
+Several small example programs live in the `examples` directory. They
+illustrate how to build and run code with `vc`. See
+[examples/README.md](examples/README.md) for full details.
+
 ## Testing
 
 The project ships with a small unit and integration test suite. A C99
