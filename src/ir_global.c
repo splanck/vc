@@ -112,3 +112,16 @@ void ir_build_glob_struct(ir_builder_t *b, const char *name, int size,
     ins->src1 = is_static;
 }
 
+/* Define a global variable initialized with the address of another symbol. */
+void ir_build_glob_addr(ir_builder_t *b, const char *name,
+                        const char *target, int is_static)
+{
+    ir_instr_t *ins = append_instr(b);
+    if (!ins)
+        return;
+    ins->op = IR_GLOB_ADDR;
+    ins->name = vc_strdup(name ? name : "");
+    ins->data = vc_strdup(target ? target : "");
+    ins->src1 = is_static;
+}
+

@@ -174,6 +174,7 @@ static void propagate_through_instruction(const_track_t *ct, ir_instr_t *ins)
     case IR_GLOB_ARRAY:
     case IR_GLOB_UNION:
     case IR_GLOB_STRUCT:
+    case IR_GLOB_ADDR:
     case IR_BR:
     case IR_BCOND:
     case IR_LABEL:

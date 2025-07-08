@@ -32,4 +32,8 @@ void ir_build_glob_union(ir_builder_t *b, const char *name, int size,
 void ir_build_glob_struct(ir_builder_t *b, const char *name, int size,
                           int is_static);
 
+/* Define a global pointer initialized with the address of `target`. */
+void ir_build_glob_addr(ir_builder_t *b, const char *name,
+                        const char *target, int is_static);
+
 #endif /* VC_IR_GLOBAL_H */

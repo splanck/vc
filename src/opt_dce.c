@@ -33,6 +33,7 @@ static int has_side_effect(ir_instr_t *ins)
     case IR_GLOB_ARRAY:
     case IR_GLOB_UNION:
     case IR_GLOB_STRUCT:
+    case IR_GLOB_ADDR:
         return 1;
     case IR_LOAD:
     case IR_LOAD_IDX:

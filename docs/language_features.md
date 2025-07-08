@@ -516,6 +516,21 @@ Compile with:
 vc -o global.s global.c
 ```
 
+Pointers may also be initialized with the address of another symbol:
+
+```c
+/* global_ptr.c */
+int x;
+int *p = &x;
+int main() {
+    return *p;
+}
+```
+Compile with:
+```sh
+vc -o global_ptr.s global_ptr.c
+```
+
 ### Break and continue
 ```c
 /* loop_control.c */

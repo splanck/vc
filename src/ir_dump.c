@@ -62,6 +62,7 @@ static const char *op_name(ir_op_t op)
     case IR_GLOB_ARRAY: return "IR_GLOB_ARRAY";
     case IR_GLOB_UNION: return "IR_GLOB_UNION";
     case IR_GLOB_STRUCT: return "IR_GLOB_STRUCT";
+    case IR_GLOB_ADDR: return "IR_GLOB_ADDR";
     case IR_LOAD: return "IR_LOAD";
     case IR_STORE: return "IR_STORE";
     case IR_LOAD_PARAM: return "IR_LOAD_PARAM";
