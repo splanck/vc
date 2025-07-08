@@ -213,7 +213,7 @@ static int set_standard(cli_options_t *opts, const char *std)
 }
 
 /*
- * Individual option handlers used by handle_option().  Each returns 0 on
+ * Individual option handlers used by the parsing helpers. Each returns 0 on
  * success or 1 on error.  Some handlers terminate the process directly when
  * the option requests help or version information.
  */
@@ -229,26 +229,6 @@ static int handle_version(const char *arg, const char *prog, cli_options_t *opts
     (void)arg; (void)prog; (void)opts;
     printf("vc version %s\n", VERSION);
     exit(0);
-}
-
-static int set_output_path(const char *arg, const char *prog, cli_options_t *opts)
-{
-    (void)prog;
-    opts->output = (char *)arg;
-    return 0;
-}
-
-
-static int add_include(const char *arg, const char *prog, cli_options_t *opts)
-{
-    (void)prog;
-    return add_include_dir(opts, arg);
-}
-
-static int set_level(const char *arg, const char *prog, cli_options_t *opts)
-{
-    (void)prog;
-    return set_opt_level(opts, arg);
 }
 
 
@@ -290,33 +270,6 @@ static int add_undef_opt(const char *arg, const char *prog, cli_options_t *opts)
     return 0;
 }
 
-static int add_lib_dir_opt(const char *arg, const char *prog, cli_options_t *opts)
-{
-    (void)prog;
-    if (!arg || !*arg) {
-        fprintf(stderr, "Missing argument for -L option\n");
-        return 1;
-    }
-    return add_lib_dir(opts, arg);
-}
-
-static int add_lib_opt(const char *arg, const char *prog, cli_options_t *opts)
-{
-    (void)prog;
-    if (!arg || !*arg) {
-        fprintf(stderr, "Missing argument for -l option\n");
-        return 1;
-    }
-    return add_library(opts, arg);
-}
-
-
-static int set_obj_dir_opt(const char *arg, const char *prog, cli_options_t *opts)
-{
-    (void)prog;
-    opts->obj_dir = (char *)arg;
-    return 0;
-}
 
 static int handle_std(const char *arg, const char *prog, cli_options_t *opts)
 {
@@ -325,84 +278,123 @@ static int handle_std(const char *arg, const char *prog, cli_options_t *opts)
 }
 
 /*
- * Generic helper to set a boolean or enum field at the given offset
- * within cli_options_t. "is_bool" determines whether the field should
- * be treated as a bool or as an int/enum.
+ * Parse options controlling optimization settings. Returns 0 when the option
+ * was handled, 1 on error and -1 if the option does not belong here.
  */
-static int set_flag(cli_options_t *opts, size_t off, int val, bool is_bool)
+static int parse_optimization_opts(int opt, const char *arg, cli_options_t *opts)
 {
-    if (is_bool)
-        *(bool *)((char *)opts + off) = val != 0;
-    else
-        *(int *)((char *)opts + off) = val;
-    return 0;
+    switch (opt) {
+    case 'O':
+        return set_opt_level(opts, arg);
+    case CLI_OPT_NO_FOLD:
+        opts->opt_cfg.fold_constants = 0;
+        return 0;
+    case CLI_OPT_NO_DCE:
+        opts->opt_cfg.dead_code = 0;
+        return 0;
+    case CLI_OPT_NO_CPROP:
+        opts->opt_cfg.const_prop = 0;
+        return 0;
+    case CLI_OPT_NO_INLINE:
+        opts->opt_cfg.inline_funcs = 0;
+        return 0;
+    default:
+        return -1;
+    }
 }
 
 /*
- * Handle a single getopt option by dispatching to the appropriate helper
- * function from a small lookup table. "opt" is the value returned by
- * getopt_long(), "arg" is the option argument if any and "prog" is used for
- * help output. Returns 0 on success and 1 on error. The process may exit for
- * -h/--help and -v/--version.
+ * Parse options related to I/O paths such as includes and libraries. Returns 0
+ * when handled, 1 on error and -1 if the option is not part of this group.
  */
-static int handle_option(int opt, const char *arg, const char *prog,
-                         cli_options_t *opts)
+static int parse_io_paths(int opt, const char *arg, cli_options_t *opts)
 {
-    struct opt_flag { int opt; size_t off; int val; bool is_bool; };
-    static const struct opt_flag flags[] = {
-        {'c', offsetof(cli_options_t, compile), 1, true},
-        {CLI_OPT_NO_FOLD,   offsetof(cli_options_t, opt_cfg.fold_constants), 0, false},
-        {CLI_OPT_NO_DCE,    offsetof(cli_options_t, opt_cfg.dead_code), 0, false},
-        {CLI_OPT_X86_64,    offsetof(cli_options_t, use_x86_64), 1, true},
-        {CLI_OPT_INTEL_SYNTAX, offsetof(cli_options_t, asm_syntax), ASM_INTEL, false},
-        {'S', offsetof(cli_options_t, dump_asm), 1, true},
-        {CLI_OPT_DUMP_ASM_LONG, offsetof(cli_options_t, dump_asm), 1, true},
-        {CLI_OPT_NO_CPROP,  offsetof(cli_options_t, opt_cfg.const_prop), 0, false},
-        {CLI_OPT_DUMP_IR,   offsetof(cli_options_t, dump_ir), 1, true},
-        {CLI_OPT_DUMP_TOKENS, offsetof(cli_options_t, dump_tokens), 1, true},
-        {CLI_OPT_DUMP_AST, offsetof(cli_options_t, dump_ast), 1, true},
-        {CLI_OPT_DEBUG,     offsetof(cli_options_t, debug), 1, true},
-        {CLI_OPT_NO_INLINE, offsetof(cli_options_t, opt_cfg.inline_funcs), 0, false},
-        {CLI_OPT_NO_COLOR,  offsetof(cli_options_t, color_diag), 0, true},
-        {CLI_OPT_NO_WARN_UNREACHABLE, offsetof(cli_options_t, warn_unreachable), 0, true},
-        {CLI_OPT_DEP_ONLY, offsetof(cli_options_t, dep_only), 1, true},
-        {CLI_OPT_DEP,      offsetof(cli_options_t, deps), 1, true},
-        {'E', offsetof(cli_options_t, preprocess), 1, true},
-        {CLI_OPT_LINK,      offsetof(cli_options_t, link), 1, true},
-        {CLI_OPT_EMIT_DWARF, offsetof(cli_options_t, emit_dwarf), 1, true},
-        {0, 0, 0, false}
-    };
-
-    for (size_t i = 0; flags[i].opt; i++) {
-        if (flags[i].opt == opt)
-            return set_flag(opts, flags[i].off, flags[i].val, flags[i].is_bool);
+    switch (opt) {
+    case 'o':
+        opts->output = (char *)arg;
+        return 0;
+    case 'I':
+        return add_include_dir(opts, arg);
+    case 'L':
+        return add_lib_dir(opts, arg);
+    case 'l':
+        return add_library(opts, arg);
+    case CLI_OPT_OBJ_DIR:
+        opts->obj_dir = (char *)arg;
+        return 0;
+    default:
+        return -1;
     }
+}
 
-    struct opt_handler { int opt; int (*func)(const char *, const char *, cli_options_t *); };
-    static const struct opt_handler funcs[] = {
-        {'h', handle_help},
-        {'v', handle_version},
-        {'o', set_output_path},
-        {'D', add_define_opt},
-        {'U', add_undef_opt},
-        {'I', add_include},
-        {'L', add_lib_dir_opt},
-        {'l', add_lib_opt},
-        {'O', set_level},
-        {CLI_OPT_DEFINE,   add_define_opt},
-        {CLI_OPT_UNDEFINE, add_undef_opt},
-        {CLI_OPT_STD,      handle_std},
-        {CLI_OPT_OBJ_DIR,  set_obj_dir_opt},
-        {0, NULL}
-    };
-
-    for (size_t i = 0; funcs[i].func; i++) {
-        if (funcs[i].opt == opt)
-            return funcs[i].func(arg, prog, opts);
+/*
+ * Parse all remaining command line options.
+ */
+static int parse_misc_opts(int opt, const char *arg, const char *prog,
+                           cli_options_t *opts)
+{
+    switch (opt) {
+    case 'h':
+        return handle_help(arg, prog, opts);
+    case 'v':
+        return handle_version(arg, prog, opts);
+    case 'D':
+    case CLI_OPT_DEFINE:
+        return add_define_opt(arg, prog, opts);
+    case 'U':
+    case CLI_OPT_UNDEFINE:
+        return add_undef_opt(arg, prog, opts);
+    case 'c':
+        opts->compile = true;
+        return 0;
+    case CLI_OPT_LINK:
+        opts->link = true;
+        return 0;
+    case CLI_OPT_X86_64:
+        opts->use_x86_64 = true;
+        return 0;
+    case CLI_OPT_INTEL_SYNTAX:
+        opts->asm_syntax = ASM_INTEL;
+        return 0;
+    case 'S':
+    case CLI_OPT_DUMP_ASM_LONG:
+        opts->dump_asm = true;
+        return 0;
+    case CLI_OPT_DUMP_AST:
+        opts->dump_ast = true;
+        return 0;
+    case CLI_OPT_DUMP_IR:
+        opts->dump_ir = true;
+        return 0;
+    case CLI_OPT_DUMP_TOKENS:
+        opts->dump_tokens = true;
+        return 0;
+    case CLI_OPT_DEBUG:
+        opts->debug = true;
+        return 0;
+    case 'E':
+        opts->preprocess = true;
+        return 0;
+    case CLI_OPT_NO_COLOR:
+        opts->color_diag = false;
+        return 0;
+    case CLI_OPT_DEP_ONLY:
+        opts->dep_only = true;
+        return 0;
+    case CLI_OPT_DEP:
+        opts->deps = true;
+        return 0;
+    case CLI_OPT_NO_WARN_UNREACHABLE:
+        opts->warn_unreachable = false;
+        return 0;
+    case CLI_OPT_EMIT_DWARF:
+        opts->emit_dwarf = true;
+        return 0;
+    case CLI_OPT_STD:
+        return handle_std(arg, prog, opts);
+    default:
+        return -1;
     }
-
-    print_usage(prog);
-    return 1;
 }
 
 /*
@@ -468,10 +460,31 @@ int cli_parse_args(int argc, char **argv, cli_options_t *opts)
 
     int opt;
     while ((opt = getopt_long(argc, argv, "hvo:O:cD:U:I:L:l:ES", long_opts, NULL)) != -1) {
-        if (handle_option(opt, optarg, argv[0], opts)) {
+        int ret;
+        if ((ret = parse_optimization_opts(opt, optarg, opts)) == 1) {
             cli_free_opts(opts);
             return 1;
+        } else if (ret == 0) {
+            continue;
         }
+
+        if ((ret = parse_io_paths(opt, optarg, opts)) == 1) {
+            cli_free_opts(opts);
+            return 1;
+        } else if (ret == 0) {
+            continue;
+        }
+
+        if ((ret = parse_misc_opts(opt, optarg, argv[0], opts)) == 1) {
+            cli_free_opts(opts);
+            return 1;
+        } else if (ret == 0) {
+            continue;
+        }
+
+        print_usage(argv[0]);
+        cli_free_opts(opts);
+        return 1;
     }
 
     if (optind >= argc) {
