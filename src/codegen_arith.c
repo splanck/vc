@@ -71,7 +71,8 @@ static void emit_cast(strbuf_t *sb, ir_instr_t *ins,
     type_kind_t src = (type_kind_t)((unsigned long long)ins->imm >> 32);
     type_kind_t dst = (type_kind_t)(ins->imm & 0xffffffffu);
 
-    const char *reg0 = fmt_reg("%xmm0", syntax);
+    int r0 = regalloc_xmm_acquire();
+    const char *reg0 = fmt_reg(regalloc_xmm_name(r0), syntax);
     const char *sfx = x64 ? "q" : "l";
 
     if (is_intlike(src) && dst == TYPE_FLOAT) {
@@ -87,6 +88,7 @@ static void emit_cast(strbuf_t *sb, ir_instr_t *ins,
         else
             strbuf_appendf(sb, "    movss %s, %s\n", reg0,
                            loc_str(b2, ra, ins->dest, x64, syntax));
+        regalloc_xmm_release(r0);
         return;
     }
 
@@ -103,6 +105,7 @@ static void emit_cast(strbuf_t *sb, ir_instr_t *ins,
         else
             strbuf_appendf(sb, "    movsd %s, %s\n", reg0,
                            loc_str(b2, ra, ins->dest, x64, syntax));
+        regalloc_xmm_release(r0);
         return;
     }
 
@@ -119,6 +122,7 @@ static void emit_cast(strbuf_t *sb, ir_instr_t *ins,
         else
             strbuf_appendf(sb, "    cvttss2si %s, %s\n", reg0,
                            loc_str(b2, ra, ins->dest, x64, syntax));
+        regalloc_xmm_release(r0);
         return;
     }
 
@@ -135,6 +139,7 @@ static void emit_cast(strbuf_t *sb, ir_instr_t *ins,
         else
             strbuf_appendf(sb, "    cvttsd2si %s, %s\n", reg0,
                            loc_str(b2, ra, ins->dest, x64, syntax));
+        regalloc_xmm_release(r0);
         return;
     }
 
@@ -152,6 +157,7 @@ static void emit_cast(strbuf_t *sb, ir_instr_t *ins,
         else
             strbuf_appendf(sb, "    movsd %s, %s\n", reg0,
                            loc_str(b2, ra, ins->dest, x64, syntax));
+        regalloc_xmm_release(r0);
         return;
     }
 
@@ -169,6 +175,7 @@ static void emit_cast(strbuf_t *sb, ir_instr_t *ins,
         else
             strbuf_appendf(sb, "    movss %s, %s\n", reg0,
                            loc_str(b2, ra, ins->dest, x64, syntax));
+        regalloc_xmm_release(r0);
         return;
     }
 
@@ -181,6 +188,7 @@ static void emit_cast(strbuf_t *sb, ir_instr_t *ins,
         strbuf_appendf(sb, "    mov%s %s, %s\n", sfx,
                        loc_str(b1, ra, ins->src1, x64, syntax),
                        loc_str(b2, ra, ins->dest, x64, syntax));
+    regalloc_xmm_release(r0);
 }
 /* Add a scaled index to a pointer operand. */
 static void emit_ptr_add(strbuf_t *sb, ir_instr_t *ins,
@@ -254,8 +262,10 @@ static void emit_float_binop(strbuf_t *sb, ir_instr_t *ins,
 {
     char b1[32];
     char b2[32];
-    const char *reg0 = fmt_reg("%xmm0", syntax);
-    const char *reg1 = fmt_reg("%xmm1", syntax);
+    int r0 = regalloc_xmm_acquire();
+    int r1 = regalloc_xmm_acquire();
+    const char *reg0 = fmt_reg(regalloc_xmm_name(r0), syntax);
+    const char *reg1 = fmt_reg(regalloc_xmm_name(r1), syntax);
     if (syntax == ASM_INTEL) {
         strbuf_appendf(sb, "    movd %s, %s\n", reg0,
                        loc_str(b1, ra, ins->src1, x64, syntax));
@@ -281,6 +291,8 @@ static void emit_float_binop(strbuf_t *sb, ir_instr_t *ins,
             strbuf_appendf(sb, "    movss %s, %s\n", reg0,
                            loc_str(b2, ra, ins->dest, x64, syntax));
     }
+    regalloc_xmm_release(r1);
+    regalloc_xmm_release(r0);
 }
 
 /* Generate a long double binary operation using the x87 FPU. */
