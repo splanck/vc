@@ -424,6 +424,15 @@ if ! grep -q "alias=" "${ir_restrict}" || ! grep -q "restrict" "${ir_restrict}";
 fi
 rm -f "${ir_restrict}"
 
+# verify multiple restrict parameters produce separate alias records
+ir_restrict_multi=$(mktemp)
+"$BINARY" --dump-ir "$DIR/fixtures/restrict_ptr.c" > "${ir_restrict_multi}"
+if [ $(grep -c "restrict" "${ir_restrict_multi}") -lt 2 ]; then
+    echo "Test dump_ir_restrict_ptr failed"
+    fail=1
+fi
+rm -f "${ir_restrict_multi}"
+
 # test -E/--preprocess option
 pp_out=$(mktemp)
 "$BINARY" -E "$DIR/fixtures/macro_object.c" > "${pp_out}"
