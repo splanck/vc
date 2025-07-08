@@ -3,18 +3,19 @@
 See the [documentation index](README.md) for a list of all available pages.
 
 The optimizer in **vc** operates on the intermediate representation (IR).
-Six passes are currently available and are executed in order:
-1. **Constant propagation** – replaces loads of variables whose values are
+Seven passes are currently available and are executed in order:
+1. **Alias analysis** – assigns alias sets to memory operations.
+2. **Constant propagation** – replaces loads of variables whose values are
    known constants with immediate constants.
-2. **Common subexpression elimination** – reuses results of identical
+3. **Common subexpression elimination** – reuses results of identical
    computations.
-3. **Inline expansion** – inlines functions containing up to four arithmetic
+4. **Inline expansion** – inlines functions containing up to four arithmetic
    instructions or just a `return` when they are marked `inline`.
-4. **Constant folding** – evaluates arithmetic instructions whose operands are
+5. **Constant folding** – evaluates arithmetic instructions whose operands are
    constants and replaces them with a single constant.
-5. **Unreachable block elimination** – removes instructions that cannot be
+6. **Unreachable block elimination** – removes instructions that cannot be
    executed from the start of the function.
-6. **Dead code elimination** – removes instructions that produce values which
+7. **Dead code elimination** – removes instructions that produce values which
    are never used and have no side effects.
 
 Constant propagation tracks variables written with constants. When a later

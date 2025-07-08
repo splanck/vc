@@ -15,8 +15,9 @@ See the [documentation index](README.md) for a list of all available pages.
   - [regalloc](#regalloc)
   - [codegen](#codegen)
 - [Optimization Passes](#optimization-passes)
-  - [Constant folding](#constant-folding)
+  - [Alias analysis](#alias-analysis)
   - [Constant propagation](#constant-propagation)
+  - [Constant folding](#constant-folding)
   - [Dead code elimination](#dead-code-elimination)
 
 This document describes the compilation pipeline, the role of each module
@@ -262,26 +263,15 @@ the stack 16‑byte aligned.
 
 The `opt` module implements several transformations on the IR. These
 passes run sequentially and may be disabled via command line options.
-Constant propagation executes first, then constant folding and finally
-dead code elimination.
+Alias analysis executes first so later optimizations know which memory
+operations may alias. It is followed by constant propagation, then
+constant folding and finally dead code elimination.
 See [optimization.md](optimization.md) for additional context.
 
-### Constant folding
-When both operands of an arithmetic instruction are known constants, the
-compiler performs the calculation at compile time.  This folding now
-also handles the floating-point operations `IR_FADD`, `IR_FSUB`,
-`IR_FMUL` and `IR_FDIV` when their operands are constant values.
-
-Before:
-```text
-v1 = CONST 2
-v2 = CONST 3
-v3 = MUL v1, v2
-```
-After:
-```text
-v3 = CONST 6
-```
+### Alias analysis
+Assigns alias set numbers to loads and stores. Restrict-qualified
+pointers get unique sets so later passes can assume they do not alias
+other memory operations.
 
 ### Constant propagation
 Loads of variables whose values are known constants are replaced with
@@ -298,6 +288,23 @@ After:
 v1 = CONST 5
 STORE x, v1
 v2 = CONST 5
+```
+
+### Constant folding
+When both operands of an arithmetic instruction are known constants, the
+compiler performs the calculation at compile time.  This folding now
+also handles the floating-point operations `IR_FADD`, `IR_FSUB`,
+`IR_FMUL` and `IR_FDIV` when their operands are constant values.
+
+Before:
+```text
+v1 = CONST 2
+v2 = CONST 3
+v3 = MUL v1, v2
+```
+After:
+```text
+v3 = CONST 6
 ```
 
 ### Dead code elimination
