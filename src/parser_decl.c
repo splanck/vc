@@ -240,11 +240,13 @@ static int parse_member(parser_t *p, int is_union,
         return 0;
     p->pos++;
     size_t arr_size = 0;
+    int is_flexible = 0;
     if (match(p, TOK_LBRACKET)) {
         if (match(p, TOK_RBRACKET)) {
             if (is_union)
                 return 0;
             mt = TYPE_ARRAY;
+            is_flexible = 1;
         } else {
             token_t *num = peek(p);
             if (!num || num->type != TOK_NUMBER)
@@ -295,6 +297,7 @@ static int parse_member(parser_t *p, int is_union,
         um->offset = 0;
         um->bit_width = bit_width;
         um->bit_offset = 0;
+        um->is_flexible = 0;
     } else {
         sm->name = name;
         sm->type = mt;
@@ -302,6 +305,7 @@ static int parse_member(parser_t *p, int is_union,
         sm->offset = 0;
         sm->bit_width = bit_width;
         sm->bit_offset = 0;
+        sm->is_flexible = is_flexible;
     }
 
     return 1;

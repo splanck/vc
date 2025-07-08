@@ -51,7 +51,8 @@ Inline function definitions.
 Variable length arrays are supported only for block scope variables.
 They may be sized using any runtime expression and are fully compatible
 with \fBsizeof\fR, but cannot appear at file scope.  Structures may end
-with a flexible array member declared using an empty bracket pair.
+with a flexible array member declared using an empty bracket pair.  Such
+members occupy no space in \fBsizeof\fR results and must appear last.
 .PP
 The built-in preprocessor expands \fB#include\fR and \fB#include_next\fR
 directives, object-like
