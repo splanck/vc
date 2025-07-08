@@ -65,6 +65,7 @@ typedef enum {
     EXPR_MEMBER,
     EXPR_SIZEOF,
     EXPR_OFFSETOF,
+    EXPR_ALIGNOF,
     EXPR_COMPLIT
 } expr_kind_t;
 
@@ -213,6 +214,13 @@ struct expr {
             size_t member_count;
         } offsetof_expr;
         struct {
+            int is_type;
+            type_kind_t type;
+            size_t array_size;
+            size_t elem_size;
+            expr_t *expr;
+        } alignof_expr;
+        struct {
             type_kind_t type;
             size_t array_size;
             size_t elem_size;
@@ -262,6 +270,8 @@ struct stmt {
             type_kind_t type;
             size_t array_size;
             expr_t *size_expr;
+            expr_t *align_expr;
+            size_t alignment;
             size_t elem_size;
             char *tag; /* NULL for basic types */
             int is_static;

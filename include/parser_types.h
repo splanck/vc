@@ -20,6 +20,8 @@ size_t basic_type_size(type_kind_t t);
 int parse_func_ptr_suffix(parser_t *p, char **name,
                           type_kind_t **param_types, size_t *param_count,
                           int *is_variadic);
+/* Parse an alignas specifier and return the expression. */
+int parse_alignas_spec(parser_t *p, expr_t **out_expr);
 
 #endif /* VC_PARSER_TYPES_H */
 
