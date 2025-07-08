@@ -55,6 +55,12 @@ int is_floatlike(type_kind_t t)
     return t == TYPE_FLOAT || t == TYPE_DOUBLE || t == TYPE_LDOUBLE;
 }
 
+int is_complexlike(type_kind_t t)
+{
+    return t == TYPE_FLOAT_COMPLEX || t == TYPE_DOUBLE_COMPLEX ||
+           t == TYPE_LDOUBLE_COMPLEX;
+}
+
 /*
  * Evaluate a numeric literal and return its value.
  */

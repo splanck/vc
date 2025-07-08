@@ -198,6 +198,27 @@ ir_value_t ir_build_const(ir_builder_t *b, long long value)
 }
 
 /*
+ * Emit IR_CPLX_CONST defining a complex literal with real and imaginary parts.
+ */
+ir_value_t ir_build_cplx_const(ir_builder_t *b, double real, double imag)
+{
+    ir_instr_t *ins = append_instr(b);
+    if (!ins)
+        return (ir_value_t){0};
+    ins->op = IR_CPLX_CONST;
+    ins->dest = alloc_value_id(b);
+    double *vals = malloc(2 * sizeof(double));
+    if (!vals) {
+        remove_instr(b, ins);
+        return (ir_value_t){0};
+    }
+    vals[0] = real;
+    vals[1] = imag;
+    ins->data = (char *)vals;
+    return (ir_value_t){ins->dest};
+}
+
+/*
  * Emit IR_GLOB_STRING defining a global string literal. A unique
  * label is stored in `name` and the literal text in `data`.
  */
@@ -582,6 +603,26 @@ ir_value_t ir_build_binop(ir_builder_t *b, ir_op_t op, ir_value_t left, ir_value
     ins->src1 = left.id;
     ins->src2 = right.id;
     return (ir_value_t){ins->dest};
+}
+
+ir_value_t ir_build_cplx_add(ir_builder_t *b, ir_value_t left, ir_value_t right)
+{
+    return ir_build_binop(b, IR_CPLX_ADD, left, right);
+}
+
+ir_value_t ir_build_cplx_sub(ir_builder_t *b, ir_value_t left, ir_value_t right)
+{
+    return ir_build_binop(b, IR_CPLX_SUB, left, right);
+}
+
+ir_value_t ir_build_cplx_mul(ir_builder_t *b, ir_value_t left, ir_value_t right)
+{
+    return ir_build_binop(b, IR_CPLX_MUL, left, right);
+}
+
+ir_value_t ir_build_cplx_div(ir_builder_t *b, ir_value_t left, ir_value_t right)
+{
+    return ir_build_binop(b, IR_CPLX_DIV, left, right);
 }
 
 /* Emit IR_LOGAND performing logical AND. */

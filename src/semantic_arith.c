@@ -54,8 +54,22 @@ type_kind_t check_binary(expr_t *left, expr_t *right, symtable_t *vars,
     ir_value_t lval, rval;
     type_kind_t lt = check_expr(left, vars, funcs, ir, &lval);
     type_kind_t rt = check_expr(right, vars, funcs, ir, &rval);
-    if (is_floatlike(lt) && lt == rt &&
+    if (is_complexlike(lt) && lt == rt &&
         (op == BINOP_ADD || op == BINOP_SUB || op == BINOP_MUL || op == BINOP_DIV)) {
+        if (out) {
+            ir_op_t cop = IR_CPLX_ADD;
+            switch (op) {
+            case BINOP_ADD: cop = IR_CPLX_ADD; break;
+            case BINOP_SUB: cop = IR_CPLX_SUB; break;
+            case BINOP_MUL: cop = IR_CPLX_MUL; break;
+            case BINOP_DIV: cop = IR_CPLX_DIV; break;
+            default: break;
+            }
+            *out = ir_build_binop(ir, cop, lval, rval);
+        }
+        return lt;
+    } else if (is_floatlike(lt) && lt == rt &&
+               (op == BINOP_ADD || op == BINOP_SUB || op == BINOP_MUL || op == BINOP_DIV)) {
         if (out) {
             ir_op_t fop = IR_FADD;
             switch (op) {
