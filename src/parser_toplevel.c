@@ -400,9 +400,9 @@ static int parse_array_size(parser_t *p, type_kind_t *type, size_t *arr_size,
     return 1;
 }
 
-/* Parse an array initializer list followed by a semicolon. */
-static int parse_array_initializer(parser_t *p, init_entry_t **init_list,
-                                   size_t *init_count)
+/* Parse an initializer list enclosed in braces followed by a semicolon. */
+static int parse_braced_initializer(parser_t *p, init_entry_t **init_list,
+                                    size_t *init_count)
 {
     *init_list = parser_parse_init_list(p, init_count);
     if (!*init_list || !match(p, TOK_SEMI)) {
@@ -443,8 +443,9 @@ static int parse_initializer(parser_t *p, type_kind_t type, expr_t **init,
 
     if (match(p, TOK_ASSIGN)) {
         int ok;
-        if (type == TYPE_ARRAY && peek(p) && peek(p)->type == TOK_LBRACE)
-            ok = parse_array_initializer(p, init_list, init_count);
+        if ((type == TYPE_ARRAY || type == TYPE_STRUCT) &&
+            peek(p) && peek(p)->type == TOK_LBRACE)
+            ok = parse_braced_initializer(p, init_list, init_count);
         else
             ok = parse_expr_initializer(p, init);
         if (!ok) {

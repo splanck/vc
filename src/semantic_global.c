@@ -383,18 +383,27 @@ static int copy_struct_metadata(symbol_t *sym, struct_member_t *members,
  * record.  Dispatches to the struct or union helper and returns non-zero on
  * success.
  */
-static int copy_aggregate_metadata(stmt_t *decl, symbol_t *sym)
+static int copy_aggregate_metadata(stmt_t *decl, symbol_t *sym, symtable_t *globals)
 {
     if (decl->var_decl.type == TYPE_UNION)
         return copy_union_metadata(sym, decl->var_decl.members,
                                    decl->var_decl.member_count,
                                    decl->var_decl.elem_size);
 
-    if (decl->var_decl.type == TYPE_STRUCT)
+    if (decl->var_decl.type == TYPE_STRUCT) {
+        if (decl->var_decl.member_count == 0 && decl->var_decl.tag) {
+            symbol_t *stype = symtable_lookup_struct(globals, decl->var_decl.tag);
+            if (!stype)
+                return 0;
+            return copy_struct_metadata(sym, stype->struct_members,
+                                        stype->struct_member_count,
+                                        stype->struct_total_size);
+        }
         return copy_struct_metadata(sym,
                                     (struct_member_t *)decl->var_decl.members,
                                     decl->var_decl.member_count,
                                     decl->var_decl.elem_size);
+    }
 
     return 1;
 }
@@ -430,7 +439,7 @@ static symbol_t *register_global_symbol(stmt_t *decl, symtable_t *globals)
         sym->array_size = decl->var_decl.array_size;
     }
 
-    if (!copy_aggregate_metadata(decl, sym))
+    if (!copy_aggregate_metadata(decl, sym, globals))
         return NULL;
 
     sym->func_ret_type = decl->var_decl.func_ret_type;

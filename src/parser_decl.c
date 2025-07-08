@@ -27,8 +27,8 @@ static int parse_decl_specs(parser_t *p, int *is_extern, int *is_static,
                             token_t **kw_tok);
 static int parse_array_suffix(parser_t *p, type_kind_t *type, char **name,
                               size_t *arr_size, expr_t **size_expr);
-static int parse_array_initializer(parser_t *p, init_entry_t **init_list,
-                                   size_t *init_count);
+static int parse_braced_initializer(parser_t *p, init_entry_t **init_list,
+                                    size_t *init_count);
 static int parse_expr_initializer(parser_t *p, expr_t **init);
 static int parse_initializer(parser_t *p, type_kind_t type, expr_t **init,
                              init_entry_t **init_list, size_t *init_count);
@@ -143,9 +143,9 @@ static int parse_array_suffix(parser_t *p, type_kind_t *type, char **name,
     return 1;
 }
 
-/* Parse an initializer list for arrays followed by a semicolon. */
-static int parse_array_initializer(parser_t *p, init_entry_t **init_list,
-                                   size_t *init_count)
+/* Parse an initializer list enclosed in braces followed by a semicolon. */
+static int parse_braced_initializer(parser_t *p, init_entry_t **init_list,
+                                    size_t *init_count)
 {
     *init_list = parser_parse_init_list(p, init_count);
     if (!*init_list || !match(p, TOK_SEMI)) {
@@ -182,8 +182,9 @@ static int parse_initializer(parser_t *p, type_kind_t type, expr_t **init,
     *init_count = 0;
 
     if (match(p, TOK_ASSIGN)) {
-        if (type == TYPE_ARRAY && peek(p) && peek(p)->type == TOK_LBRACE) {
-            if (!parse_array_initializer(p, init_list, init_count))
+        if ((type == TYPE_ARRAY || type == TYPE_STRUCT) &&
+            peek(p) && peek(p)->type == TOK_LBRACE) {
+            if (!parse_braced_initializer(p, init_list, init_count))
                 return 0;
         } else {
             if (!parse_expr_initializer(p, init))
