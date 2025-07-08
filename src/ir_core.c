@@ -70,7 +70,7 @@ static ir_instr_t *append_instr(ir_builder_t *b)
     ins->data = NULL;
     ins->is_volatile = 0;
     ins->is_restrict = 0;
-    ins->is_restrict = 0;
+    ins->alias_set = 0;
     ins->file = b->cur_file;
     ins->line = b->cur_line;
     ins->column = b->cur_column;
@@ -129,6 +129,8 @@ ir_instr_t *ir_insert_after(ir_builder_t *b, ir_instr_t *pos)
     ins->name = NULL;
     ins->data = NULL;
     ins->is_volatile = 0;
+    ins->is_restrict = 0;
+    ins->alias_set = 0;
     ins->file = b->cur_file;
     ins->line = b->cur_line;
     ins->column = b->cur_column;
