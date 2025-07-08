@@ -22,6 +22,14 @@ static const char *phys_regs_32[REGALLOC_NUM_REGS] = {
     "%eax", "%ebx", "%ecx", "%edx", "%esi", "%edi"
 };
 
+/* xmm register names */
+#define NUM_XMM_REGS 8
+static const char *xmm_regs[NUM_XMM_REGS] = {
+    "%xmm0", "%xmm1", "%xmm2", "%xmm3", "%xmm4", "%xmm5", "%xmm6", "%xmm7"
+};
+static int xmm_free_stack[NUM_XMM_REGS];
+static int xmm_free_count = 0;
+
 /* register names for 64-bit mode */
 static const char *phys_regs_64[REGALLOC_NUM_REGS] = {
     "%rax", "%rbx", "%rcx", "%rdx", "%rsi", "%rdi"
@@ -47,6 +55,41 @@ const char *regalloc_reg_name(int idx)
     if (current_syntax == ASM_INTEL && name[0] == '%')
         return name + 1;
     return name;
+}
+
+/* Return textual name of an XMM register. */
+const char *regalloc_xmm_name(int idx)
+{
+    const char *name = "%xmm0";
+    if (idx >= 0 && idx < NUM_XMM_REGS)
+        name = xmm_regs[idx];
+    if (current_syntax == ASM_INTEL && name[0] == '%')
+        return name + 1;
+    return name;
+}
+
+/* Reset the pool of available XMM registers. */
+void regalloc_xmm_reset(void)
+{
+    xmm_free_count = NUM_XMM_REGS;
+    for (int i = 0; i < NUM_XMM_REGS; i++)
+        xmm_free_stack[i] = NUM_XMM_REGS - 1 - i;
+}
+
+/* Acquire one free XMM register or return -1 if none available. */
+int regalloc_xmm_acquire(void)
+{
+    if (xmm_free_count == 0)
+        return -1;
+    return xmm_free_stack[--xmm_free_count];
+}
+
+/* Release a previously acquired XMM register. */
+void regalloc_xmm_release(int reg)
+{
+    if (reg < 0 || reg >= NUM_XMM_REGS || xmm_free_count >= NUM_XMM_REGS)
+        return;
+    xmm_free_stack[xmm_free_count++] = reg;
 }
 
 /*

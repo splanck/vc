@@ -34,6 +34,14 @@
  */
 const char *regalloc_reg_name(int idx);
 
+/* Allocate and release temporary XMM registers. */
+int regalloc_xmm_acquire(void);
+void regalloc_xmm_release(int reg);
+void regalloc_xmm_reset(void);
+
+/* Return textual name for an XMM register index. */
+const char *regalloc_xmm_name(int idx);
+
 /* Enable or disable 64-bit register naming. */
 void regalloc_set_x86_64(int enable);
 
