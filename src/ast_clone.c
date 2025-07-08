@@ -173,6 +173,36 @@ static expr_t *clone_sizeof(const expr_t *expr)
     return ast_make_sizeof_expr(e, expr->line, expr->column);
 }
 
+/* Clone an offsetof expression. */
+static expr_t *clone_offsetof(const expr_t *expr)
+{
+    size_t n = expr->offsetof_expr.member_count;
+    char **members = NULL;
+    if (n) {
+        members = malloc(n * sizeof(char *));
+        if (!members)
+            return NULL;
+        for (size_t i = 0; i < n; i++) {
+            members[i] = vc_strdup(expr->offsetof_expr.members[i]);
+            if (!members[i]) {
+                for (size_t j = 0; j < i; j++)
+                    free(members[j]);
+                free(members);
+                return NULL;
+            }
+        }
+    }
+    char *tag = vc_strdup(expr->offsetof_expr.tag);
+    if (!tag) {
+        for (size_t i = 0; i < n; i++)
+            free(members[i]);
+        free(members);
+        return NULL;
+    }
+    return ast_make_offsetof(expr->offsetof_expr.type, tag,
+                             members, n, expr->line, expr->column);
+}
+
 /* Clone a cast expression. */
 static expr_t *clone_cast(const expr_t *expr)
 {
@@ -280,6 +310,8 @@ expr_t *clone_expr(const expr_t *expr)
         return clone_member(expr);
     case EXPR_SIZEOF:
         return clone_sizeof(expr);
+    case EXPR_OFFSETOF:
+        return clone_offsetof(expr);
     case EXPR_CAST:
         return clone_cast(expr);
     case EXPR_COMPLIT:

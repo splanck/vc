@@ -40,6 +40,9 @@ static expr_t *parse_addr(parser_t *p);
 static expr_t *parse_neg(parser_t *p);
 static expr_t *parse_not(parser_t *p);
 static expr_t *parse_sizeof(parser_t *p);
+static expr_t *parse_offsetof(parser_t *p);
+static int parse_struct_union_tag(parser_t *p, type_kind_t *out_type,
+                                  char **out_tag);
 
 typedef enum {
     AOP_NONE,
@@ -211,6 +214,10 @@ static expr_t *parse_identifier_expr(parser_t *p)
         return NULL;
     token_t *next = p->pos + 1 < p->count ? &p->tokens[p->pos + 1] : NULL;
     if (next && next->type == TOK_LPAREN) {
+        if (strcmp(tok->lexeme, "offsetof") == 0) {
+            p->pos++; /* consume identifier */
+            return parse_offsetof(p);
+        }
         p->pos++; /* consume identifier */
         char *name = tok->lexeme;
         vector_t args_v;
@@ -445,6 +452,91 @@ static expr_t *parse_sizeof(parser_t *p)
         return NULL;
     }
     return ast_make_sizeof_expr(e, kw->line, kw->column);
+}
+
+/* Parse 'struct tag' or 'union tag' and return the tag name. */
+static int parse_struct_union_tag(parser_t *p, type_kind_t *out_type,
+                                  char **out_tag)
+{
+    size_t save = p->pos;
+    type_kind_t t;
+    if (match(p, TOK_KW_STRUCT))
+        t = TYPE_STRUCT;
+    else if (match(p, TOK_KW_UNION))
+        t = TYPE_UNION;
+    else
+        return 0;
+
+    token_t *id = peek(p);
+    if (!id || id->type != TOK_IDENT) {
+        p->pos = save;
+        return 0;
+    }
+    p->pos++;
+    if (out_type)
+        *out_type = t;
+    if (out_tag)
+        *out_tag = vc_strdup(id->lexeme);
+    return 1;
+}
+
+/* Parse an offsetof builtin expression. */
+static expr_t *parse_offsetof(parser_t *p)
+{
+    token_t *kw = &p->tokens[p->pos - 1];
+    if (!match(p, TOK_LPAREN))
+        return NULL;
+
+    type_kind_t t; char *tag = NULL;
+    if (!parse_struct_union_tag(p, &t, &tag))
+        return NULL;
+    if (!match(p, TOK_COMMA)) {
+        free(tag);
+        return NULL;
+    }
+
+    vector_t names_v; vector_init(&names_v, sizeof(char *));
+    token_t *id = peek(p);
+    if (!id || id->type != TOK_IDENT) {
+        vector_free(&names_v); free(tag); return NULL;
+    }
+    p->pos++;
+    char *dup = vc_strdup(id->lexeme);
+    if (!dup || !vector_push(&names_v, &dup)) {
+        free(dup); vector_free(&names_v); free(tag); return NULL;
+    }
+    while (match(p, TOK_DOT)) {
+        id = peek(p);
+        if (!id || id->type != TOK_IDENT) {
+            for (size_t i = 0; i < names_v.count; i++)
+                free(((char **)names_v.data)[i]);
+            vector_free(&names_v); free(tag); return NULL;
+        }
+        p->pos++;
+        dup = vc_strdup(id->lexeme);
+        if (!dup || !vector_push(&names_v, &dup)) {
+            free(dup);
+            for (size_t i = 0; i < names_v.count; i++)
+                free(((char **)names_v.data)[i]);
+            vector_free(&names_v); free(tag); return NULL;
+        }
+    }
+
+    if (!match(p, TOK_RPAREN)) {
+        for (size_t i = 0; i < names_v.count; i++)
+            free(((char **)names_v.data)[i]);
+        vector_free(&names_v); free(tag); return NULL;
+    }
+
+    char **arr = (char **)names_v.data;
+    size_t count = names_v.count;
+    expr_t *res = ast_make_offsetof(t, tag, arr, count, kw->line, kw->column);
+    if (!res) {
+        for (size_t i = 0; i < count; i++)
+            free(arr[i]);
+        free(arr); free(tag); return NULL;
+    }
+    return res;
 }
 
 /* Parse a cast expression '(type)expr'. */

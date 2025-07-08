@@ -25,6 +25,7 @@ static const char *expr_name(expr_kind_t k)
     case EXPR_ASSIGN_MEMBER: return "EXPR_ASSIGN_MEMBER";
     case EXPR_MEMBER: return "EXPR_MEMBER";
     case EXPR_SIZEOF: return "EXPR_SIZEOF";
+    case EXPR_OFFSETOF: return "EXPR_OFFSETOF";
     case EXPR_CAST: return "EXPR_CAST";
     case EXPR_COMPLIT: return "EXPR_COMPLIT";
     }
@@ -114,6 +115,8 @@ static void dump_expr(strbuf_t *sb, const expr_t *e, int lvl)
     case EXPR_SIZEOF:
         if (!e->sizeof_expr.is_type)
             dump_expr(sb, e->sizeof_expr.expr, lvl + 1);
+        break;
+    case EXPR_OFFSETOF:
         break;
     case EXPR_CAST:
         dump_expr(sb, e->cast.expr, lvl + 1);
