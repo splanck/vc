@@ -170,6 +170,8 @@ void codegen_emit_x86(FILE *out, ir_builder_t *ir, int x64,
             }
             if (ins->src1)
                 fprintf(out, ".local %s\n", ins->name);
+            if (ins->src2 > 1)
+                fprintf(out, "    .align %d\n", ins->src2);
             fprintf(out, "%s:\n", ins->name);
             if (ins->op == IR_GLOB_VAR) {
                 fprintf(out, "    %s %lld\n", size_directive, ins->imm);

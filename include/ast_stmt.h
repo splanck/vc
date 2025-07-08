@@ -22,7 +22,8 @@ stmt_t *ast_make_expr_stmt(expr_t *expr, size_t line, size_t column);
 stmt_t *ast_make_return(expr_t *expr, size_t line, size_t column);
 /* Create a variable declaration statement. */
 stmt_t *ast_make_var_decl(const char *name, type_kind_t type, size_t array_size,
-                          expr_t *size_expr, size_t elem_size, int is_static,
+                          expr_t *size_expr, expr_t *align_expr,
+                          size_t elem_size, int is_static,
                           int is_register, int is_extern, int is_const,
                           int is_volatile, int is_restrict,
                           expr_t *init, init_entry_t *init_list, size_t init_count,

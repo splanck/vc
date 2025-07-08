@@ -503,6 +503,22 @@ Compile with:
 vc -o off.s off.c
 ```
 
+### _Alignof and alignas
+`_Alignof` yields the required alignment of a type. The `alignas` specifier
+sets a custom alignment for objects.
+
+```c
+/* align.c */
+alignas(16) int g;
+int main() {
+    return _Alignof(int);
+}
+```
+Compile with:
+```sh
+vc -o align.s align.c
+```
+
 ### Global variables
 ```c
 /* global.c */

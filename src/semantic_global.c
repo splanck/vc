@@ -409,10 +409,24 @@ static symbol_t *register_global_symbol(stmt_t *decl, symtable_t *globals)
     if (!compute_global_layout(decl, globals))
         return NULL;
 
+    if (decl->var_decl.align_expr) {
+        long long aval;
+        if (!eval_const_expr(decl->var_decl.align_expr, globals, 0, &aval) ||
+            aval <= 0 || (aval & (aval - 1))) {
+            error_set(decl->var_decl.align_expr->line,
+                      decl->var_decl.align_expr->column,
+                      error_current_file, error_current_function);
+            error_print("Invalid alignment");
+            return NULL;
+        }
+        decl->var_decl.alignment = (size_t)aval;
+    }
+
     if (!symtable_add_global(globals, decl->var_decl.name,
                              decl->var_decl.name, decl->var_decl.type,
                              decl->var_decl.array_size,
                              decl->var_decl.elem_size,
+                             decl->var_decl.alignment,
                              decl->var_decl.is_static,
                              decl->var_decl.is_register,
                              decl->var_decl.is_const,
@@ -467,7 +481,8 @@ static int emit_global_initializer(stmt_t *decl, symbol_t *sym,
             return 0;
         if (!ir_build_glob_array(ir, decl->var_decl.name, vals,
                                  decl->var_decl.array_size,
-                                 decl->var_decl.is_static)) {
+                                 decl->var_decl.is_static,
+                                 decl->var_decl.alignment)) {
             free(vals);
             return 0;
         }
@@ -485,7 +500,8 @@ static int emit_global_initializer(stmt_t *decl, symbol_t *sym,
                 return 0;
             ir_build_glob_struct(ir, decl->var_decl.name,
                                  (int)decl->var_decl.elem_size,
-                                 decl->var_decl.is_static);
+                                 decl->var_decl.is_static,
+                                 decl->var_decl.alignment);
             free(vals);
             return 1;
         }
@@ -514,14 +530,17 @@ static int emit_global_initializer(stmt_t *decl, symbol_t *sym,
     if (decl->var_decl.type == TYPE_UNION)
         ir_build_glob_union(ir, decl->var_decl.name,
                            (int)decl->var_decl.elem_size,
-                           decl->var_decl.is_static);
+                           decl->var_decl.is_static,
+                           decl->var_decl.alignment);
     else if (decl->var_decl.type == TYPE_STRUCT)
         ir_build_glob_struct(ir, decl->var_decl.name,
                             (int)decl->var_decl.elem_size,
-                            decl->var_decl.is_static);
+                            decl->var_decl.is_static,
+                            decl->var_decl.alignment);
     else
         ir_build_glob_var(ir, decl->var_decl.name, value,
-                          decl->var_decl.is_static);
+                          decl->var_decl.is_static,
+                          decl->var_decl.alignment);
 
     return 1;
 }

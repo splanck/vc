@@ -450,6 +450,41 @@ static type_kind_t check_offsetof_expr(expr_t *expr, symtable_t *vars,
     return TYPE_INT;
 }
 
+static type_kind_t check_alignof_expr(expr_t *expr, symtable_t *vars,
+                                      symtable_t *funcs, ir_builder_t *ir,
+                                      ir_value_t *out)
+{
+    (void)funcs; (void)vars;
+    int al = 0;
+    if (expr->alignof_expr.is_type) {
+        switch (expr->alignof_expr.type) {
+        case TYPE_CHAR: case TYPE_UCHAR: case TYPE_BOOL: al = 1; break;
+        case TYPE_SHORT: case TYPE_USHORT: al = 2; break;
+        case TYPE_INT: case TYPE_UINT: case TYPE_LONG: case TYPE_ULONG:
+        case TYPE_ENUM: case TYPE_FLOAT: al = 4; break;
+        case TYPE_LLONG: case TYPE_ULLONG: case TYPE_DOUBLE: al = 8; break;
+        case TYPE_PTR: al = 4; break;
+        default: al = 1; break;
+        }
+    } else {
+        ir_builder_t tmp; ir_builder_init(&tmp);
+        type_kind_t t = check_expr(expr->alignof_expr.expr, vars, funcs, &tmp, NULL);
+        ir_builder_free(&tmp);
+        switch (t) {
+        case TYPE_CHAR: case TYPE_UCHAR: case TYPE_BOOL: al = 1; break;
+        case TYPE_SHORT: case TYPE_USHORT: al = 2; break;
+        case TYPE_INT: case TYPE_UINT: case TYPE_LONG: case TYPE_ULONG:
+        case TYPE_ENUM: case TYPE_FLOAT: al = 4; break;
+        case TYPE_LLONG: case TYPE_ULLONG: case TYPE_DOUBLE: al = 8; break;
+        case TYPE_PTR: al = 4; break;
+        default: al = 1; break;
+        }
+    }
+    if (out)
+        *out = ir_build_const(ir, al);
+    return TYPE_INT;
+}
+
 
 /*
  * Perform semantic analysis on an expression and emit IR code.
@@ -495,6 +530,8 @@ type_kind_t check_expr(expr_t *expr, symtable_t *vars, symtable_t *funcs,
         return check_sizeof_expr(expr, vars, funcs, ir, out);
     case EXPR_OFFSETOF:
         return check_offsetof_expr(expr, vars, funcs, ir, out);
+    case EXPR_ALIGNOF:
+        return check_alignof_expr(expr, vars, funcs, ir, out);
     case EXPR_CAST:
         return check_cast_expr(expr, vars, funcs, ir, out);
     case EXPR_COMPLIT:

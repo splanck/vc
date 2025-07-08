@@ -24,7 +24,7 @@ static int parse_decl_specs(parser_t *p, int *is_extern, int *is_static,
                             int *is_restrict, type_kind_t *type,
                             type_kind_t *base_type,
                             char **tag_name, size_t *elem_size,
-                            token_t **kw_tok);
+                            expr_t **align_expr, token_t **kw_tok);
 static int parse_array_suffix(parser_t *p, type_kind_t *type, char **name,
                               size_t *arr_size, expr_t **size_expr);
 static int parse_array_initializer(parser_t *p, init_entry_t **init_list,
@@ -50,7 +50,7 @@ static int parse_decl_specs(parser_t *p, int *is_extern, int *is_static,
                             int *is_restrict, type_kind_t *type,
                             type_kind_t *base_type,
                             char **tag_name, size_t *elem_size,
-                            token_t **kw_tok)
+                            expr_t **align_expr, token_t **kw_tok)
 {
     *is_extern = match(p, TOK_KW_EXTERN);
     *is_static = match(p, TOK_KW_STATIC);
@@ -98,6 +98,9 @@ static int parse_decl_specs(parser_t *p, int *is_extern, int *is_static,
         *type = TYPE_PTR;
         *is_restrict = match(p, TOK_KW_RESTRICT);
     }
+    if (align_expr)
+        *align_expr = NULL;
+    parse_alignas_spec(p, align_expr);
     return 1;
 }
 
@@ -370,9 +373,11 @@ stmt_t *parser_parse_var_decl(parser_t *p)
     token_t *kw_tok = NULL;
 
     type_kind_t base_type;
+    expr_t *align_expr = NULL;
     if (!parse_decl_specs(p, &is_extern, &is_static, &is_register,
                           &is_const, &is_volatile, &is_restrict, &t,
-                          &base_type, &tag_name, &elem_size, &kw_tok))
+                          &base_type, &tag_name, &elem_size,
+                          &align_expr, &kw_tok))
         return NULL;
 
     char *name;
@@ -404,7 +409,8 @@ stmt_t *parser_parse_var_decl(parser_t *p)
         return NULL;
     }
 
-    stmt_t *res = ast_make_var_decl(name, t, arr_size, size_expr, elem_size,
+    stmt_t *res = ast_make_var_decl(name, t, arr_size, size_expr, align_expr,
+                                    elem_size,
                                     is_static, is_register, is_extern,
                                     is_const, is_volatile, is_restrict,
                                     init, init_list, init_count,
@@ -522,7 +528,7 @@ fail:
     }
     union_member_t *members = (union_member_t *)members_v.data;
     size_t count = members_v.count;
-    stmt_t *res = ast_make_var_decl(name, TYPE_UNION, 0, NULL, 0, is_static,
+    stmt_t *res = ast_make_var_decl(name, TYPE_UNION, 0, NULL, NULL, 0, is_static,
                                     is_register, is_extern,
                                     is_const, is_volatile, 0, NULL, NULL, 0,
                                     NULL, members, count,
@@ -603,7 +609,7 @@ fail:
     }
     struct_member_t *members = (struct_member_t *)members_v.data;
     size_t count = members_v.count;
-    stmt_t *res = ast_make_var_decl(name, TYPE_STRUCT, 0, NULL, 0, is_static,
+    stmt_t *res = ast_make_var_decl(name, TYPE_STRUCT, 0, NULL, NULL, 0, is_static,
                                     is_register, is_extern,
                                     is_const, is_volatile, 0, NULL, NULL, 0,
                                     NULL, (union_member_t *)members, count,

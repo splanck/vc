@@ -211,6 +211,20 @@ static expr_t *clone_offsetof(const expr_t *expr)
                              members, n, expr->line, expr->column);
 }
 
+/* Clone an alignof expression. */
+static expr_t *clone_alignof(const expr_t *expr)
+{
+    if (expr->alignof_expr.is_type)
+        return ast_make_alignof_type(expr->alignof_expr.type,
+                                     expr->alignof_expr.array_size,
+                                     expr->alignof_expr.elem_size,
+                                     expr->line, expr->column);
+    expr_t *e = clone_expr(expr->alignof_expr.expr);
+    if (!e)
+        return NULL;
+    return ast_make_alignof_expr(e, expr->line, expr->column);
+}
+
 /* Clone a cast expression. */
 static expr_t *clone_cast(const expr_t *expr)
 {
@@ -322,6 +336,8 @@ expr_t *clone_expr(const expr_t *expr)
         return clone_sizeof(expr);
     case EXPR_OFFSETOF:
         return clone_offsetof(expr);
+    case EXPR_ALIGNOF:
+        return clone_alignof(expr);
     case EXPR_CAST:
         return clone_cast(expr);
     case EXPR_COMPLIT:

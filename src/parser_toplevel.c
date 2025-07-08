@@ -495,7 +495,7 @@ static int parse_global_var_init(parser_t *p, const char *name, type_kind_t type
 
     if (out_global)
         *out_global = ast_make_var_decl(name, type, arr_size, size_expr,
-                                        elem_size, is_static, is_register,
+                                        NULL, elem_size, is_static, is_register,
                                         is_extern, is_const, is_volatile,
                                         is_restrict, init, init_list,
                                         init_count, tag, NULL, 0,
