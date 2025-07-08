@@ -194,6 +194,30 @@ static expr_t *parse_literal(parser_t *p)
     token_t *tok = peek(p);
     if (!tok)
         return NULL;
+    if (tok->type == TOK_NUMBER) {
+        size_t save = p->pos;
+        token_t *num_tok = tok;
+        p->pos++; /* consume number */
+        token_t *op_tok = peek(p);
+        if (op_tok && (op_tok->type == TOK_PLUS || op_tok->type == TOK_MINUS)) {
+            p->pos++; /* consume +/- */
+            token_t *imag_tok = peek(p);
+            if (imag_tok && imag_tok->type == TOK_IMAG_NUMBER) {
+                p->pos++; /* consume imag */
+                double real = strtod(num_tok->lexeme, NULL);
+                double imag = strtod(imag_tok->lexeme, NULL);
+                if (op_tok->type == TOK_MINUS)
+                    imag = -imag;
+                return ast_make_complex_literal(real, imag,
+                                               num_tok->line, num_tok->column);
+            }
+        }
+        p->pos = save;
+    }
+    if (match(p, TOK_IMAG_NUMBER)) {
+        double imag = strtod(tok->lexeme, NULL);
+        return ast_make_complex_literal(0.0, imag, tok->line, tok->column);
+    }
     if (match(p, TOK_NUMBER))
         return ast_make_number(tok->lexeme, tok->line, tok->column);
     expr_t *s = parse_string_literal(p);
