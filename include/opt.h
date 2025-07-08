@@ -28,12 +28,13 @@ void compute_alias_sets(ir_builder_t *ir);
  * Run optimization passes on the given IR builder.
  *
  * Passes execute in the following order:
- * 1. Constant propagation
- * 2. Common subexpression elimination
- * 3. Inline expansion
- * 4. Constant folding
- * 5. Unreachable block elimination
- * 6. Dead code elimination
+ * 1. Alias analysis
+ * 2. Constant propagation
+ * 3. Common subexpression elimination
+ * 4. Inline expansion
+ * 5. Constant folding
+ * 6. Unreachable block elimination
+ * 7. Dead code elimination
  */
 void opt_run(ir_builder_t *ir, const opt_config_t *cfg);
 
