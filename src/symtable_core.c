@@ -44,6 +44,7 @@ symbol_t *symtable_create_symbol(const char *name, const char *ir_name)
     sym->param_index = -1;
     sym->alias_type = TYPE_UNKNOWN;
     sym->elem_size = 0;
+    sym->alignment = 0;
     sym->members = NULL;
     sym->member_count = 0;
     sym->active_member = NULL;
@@ -135,6 +136,7 @@ symbol_t *symtable_lookup(symtable_t *table, const char *name)
  */
 int symtable_add(symtable_t *table, const char *name, const char *ir_name,
                  type_kind_t type, size_t array_size, size_t elem_size,
+                 size_t alignment,
                  int is_static, int is_register, int is_const, int is_volatile,
                  int is_restrict)
 {
@@ -146,6 +148,7 @@ int symtable_add(symtable_t *table, const char *name, const char *ir_name,
     sym->type = type;
     sym->array_size = array_size;
     sym->elem_size = elem_size;
+    sym->alignment = alignment;
     sym->is_static = is_static;
     sym->is_register = is_register;
     sym->is_const = is_const;

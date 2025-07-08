@@ -45,7 +45,8 @@ stmt_t *ast_make_return(expr_t *expr, size_t line, size_t column)
 
 /* Create a variable declaration statement. */
 stmt_t *ast_make_var_decl(const char *name, type_kind_t type, size_t array_size,
-                          expr_t *size_expr, size_t elem_size, int is_static, int is_register,
+                          expr_t *size_expr, expr_t *align_expr,
+                          size_t elem_size, int is_static, int is_register,
                           int is_extern, int is_const, int is_volatile, int is_restrict,
                           expr_t *init, init_entry_t *init_list, size_t init_count,
                           const char *tag, union_member_t *members,
@@ -65,6 +66,8 @@ stmt_t *ast_make_var_decl(const char *name, type_kind_t type, size_t array_size,
     stmt->var_decl.type = type;
     stmt->var_decl.array_size = array_size;
     stmt->var_decl.size_expr = size_expr;
+    stmt->var_decl.align_expr = align_expr;
+    stmt->var_decl.alignment = 0;
     stmt->var_decl.elem_size = elem_size;
     if (tag) {
         stmt->var_decl.tag = vc_strdup(tag);
@@ -431,6 +434,7 @@ static void free_var_decl_stmt(stmt_t *stmt)
 {
     free(stmt->var_decl.name);
     ast_free_expr(stmt->var_decl.size_expr);
+    ast_free_expr(stmt->var_decl.align_expr);
     ast_free_expr(stmt->var_decl.init);
     for (size_t i = 0; i < stmt->var_decl.init_count; i++) {
         ast_free_expr(stmt->var_decl.init_list[i].index);

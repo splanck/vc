@@ -341,6 +341,41 @@ expr_t *ast_make_offsetof(type_kind_t type, const char *tag,
     return expr;
 }
 
+/* Create an alignof expression for a type. */
+expr_t *ast_make_alignof_type(type_kind_t type, size_t array_size,
+                              size_t elem_size, size_t line, size_t column)
+{
+    expr_t *expr = malloc(sizeof(*expr));
+    if (!expr)
+        return NULL;
+    expr->kind = EXPR_ALIGNOF;
+    expr->line = line;
+    expr->column = column;
+    expr->alignof_expr.is_type = 1;
+    expr->alignof_expr.type = type;
+    expr->alignof_expr.array_size = array_size;
+    expr->alignof_expr.elem_size = elem_size;
+    expr->alignof_expr.expr = NULL;
+    return expr;
+}
+
+/* Create an alignof expression for another expression. */
+expr_t *ast_make_alignof_expr(expr_t *e, size_t line, size_t column)
+{
+    expr_t *expr = malloc(sizeof(*expr));
+    if (!expr)
+        return NULL;
+    expr->kind = EXPR_ALIGNOF;
+    expr->line = line;
+    expr->column = column;
+    expr->alignof_expr.is_type = 0;
+    expr->alignof_expr.type = TYPE_UNKNOWN;
+    expr->alignof_expr.array_size = 0;
+    expr->alignof_expr.elem_size = 0;
+    expr->alignof_expr.expr = e;
+    return expr;
+}
+
 /* Create a type cast expression node. */
 expr_t *ast_make_cast(type_kind_t type, size_t array_size, size_t elem_size,
                       expr_t *e, size_t line, size_t column)

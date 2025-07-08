@@ -193,3 +193,21 @@ int parse_func_ptr_suffix(parser_t *p, char **name,
     return 1;
 }
 
+int parse_alignas_spec(parser_t *p, expr_t **out_expr)
+{
+    if (!match(p, TOK_KW_ALIGNAS))
+        return 0;
+    if (!match(p, TOK_LPAREN))
+        return 0;
+    expr_t *e = parser_parse_expr(p);
+    if (!e || !match(p, TOK_RPAREN)) {
+        ast_free_expr(e);
+        return 0;
+    }
+    if (out_expr)
+        *out_expr = e;
+    else
+        ast_free_expr(e);
+    return 1;
+}
+

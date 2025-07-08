@@ -36,7 +36,7 @@ static ir_instr_t *append_instr(ir_builder_t *b)
 
 /* Define a global variable named `name` with an optional initial value. */
 void ir_build_glob_var(ir_builder_t *b, const char *name, long long value,
-                       int is_static)
+                       int is_static, size_t alignment)
 {
     ir_instr_t *ins = append_instr(b);
     if (!ins)
@@ -45,6 +45,7 @@ void ir_build_glob_var(ir_builder_t *b, const char *name, long long value,
     ins->name = vc_strdup(name ? name : "");
     ins->imm = value;
     ins->src1 = is_static;
+    ins->src2 = (int)alignment;
 }
 
 /*
@@ -53,7 +54,7 @@ void ir_build_glob_var(ir_builder_t *b, const char *name, long long value,
  */
 int ir_build_glob_array(ir_builder_t *b, const char *name,
                         const long long *values, size_t count,
-                        int is_static)
+                        int is_static, size_t alignment)
 {
     ir_instr_t *ins = append_instr(b);
     if (!ins)
@@ -62,6 +63,7 @@ int ir_build_glob_array(ir_builder_t *b, const char *name,
     ins->name = vc_strdup(name ? name : "");
     ins->imm = (long long)count;
     ins->src1 = is_static;
+    ins->src2 = (int)alignment;
     if (count) {
         long long *vals = malloc(count * sizeof(long long));
         if (!vals) {
@@ -88,7 +90,7 @@ int ir_build_glob_array(ir_builder_t *b, const char *name,
 
 /* Begin a global union definition with the given name and size. */
 void ir_build_glob_union(ir_builder_t *b, const char *name, int size,
-                         int is_static)
+                         int is_static, size_t alignment)
 {
     ir_instr_t *ins = append_instr(b);
     if (!ins)
@@ -97,11 +99,12 @@ void ir_build_glob_union(ir_builder_t *b, const char *name, int size,
     ins->name = vc_strdup(name ? name : "");
     ins->imm = size;
     ins->src1 = is_static;
+    ins->src2 = (int)alignment;
 }
 
 /* Begin a global struct definition with the given name and size. */
 void ir_build_glob_struct(ir_builder_t *b, const char *name, int size,
-                          int is_static)
+                          int is_static, size_t alignment)
 {
     ir_instr_t *ins = append_instr(b);
     if (!ins)
@@ -110,6 +113,7 @@ void ir_build_glob_struct(ir_builder_t *b, const char *name, int size,
     ins->name = vc_strdup(name ? name : "");
     ins->imm = size;
     ins->src1 = is_static;
+    ins->src2 = (int)alignment;
 }
 
 /* Define a global variable initialized with the address of another symbol. */

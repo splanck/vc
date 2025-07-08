@@ -56,6 +56,8 @@ typedef enum {
     TOK_KW_DEFAULT,
     TOK_KW_SIZEOF,
     TOK_KW_COMPLEX,
+    TOK_KW_ALIGNAS,
+    TOK_KW_ALIGNOF,
     TOK_LPAREN,
     TOK_RPAREN,
     TOK_LBRACE,

@@ -134,7 +134,7 @@ static int check_typedef_stmt(stmt_t *stmt, symtable_t *vars)
 static int init_static_array(ir_builder_t *ir, const char *name,
                              const long long *vals, size_t count)
 {
-    return ir_build_glob_array(ir, name, vals, count, 1);
+    return ir_build_glob_array(ir, name, vals, count, 1, 0);
 }
 
 /*
@@ -264,10 +264,23 @@ static int compute_var_layout(stmt_t *stmt, symtable_t *vars)
 static symbol_t *insert_var_symbol(stmt_t *stmt, symtable_t *vars,
                                    const char *ir_name)
 {
+    if (stmt->var_decl.align_expr) {
+        long long aval;
+        if (!eval_const_expr(stmt->var_decl.align_expr, vars, 0, &aval) ||
+            aval <= 0 || (aval & (aval - 1))) {
+            error_set(stmt->var_decl.align_expr->line,
+                      stmt->var_decl.align_expr->column,
+                      error_current_file, error_current_function);
+            error_print("Invalid alignment");
+            return NULL;
+        }
+        stmt->var_decl.alignment = (size_t)aval;
+    }
     if (!symtable_add(vars, stmt->var_decl.name, ir_name,
                       stmt->var_decl.type,
                       stmt->var_decl.array_size,
                       stmt->var_decl.elem_size,
+                      stmt->var_decl.alignment,
                       stmt->var_decl.is_static,
                       stmt->var_decl.is_register,
                       stmt->var_decl.is_const,
@@ -396,11 +409,13 @@ static int emit_static_initializer(stmt_t *stmt, symbol_t *sym,
         return 0;
     }
     if (stmt->var_decl.type == TYPE_UNION)
-        ir_build_glob_union(ir, sym->ir_name, (int)sym->elem_size, 1);
+        ir_build_glob_union(ir, sym->ir_name, (int)sym->elem_size, 1,
+                           sym->alignment);
     else if (stmt->var_decl.type == TYPE_STRUCT)
-        ir_build_glob_struct(ir, sym->ir_name, (int)sym->struct_total_size, 1);
+        ir_build_glob_struct(ir, sym->ir_name, (int)sym->struct_total_size, 1,
+                            sym->alignment);
     else
-        ir_build_glob_var(ir, sym->ir_name, cval, 1);
+        ir_build_glob_var(ir, sym->ir_name, cval, 1, sym->alignment);
     return 1;
 }
 

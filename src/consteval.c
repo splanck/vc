@@ -25,6 +25,7 @@ static int eval_ident(expr_t *expr, symtable_t *vars, long long *out);
 static int eval_sizeof(expr_t *expr, int use_x86_64, long long *out);
 static int lookup_member_offset(symbol_t *sym, const char *name, size_t *out);
 static int eval_offsetof(expr_t *expr, symtable_t *vars, long long *out);
+static int eval_alignof(expr_t *expr, int use_x86_64, long long *out);
 
 /* Report a constant overflow error and return 0 */
 static int report_overflow(expr_t *expr)
@@ -272,6 +273,26 @@ static int eval_offsetof(expr_t *expr, symtable_t *vars, long long *out)
     return 1;
 }
 
+static int eval_alignof(expr_t *expr, int use_x86_64, long long *out)
+{
+    (void)use_x86_64;
+    if (!expr->alignof_expr.is_type)
+        return 0;
+    int al = 0;
+    switch (expr->alignof_expr.type) {
+    case TYPE_CHAR: case TYPE_UCHAR: case TYPE_BOOL: al = 1; break;
+    case TYPE_SHORT: case TYPE_USHORT: al = 2; break;
+    case TYPE_INT: case TYPE_UINT: case TYPE_LONG: case TYPE_ULONG:
+    case TYPE_ENUM: case TYPE_FLOAT: al = 4; break;
+    case TYPE_LLONG: case TYPE_ULLONG: case TYPE_DOUBLE: al = 8; break;
+    case TYPE_PTR: al = 4; break;
+    default: al = 1; break;
+    }
+    if (out)
+        *out = al;
+    return 1;
+}
+
 /*
  * Evaluate a cast expression when the operand is constant.
  * The value is returned unchanged as primitive types share a
@@ -313,6 +334,8 @@ int eval_const_expr(expr_t *expr, symtable_t *vars,
         return eval_sizeof(expr, use_x86_64, out);
     case EXPR_OFFSETOF:
         return eval_offsetof(expr, vars, out);
+    case EXPR_ALIGNOF:
+        return eval_alignof(expr, use_x86_64, out);
     default:
         return 0;
     }

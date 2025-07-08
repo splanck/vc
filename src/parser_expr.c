@@ -40,6 +40,7 @@ static expr_t *parse_addr(parser_t *p);
 static expr_t *parse_neg(parser_t *p);
 static expr_t *parse_not(parser_t *p);
 static expr_t *parse_sizeof(parser_t *p);
+static expr_t *parse_alignof(parser_t *p);
 static expr_t *parse_offsetof(parser_t *p);
 static int parse_struct_union_tag(parser_t *p, type_kind_t *out_type,
                                   char **out_tag);
@@ -478,6 +479,24 @@ static expr_t *parse_sizeof(parser_t *p)
     return ast_make_sizeof_expr(e, kw->line, kw->column);
 }
 
+static expr_t *parse_alignof(parser_t *p)
+{
+    token_t *kw = &p->tokens[p->pos - 1];
+    if (!match(p, TOK_LPAREN))
+        return NULL;
+    size_t save = p->pos;
+    type_kind_t t; size_t sz; size_t esz;
+    if (parse_type(p, &t, &sz, &esz) && match(p, TOK_RPAREN))
+        return ast_make_alignof_type(t, sz, esz, kw->line, kw->column);
+    p->pos = save;
+    expr_t *e = parse_expression(p);
+    if (!e || !match(p, TOK_RPAREN)) {
+        ast_free_expr(e);
+        return NULL;
+    }
+    return ast_make_alignof_expr(e, kw->line, kw->column);
+}
+
 /* Parse 'struct tag' or 'union tag' and return the tag name. */
 static int parse_struct_union_tag(parser_t *p, type_kind_t *out_type,
                                   char **out_tag)
@@ -607,7 +626,8 @@ static expr_t *parse_prefix_expr(parser_t *p)
         { TOK_AMP,     parse_addr },
         { TOK_MINUS,   parse_neg },
         { TOK_NOT,     parse_not },
-        { TOK_KW_SIZEOF, parse_sizeof }
+        { TOK_KW_SIZEOF, parse_sizeof },
+        { TOK_KW_ALIGNOF, parse_alignof }
     };
 
     token_t *tok = peek(p);

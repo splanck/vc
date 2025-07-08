@@ -59,6 +59,11 @@ expr_t *ast_make_sizeof_type(type_kind_t type, size_t array_size,
                              size_t elem_size, size_t line, size_t column);
 /* Create a sizeof expression for another expression. */
 expr_t *ast_make_sizeof_expr(expr_t *expr, size_t line, size_t column);
+/* Create an alignof expression for a type. */
+expr_t *ast_make_alignof_type(type_kind_t type, size_t array_size,
+                              size_t elem_size, size_t line, size_t column);
+/* Create an alignof expression for another expression. */
+expr_t *ast_make_alignof_expr(expr_t *expr, size_t line, size_t column);
 /* Create an offsetof expression. */
 expr_t *ast_make_offsetof(type_kind_t type, const char *tag,
                           char **members, size_t member_count,
