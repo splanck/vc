@@ -297,6 +297,19 @@ if [ $ret -eq 0 ] || ! grep -q "nonexistent.h: No such file or directory" "${err
 fi
 rm -f "${out}" "${err}"
 
+# negative test for include_next missing file
+err=$(mktemp)
+out=$(mktemp)
+set +e
+"$BINARY" -I "$DIR/include_next/miss1" -I "$DIR/include_next/miss2" -o "${out}" "$DIR/invalid/include_next_missing.c" 2> "${err}"
+ret=$?
+set -e
+if [ $ret -eq 0 ] || ! grep -q "foo.h: No such file or directory" "${err}"; then
+    echo "Test include_next_missing failed"
+    fail=1
+fi
+rm -f "${out}" "${err}"
+
 # negative test for macro recursion limit
 err=$(mktemp)
 out=$(mktemp)

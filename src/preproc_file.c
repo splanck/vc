@@ -336,7 +336,8 @@ static int handle_include(char *line, const char *dir, vector_t *macros,
         int ok = 1;
         if (is_active(conds)) {
             if (!chosen) {
-                fprintf(stderr, "%s: No such file or directory\n", fname);
+                errno = ENOENT;
+                perror(fname);
                 ok = 0;
             } else if (!pragma_once_contains(ctx, chosen)) {
                 if (include_stack_contains(stack, chosen)) {
@@ -344,6 +345,8 @@ static int handle_include(char *line, const char *dir, vector_t *macros,
                     ok = 0;
                 } else if (!process_file(chosen, macros, &subconds, out,
                                          incdirs, stack, ctx, idx)) {
+                    if (errno)
+                        perror(chosen);
                     ok = 0;
                 }
             }
@@ -392,7 +395,8 @@ static int handle_include_next(char *line, const char *dir, vector_t *macros,
         int ok = 1;
         if (is_active(conds)) {
             if (!chosen) {
-                fprintf(stderr, "%s: No such file or directory\n", fname);
+                errno = ENOENT;
+                perror(fname);
                 ok = 0;
             } else if (!pragma_once_contains(ctx, chosen)) {
                 if (include_stack_contains(stack, chosen)) {
@@ -400,6 +404,8 @@ static int handle_include_next(char *line, const char *dir, vector_t *macros,
                     ok = 0;
                 } else if (!process_file(chosen, macros, &subconds, out,
                                          incdirs, stack, ctx, idx)) {
+                    if (errno)
+                        perror(chosen);
                     ok = 0;
                 }
             }
@@ -1387,11 +1393,13 @@ char *preproc_run(preproc_context_t *ctx, const char *path,
     int ok = process_input_file(path, &macros, &conds, &out,
                                 &search_dirs, &stack, ctx);
 
+    int saved_errno = errno;
     char *res = NULL;
     if (ok)
         res = vc_strdup(out.data ? out.data : "");
 
     cleanup_preproc_vectors(ctx, &macros, &conds, &stack, &search_dirs, &out);
+    errno = saved_errno;
 
     return res;
 }
