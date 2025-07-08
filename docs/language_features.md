@@ -45,7 +45,8 @@ shows a short example and how to compile it.
 - Conditional operator (`?:`)
 - `switch` statements with `case` and `default`
 - Bitwise operators (`&`, `|`, `^`, `<<`, `>>` and compound forms)
-- Floating-point types (`float`, `double`, `long double`)
+- Floating-point types (`float`, `double`, `long double`) and complex numbers
+  using the `_Complex` qualifier
 - `sizeof` operator
 - Global variables
 - Variadic functions using `...`
@@ -123,6 +124,18 @@ float main() {
 Compile with:
 ```sh
 vc -o float_add.s float_add.c
+```
+
+### Complex arithmetic
+```c
+/* complex_add.c */
+_Complex float f(_Complex float a, _Complex float b) {
+    return a + b;
+}
+```
+Compile with:
+```sh
+vc -o complex_add.s complex_add.c
 ```
 
 ### Bitwise operations

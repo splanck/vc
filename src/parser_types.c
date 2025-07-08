@@ -19,8 +19,11 @@ int parse_basic_type(parser_t *p, type_kind_t *out)
     if (match(p, TOK_KW_SHORT))
         t = is_unsigned ? TYPE_USHORT : TYPE_SHORT;
     else if (match(p, TOK_KW_LONG)) {
-        if (match(p, TOK_KW_DOUBLE))
+        if (match(p, TOK_KW_DOUBLE)) {
             t = TYPE_LDOUBLE;
+            if (match(p, TOK_KW_COMPLEX))
+                t = TYPE_LDOUBLE_COMPLEX;
+        }
         else if (match(p, TOK_KW_LONG))
             t = is_unsigned ? TYPE_ULLONG : TYPE_LLONG;
         else
@@ -33,8 +36,12 @@ int parse_basic_type(parser_t *p, type_kind_t *out)
         t = TYPE_CHAR;
     } else if (match(p, TOK_KW_FLOAT)) {
         t = TYPE_FLOAT;
+        if (match(p, TOK_KW_COMPLEX))
+            t = TYPE_FLOAT_COMPLEX;
     } else if (match(p, TOK_KW_DOUBLE)) {
         t = TYPE_DOUBLE;
+        if (match(p, TOK_KW_COMPLEX))
+            t = TYPE_DOUBLE_COMPLEX;
     } else if (match(p, TOK_KW_VOID)) {
         t = TYPE_VOID;
     } else if (match(p, TOK_KW_ENUM)) {
@@ -82,10 +89,16 @@ size_t basic_type_size(type_kind_t t)
         return 4;
     case TYPE_DOUBLE:
         return 8;
+    case TYPE_FLOAT_COMPLEX:
+        return 8;
+    case TYPE_DOUBLE_COMPLEX:
+        return 16;
     case TYPE_LLONG: case TYPE_ULLONG:
         return 8;
     case TYPE_LDOUBLE:
         return 10;
+    case TYPE_LDOUBLE_COMPLEX:
+        return 20;
     default:
         return 4;
     }

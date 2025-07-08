@@ -39,6 +39,7 @@ static const char *tok_names[] = {
     [TOK_KW_SHORT] = "\"short\"",
     [TOK_KW_LONG] = "\"long\"",
     [TOK_KW_BOOL] = "\"bool\"",
+    [TOK_KW_COMPLEX] = "\"_Complex\"",
     [TOK_KW_UNSIGNED] = "\"unsigned\"",
     [TOK_KW_VOID] = "\"void\"",
     [TOK_KW_ENUM] = "\"enum\"",

@@ -41,6 +41,7 @@ static const keyword_t keyword_table[] = {
     { "long",     TOK_KW_LONG },
     { "bool",     TOK_KW_BOOL },
     { "_Bool",    TOK_KW_BOOL },
+    { "_Complex", TOK_KW_COMPLEX },
     { "unsigned", TOK_KW_UNSIGNED },
     { "void",     TOK_KW_VOID },
     { "enum",     TOK_KW_ENUM },
