@@ -16,22 +16,13 @@
 #include "util.h"
 #include "preproc_macros.h"
 
-#ifndef __has_attribute
-# define __has_attribute(x) 0
-#endif
-
+#ifdef UNIT_TESTING
 /*
- * Provide a weak stub for macro_free so unit tests linking only a subset
- * of the source files do not fail due to an unresolved symbol.  When the
- * real implementation from preproc_macros.c is linked in, it overrides this
- * weak definition.
+ * Provide stub implementations so unit test binaries that only link a
+ * subset of the sources still resolve these symbols.
  */
-#if __has_attribute(weak)
-__attribute__((weak)) void macro_free(macro_t *m) { (void)m; }
-__attribute__((weak)) void vector_free(vector_t *v) { (void)v; }
-#else
-void __attribute__((weak)) macro_free(macro_t *m) { (void)m; }
-void __attribute__((weak)) vector_free(vector_t *v) { (void)v; }
+void macro_free(macro_t *m) { (void)m; }
+void vector_free(vector_t *v) { (void)v; }
 #endif
 
 /* Print a generic out of memory message */
