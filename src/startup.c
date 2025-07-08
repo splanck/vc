@@ -25,6 +25,8 @@
 
 int create_temp_file(const cli_options_t *cli, const char *prefix,
                      char **out_path);
+const char *get_cc(void);
+const char *get_as(int intel);
 
 /* Write the entry stub assembly to a temporary file. */
 int write_startup_asm(int use_x86_64, asm_syntax_t syntax,
@@ -87,27 +89,20 @@ int assemble_startup_obj(const char *asm_path, int use_x86_64,
     int rc;
     if (cli->asm_syntax == ASM_INTEL) {
         const char *fmt = use_x86_64 ? "elf64" : "elf32";
-        char *argv[] = {"nasm", "-f", (char *)fmt, (char *)asm_path,
-                        "-o", objname, NULL};
+        char *argv[] = {(char *)get_as(1), "-f", (char *)fmt,
+                        (char *)asm_path, "-o", objname, NULL};
         rc = command_run(argv);
     } else {
         const char *arch_flag = use_x86_64 ? "-m64" : "-m32";
-        char *argv[] = {"cc", "-x", "assembler", (char *)arch_flag, "-c",
-                        (char *)asm_path, "-o", objname, NULL};
+        char *argv[] = {(char *)get_as(0), "-x", "assembler", (char *)arch_flag,
+                        "-c", (char *)asm_path, "-o", objname, NULL};
         rc = command_run(argv);
     }
     if (rc != 1) {
-        if (rc == 0) {
-            if (cli->asm_syntax == ASM_INTEL)
-                fprintf(stderr, "assembly failed\n");
-            else
-                fprintf(stderr, "cc failed\n");
-        } else if (rc == -1) {
-            if (cli->asm_syntax == ASM_INTEL)
-                fprintf(stderr, "nasm terminated by signal\n");
-            else
-                fprintf(stderr, "cc terminated by signal\n");
-        }
+        if (rc == 0)
+            fprintf(stderr, "assembly failed\n");
+        else if (rc == -1)
+            fprintf(stderr, "assembler terminated by signal\n");
         unlink(objname);
         free(objname);
         return 0;
