@@ -201,6 +201,8 @@ static int register_function_prototypes(func_t **func_list, size_t fcount,
             existing->is_prototype = 0;
             if (func_list[i]->is_inline)
                 existing->is_inline = 1;
+            if (func_list[i]->is_noreturn)
+                existing->is_noreturn = 1;
         } else {
             size_t rsz = (func_list[i]->return_type == TYPE_STRUCT ||
                           func_list[i]->return_type == TYPE_UNION) ? 4 : 0;
@@ -212,7 +214,8 @@ static int register_function_prototypes(func_t **func_list, size_t fcount,
                               func_list[i]->param_count,
                               func_list[i]->is_variadic,
                               0,
-                              func_list[i]->is_inline);
+                              func_list[i]->is_inline,
+                              func_list[i]->is_noreturn);
         }
     }
     return 1;

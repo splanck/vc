@@ -43,7 +43,8 @@ int symtable_add_func(symtable_t *table, const char *name, type_kind_t ret_type,
                       size_t ret_struct_size,
                       size_t *param_struct_sizes,
                       type_kind_t *param_types, size_t param_count,
-                      int is_variadic, int is_prototype, int is_inline)
+                      int is_variadic, int is_prototype, int is_inline,
+                      int is_noreturn)
 {
     if (symtable_lookup(table, name))
         return 0;
@@ -74,6 +75,7 @@ int symtable_add_func(symtable_t *table, const char *name, type_kind_t ret_type,
     table->head = sym;
     sym->is_prototype = is_prototype;
     sym->is_inline = is_inline;
+    sym->is_noreturn = is_noreturn;
     return 1;
 }
 

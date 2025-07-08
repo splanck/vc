@@ -530,7 +530,7 @@ static void test_parser_func(void)
     size_t count = 0;
     token_t *toks = lexer_tokenize(src, &count);
     parser_t p; parser_init(&p, toks, count);
-    func_t *fn = parser_parse_func(&p, NULL, 0);
+    func_t *fn = parser_parse_func(&p, NULL, 0, 0);
     ASSERT(fn);
     ASSERT(strcmp(fn->name, "main") == 0);
     ASSERT(fn->return_type == TYPE_INT);
@@ -621,7 +621,7 @@ static void test_parser_struct_tag_func_def(void)
     size_t count = 0;
     token_t *toks = lexer_tokenize(src, &count);
     parser_t p; parser_init(&p, toks, count);
-    func_t *fn = parser_parse_func(&p, NULL, 0);
+    func_t *fn = parser_parse_func(&p, NULL, 0, 0);
     ASSERT(fn);
     ASSERT(fn->return_type == TYPE_STRUCT);
     ASSERT(strcmp(fn->return_tag, "S") == 0);

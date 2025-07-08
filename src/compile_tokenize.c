@@ -52,6 +52,7 @@ static const char *tok_names[] = {
     [TOK_KW_RESTRICT] = "\"restrict\"",
     [TOK_KW_REGISTER] = "\"register\"",
     [TOK_KW_INLINE] = "\"inline\"",
+    [TOK_KW_NORETURN] = "\"_Noreturn\"",
     [TOK_KW_STATIC_ASSERT] = "\"_Static_assert\"",
     [TOK_KW_RETURN] = "\"return\"",
     [TOK_KW_IF] = "\"if\"",

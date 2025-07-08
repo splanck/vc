@@ -393,6 +393,7 @@ struct func {
     stmt_t **body;
     size_t body_count;
     int is_inline;
+    int is_noreturn;
 };
 
 

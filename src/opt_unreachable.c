@@ -90,6 +90,8 @@ void remove_unreachable_blocks(ir_builder_t *ir)
             break;
         case IR_RETURN:
         case IR_RETURN_AGG:
+        case IR_CALL_NR:
+        case IR_CALL_PTR_NR:
             reachable = 0;
             prev = cur;
             break;

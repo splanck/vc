@@ -268,9 +268,11 @@ void emit_branch_instr(strbuf_t *sb, ir_instr_t *ins,
         emit_return(sb, ins, ra, x64, sfx, ax, syntax);
         break;
     case IR_CALL:
+    case IR_CALL_NR:
         emit_call(sb, ins, ra, x64, sfx, ax, sp, syntax);
         break;
     case IR_CALL_PTR:
+    case IR_CALL_PTR_NR:
         emit_call_ptr(sb, ins, ra, x64, sfx, ax, sp, syntax);
         break;
     case IR_FUNC_BEGIN: case IR_FUNC_END:

@@ -102,8 +102,12 @@ type_kind_t check_call_expr(expr_t *expr, symtable_t *vars,
         ir_build_arg(ir, ret_ptr, TYPE_PTR);
     }
     ir_value_t call_val = via_ptr
-        ? ir_build_call_ptr(ir, func_val, expr->call.arg_count + (is_aggr ? 1 : 0))
-        : ir_build_call(ir, expr->call.name, expr->call.arg_count + (is_aggr ? 1 : 0));
+        ? (fsym->is_noreturn
+            ? ir_build_call_ptr_nr(ir, func_val, expr->call.arg_count + (is_aggr ? 1 : 0))
+            : ir_build_call_ptr(ir, func_val, expr->call.arg_count + (is_aggr ? 1 : 0)))
+        : (fsym->is_noreturn
+            ? ir_build_call_nr(ir, expr->call.name, expr->call.arg_count + (is_aggr ? 1 : 0))
+            : ir_build_call(ir, expr->call.name, expr->call.arg_count + (is_aggr ? 1 : 0)));
     if (out)
         *out = is_aggr ? ret_ptr : call_val;
     (void)call_val;

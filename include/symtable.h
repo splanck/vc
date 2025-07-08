@@ -49,6 +49,7 @@ typedef struct symbol {
     int is_variadic;
     int is_prototype;
     int is_inline;
+    int is_noreturn;
     struct symbol *next;
 } symbol_t;
 
@@ -88,7 +89,8 @@ int symtable_add_func(symtable_t *table, const char *name, type_kind_t ret_type,
                       size_t ret_struct_size,
                       size_t *param_struct_sizes,
                       type_kind_t *param_types, size_t param_count,
-                      int is_variadic, int is_prototype, int is_inline);
+                      int is_variadic, int is_prototype, int is_inline,
+                      int is_noreturn);
 /* Globals live in a separate list */
 int symtable_add_global(symtable_t *table, const char *name, const char *ir_name,
                         type_kind_t type, size_t array_size, size_t elem_size,

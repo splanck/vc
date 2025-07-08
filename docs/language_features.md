@@ -32,6 +32,7 @@ shows a short example and how to compile it.
 - [Logical operators](#logical-operators)
 - [Enum declarations](#enum-declarations)
 - [Flexible array members](#flexible-array-members)
+- [_Noreturn attribute](#_noreturn-attribute)
 
 - Basic arithmetic expressions
 - Function definitions and calls
@@ -802,5 +803,25 @@ int main() { return 0; }
 Compile with:
 ```sh
 vc -o assert_example.s assert_example.c
+```
+
+### _Noreturn attribute
+A function may be marked as not returning using the `_Noreturn` keyword or the
+GNU `__attribute__((noreturn))` syntax. Calls to such functions are treated as
+terminating the current control path.
+
+```c
+/* noreturn_example.c */
+_Noreturn void die(void);
+
+void foo(int n) {
+    if (n < 0)
+        die();
+    return;
+}
+```
+Compile with:
+```sh
+vc -o noreturn_example.s noreturn_example.c
 ```
 

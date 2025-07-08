@@ -956,7 +956,7 @@ static const char *find_end_label(func_t *func)
     return NULL;
 }
 
-void warn_unreachable_function(func_t *func)
+void warn_unreachable_function(func_t *func, symtable_t *funcs)
 {
     if (!semantic_warn_unreachable || !func)
         return;
@@ -981,5 +981,19 @@ void warn_unreachable_function(func_t *func)
         else if (s->kind == STMT_LABEL && end_label &&
                  strcmp(s->label.name, end_label) == 0)
             reachable = 1;
+        else if (s->kind == STMT_EXPR && s->expr.expr &&
+                 s->expr.expr->kind == EXPR_CALL) {
+            symbol_t *fs = symtable_lookup(funcs, s->expr.expr->call.name);
+            if (fs && fs->is_noreturn) {
+                if (i + 1 < func->body_count &&
+                    !(func->body[i+1]->kind == STMT_LABEL && end_label &&
+                      strcmp(func->body[i+1]->label.name, end_label) == 0)) {
+                    error_set(s->line, s->column, error_current_file,
+                              error_current_function);
+                    error_print("warning: non-returning call without terminator");
+                }
+                reachable = 0;
+            }
+        }
     }
 }

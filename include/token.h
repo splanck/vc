@@ -40,6 +40,7 @@ typedef enum {
     TOK_KW_RESTRICT,
     TOK_KW_REGISTER,
     TOK_KW_INLINE,
+    TOK_KW_NORETURN,
     TOK_KW_STATIC_ASSERT,
     TOK_KW_RETURN,
     TOK_KW_IF,
