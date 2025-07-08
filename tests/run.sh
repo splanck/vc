@@ -145,6 +145,15 @@ cc -Iinclude -Wall -Wextra -std=c99 -DUNIT_TESTING -Dcompile_unit=test_compile_u
 cc -Iinclude -Wall -Wextra -std=c99 -c "$DIR/unit/test_compile_obj_fail.c" -o "$DIR/test_compile_obj_fail.o"
 cc -Wl,--gc-sections -o "$DIR/compile_obj_fail" compile_obj_fail.o "$DIR/test_compile_obj_fail.o"
 rm -f compile_obj_fail.o "$DIR/test_compile_obj_fail.o"
+# build constant folding tests
+cc -Iinclude -Wall -Wextra -std=c99 -Dmalloc=test_malloc -Dcalloc=test_calloc -Dfree=test_free -c src/ir_core.c -o ir_fold.o
+cc -Iinclude -Wall -Wextra -std=c99 -Dmalloc=test_malloc -Dcalloc=test_calloc -Dfree=test_free -c src/util.c -o util_fold.o
+cc -Iinclude -Wall -Wextra -std=c99 -Dcalloc=test_calloc -Dfree=test_free -c src/opt_fold.c -o opt_fold_main.o
+cc -Iinclude -Wall -Wextra -std=c99 -Dfree=test_free -c src/label.c -o label_fold.o
+cc -Iinclude -Wall -Wextra -std=c99 -Dfree=test_free -c src/error.c -o error_fold.o
+cc -Iinclude -Wall -Wextra -std=c99 -c "$DIR/unit/test_opt_fold.c" -o "$DIR/test_opt_fold.o"
+cc -o "$DIR/opt_fold_tests" ir_fold.o util_fold.o opt_fold_main.o label_fold.o error_fold.o "$DIR/test_opt_fold.o"
+rm -f ir_fold.o util_fold.o opt_fold_main.o label_fold.o error_fold.o "$DIR/test_opt_fold.o"
 # build unreachable block elimination test
 cc -Iinclude -Wall -Wextra -std=c99 -c src/ir_core.c -o ir_unreach.o
 cc -Iinclude -Wall -Wextra -std=c99 -c src/util.c -o util_unreach.o
@@ -190,6 +199,7 @@ rm -f ir_licm.o util_licm.o label_licm.o error_licm.o opt_main_licm.o \
 "$DIR/cli_tests"
 "$DIR/parser_alloc_tests"
 "$DIR/ir_core_tests"
+"$DIR/opt_fold_tests"
 "$DIR/opt_unreachable_tests"
 "$DIR/opt_licm_tests"
 # remaining unit test binaries
