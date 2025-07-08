@@ -23,6 +23,15 @@
 #include "error.h"
 #include "preproc_macros.h"
 #include <limits.h>
+#include <stdint.h>
+
+/* Active struct packing alignment (0 means natural) */
+size_t semantic_pack_alignment = 0;
+
+void semantic_set_pack(size_t align)
+{
+    semantic_pack_alignment = align;
+}
 
 /* Track inline functions already emitted */
 static const char **inline_emitted = NULL;
@@ -54,23 +63,42 @@ size_t layout_struct_members(struct_member_t *members, size_t count)
 {
     size_t byte_off = 0;
     unsigned bit_off = 0;
+    size_t pack = semantic_pack_alignment ? semantic_pack_alignment : SIZE_MAX;
+
     for (size_t i = 0; i < count; i++) {
-        members[i].offset = byte_off;
-        if (members[i].bit_width > 0) {
+        if (members[i].bit_width == 0) {
+            size_t align = members[i].elem_size;
+            if (align > pack)
+                align = pack;
+            if (bit_off)
+                byte_off++, bit_off = 0;
+            if (align > 1) {
+                size_t rem = byte_off % align;
+                if (rem)
+                    byte_off += align - rem;
+            }
+            members[i].offset = byte_off;
+            members[i].bit_offset = 0;
+            if (!members[i].is_flexible)
+                byte_off += members[i].elem_size;
+        } else {
+            members[i].offset = byte_off;
             members[i].bit_offset = bit_off;
             bit_off += members[i].bit_width;
             byte_off += bit_off / 8;
             bit_off %= 8;
-        } else {
-            members[i].bit_offset = 0;
-            if (bit_off)
-                byte_off++, bit_off = 0;
-            if (!members[i].is_flexible)
-                byte_off += members[i].elem_size;
         }
     }
+
     if (bit_off)
         byte_off++;
+
+    if (pack != SIZE_MAX && pack > 1) {
+        size_t rem = byte_off % pack;
+        if (rem)
+            byte_off += pack - rem;
+    }
+
     return byte_off;
 }
 

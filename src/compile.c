@@ -70,6 +70,7 @@ typedef struct compile_context {
     symtable_t  globals;
     ir_builder_t ir;
     vector_t    deps;
+    size_t      pack_alignment;
 } compile_context_t;
 
 /* Stage implementations */
@@ -279,6 +280,8 @@ static void compile_ctx_init(compile_context_t *ctx)
     symtable_init(&ctx->globals);
     ir_builder_init(&ctx->ir);
     vector_init(&ctx->deps, sizeof(char *));
+    ctx->pack_alignment = 0;
+    semantic_set_pack(0);
 }
 
 /* Free resources allocated during compilation */

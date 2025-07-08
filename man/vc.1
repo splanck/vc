@@ -65,6 +65,8 @@ use \fB__VA_ARGS__\fR within the body to access the extra arguments.
 The \fB#error\fR directive prints its message to stderr and aborts
 preprocessing when encountered.  The \fB#warning\fR directive prints its
 message but preprocessing continues.  The special pragma
+\fB#pragma pack(push,n)\fR changes struct packing alignment with
+\fB#pragma pack(pop)\fR restoring the previous value.
 \fB#pragma once\fR marks a header so subsequent includes of the same
 file are ignored.
 Several standard identifiers are always defined and expand to context

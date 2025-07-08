@@ -17,6 +17,10 @@
 size_t layout_union_members(union_member_t *members, size_t count);
 size_t layout_struct_members(struct_member_t *members, size_t count);
 
+/* Current maximum alignment for struct packing */
+extern size_t semantic_pack_alignment;
+void semantic_set_pack(size_t align);
+
 int check_func(func_t *func, symtable_t *funcs, symtable_t *globals,
                ir_builder_t *ir);
 int check_global(stmt_t *decl, symtable_t *globals, ir_builder_t *ir);

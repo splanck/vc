@@ -122,6 +122,9 @@ cc -Iinclude -Wall -Wextra -std=c99 -c src/util.c -o util_variadic.o
 cc -Iinclude -Wall -Wextra -std=c99 -c "$DIR/unit/test_variadic_macro.c" -o "$DIR/test_variadic_macro.o"
 cc -o "$DIR/variadic_macro_tests" preproc_variadic.o strbuf_variadic.o vector_variadic.o util_variadic.o "$DIR/test_variadic_macro.o"
 rm -f preproc_variadic.o strbuf_variadic.o vector_variadic.o util_variadic.o "$DIR/test_variadic_macro.o"
+# build pack pragma layout tests
+cc -Iinclude -Wall -Wextra -std=c99 \
+    -o "$DIR/pack_pragma_tests" "$DIR/unit/test_pack_pragma.c"
 # build create_temp_file path length regression test
 cc -Iinclude -Wall -Wextra -std=c99 -DUNIT_TESTING -ffunction-sections -fdata-sections -c src/compile.c -o compile_temp.o
 cc -Iinclude -Wall -Wextra -std=c99 -c "$DIR/unit/test_temp_file.c" -o "$DIR/test_temp_file.o"
@@ -169,6 +172,7 @@ rm -f ir_unreach.o util_unreach.o label_unreach.o error_unreach.o opt_main.o \
 "$DIR/preproc_alloc_tests"
 "$DIR/add_macro_fail_tests"
 "$DIR/variadic_macro_tests"
+"$DIR/pack_pragma_tests"
 "$DIR/invalid_macro_tests"
 # separator for clarity
 echo "======="
