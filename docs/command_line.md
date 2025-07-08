@@ -56,6 +56,10 @@ Only if neither variable is available does it fall back to `/tmp`.
 The assembler can be overridden with the `AS` environment variable while
 `CC` specifies the linker command and the default assembler for AT&T
 syntax.  When unset they default to `nasm` (Intel mode) and `cc`.
+Additional options may be supplied in the `VCFLAGS` environment variable.
+Its contents are split on spaces and prepended to the argument vector so
+flags provided directly on the command line override those from
+`VCFLAGS`.
 
 Use `vc -o out.s source.c` to compile a file, `vc -c -o out.o source.c` to
 produce an object, `vc --link -o prog main.c util.c` to build an executable

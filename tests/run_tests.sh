@@ -127,6 +127,23 @@ if ! diff -u "$DIR/fixtures/include_search.s" "${inc_env_out}"; then
 fi
 rm -f "${inc_env_out}"
 
+# verify VCFLAGS options are parsed
+vcflags_out=$(mktemp)
+VCFLAGS="--x86-64" "$BINARY" -o "${vcflags_out}" "$DIR/fixtures/simple_add.c"
+if ! diff -u "$DIR/fixtures/simple_add_x86-64.s" "${vcflags_out}"; then
+    echo "Test vcflags_x86_64 failed"
+    fail=1
+fi
+rm -f "${vcflags_out}"
+
+vcflags_out=$(mktemp)
+VCFLAGS="--intel-syntax" "$BINARY" -o "${vcflags_out}" "$DIR/fixtures/pointer_add.c"
+if ! diff -u "$DIR/fixtures/pointer_add_intel.s" "${vcflags_out}"; then
+    echo "Test vcflags_intel failed"
+    fail=1
+fi
+rm -f "${vcflags_out}"
+
 # verify #include_next directive
 next_out=$(mktemp)
 "$BINARY" -I "$DIR/include_next/dir1" -I "$DIR/include_next/dir2" -I "$DIR/include_next/dir3" -o "${next_out}" "$DIR/fixtures/include_next.c"
