@@ -14,6 +14,7 @@ shows a short example and how to compile it.
 - [Bitwise operations](#bitwise-operations)
 - [64-bit integers](#64-bit-integers)
 - [Numeric constants](#numeric-constants)
+- [Casts](#casts)
 - [Function calls](#function-calls)
 - [Returning structs](#returning-structs)
 - [Variadic functions](#variadic-functions)
@@ -168,6 +169,19 @@ Integer literals may optionally end with `u`/`U` to make the
 constant unsigned and `l`/`L` or `ll`/`LL` to select `long` or
 `long long`.  These suffixes can be mixed in any order such as
 `1ul` or `3llu`.
+
+### Casts
+```c
+/* cast.c */
+int main() {
+    double d = 3.7;
+    return (int)d;
+}
+```
+Compile with:
+```sh
+vc -o cast.s cast.c
+```
 
 ### Function calls
 ```c
