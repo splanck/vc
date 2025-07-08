@@ -21,6 +21,9 @@ typedef struct {
 /* Print an optimization error message */
 void opt_error(const char *msg);
 
+/* Assign alias sets to memory operations */
+void compute_alias_sets(ir_builder_t *ir);
+
 /*
  * Run optimization passes on the given IR builder.
  *

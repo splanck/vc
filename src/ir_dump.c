@@ -123,6 +123,8 @@ char *ir_to_string(ir_builder_t *ir)
         strbuf_appendf(&sb, " imm=%lld name=%s data=%s", ins->imm,
                        ins->name ? ins->name : "",
                        ins->data ? ins->data : "");
+        if (ins->alias_set)
+            strbuf_appendf(&sb, " alias=%d", ins->alias_set);
         if (ins->is_restrict)
             strbuf_append(&sb, " restrict");
         if (ins->is_volatile)

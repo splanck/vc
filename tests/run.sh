@@ -147,13 +147,14 @@ cc -Iinclude -Wall -Wextra -std=c99 -c src/opt_fold.c -o opt_fold_unreach.o
 cc -Iinclude -Wall -Wextra -std=c99 -c src/opt_dce.c -o opt_dce_unreach.o
 cc -Iinclude -Wall -Wextra -std=c99 -c src/opt_inline.c -o opt_inline_unreach.o
 cc -Iinclude -Wall -Wextra -std=c99 -c src/opt_unreachable.c -o opt_unreach.o
+cc -Iinclude -Wall -Wextra -std=c99 -c src/opt_alias.c -o opt_alias_unreach.o
 cc -Iinclude -Wall -Wextra -std=c99 -c "$DIR/unit/test_opt_unreachable.c" -o "$DIR/test_opt_unreachable.o"
 cc -o "$DIR/opt_unreachable_tests" ir_unreach.o util_unreach.o label_unreach.o error_unreach.o \
     opt_main.o opt_constprop_unreach.o opt_cse_unreach.o opt_fold_unreach.o \
-    opt_dce_unreach.o opt_inline_unreach.o opt_unreach.o "$DIR/test_opt_unreachable.o"
+    opt_dce_unreach.o opt_inline_unreach.o opt_unreach.o opt_alias_unreach.o "$DIR/test_opt_unreachable.o"
 rm -f ir_unreach.o util_unreach.o label_unreach.o error_unreach.o opt_main.o \
       opt_constprop_unreach.o opt_cse_unreach.o opt_fold_unreach.o \
-      opt_dce_unreach.o opt_inline_unreach.o opt_unreach.o "$DIR/test_opt_unreachable.o"
+      opt_dce_unreach.o opt_inline_unreach.o opt_unreach.o opt_alias_unreach.o "$DIR/test_opt_unreachable.o"
 # run unit tests
 "$DIR/unit_tests"
 "$DIR/cli_tests"

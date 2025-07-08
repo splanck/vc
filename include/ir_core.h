@@ -88,6 +88,7 @@ typedef struct ir_instr {
     char *data;
     int is_volatile;
     int is_restrict;
+    int alias_set;
     struct ir_instr *next;
     const char *file;
     size_t line;
