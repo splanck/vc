@@ -124,6 +124,36 @@ static void test_lexer_imag_number(void)
     lexer_free_tokens(toks, count);
 }
 
+/* Parsing of an imaginary constant as a complex literal. */
+static void test_parser_imag_literal(void)
+{
+    const char *src = "2i";
+    size_t count = 0;
+    token_t *toks = lexer_tokenize(src, &count);
+    parser_t p; parser_init(&p, toks, count);
+    expr_t *expr = parser_parse_expr(&p);
+    ASSERT(expr && expr->kind == EXPR_COMPLEX_LITERAL);
+    ASSERT(expr->complex_lit.real == 0.0);
+    ASSERT(expr->complex_lit.imag == 2.0);
+    ast_free_expr(expr);
+    lexer_free_tokens(toks, count);
+}
+
+/* Parsing of a real plus imaginary constant as a complex literal. */
+static void test_parser_complex_literal(void)
+{
+    const char *src = "1.0 + 2.0i";
+    size_t count = 0;
+    token_t *toks = lexer_tokenize(src, &count);
+    parser_t p; parser_init(&p, toks, count);
+    expr_t *expr = parser_parse_expr(&p);
+    ASSERT(expr && expr->kind == EXPR_COMPLEX_LITERAL);
+    ASSERT(expr->complex_lit.real == 1.0);
+    ASSERT(expr->complex_lit.imag == 2.0);
+    ast_free_expr(expr);
+    lexer_free_tokens(toks, count);
+}
+
 /* Parse a simple arithmetic expression and verify operator precedence. */
 static void test_parser_expr(void)
 {
@@ -232,6 +262,48 @@ static void test_parser__Bool_decl(void)
     stmt_t *stmt = parser_parse_stmt(&p);
     ASSERT(stmt && stmt->kind == STMT_VAR_DECL);
     ASSERT(stmt->var_decl.type == TYPE_BOOL);
+    ast_free_stmt(stmt);
+    lexer_free_tokens(toks, count);
+}
+
+/* Declaration of a float _Complex variable. */
+static void test_parser_float_complex_decl(void)
+{
+    const char *src = "float _Complex z;";
+    size_t count = 0;
+    token_t *toks = lexer_tokenize(src, &count);
+    parser_t p; parser_init(&p, toks, count);
+    stmt_t *stmt = parser_parse_stmt(&p);
+    ASSERT(stmt && stmt->kind == STMT_VAR_DECL);
+    ASSERT(stmt->var_decl.type == TYPE_FLOAT_COMPLEX);
+    ast_free_stmt(stmt);
+    lexer_free_tokens(toks, count);
+}
+
+/* Declaration of a double _Complex variable. */
+static void test_parser_double_complex_decl(void)
+{
+    const char *src = "double _Complex z;";
+    size_t count = 0;
+    token_t *toks = lexer_tokenize(src, &count);
+    parser_t p; parser_init(&p, toks, count);
+    stmt_t *stmt = parser_parse_stmt(&p);
+    ASSERT(stmt && stmt->kind == STMT_VAR_DECL);
+    ASSERT(stmt->var_decl.type == TYPE_DOUBLE_COMPLEX);
+    ast_free_stmt(stmt);
+    lexer_free_tokens(toks, count);
+}
+
+/* Declaration of a long double _Complex variable. */
+static void test_parser_long_double_complex_decl(void)
+{
+    const char *src = "long double _Complex z;";
+    size_t count = 0;
+    token_t *toks = lexer_tokenize(src, &count);
+    parser_t p; parser_init(&p, toks, count);
+    stmt_t *stmt = parser_parse_stmt(&p);
+    ASSERT(stmt && stmt->kind == STMT_VAR_DECL);
+    ASSERT(stmt->var_decl.type == TYPE_LDOUBLE_COMPLEX);
     ast_free_stmt(stmt);
     lexer_free_tokens(toks, count);
 }
@@ -686,6 +758,8 @@ int main(void)
     test_lexer_new_types();
     test_lexer_complex_kw();
     test_lexer_imag_number();
+    test_parser_imag_literal();
+    test_parser_complex_literal();
     test_parser_expr();
     test_parser_stmt_return();
     test_parser_stmt_return_void();
@@ -693,6 +767,9 @@ int main(void)
     test_parser_short_decl();
     test_parser_bool_decl();
     test_parser__Bool_decl();
+    test_parser_float_complex_decl();
+    test_parser_double_complex_decl();
+    test_parser_long_double_complex_decl();
     test_lexer_static_kw();
     test_parser_static_local();
     test_parser_array_decl();
