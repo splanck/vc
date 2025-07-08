@@ -13,6 +13,7 @@ void propagate_load_consts(ir_builder_t *ir);
 void common_subexpr_elim(ir_builder_t *ir);
 void inline_small_funcs(ir_builder_t *ir);
 void fold_constants(ir_builder_t *ir);
+void opt_licm(ir_builder_t *ir);
 void remove_unreachable_blocks(ir_builder_t *ir);
 void dead_code_elim(ir_builder_t *ir);
 void compute_alias_sets(ir_builder_t *ir);
@@ -36,6 +37,7 @@ void opt_run(ir_builder_t *ir, const opt_config_t *cfg)
         inline_small_funcs(ir);
     if (c->fold_constants)
         fold_constants(ir);
+    opt_licm(ir);
     remove_unreachable_blocks(ir);
     if (c->dead_code)
         dead_code_elim(ir);

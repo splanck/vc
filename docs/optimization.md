@@ -3,7 +3,7 @@
 See the [documentation index](README.md) for a list of all available pages.
 
 The optimizer in **vc** operates on the intermediate representation (IR).
-Seven passes are currently available and are executed in order:
+Eight passes are currently available and are executed in order:
 1. **Alias analysis** – assigns alias sets to memory operations.
 2. **Constant propagation** – replaces loads of variables whose values are
    known constants with immediate constants.
@@ -13,9 +13,11 @@ Seven passes are currently available and are executed in order:
    instructions or just a `return` when they are marked `inline`.
 5. **Constant folding** – evaluates arithmetic instructions whose operands are
    constants and replaces them with a single constant.
-6. **Unreachable block elimination** – removes instructions that cannot be
+6. **Loop-invariant code motion** – hoists computations whose operands do not
+   change within a loop.
+7. **Unreachable block elimination** – removes instructions that cannot be
    executed from the start of the function.
-7. **Dead code elimination** – removes instructions that produce values which
+8. **Dead code elimination** – removes instructions that produce values which
    are never used and have no side effects.
 
 Alias analysis assigns a unique identifier to every load and store. Named
@@ -64,6 +66,11 @@ For example, an expression such as `1.0L + 2.0L` is folded to a single
 constant at compile time.
 Intermediate results are checked for overflow; if a computation exceeds the
 range of `long long` the compiler emits a `Constant overflow` diagnostic.
+
+The loop-invariant code motion pass looks for pure computations inside a loop
+whose operands are defined outside the loop body. Such instructions are moved
+before the loop header so they execute only once. This reduces the amount of
+work performed during each iteration.
 
 The unreachable block pass scans each function and removes any instructions
 that cannot be reached from its `IR_FUNC_BEGIN`.  Blocks that follow an

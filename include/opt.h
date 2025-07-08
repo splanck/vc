@@ -33,9 +33,13 @@ void compute_alias_sets(ir_builder_t *ir);
  * 3. Common subexpression elimination
  * 4. Inline expansion
  * 5. Constant folding
- * 6. Unreachable block elimination
- * 7. Dead code elimination
+ * 6. Loop-invariant code motion
+ * 7. Unreachable block elimination
+ * 8. Dead code elimination
  */
 void opt_run(ir_builder_t *ir, const opt_config_t *cfg);
+
+/* Hoist loop invariant computations */
+void opt_licm(ir_builder_t *ir);
 
 #endif /* VC_OPT_H */
