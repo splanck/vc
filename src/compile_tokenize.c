@@ -193,6 +193,7 @@ static int read_stdin_source(const cli_options_t *cli,
         free(path);
         return 0;
     }
+    semantic_set_pack(ctx.pack_alignment);
     preproc_context_free(&ctx);
 
     *out_path = path;
@@ -241,6 +242,7 @@ int compile_tokenize_impl(const char *source, const cli_options_t *cli,
                 }
             }
         }
+        semantic_set_pack(ctx.pack_alignment);
         preproc_context_free(&ctx);
     }
 

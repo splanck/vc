@@ -25,7 +25,9 @@ preprocessor directive is handled immediately:
 - Conditional directives (`#if`, `#ifdef`, `#ifndef`, `#elif`, `#else` and
   `#endif`) manipulate a stack of state objects so nested conditions may be
   evaluated correctly.
-- `#pragma` lines are passed through verbatim when active.
+- `#pragma` lines are passed through verbatim when active. `#pragma pack(push,n)`
+  updates the current struct packing alignment and `#pragma pack(pop)` restores
+  the previous value.
 - `#pragma once` marks the current file so subsequent includes of the same
   path are ignored.
 - Any other line has macros expanded and is appended to the output buffer.
@@ -87,11 +89,13 @@ source files with `#define`. After preprocessing the expanded text is handed to
 the lexer for tokenization.
 ## Preprocessor context
 
-`preproc_context_t` is defined in `include/preproc_file.h` and is passed to `preproc_run`. It contains two vectors:
+`preproc_context_t` is defined in `include/preproc_file.h` and is passed to `preproc_run`. It contains several fields:
 
 ```c
 vector_t pragma_once_files; /* headers marked with #pragma once */
 vector_t deps;              /* all processed files */
+vector_t pack_stack;        /* active #pragma pack values */
+size_t pack_alignment;      /* current packing alignment */
 ```
 
 `pragma_once_files` tracks headers that issued `#pragma once` so they are not

@@ -26,6 +26,7 @@
 #include "preproc_file.h"
 #include "preproc_macros.h"
 #include "preproc_expr.h"
+#include "semantic_global.h"
 #include "util.h"
 #include "vector.h"
 #include "strbuf.h"
@@ -1009,6 +1010,38 @@ static int handle_pragma_directive(char *line, const char *dir,
             if (!pragma_once_add(ctx, cur))
                 return 0;
         }
+    } else if (strncmp(p, "pack", 4) == 0) {
+        p += 4;
+        p = skip_ws(p);
+        if (strncmp(p, "(push", 5) == 0) {
+            p += 5; /* after '(push' */
+            if (*p == ',')
+                p++;
+            p = skip_ws(p);
+            errno = 0;
+            char *end;
+            long val = strtol(p, &end, 10);
+            if (errno == 0 && end != p) {
+                p = end;
+                p = skip_ws(p);
+                if (*p == ')') {
+                    vector_push(&ctx->pack_stack, &ctx->pack_alignment);
+                    ctx->pack_alignment = (size_t)val;
+                    semantic_set_pack(ctx->pack_alignment);
+                }
+            }
+        } else if (strncmp(p, "(pop)", 5) == 0) {
+            if (ctx->pack_stack.count) {
+                ctx->pack_alignment =
+                    ((size_t *)ctx->pack_stack.data)[ctx->pack_stack.count - 1];
+                ctx->pack_stack.count--;
+            } else {
+                ctx->pack_alignment = 0;
+            }
+            semantic_set_pack(ctx->pack_alignment);
+        }
+        (void)stack;
+        return 1; /* do not emit pragma line */
     }
     (void)stack;
     return handle_pragma(line, conds, out);
@@ -1234,6 +1267,8 @@ static void init_preproc_vectors(preproc_context_t *ctx, vector_t *macros,
     vector_init(stack, sizeof(include_entry_t));
     vector_init(&ctx->pragma_once_files, sizeof(char *));
     vector_init(&ctx->deps, sizeof(char *));
+    vector_init(&ctx->pack_stack, sizeof(size_t));
+    ctx->pack_alignment = 0;
     strbuf_init(out);
 }
 
@@ -1253,6 +1288,7 @@ static void cleanup_preproc_vectors(preproc_context_t *ctx, vector_t *macros,
     for (size_t i = 0; i < ctx->pragma_once_files.count; i++)
         free(((char **)ctx->pragma_once_files.data)[i]);
     vector_free(&ctx->pragma_once_files);
+    vector_free(&ctx->pack_stack);
     strbuf_free(out);
 }
 
@@ -1262,6 +1298,7 @@ void preproc_context_free(preproc_context_t *ctx)
     for (size_t i = 0; i < ctx->deps.count; i++)
         free(((char **)ctx->deps.data)[i]);
     vector_free(&ctx->deps);
+    vector_free(&ctx->pack_stack);
 }
 
 /* Apply macro definitions specified on the command line */
