@@ -20,6 +20,8 @@ preprocessor directive is handled immediately:
 - `#undef` removes existing definitions.
 - `#error` prints the given message to stderr and aborts preprocessing when
   encountered in an active block.
+- `#warning` prints the given message to stderr but continues preprocessing
+  when encountered in an active block.
 - Conditional directives (`#if`, `#ifdef`, `#ifndef`, `#elif`, `#else` and
   `#endif`) manipulate a stack of state objects so nested conditions may be
   evaluated correctly.
@@ -27,6 +29,12 @@ preprocessor directive is handled immediately:
 - `#pragma once` marks the current file so subsequent includes of the same
   path are ignored.
 - Any other line has macros expanded and is appended to the output buffer.
+
+A simple usage example is:
+
+```c
+#warning "incomplete feature"
+```
 
 At the end of processing the combined text is returned to the compiler and fed
 into the lexer.
