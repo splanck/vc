@@ -41,6 +41,7 @@ static const keyword_t keyword_table[] = {
     { "long",     TOK_KW_LONG },
     { "bool",     TOK_KW_BOOL },
     { "_Bool",    TOK_KW_BOOL },
+    { "_Complex", TOK_KW_COMPLEX },
     { "unsigned", TOK_KW_UNSIGNED },
     { "void",     TOK_KW_VOID },
     { "enum",     TOK_KW_ENUM },
@@ -263,9 +264,15 @@ static void read_number(const char *src, size_t *i, size_t *col,
         (*i)++;
     }
 
+    token_type_t type = TOK_NUMBER;
+    if (src[*i] == 'i' || src[*i] == 'I') {
+        (*i)++;
+        type = TOK_IMAG_NUMBER;
+    }
+
     size_t len = *i - start;
     (void)is_float; /* not used but kept for clarity */
-    append_token(tokens, TOK_NUMBER, src + start, len, line, *col);
+    append_token(tokens, type, src + start, len, line, *col);
     *col += len;
 }
 
