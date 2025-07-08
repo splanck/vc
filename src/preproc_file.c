@@ -972,6 +972,22 @@ static int handle_error_directive(char *line, const char *dir,
     return 1;
 }
 
+/* Emit a warning message but continue preprocessing when active. */
+static int handle_warning_directive(char *line, const char *dir,
+                                    vector_t *macros, vector_t *conds,
+                                    strbuf_t *out,
+                                    const vector_t *incdirs,
+                                    vector_t *stack,
+                                    preproc_context_t *ctx)
+{
+    (void)dir; (void)macros; (void)out; (void)incdirs; (void)stack; (void)ctx;
+    char *msg = line + 8; /* skip '#warning' */
+    msg = skip_ws(msg);
+    if (is_active(conds))
+        fprintf(stderr, "%s\n", *msg ? msg : "preprocessor warning");
+    return 1;
+}
+
 /* Copy a #pragma line into the output when active. */
 static int handle_pragma_directive(char *line, const char *dir,
                                    vector_t *macros, vector_t *conds,
@@ -1071,6 +1087,7 @@ static const directive_entry_t directive_table[] = {
     {"#line",         SPACE_ANY,   handle_line_directive},
     {"#pragma",  SPACE_ANY,   handle_pragma_directive},
     {"#undef",   SPACE_ANY,   handle_undef_directive},
+    {"#warning", SPACE_ANY,   handle_warning_directive},
 };
 
 static const directive_bucket_t directive_buckets[26] = {
@@ -1080,6 +1097,7 @@ static const directive_bucket_t directive_buckets[26] = {
     ['l' - 'a'] = {10, 1}, /* #line */
     ['p' - 'a'] = {11, 1}, /* #pragma */
     ['u' - 'a'] = {12, 1}, /* #undef */
+    ['w' - 'a'] = {13, 1}, /* #warning */
 };
 
 static const directive_entry_t *lookup_directive(const char *line)

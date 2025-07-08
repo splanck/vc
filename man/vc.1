@@ -63,7 +63,8 @@ expanded recursively. The \fB#\fR operator stringizes a parameter and
 Variadic macros are declared by ending the parameter list with \fB...\fR and
 use \fB__VA_ARGS__\fR within the body to access the extra arguments.
 The \fB#error\fR directive prints its message to stderr and aborts
-preprocessing when encountered.  The special pragma
+preprocessing when encountered.  The \fB#warning\fR directive prints its
+message but preprocessing continues.  The special pragma
 \fB#pragma once\fR marks a header so subsequent includes of the same
 file are ignored.
 Several standard identifiers are always defined and expand to context
