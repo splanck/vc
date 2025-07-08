@@ -48,6 +48,7 @@ static void print_usage(const char *prog)
     printf("      --no-inline      Disable inline expansion\n");
     printf("      --debug          Emit .file/.loc directives\n");
     printf("      --no-color       Disable colored diagnostics\n");
+    printf("      --no-warn-unreachable  Disable unreachable code warnings\n");
     printf("      --x86-64         Generate 64-bit x86 assembly\n");
     printf("      --intel-syntax    Use Intel assembly syntax\n");
     printf("  -S, --dump-asm       Print assembly to stdout and exit\n");
@@ -85,6 +86,7 @@ static void init_default_opts(cli_options_t *opts)
     opts->color_diag = true;
     opts->dep_only = false;
     opts->deps = false;
+    opts->warn_unreachable = true;
     opts->asm_syntax = ASM_ATT;
     opts->std = STD_C99;
     opts->obj_dir = NULL;
@@ -359,6 +361,7 @@ static int handle_option(int opt, const char *arg, const char *prog,
         {CLI_OPT_DEBUG,     offsetof(cli_options_t, debug), 1, true},
         {CLI_OPT_NO_INLINE, offsetof(cli_options_t, opt_cfg.inline_funcs), 0, false},
         {CLI_OPT_NO_COLOR,  offsetof(cli_options_t, color_diag), 0, true},
+        {CLI_OPT_NO_WARN_UNREACHABLE, offsetof(cli_options_t, warn_unreachable), 0, true},
         {CLI_OPT_DEP_ONLY, offsetof(cli_options_t, dep_only), 1, true},
         {CLI_OPT_DEP,      offsetof(cli_options_t, deps), 1, true},
         {'E', offsetof(cli_options_t, preprocess), 1, true},
@@ -452,6 +455,7 @@ int cli_parse_args(int argc, char **argv, cli_options_t *opts)
         {"std", required_argument,   0, CLI_OPT_STD},
         {"obj-dir", required_argument, 0, CLI_OPT_OBJ_DIR},
         {"no-color", no_argument, 0, CLI_OPT_NO_COLOR},
+        {"no-warn-unreachable", no_argument, 0, CLI_OPT_NO_WARN_UNREACHABLE},
         {0, 0, 0, 0}
     };
 

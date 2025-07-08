@@ -16,6 +16,7 @@
 #include "cli.h"
 #include "compile.h"
 #include "error.h"
+#include "semantic_stmt.h"
 
 /*
  * Program entry point. Parses command line options and coordinates
@@ -30,6 +31,7 @@ int main(int argc, char **argv)
         goto cleanup;
 
     error_use_color = cli.color_diag;
+    semantic_warn_unreachable = cli.warn_unreachable;
 
 
     if (cli.preprocess) {
