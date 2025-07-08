@@ -11,8 +11,8 @@ It processes input through lexical analysis, parsing, semantic analysis,
 optional optimizations, register allocation and code generation.
 The resulting assembly can be written to a file or printed to stdout.
 Intel-style assembly output may be selected with \fB--intel-syntax\fR.
-When this mode is combined with \fB--compile\fR or \fB--link\fR the
-\fInasm\fR assembler must be available.
+When this mode is combined with \fB--compile\fR or \fB--link\fR an
+assembler capable of NASM syntax (see \fBAS\fR) must be available.
 Functions may return \fBstruct\fR or \fBunion\fR values via a hidden pointer.
 Supported constructs include:
 .IP \[bu] 2
@@ -149,8 +149,8 @@ Generate x86-64 assembly instead of 32-bit.
 .TP
 .B --intel-syntax
 Use Intel-style x86 assembly output. When combined with
-\fB--compile\fR or \fB--link\fR this option requires \fInasm\fR to
-assemble the generated code.
+\fB--compile\fR or \fB--link\fR this option requires an assembler that
+understands NASM syntax (see \fBAS\fR).
 .TP
 .BR -c "," \fB--compile\fR
 Assemble the output into an object file using \fBcc -c\fR. When multiple
@@ -225,6 +225,12 @@ paths are processed.
 Colon separated list of directories added to the include search path after any
 .B -I
 paths are processed.
+.TP
+.B AS
+Assembler program to invoke instead of the default.
+.TP
+.B CC
+Command used for linking and as the default assembler when using AT&T syntax.
 .TP
 .B TMPDIR
 Directory for temporary object files when \fB--obj-dir\fR is not used.

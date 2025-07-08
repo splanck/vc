@@ -19,6 +19,25 @@
 # define TEMP_FOPEN_MODE "w"
 #endif
 
+const char *get_cc(void);
+const char *get_as(int intel);
+
+const char *
+get_cc(void)
+{
+    const char *cc = getenv("CC");
+    return (cc && *cc) ? cc : "cc";
+}
+
+const char *
+get_as(int intel)
+{
+    const char *as = getenv("AS");
+    if (as && *as)
+        return as;
+    return intel ? "nasm" : "cc";
+}
+
 int create_temp_file(const cli_options_t *cli, const char *prefix,
                      char **out_path);
 
@@ -85,29 +104,23 @@ static int emit_output_file(ir_builder_t *ir, const char *output,
         int rc;
         if (cli->asm_syntax == ASM_INTEL) {
             const char *fmt = use_x86_64 ? "elf64" : "elf32";
-            char *argv[] = {"nasm", "-f", (char *)fmt, tmpname, "-o",
-                            (char *)output, NULL};
+            char *argv[] = {(char *)get_as(1), "-f", (char *)fmt, tmpname,
+                            "-o", (char *)output, NULL};
             rc = command_run(argv);
         } else {
             const char *arch_flag = use_x86_64 ? "-m64" : "-m32";
-            char *argv[] = {"cc", "-x", "assembler", (char *)arch_flag, "-c",
-                            tmpname, "-o", (char *)output, NULL};
+            char *argv[] = {(char *)get_as(0), "-x", "assembler",
+                            (char *)arch_flag, "-c", tmpname, "-o",
+                            (char *)output, NULL};
             rc = command_run(argv);
         }
         unlink(tmpname);
         free(tmpname);
         if (rc != 1) {
-            if (rc == 0) {
-                if (cli->asm_syntax == ASM_INTEL)
-                    fprintf(stderr, "assembly failed\n");
-                else
-                    fprintf(stderr, "cc failed\n");
-            } else if (rc == -1) {
-                if (cli->asm_syntax == ASM_INTEL)
-                    fprintf(stderr, "nasm terminated by signal\n");
-                else
-                    fprintf(stderr, "cc terminated by signal\n");
-            }
+            if (rc == 0)
+                fprintf(stderr, "assembly failed\n");
+            else if (rc == -1)
+                fprintf(stderr, "assembler terminated by signal\n");
             return 0;
         }
         return 1;

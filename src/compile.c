@@ -93,6 +93,8 @@ static int compile_optimize_impl(ir_builder_t *ir, const opt_config_t *cfg);
 int compile_output_impl(ir_builder_t *ir, const char *output,
                         int dump_ir, int dump_asm, int use_x86_64,
                         int compile, const cli_options_t *cli);
+const char *get_cc(void);
+const char *get_as(int intel);
 
 /* Stage helpers */
 static void compile_ctx_init(compile_context_t *ctx);
@@ -714,7 +716,7 @@ build_linker_args(const vector_t *objs, const vector_t *lib_dirs,
     char **argv = vc_alloc_or_exit(n * sizeof(char *));
 
     size_t idx = 0;
-    argv[idx++] = "cc";
+    argv[idx++] = (char *)get_cc();
     argv[idx++] = (char *)arch_flag;
     for (size_t i = 0; i < objs->count; i++)
         argv[idx++] = ((char **)objs->data)[i];
@@ -757,9 +759,9 @@ static int run_link_command(const vector_t *objs, const vector_t *lib_dirs,
     free_linker_args(argv);
     if (rc != 1) {
         if (rc == 0)
-            fprintf(stderr, "cc failed\n");
+            fprintf(stderr, "linker failed\n");
         else if (rc == -1)
-            fprintf(stderr, "cc terminated by signal\n");
+            fprintf(stderr, "linker terminated by signal\n");
         return 0;
     }
     return 1;
