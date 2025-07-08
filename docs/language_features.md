@@ -34,42 +34,24 @@ shows a short example and how to compile it.
 - [Flexible array members](#flexible-array-members)
 - [_Noreturn attribute](#_noreturn-attribute)
 
-- Basic arithmetic expressions
-- Function definitions and calls
-- `for`, `while` and `do`/`while` loops
-- Loop initialization may declare a variable
-- Pointers
-- Arrays
-- Variable length arrays inside functions
-- Compound assignment operators (`+=`, `-=`, `*=`, `/=`, `%=`)
-- Increment and decrement operators (`++`, `--`)
-- Logical operators `&&`, `||` and `!`
-- Conditional operator (`?:`)
-- `switch` statements with `case` and `default`
-- Bitwise operators (`&`, `|`, `^`, `<<`, `>>` and compound forms)
-- Floating-point types (`float`, `double`, `long double`)
-- Complex numbers using the `_Complex` keyword
-- `sizeof` operator
-- Global variables
-- Variadic functions using `...`
-- `extern` declarations for globals and function prototypes
-- `break` and `continue` statements
-- Labels and `goto`
-- `struct` and `union` objects with member assignments
-- `typedef` declarations creating type aliases
-- Bit-field members using `type name : width`
-- Flexible array members as the final struct field
- - Object-like and multi-parameter `#define` macros with recursive expansion
-- `#undef` to remove a previously defined macro
-- Conditional preprocessing directives (`#if`, `#ifdef`, `#ifndef`, `#elif`, `#else`, `#endif`)
-- 64-bit integer literals and arithmetic when using `long long`
-- Boolean type using the `_Bool` keyword
-- Hexadecimal (`0x`) and octal (leading `0`) integer literals
-- String literals which evaluate to a `char *`
-- Character and string literal escapes such as `\n`, `\t`, `\r`, `\b`, `\f`,
-  `\v` along with octal (`\123`) and hexadecimal (`\x7F`) forms
-- Wide character and string literals using the `L'c'` and `L"text"` syntax
-- Adjacent string literals are concatenated at compile time
+- Arrays with variable length support (block scope only), size inference from initializer lists and designated initializers using `[index]` or `.member` designators.
+- Pointer arithmetic, including subtraction and increment operations.
+- C-style casts using the `(type)expr` syntax for explicit conversions.
+- Control flow with `for`, `while` and `do`/`while` loops.
+- Global and external variable declarations.
+- Floating-point types (including `long double`) and the boolean type via `_Bool`.
+- Complex number types using the `_Complex` keyword with support for `+`, `-`, `*`, and `/` operators.
+- 64-bit integer constants (hexadecimal and octal) and character or string literals with standard escape sequences.
+- Integer literals may use the suffixes `u`/`U` and `l`/`LL` in any order.
+- Complete `struct` and `union` declarations with bit fields, enumeration types and typedefs.
+- Union access tracking which reports an error if a different member is read after writing another.
+- Compile-time assertions via `_Static_assert`.
+- Functions marked with `_Noreturn` or the GNU `__attribute__((noreturn))` are treated as terminating calls.
+- Wide character and string literals using `L'c'` and `L"text"`.
+- Adjacent string literals are concatenated at compile time.
+- Qualifiers such as `const` (requires an initializer), `volatile`, `restrict` and `register`.
+- Statements like `break`, `continue`, `switch` with `case`/`default` labels, variadic functions using `...` (floating-point arguments are handled correctly), labels and `goto`.
+- Inline function definitions.
 
 Examples below show how to compile each feature.
 
@@ -823,5 +805,34 @@ void foo(int n) {
 Compile with:
 ```sh
 vc -o noreturn_example.s noreturn_example.c
+```
+
+### Variable qualifiers
+Several qualifiers modify how variables are accessed or stored.
+
+- `const` objects cannot be written after initialization. File scope `const`
+  variables must have an initializer.
+- `volatile` tells the compiler that a variable may change outside the program's
+  control and prevents certain optimizations.
+- `restrict` promises that, for the lifetime of the pointer, only it will be
+  used to access the referenced object.
+- `register` suggests keeping the variable in a CPU register when possible.
+
+```c
+/* qualifiers.c */
+const int c = 5;
+volatile int v;
+int *restrict p;
+
+int main(void) {
+    register int r = c;
+    v = r;
+    p = &v;
+    return *p;
+}
+```
+Compile with:
+```sh
+vc -o qualifiers.s qualifiers.c
 ```
 
