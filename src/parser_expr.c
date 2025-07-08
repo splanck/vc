@@ -11,6 +11,7 @@
  */
 
 #include <stdlib.h>
+#include <string.h>
 #include "parser.h"
 #include "parser_types.h"
 #include "ast_expr.h"
@@ -147,6 +148,44 @@ static int parse_argument_list(parser_t *p, vector_t *out_args)
 }
 
 /* Parse numeric, string and character literals. */
+/*
+ * Parse a possibly concatenated string literal. Adjacent TOK_STRING or
+ * TOK_WIDE_STRING tokens are merged into a single expression node.
+ */
+static expr_t *parse_string_literal(parser_t *p)
+{
+    token_t *tok = peek(p);
+    if (!tok || (tok->type != TOK_STRING && tok->type != TOK_WIDE_STRING))
+        return NULL;
+
+    int is_wide = (tok->type == TOK_WIDE_STRING);
+    size_t line = tok->line;
+    size_t column = tok->column;
+
+    size_t len = strlen(tok->lexeme);
+    char *buf = vc_strdup(tok->lexeme);
+    if (!buf)
+        return NULL;
+    p->pos++;
+
+    while (p->pos < p->count) {
+        token_t *next = &p->tokens[p->pos];
+        if (next->type != tok->type)
+            break;
+        size_t nlen = strlen(next->lexeme);
+        buf = vc_realloc_or_exit(buf, len + nlen + 1);
+        memcpy(buf + len, next->lexeme, nlen + 1);
+        len += nlen;
+        p->pos++;
+    }
+
+    expr_t *res = is_wide ?
+        ast_make_wstring(buf, line, column) :
+        ast_make_string(buf, line, column);
+    free(buf);
+    return res;
+}
+
 static expr_t *parse_literal(parser_t *p)
 {
     token_t *tok = peek(p);
@@ -154,10 +193,9 @@ static expr_t *parse_literal(parser_t *p)
         return NULL;
     if (match(p, TOK_NUMBER))
         return ast_make_number(tok->lexeme, tok->line, tok->column);
-    if (match(p, TOK_STRING))
-        return ast_make_string(tok->lexeme, tok->line, tok->column);
-    if (match(p, TOK_WIDE_STRING))
-        return ast_make_wstring(tok->lexeme, tok->line, tok->column);
+    expr_t *s = parse_string_literal(p);
+    if (s)
+        return s;
     if (match(p, TOK_CHAR))
         return ast_make_char(tok->lexeme[0], tok->line, tok->column);
     if (match(p, TOK_WIDE_CHAR))

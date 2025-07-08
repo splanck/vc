@@ -65,6 +65,7 @@ shows a short example and how to compile it.
 - Character and string literal escapes such as `\n`, `\t`, `\r`, `\b`, `\f`,
   `\v` along with octal (`\123`) and hexadecimal (`\x7F`) forms
 - Wide character and string literals using the `L'c'` and `L"text"` syntax
+- Adjacent string literals are concatenated at compile time
 
 Examples below show how to compile each feature.
 
@@ -292,6 +293,7 @@ assigned to `char *` variables:
 
 ```c
 char *msg = "hi";
+char *concat = "foo" "bar"; /* becomes "foobar" */
 ```
 
 #### Pointer arithmetic

@@ -62,11 +62,14 @@ static type_kind_t check_string_expr(expr_t *expr, symtable_t *vars,
                                      ir_value_t *out)
 {
     (void)vars; (void)funcs;
+    /* Adjacent string tokens are merged during parsing so a single
+     * constant can be emitted here. */
+    const char *text = expr->string.value;
     if (out) {
         if (expr->string.is_wide)
-            *out = ir_build_wstring(ir, expr->string.value);
+            *out = ir_build_wstring(ir, text);
         else
-            *out = ir_build_string(ir, expr->string.value);
+            *out = ir_build_string(ir, text);
     }
     return TYPE_PTR;
 }
