@@ -102,6 +102,28 @@ static void test_lexer_new_types(void)
     lexer_free_tokens(toks, count);
 }
 
+/* Lexing of the _Complex keyword. */
+static void test_lexer_complex_kw(void)
+{
+    const char *src = "_Complex z;";
+    size_t count = 0;
+    token_t *toks = lexer_tokenize(src, &count);
+    ASSERT(toks[0].type == TOK_KW_COMPLEX);
+    ASSERT(toks[1].type == TOK_IDENT && strcmp(toks[1].lexeme, "z") == 0);
+    lexer_free_tokens(toks, count);
+}
+
+/* Lexing of an imaginary constant. */
+static void test_lexer_imag_number(void)
+{
+    const char *src = "1.0i";
+    size_t count = 0;
+    token_t *toks = lexer_tokenize(src, &count);
+    ASSERT(toks[0].type == TOK_IMAG_NUMBER);
+    ASSERT(strcmp(toks[0].lexeme, "1.0i") == 0);
+    lexer_free_tokens(toks, count);
+}
+
 /* Parse a simple arithmetic expression and verify operator precedence. */
 static void test_parser_expr(void)
 {
@@ -662,6 +684,8 @@ int main(void)
     test_lexer_comments();
     test_lexer_percent();
     test_lexer_new_types();
+    test_lexer_complex_kw();
+    test_lexer_imag_number();
     test_parser_expr();
     test_parser_stmt_return();
     test_parser_stmt_return_void();
