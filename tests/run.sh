@@ -56,14 +56,22 @@ rm -f ir_core_test.o util_ircore.o error_ircore.o label_ircore.o "$DIR/test_ir_c
 cc -Iinclude -Wall -Wextra -std=c99 \
     -o "$DIR/cond_expr_tests" "$DIR/unit/test_cond_expr.c" \
     src/semantic_expr.c src/semantic_arith.c src/semantic_mem.c \
-    src/semantic_call.c src/consteval.c src/symtable_core.c \
+    src/semantic_call.c src/consteval.c src/symtable_core.c src/symtable_struct.c \
+    src/ast_expr.c src/vector.c src/util.c src/ir_core.c \
+    src/error.c src/label.c
+# build complex expression semantic tests
+cc -Iinclude -Wall -Wextra -std=c99 \
+    -o "$DIR/complex_expr_tests" "$DIR/unit/test_complex_expr.c" \
+    src/semantic_expr.c src/semantic_arith.c src/semantic_mem.c \
+    src/semantic_call.c src/consteval.c src/symtable_core.c src/symtable_struct.c \
     src/ast_expr.c src/vector.c src/util.c src/ir_core.c \
     src/error.c src/label.c
 # build sizeof pointer evaluation test
 # eval sizeof with small helper modules
 cc -Iinclude -Wall -Wextra -std=c99 \
     -o "$DIR/eval_sizeof_tests" "$DIR/unit/test_eval_sizeof.c" \
-    src/ast_expr.c src/consteval.c src/symtable_core.c src/util.c src/error.c
+    src/ast_expr.c src/consteval.c src/symtable_core.c src/symtable_struct.c \
+    src/util.c src/error.c
 cc -Iinclude -Wall -Wextra -std=c99 \
     -o "$DIR/eval_offsetof_tests" "$DIR/unit/test_eval_offsetof.c" \
     src/ast_expr.c src/consteval.c src/symtable_core.c src/symtable_struct.c \
@@ -71,18 +79,20 @@ cc -Iinclude -Wall -Wextra -std=c99 \
 # build numeric constant overflow regression test
 cc -Iinclude -Wall -Wextra -std=c99 \
     -o "$DIR/number_overflow" "$DIR/unit/test_number_overflow.c" \
-    src/ast_expr.c src/consteval.c src/symtable_core.c src/util.c src/error.c
+    src/ast_expr.c src/consteval.c src/symtable_core.c src/symtable_struct.c \
+    src/util.c src/error.c
 # build numeric literal suffix tests
 cc -Iinclude -Wall -Wextra -std=c99 \
     -o "$DIR/number_suffix" "$DIR/unit/test_number_suffix.c" \
     src/ast_expr.c src/semantic_expr.c src/semantic_arith.c \
     src/semantic_mem.c src/semantic_call.c src/consteval.c \
-    src/symtable_core.c src/vector.c src/util.c src/ir_core.c \
+    src/symtable_core.c src/symtable_struct.c src/vector.c src/util.c src/ir_core.c \
     src/error.c src/label.c
 # build constant arithmetic overflow regression test
 cc -Iinclude -Wall -Wextra -std=c99 \
     -o "$DIR/consteval_overflow" "$DIR/unit/test_consteval_overflow.c" \
-    src/ast_expr.c src/consteval.c src/symtable_core.c src/util.c src/error.c
+    src/ast_expr.c src/consteval.c src/symtable_core.c src/symtable_struct.c \
+    src/util.c src/error.c
 # build strbuf overflow regression test
 cc -Iinclude -Wall -Wextra -std=c99 -c src/strbuf.c -o strbuf_overflow_impl.o
 cc -Iinclude -Wall -Wextra -std=c99 -c src/util.c -o util_strbuf.o
@@ -163,6 +173,7 @@ rm -f ir_unreach.o util_unreach.o label_unreach.o error_unreach.o opt_main.o \
 "$DIR/opt_unreachable_tests"
 # remaining unit test binaries
 "$DIR/cond_expr_tests"
+"$DIR/complex_expr_tests"
 "$DIR/eval_sizeof_tests"
 "$DIR/eval_offsetof_tests"
 "$DIR/number_overflow"
