@@ -45,7 +45,8 @@ typedef enum {
     CLI_OPT_NO_COLOR,
     CLI_OPT_DUMP_TOKENS,
     CLI_OPT_DEP_ONLY,
-    CLI_OPT_DEP
+    CLI_OPT_DEP,
+    CLI_OPT_NO_WARN_UNREACHABLE
 } cli_opt_id;
 
 /* Command line options parsed from argv */
@@ -64,6 +65,7 @@ typedef struct {
     bool color_diag;    /* use ANSI colors in diagnostics */
     bool dep_only;      /* generate dependencies only */
     bool deps;          /* generate dependency file */
+    bool warn_unreachable; /* warn on unreachable statements */
     asm_syntax_t asm_syntax; /* assembly syntax flavor */
     c_std_t std;        /* language standard */
     char *obj_dir;      /* directory for temporary object files */

@@ -129,6 +129,11 @@ Emit .file and .loc directives for debugging.
 .B --no-color
 Disable ANSI colors in diagnostic output.
 .TP
+.B --no-warn-unreachable
+Suppress warnings for unreachable statements after a
+.B return
+or a goto to the function end label.
+.TP
 .B --x86-64
 Generate x86-64 assembly instead of 32-bit.
 .TP
