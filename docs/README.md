@@ -25,3 +25,4 @@ provides an overview of the available documentation.
    goals.
 9. [Contributing](../CONTRIBUTING.md) – how to submit patches and bug reports.
 10. [Memory helpers](memory_helpers.md) – cleaning up vectors of strings or macros.
+11. [Examples](../examples/README.md) – simple programs showing how to compile and run them with `vc`.
