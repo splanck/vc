@@ -88,6 +88,20 @@ static type_kind_t check_char_expr(expr_t *expr, symtable_t *vars,
 }
 
 /*
+ * Validate a complex literal and emit a constant IR value.
+ */
+static type_kind_t check_complex_literal(expr_t *expr, symtable_t *vars,
+                                         symtable_t *funcs, ir_builder_t *ir,
+                                         ir_value_t *out)
+{
+    (void)vars; (void)funcs;
+    if (out)
+        *out = ir_build_cplx_const(ir, expr->complex_lit.real,
+                                   expr->complex_lit.imag);
+    return TYPE_DOUBLE_COMPLEX;
+}
+
+/*
  * Resolve an identifier, ensuring it exists and loading its value or address
  * into the IR.  Enum constants become immediate values.
  */
@@ -224,7 +238,8 @@ static type_kind_t check_assign_expr(expr_t *expr, symtable_t *vars,
 
 type_kind_t vt = check_expr(expr->assign.value, vars, funcs, ir, &val);
     if (((is_intlike(sym->type) && is_intlike(vt)) ||
-         (is_floatlike(sym->type) && (is_floatlike(vt) || is_intlike(vt)))) ||
+         (is_floatlike(sym->type) && (is_floatlike(vt) || is_intlike(vt))) ||
+         (is_complexlike(sym->type) && vt == sym->type)) ||
         vt == sym->type) {
         if (sym->param_index >= 0)
             ir_build_store_param(ir, sym->param_index, val);
@@ -263,7 +278,8 @@ static type_kind_t check_cast_expr(expr_t *expr, symtable_t *vars,
         ((is_intlike(src) || src == TYPE_PTR) &&
          (is_intlike(dst) || dst == TYPE_PTR)) ||
         (is_floatlike(src) && (is_floatlike(dst) || is_intlike(dst))) ||
-        (is_floatlike(dst) && is_intlike(src))) {
+        (is_floatlike(dst) && is_intlike(src)) ||
+        (is_complexlike(src) && src == dst)) {
         if (out)
             *out = val;
         return dst;
@@ -455,6 +471,8 @@ type_kind_t check_expr(expr_t *expr, symtable_t *vars, symtable_t *funcs,
         return check_string_expr(expr, vars, funcs, ir, out);
     case EXPR_CHAR:
         return check_char_expr(expr, vars, funcs, ir, out);
+    case EXPR_COMPLEX_LITERAL:
+        return check_complex_literal(expr, vars, funcs, ir, out);
     case EXPR_UNARY:
         return check_unary_expr(expr, vars, funcs, ir, out);
     case EXPR_IDENT:

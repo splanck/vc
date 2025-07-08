@@ -13,6 +13,7 @@
 
 int is_intlike(type_kind_t t);
 int is_floatlike(type_kind_t t);
+int is_complexlike(type_kind_t t);
 /* Evaluate a constant expression using the given pointer size. */
 int eval_const_expr(expr_t *expr, symtable_t *vars,
                     int use_x86_64, long long *out);

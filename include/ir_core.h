@@ -32,6 +32,11 @@ typedef enum {
     IR_LFSUB,
     IR_LFMUL,
     IR_LFDIV,
+    IR_CPLX_CONST,
+    IR_CPLX_ADD,
+    IR_CPLX_SUB,
+    IR_CPLX_MUL,
+    IR_CPLX_DIV,
     IR_PTR_ADD,
     IR_PTR_DIFF,
     IR_CMPEQ,
@@ -126,6 +131,9 @@ ir_instr_t *ir_insert_after(ir_builder_t *b, ir_instr_t *pos);
 /* Emit IR_CONST for `value` and return the resulting value id. */
 ir_value_t ir_build_const(ir_builder_t *b, long long value);
 
+/* Emit IR_CPLX_CONST building a complex literal. */
+ir_value_t ir_build_cplx_const(ir_builder_t *b, double real, double imag);
+
 /* Emit IR_LOAD of variable `name`. */
 ir_value_t ir_build_load(ir_builder_t *b, const char *name);
 
@@ -135,6 +143,12 @@ ir_value_t ir_build_load_vol(ir_builder_t *b, const char *name);
 /* Emit the binary operation `op` with operands `left` and `right`. */
 ir_value_t ir_build_binop(ir_builder_t *b, ir_op_t op, ir_value_t left,
                           ir_value_t right);
+
+/* Complex arithmetic helpers */
+ir_value_t ir_build_cplx_add(ir_builder_t *b, ir_value_t left, ir_value_t right);
+ir_value_t ir_build_cplx_sub(ir_builder_t *b, ir_value_t left, ir_value_t right);
+ir_value_t ir_build_cplx_mul(ir_builder_t *b, ir_value_t left, ir_value_t right);
+ir_value_t ir_build_cplx_div(ir_builder_t *b, ir_value_t left, ir_value_t right);
 
 /* Emit IR_LOGAND using `left` and `right`. */
 ir_value_t ir_build_logand(ir_builder_t *b, ir_value_t left, ir_value_t right);
