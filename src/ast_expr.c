@@ -304,6 +304,28 @@ expr_t *ast_make_sizeof_expr(expr_t *e, size_t line, size_t column)
     return expr;
 }
 
+/* Create an offsetof expression node. */
+expr_t *ast_make_offsetof(type_kind_t type, const char *tag,
+                          char **members, size_t member_count,
+                          size_t line, size_t column)
+{
+    expr_t *expr = malloc(sizeof(*expr));
+    if (!expr)
+        return NULL;
+    expr->kind = EXPR_OFFSETOF;
+    expr->line = line;
+    expr->column = column;
+    expr->offsetof_expr.type = type;
+    expr->offsetof_expr.tag = vc_strdup(tag ? tag : "");
+    if (!expr->offsetof_expr.tag) {
+        free(expr);
+        return NULL;
+    }
+    expr->offsetof_expr.members = members;
+    expr->offsetof_expr.member_count = member_count;
+    return expr;
+}
+
 /* Create a type cast expression node. */
 expr_t *ast_make_cast(type_kind_t type, size_t array_size, size_t elem_size,
                       expr_t *e, size_t line, size_t column)
@@ -417,6 +439,12 @@ void ast_free_expr(expr_t *expr)
     case EXPR_SIZEOF:
         if (!expr->sizeof_expr.is_type)
             ast_free_expr(expr->sizeof_expr.expr);
+        break;
+    case EXPR_OFFSETOF:
+        for (size_t i = 0; i < expr->offsetof_expr.member_count; i++)
+            free(expr->offsetof_expr.members[i]);
+        free(expr->offsetof_expr.members);
+        free(expr->offsetof_expr.tag);
         break;
     case EXPR_CALL:
         for (size_t i = 0; i < expr->call.arg_count; i++)

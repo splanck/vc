@@ -64,6 +64,10 @@ cc -Iinclude -Wall -Wextra -std=c99 \
 cc -Iinclude -Wall -Wextra -std=c99 \
     -o "$DIR/eval_sizeof_tests" "$DIR/unit/test_eval_sizeof.c" \
     src/ast_expr.c src/consteval.c src/symtable_core.c src/util.c src/error.c
+cc -Iinclude -Wall -Wextra -std=c99 \
+    -o "$DIR/eval_offsetof_tests" "$DIR/unit/test_eval_offsetof.c" \
+    src/ast_expr.c src/consteval.c src/symtable_core.c src/symtable_struct.c \
+    src/util.c src/error.c
 # build numeric constant overflow regression test
 cc -Iinclude -Wall -Wextra -std=c99 \
     -o "$DIR/number_overflow" "$DIR/unit/test_number_overflow.c" \
@@ -156,6 +160,7 @@ rm -f ir_unreach.o util_unreach.o label_unreach.o error_unreach.o opt_main.o \
 # remaining unit test binaries
 "$DIR/cond_expr_tests"
 "$DIR/eval_sizeof_tests"
+"$DIR/eval_offsetof_tests"
 "$DIR/number_overflow"
 "$DIR/number_suffix"
 "$DIR/waitpid_retry"

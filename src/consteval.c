@@ -23,6 +23,8 @@ static int eval_conditional(expr_t *expr, symtable_t *vars,
                             int use_x86_64, long long *out);
 static int eval_ident(expr_t *expr, symtable_t *vars, long long *out);
 static int eval_sizeof(expr_t *expr, int use_x86_64, long long *out);
+static int lookup_member_offset(symbol_t *sym, const char *name, size_t *out);
+static int eval_offsetof(expr_t *expr, symtable_t *vars, long long *out);
 
 /* Report a constant overflow error and return 0 */
 static int report_overflow(expr_t *expr)
@@ -221,6 +223,49 @@ static int eval_sizeof(expr_t *expr, int use_x86_64, long long *out)
     return 1;
 }
 
+/* Find a member offset within a struct or union symbol. */
+static int lookup_member_offset(symbol_t *sym, const char *name, size_t *out)
+{
+    if (!sym)
+        return 0;
+    if (sym->type == TYPE_UNION) {
+        for (size_t i = 0; i < sym->member_count; i++) {
+            if (strcmp(sym->members[i].name, name) == 0) {
+                if (out)
+                    *out = sym->members[i].offset;
+                return 1;
+            }
+        }
+    } else if (sym->type == TYPE_STRUCT) {
+        for (size_t i = 0; i < sym->struct_member_count; i++) {
+            if (strcmp(sym->struct_members[i].name, name) == 0) {
+                if (out)
+                    *out = sym->struct_members[i].offset;
+                return 1;
+            }
+        }
+    }
+    return 0;
+}
+
+/* Evaluate an offsetof expression. */
+static int eval_offsetof(expr_t *expr, symtable_t *vars, long long *out)
+{
+    symbol_t *sym = NULL;
+    if (expr->offsetof_expr.type == TYPE_STRUCT)
+        sym = vars ? symtable_lookup_struct(vars, expr->offsetof_expr.tag) : NULL;
+    else if (expr->offsetof_expr.type == TYPE_UNION)
+        sym = vars ? symtable_lookup_union(vars, expr->offsetof_expr.tag) : NULL;
+    if (!sym || expr->offsetof_expr.member_count == 0)
+        return 0;
+    size_t off = 0;
+    if (!lookup_member_offset(sym, expr->offsetof_expr.members[0], &off))
+        return 0;
+    if (out)
+        *out = (long long)off;
+    return 1;
+}
+
 /*
  * Evaluate a cast expression when the operand is constant.
  * The value is returned unchanged as primitive types share a
@@ -260,6 +305,8 @@ int eval_const_expr(expr_t *expr, symtable_t *vars,
         return eval_cast(expr, vars, use_x86_64, out);
     case EXPR_SIZEOF:
         return eval_sizeof(expr, use_x86_64, out);
+    case EXPR_OFFSETOF:
+        return eval_offsetof(expr, vars, out);
     default:
         return 0;
     }

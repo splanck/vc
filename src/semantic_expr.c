@@ -391,6 +391,49 @@ static type_kind_t check_sizeof_expr(expr_t *expr, symtable_t *vars,
     return TYPE_INT;
 }
 
+/* Compute the offset of a member within a struct or union type. */
+static type_kind_t check_offsetof_expr(expr_t *expr, symtable_t *vars,
+                                       symtable_t *funcs, ir_builder_t *ir,
+                                       ir_value_t *out)
+{
+    (void)funcs;
+    symbol_t *sym = NULL;
+    if (expr->offsetof_expr.type == TYPE_STRUCT)
+        sym = symtable_lookup_struct(vars, expr->offsetof_expr.tag);
+    else if (expr->offsetof_expr.type == TYPE_UNION)
+        sym = symtable_lookup_union(vars, expr->offsetof_expr.tag);
+    if (!sym || expr->offsetof_expr.member_count == 0) {
+        error_set(expr->line, expr->column, error_current_file,
+                  error_current_function);
+        return TYPE_UNKNOWN;
+    }
+    size_t off = 0;
+    int found = 0;
+    if (sym->type == TYPE_STRUCT) {
+        for (size_t i = 0; i < sym->struct_member_count; i++)
+            if (strcmp(sym->struct_members[i].name,
+                       expr->offsetof_expr.members[0]) == 0) {
+                off = sym->struct_members[i].offset;
+                found = 1; break;
+            }
+    } else {
+        for (size_t i = 0; i < sym->member_count; i++)
+            if (strcmp(sym->members[i].name,
+                       expr->offsetof_expr.members[0]) == 0) {
+                off = sym->members[i].offset;
+                found = 1; break;
+            }
+    }
+    if (!found) {
+        error_set(expr->line, expr->column, error_current_file,
+                  error_current_function);
+        return TYPE_UNKNOWN;
+    }
+    if (out)
+        *out = ir_build_const(ir, (int)off);
+    return TYPE_INT;
+}
+
 
 /*
  * Perform semantic analysis on an expression and emit IR code.
@@ -432,6 +475,8 @@ type_kind_t check_expr(expr_t *expr, symtable_t *vars, symtable_t *funcs,
         return check_member_expr(expr, vars, funcs, ir, out);
     case EXPR_SIZEOF:
         return check_sizeof_expr(expr, vars, funcs, ir, out);
+    case EXPR_OFFSETOF:
+        return check_offsetof_expr(expr, vars, funcs, ir, out);
     case EXPR_CAST:
         return check_cast_expr(expr, vars, funcs, ir, out);
     case EXPR_COMPLIT:

@@ -24,6 +24,7 @@ shows a short example and how to compile it.
 - [Variable length arrays](#variable-length-arrays)
 - [Compound literals](#compound-literals)
 - [sizeof](#sizeof)
+- [offsetof](#offsetof)
 - [Global variables](#global-variables)
 - [Break and continue](#break-and-continue)
 - [Switch statements](#switch-statements)
@@ -482,6 +483,21 @@ int main() {
 Compile with:
 ```sh
 vc -o sz.s sz.c
+```
+
+### offsetof
+`offsetof` returns the byte offset of a struct or union member.
+
+```c
+/* off.c */
+struct S { int a; char b; };
+int main() {
+    return offsetof(struct S, b);
+}
+```
+Compile with:
+```sh
+vc -o off.s off.c
 ```
 
 ### Global variables

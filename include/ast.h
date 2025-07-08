@@ -60,6 +60,7 @@ typedef enum {
     EXPR_ASSIGN_MEMBER,
     EXPR_MEMBER,
     EXPR_SIZEOF,
+    EXPR_OFFSETOF,
     EXPR_COMPLIT
 } expr_kind_t;
 
@@ -197,6 +198,12 @@ struct expr {
             size_t elem_size;
             expr_t *expr;
         } sizeof_expr;
+        struct {
+            type_kind_t type;
+            char *tag;
+            char **members;
+            size_t member_count;
+        } offsetof_expr;
         struct {
             type_kind_t type;
             size_t array_size;
