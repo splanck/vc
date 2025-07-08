@@ -27,6 +27,9 @@ expr_t *ast_make_wstring(const char *value, size_t line, size_t column);
 expr_t *ast_make_char(char value, size_t line, size_t column);
 /* Create a wide character literal expression. */
 expr_t *ast_make_wchar(char value, size_t line, size_t column);
+/* Create a complex number literal expression. */
+expr_t *ast_make_complex_literal(double real, double imag,
+                                 size_t line, size_t column);
 /* Create a binary operation expression. */
 expr_t *ast_make_binary(binop_t op, expr_t *left, expr_t *right,
                         size_t line, size_t column);

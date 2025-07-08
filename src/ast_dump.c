@@ -15,6 +15,7 @@ static const char *expr_name(expr_kind_t k)
     case EXPR_IDENT: return "EXPR_IDENT";
     case EXPR_STRING: return "EXPR_STRING";
     case EXPR_CHAR: return "EXPR_CHAR";
+    case EXPR_COMPLEX_LITERAL: return "EXPR_COMPLEX_LITERAL";
     case EXPR_UNARY: return "EXPR_UNARY";
     case EXPR_BINARY: return "EXPR_BINARY";
     case EXPR_COND: return "EXPR_COND";
@@ -74,6 +75,8 @@ static void dump_expr(strbuf_t *sb, const expr_t *e, int lvl)
         strbuf_appendf(sb, " \"%s\"", e->string.value);
     else if (e->kind == EXPR_CHAR)
         strbuf_appendf(sb, " '%c'", e->ch.value);
+    else if (e->kind == EXPR_COMPLEX_LITERAL)
+        strbuf_appendf(sb, " %f%+fi", e->complex_lit.real, e->complex_lit.imag);
     strbuf_append(sb, "\n");
 
     switch (e->kind) {
