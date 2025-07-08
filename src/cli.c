@@ -51,6 +51,7 @@ static void print_usage(const char *prog)
     printf("      --no-warn-unreachable  Disable unreachable code warnings\n");
     printf("      --x86-64         Generate 64-bit x86 assembly\n");
     printf("      --intel-syntax    Use Intel assembly syntax\n");
+    printf("      --emit-dwarf      Include DWARF information\n");
     printf("  -S, --dump-asm       Print assembly to stdout and exit\n");
     printf("      --dump-ir        Print IR to stdout and exit\n");
     printf("      --dump-tokens    Print tokens to stdout and exit\n");
@@ -79,10 +80,12 @@ static void init_default_opts(cli_options_t *opts)
     opts->compile = false;
     opts->link = false;
     opts->dump_asm = false;
+    opts->dump_ast = false;
     opts->dump_ir = false;
     opts->dump_tokens = false;
     opts->preprocess = false;
     opts->debug = false;
+    opts->emit_dwarf = false;
     opts->color_diag = true;
     opts->dep_only = false;
     opts->deps = false;
@@ -366,6 +369,7 @@ static int handle_option(int opt, const char *arg, const char *prog,
         {CLI_OPT_DEP,      offsetof(cli_options_t, deps), 1, true},
         {'E', offsetof(cli_options_t, preprocess), 1, true},
         {CLI_OPT_LINK,      offsetof(cli_options_t, link), 1, true},
+        {CLI_OPT_EMIT_DWARF, offsetof(cli_options_t, emit_dwarf), 1, true},
         {0, 0, 0, false}
     };
 
@@ -456,6 +460,7 @@ int cli_parse_args(int argc, char **argv, cli_options_t *opts)
         {"obj-dir", required_argument, 0, CLI_OPT_OBJ_DIR},
         {"no-color", no_argument, 0, CLI_OPT_NO_COLOR},
         {"no-warn-unreachable", no_argument, 0, CLI_OPT_NO_WARN_UNREACHABLE},
+        {"emit-dwarf", no_argument, 0, CLI_OPT_EMIT_DWARF},
         {0, 0, 0, 0}
     };
 

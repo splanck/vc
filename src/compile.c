@@ -429,7 +429,8 @@ static int compile_single_unit(const char *source, const cli_options_t *cli,
     error_current_function = NULL;
     label_init();
     codegen_set_export(cli->link);
-    codegen_set_debug(cli->debug);
+    codegen_set_debug(cli->debug || cli->emit_dwarf);
+    codegen_set_dwarf(cli->emit_dwarf);
 
     int ok = 1;
     compile_context_t ctx;

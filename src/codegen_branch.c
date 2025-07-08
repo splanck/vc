@@ -17,6 +17,7 @@
 
 extern int export_syms;
 extern size_t arg_stack_bytes;
+extern int dwarf_enabled;
 
 /* Forward declarations for small helpers. */
 static void emit_return(strbuf_t *sb, ir_instr_t *ins,
@@ -167,9 +168,12 @@ static void emit_func_frame(strbuf_t *sb, ir_instr_t *ins,
                             const char *sfx, const char *bp, const char *sp,
                             asm_syntax_t syntax)
 {
+    static const char *cur_func = NULL;
     if (ins->op == IR_FUNC_BEGIN) {
         if (export_syms)
             strbuf_appendf(sb, ".globl %s\n", ins->name);
+        if (dwarf_enabled)
+            strbuf_appendf(sb, ".type %s, @function\n", ins->name);
         strbuf_appendf(sb, "%s:\n", ins->name);
         strbuf_appendf(sb, "    push%s %s\n", sfx, bp);
         if (syntax == ASM_INTEL)
@@ -185,6 +189,7 @@ static void emit_func_frame(strbuf_t *sb, ir_instr_t *ins,
             else
                 strbuf_appendf(sb, "    sub%s $%d, %s\n", sfx, frame, sp);
         }
+        cur_func = ins->name;
     } else { /* IR_FUNC_END */
         if (syntax == ASM_INTEL)
             strbuf_appendf(sb, "    mov%s %s, %s\n", sfx, sp, bp);
@@ -192,6 +197,8 @@ static void emit_func_frame(strbuf_t *sb, ir_instr_t *ins,
             strbuf_appendf(sb, "    mov%s %s, %s\n", sfx, bp, sp);
         strbuf_appendf(sb, "    pop%s %s\n", sfx, bp);
         strbuf_append(sb, "    ret\n");
+        if (dwarf_enabled && cur_func)
+            strbuf_appendf(sb, ".size %s, .-%s\n", cur_func, cur_func);
     }
 }
 
