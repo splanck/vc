@@ -18,6 +18,25 @@ Seven passes are currently available and are executed in order:
 7. **Dead code elimination** – removes instructions that produce values which
    are never used and have no side effects.
 
+Alias analysis assigns a unique identifier to every load and store. Named
+variables share an alias set while operations through `restrict`-qualified
+pointers receive their own. Later passes consult these identifiers so a store
+only invalidates loads that may refer to the same set.
+
+With distinct sets, constant propagation can remove more memory operations. As
+an example,
+
+```c
+int test(int *restrict a, int *restrict b) {
+    *a = 3;
+    *b = 4;
+    return *a;
+}
+```
+
+reduces to `return 3;` because the final load is known not to alias the store
+through `b`.
+
 Constant propagation tracks variables written with constants. When a later
 load of such a variable is encountered, it becomes an immediate constant.
 Long-double arithmetic results are propagated when both operands are known
