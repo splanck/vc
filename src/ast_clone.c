@@ -173,6 +173,17 @@ static expr_t *clone_sizeof(const expr_t *expr)
     return ast_make_sizeof_expr(e, expr->line, expr->column);
 }
 
+/* Clone a cast expression. */
+static expr_t *clone_cast(const expr_t *expr)
+{
+    expr_t *inner = clone_expr(expr->cast.expr);
+    if (!inner)
+        return NULL;
+    return ast_make_cast(expr->cast.type, expr->cast.array_size,
+                         expr->cast.elem_size, inner,
+                         expr->line, expr->column);
+}
+
 /* Clone a function call expression and its arguments. */
 static expr_t *clone_call(const expr_t *expr)
 {
@@ -269,6 +280,8 @@ expr_t *clone_expr(const expr_t *expr)
         return clone_member(expr);
     case EXPR_SIZEOF:
         return clone_sizeof(expr);
+    case EXPR_CAST:
+        return clone_cast(expr);
     case EXPR_COMPLIT:
         return clone_complit(expr);
     }

@@ -221,6 +221,23 @@ static int eval_sizeof(expr_t *expr, int use_x86_64, long long *out)
     return 1;
 }
 
+/*
+ * Evaluate a cast expression when the operand is constant.
+ * The value is returned unchanged as primitive types share a
+ * unified representation in the evaluator.
+ */
+static int eval_cast(expr_t *expr, symtable_t *vars,
+                     int use_x86_64, long long *out)
+{
+    (void)use_x86_64;
+    long long val;
+    if (!eval_const_expr(expr->cast.expr, vars, use_x86_64, &val))
+        return 0;
+    if (out)
+        *out = val;
+    return 1;
+}
+
 int eval_const_expr(expr_t *expr, symtable_t *vars,
                     int use_x86_64, long long *out)
 {
@@ -239,6 +256,8 @@ int eval_const_expr(expr_t *expr, symtable_t *vars,
         return eval_conditional(expr, vars, use_x86_64, out);
     case EXPR_IDENT:
         return eval_ident(expr, vars, out);
+    case EXPR_CAST:
+        return eval_cast(expr, vars, use_x86_64, out);
     case EXPR_SIZEOF:
         return eval_sizeof(expr, use_x86_64, out);
     default:
