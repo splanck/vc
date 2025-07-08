@@ -24,6 +24,8 @@
 #include "error.h"
 #include <limits.h>
 
+bool semantic_warn_unreachable = true;
+
 
 
 /*
@@ -939,4 +941,45 @@ int check_stmt(stmt_t *stmt, symtable_t *vars, symtable_t *funcs,
         return check_var_decl_stmt_wrapper(stmt, vars, funcs, ir);
     }
     return 0;
+}
+
+/* Issue warnings for unreachable statements after return or goto end */
+static const char *find_end_label(func_t *func)
+{
+    for (size_t i = func->body_count; i-- > 0;) {
+        stmt_t *s = func->body[i];
+        if (s->kind == STMT_LABEL)
+            return s->label.name;
+        if (s->kind != STMT_RETURN)
+            break;
+    }
+    return NULL;
+}
+
+void warn_unreachable_function(func_t *func)
+{
+    if (!semantic_warn_unreachable || !func)
+        return;
+
+    const char *end_label = find_end_label(func);
+    int reachable = 1;
+    for (size_t i = 0; i < func->body_count; i++) {
+        stmt_t *s = func->body[i];
+        if (!reachable) {
+            if (!(s->kind == STMT_LABEL && end_label &&
+                  strcmp(s->label.name, end_label) == 0)) {
+                error_set(s->line, s->column, error_current_file,
+                          error_current_function);
+                error_print("warning: unreachable statement");
+            }
+        }
+        if (s->kind == STMT_RETURN)
+            reachable = 0;
+        else if (s->kind == STMT_GOTO && end_label &&
+                 strcmp(s->goto_stmt.name, end_label) == 0)
+            reachable = 0;
+        else if (s->kind == STMT_LABEL && end_label &&
+                 strcmp(s->label.name, end_label) == 0)
+            reachable = 1;
+    }
 }

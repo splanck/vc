@@ -667,6 +667,26 @@ if [ $ret -eq 0 ] || grep -qi "double free" "${err}"; then
 fi
 rm -f "${out}" "${err}"
 
+# unreachable warning for return
+err=$(mktemp)
+out=$(mktemp)
+"$BINARY" -o "${out}" "$DIR/invalid/unreachable_return.c" 2> "${err}"
+if ! grep -q "warning: unreachable statement" "${err}"; then
+    echo "Test warn_unreachable_return failed"
+    fail=1
+fi
+rm -f "${out}" "${err}"
+
+# unreachable warning for goto
+err=$(mktemp)
+out=$(mktemp)
+"$BINARY" -o "${out}" "$DIR/invalid/unreachable_goto.c" 2> "${err}"
+if ! grep -q "warning: unreachable statement" "${err}"; then
+    echo "Test warn_unreachable_goto failed"
+    fail=1
+fi
+rm -f "${out}" "${err}"
+
 if [ $fail -eq 0 ]; then
     echo "All tests passed"
 else

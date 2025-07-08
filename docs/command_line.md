@@ -22,6 +22,7 @@ The compiler supports the following options:
 - `--no-inline` – disable inline expansion of small functions.
 - `--debug` – emit `.file` and `.loc` directives in the assembly output.
 - `--no-color` – disable ANSI colors in diagnostics.
+- `--no-warn-unreachable` – disable warnings for unreachable statements.
 - `--x86-64` – generate 64‑bit x86 assembly.
 - `--intel-syntax` – enable Intel-style x86 assembly output. When used
   together with `--compile` or `--link`, the assembler must be `nasm`.
@@ -42,6 +43,10 @@ The compiler supports the following options:
 - `-Dname[=val]` – define a preprocessor macro before compilation.
 - `-Uname` – undefine a macro before compilation.
 - `-O<N>` – set optimization level (0 disables all passes).
+
+The compiler warns about statements that cannot be reached because a
+`return` or `goto` to the function's end label appears earlier. Use
+`--no-warn-unreachable` to silence this warning.
 
 Temporary object and assembly files are written to the directory given with
 the `--obj-dir` option when provided.  Without this flag the compiler
