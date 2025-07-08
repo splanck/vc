@@ -9,7 +9,7 @@ CORE_SRC = src/main.c src/compile.c src/compile_tokenize.c src/compile_parse.c s
            src/parser_decl.c src/parser_flow.c src/parser_stmt.c src/parser_types.c \
            src/semantic_expr.c src/semantic_arith.c src/semantic_mem.c src/semantic_call.c \
            src/semantic_loops.c src/semantic_switch.c src/semantic_init.c src/semantic_stmt.c src/semantic_global.c src/consteval.c src/error.c src/ir_core.c src/ir_global.c \
-           src/codegen.c src/codegen_mem.c src/codegen_arith.c src/codegen_branch.c \
+           src/codegen.c src/codegen_mem.c src/codegen_arith.c src/codegen_float.c src/codegen_complex.c src/codegen_branch.c \
            src/regalloc.c src/regalloc_x86.c src/strbuf.c src/util.c src/vector.c src/ir_dump.c src/ast_dump.c src/label.c \
            src/preproc_macros.c src/preproc_expr.c src/preproc_file.c
 
@@ -160,6 +160,12 @@ src/codegen_mem.o: src/codegen_mem.c $(HDR)
 
 src/codegen_arith.o: src/codegen_arith.c $(HDR)
 	$(CC) $(CFLAGS) $(OPTFLAGS) -Iinclude -c src/codegen_arith.c -o src/codegen_arith.o
+src/codegen_float.o: src/codegen_float.c $(HDR)
+	$(CC) $(CFLAGS) $(OPTFLAGS) -Iinclude -c src/codegen_float.c -o src/codegen_float.o
+
+src/codegen_complex.o: src/codegen_complex.c $(HDR)
+	$(CC) $(CFLAGS) $(OPTFLAGS) -Iinclude -c src/codegen_complex.c -o src/codegen_complex.o
+
 
 src/codegen_branch.o: src/codegen_branch.c $(HDR)
 	$(CC) $(CFLAGS) $(OPTFLAGS) -Iinclude -c src/codegen_branch.c -o src/codegen_branch.o
