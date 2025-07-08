@@ -448,18 +448,27 @@ static int emit_aggregate_initializer(stmt_t *stmt, symbol_t *sym,
  * symbol table entry.  Dispatches to the struct or union helper based on the
  * variable's type.  Returns non-zero on success.
  */
-static int copy_aggregate_metadata(stmt_t *stmt, symbol_t *sym)
+static int copy_aggregate_metadata(stmt_t *stmt, symbol_t *sym, symtable_t *vars)
 {
     if (stmt->var_decl.type == TYPE_UNION)
         return copy_union_metadata(sym, stmt->var_decl.members,
                                    stmt->var_decl.member_count,
                                    stmt->var_decl.elem_size);
 
-    if (stmt->var_decl.type == TYPE_STRUCT)
+    if (stmt->var_decl.type == TYPE_STRUCT) {
+        if (stmt->var_decl.member_count == 0 && stmt->var_decl.tag) {
+            symbol_t *stype = symtable_lookup_struct(vars, stmt->var_decl.tag);
+            if (!stype)
+                return 0;
+            return copy_struct_metadata(sym, stype->struct_members,
+                                        stype->struct_member_count,
+                                        stype->struct_total_size);
+        }
         return copy_struct_metadata(sym,
                                     (struct_member_t *)stmt->var_decl.members,
                                     stmt->var_decl.member_count,
                                     stmt->var_decl.elem_size);
+    }
 
     return 1;
 }
@@ -530,7 +539,7 @@ static int emit_var_initializer(stmt_t *stmt, symbol_t *sym,
         INIT_AGGREGATE
     } kind = INIT_NONE;
 
-    if (!copy_aggregate_metadata(stmt, sym))
+    if (!copy_aggregate_metadata(stmt, sym, vars))
         return 0;
 
     if (stmt->var_decl.init)
