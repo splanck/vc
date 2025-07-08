@@ -493,6 +493,16 @@ static int emit_global_initializer(stmt_t *decl, symbol_t *sym,
         return 0;
     }
 
+    if (decl->var_decl.init &&
+        decl->var_decl.init->kind == EXPR_UNARY &&
+        decl->var_decl.init->unary.op == UNOP_ADDR &&
+        decl->var_decl.init->unary.operand->kind == EXPR_IDENT) {
+        ir_build_glob_addr(ir, decl->var_decl.name,
+                           decl->var_decl.init->unary.operand->ident.name,
+                           decl->var_decl.is_static);
+        return 1;
+    }
+
     long long value = 0;
     if (decl->var_decl.init) {
         if (!eval_const_expr(decl->var_decl.init, globals, 0, &value)) {

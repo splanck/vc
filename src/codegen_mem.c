@@ -536,6 +536,8 @@ void emit_memory_instr(strbuf_t *sb, ir_instr_t *ins,
         break;
     case IR_GLOB_STRUCT:
         break;
+    case IR_GLOB_ADDR:
+        break;
     default:
         break;
     }

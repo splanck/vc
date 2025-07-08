@@ -53,6 +53,7 @@ typedef enum {
     IR_GLOB_ARRAY,
     IR_GLOB_UNION,
     IR_GLOB_STRUCT,
+    IR_GLOB_ADDR,
     IR_LOAD,
     IR_STORE,
     IR_LOAD_PARAM,
