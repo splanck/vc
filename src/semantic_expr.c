@@ -219,7 +219,7 @@ static type_kind_t check_assign_expr(expr_t *expr, symtable_t *vars,
         return TYPE_UNKNOWN;
     }
 
-    type_kind_t vt = check_expr(expr->assign.value, vars, funcs, ir, &val);
+type_kind_t vt = check_expr(expr->assign.value, vars, funcs, ir, &val);
     if (((is_intlike(sym->type) && is_intlike(vt)) ||
          (is_floatlike(sym->type) && (is_floatlike(vt) || is_intlike(vt)))) ||
         vt == sym->type) {
@@ -234,6 +234,40 @@ static type_kind_t check_assign_expr(expr_t *expr, symtable_t *vars,
         return sym->type;
     }
     error_set(expr->line, expr->column, error_current_file, error_current_function);
+    if (out)
+        *out = (ir_value_t){0};
+    return TYPE_UNKNOWN;
+}
+
+/*
+ * Validate a type cast expression. The operand expression is evaluated
+ * and checked for compatibility with the destination type. No IR is
+ * emitted for the conversion itself as primitive types share the same
+ * representation.
+ */
+static type_kind_t check_cast_expr(expr_t *expr, symtable_t *vars,
+                                   symtable_t *funcs, ir_builder_t *ir,
+                                   ir_value_t *out)
+{
+    ir_value_t val;
+    type_kind_t src = check_expr(expr->cast.expr, vars, funcs, ir, &val);
+    type_kind_t dst = expr->cast.type;
+
+    if (src == TYPE_UNKNOWN)
+        return TYPE_UNKNOWN;
+
+    if (src == dst ||
+        ((is_intlike(src) || src == TYPE_PTR) &&
+         (is_intlike(dst) || dst == TYPE_PTR)) ||
+        (is_floatlike(src) && (is_floatlike(dst) || is_intlike(dst))) ||
+        (is_floatlike(dst) && is_intlike(src))) {
+        if (out)
+            *out = val;
+        return dst;
+    }
+
+    error_set(expr->line, expr->column, error_current_file,
+              error_current_function);
     if (out)
         *out = (ir_value_t){0};
     return TYPE_UNKNOWN;
@@ -395,6 +429,8 @@ type_kind_t check_expr(expr_t *expr, symtable_t *vars, symtable_t *funcs,
         return check_member_expr(expr, vars, funcs, ir, out);
     case EXPR_SIZEOF:
         return check_sizeof_expr(expr, vars, funcs, ir, out);
+    case EXPR_CAST:
+        return check_cast_expr(expr, vars, funcs, ir, out);
     case EXPR_COMPLIT:
         return check_complit_expr(expr, vars, funcs, ir, out);
     case EXPR_CALL:
