@@ -402,6 +402,15 @@ if ! grep -q "IR_CONST" "${ir_out}"; then
 fi
 rm -f "${ir_out}"
 
+# verify restrict pointers are marked in IR
+ir_restrict=$(mktemp)
+"$BINARY" --dump-ir "$DIR/fixtures/restrict_load.c" > "${ir_restrict}"
+if ! grep -q "alias=" "${ir_restrict}" || ! grep -q "restrict" "${ir_restrict}"; then
+    echo "Test dump_ir_restrict failed"
+    fail=1
+fi
+rm -f "${ir_restrict}"
+
 # test -E/--preprocess option
 pp_out=$(mktemp)
 "$BINARY" -E "$DIR/fixtures/macro_object.c" > "${pp_out}"
