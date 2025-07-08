@@ -349,6 +349,7 @@ struct union_member {
     size_t offset;
     unsigned bit_width;
     unsigned bit_offset;
+    int is_flexible;
 };
 
 struct struct_member {
@@ -358,6 +359,7 @@ struct struct_member {
     size_t offset;
     unsigned bit_width;
     unsigned bit_offset;
+    int is_flexible;
 };
 
 

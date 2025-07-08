@@ -376,6 +376,7 @@ static int copy_struct_metadata(symbol_t *sym, struct_member_t *members,
         sym->struct_members[i].offset = m->offset;
         sym->struct_members[i].bit_width = m->bit_width;
         sym->struct_members[i].bit_offset = m->bit_offset;
+        sym->struct_members[i].is_flexible = m->is_flexible;
     }
     return 1;
 }

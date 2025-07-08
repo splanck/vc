@@ -65,8 +65,7 @@ size_t layout_struct_members(struct_member_t *members, size_t count)
             members[i].bit_offset = 0;
             if (bit_off)
                 byte_off++, bit_off = 0;
-            if (!(i == count - 1 && members[i].type == TYPE_ARRAY &&
-                  members[i].elem_size == 0))
+            if (!members[i].is_flexible)
                 byte_off += members[i].elem_size;
         }
     }
@@ -316,6 +315,7 @@ static int copy_union_metadata(symbol_t *sym, union_member_t *members,
         sym->members[i].offset = m->offset;
         sym->members[i].bit_width = m->bit_width;
         sym->members[i].bit_offset = m->bit_offset;
+        sym->members[i].is_flexible = m->is_flexible;
     }
     return 1;
 }
@@ -343,6 +343,7 @@ static int copy_struct_metadata(symbol_t *sym, struct_member_t *members,
         sym->struct_members[i].offset = m->offset;
         sym->struct_members[i].bit_width = m->bit_width;
         sym->struct_members[i].bit_offset = m->bit_offset;
+        sym->struct_members[i].is_flexible = m->is_flexible;
     }
     return 1;
 }

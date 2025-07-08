@@ -680,7 +680,8 @@ vc -o union_char.s union_char.c
 ### Flexible array members
 Structures may end with a member declared using empty brackets. The flexible
 member occupies no space in `sizeof` calculations and allows extra storage to be
-appended at runtime.
+appended at runtime. Such members must appear last in the struct and do not
+contribute to the computed type size.
 
 ```c
 /* flex_size.c */
