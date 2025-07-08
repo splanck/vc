@@ -32,6 +32,7 @@ static const char *op_name(ir_op_t op)
     case IR_AND: return "IR_AND";
     case IR_OR: return "IR_OR";
     case IR_XOR: return "IR_XOR";
+    case IR_CAST: return "IR_CAST";
     case IR_FADD: return "IR_FADD";
     case IR_FSUB: return "IR_FSUB";
     case IR_FMUL: return "IR_FMUL";

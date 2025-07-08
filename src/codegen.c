@@ -88,7 +88,7 @@ static void emit_instr(strbuf_t *sb, ir_instr_t *ins,
     case IR_ADD: case IR_SUB: case IR_MUL:
     case IR_DIV: case IR_MOD: case IR_SHL:
     case IR_SHR: case IR_AND: case IR_OR:
-    case IR_XOR:
+    case IR_XOR: case IR_CAST:
     case IR_CMPEQ: case IR_CMPNE: case IR_CMPLT: case IR_CMPGT:
     case IR_CMPLE: case IR_CMPGE:
     case IR_LOGAND: case IR_LOGOR:

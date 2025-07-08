@@ -23,6 +23,7 @@ typedef enum {
     IR_AND,
     IR_OR,
     IR_XOR,
+    IR_CAST,
     IR_FADD,
     IR_FSUB,
     IR_FMUL,
@@ -135,6 +136,10 @@ ir_value_t ir_build_logand(ir_builder_t *b, ir_value_t left, ir_value_t right);
 
 /* Emit IR_LOGOR using `left` and `right`. */
 ir_value_t ir_build_logor(ir_builder_t *b, ir_value_t left, ir_value_t right);
+
+/* Emit IR_CAST converting `val` from `src_type` to `dst_type`. */
+ir_value_t ir_build_cast(ir_builder_t *b, ir_value_t val,
+                         type_kind_t src_type, type_kind_t dst_type);
 
 /* Emit IR_STORE of `val` into variable `name`. */
 void ir_build_store(ir_builder_t *b, const char *name, ir_value_t val);

@@ -558,6 +558,20 @@ ir_value_t ir_build_logor(ir_builder_t *b, ir_value_t left, ir_value_t right)
     return (ir_value_t){ins->dest};
 }
 
+/* Emit IR_CAST converting between primitive types. */
+ir_value_t ir_build_cast(ir_builder_t *b, ir_value_t val,
+                         type_kind_t src_type, type_kind_t dst_type)
+{
+    ir_instr_t *ins = append_instr(b);
+    if (!ins)
+        return (ir_value_t){0};
+    ins->op = IR_CAST;
+    ins->dest = alloc_value_id(b);
+    ins->src1 = val.id;
+    ins->imm = ((long long)src_type << 32) | (unsigned long long)(unsigned)dst_type;
+    return (ir_value_t){ins->dest};
+}
+
 /* Emit IR_ARG to push an argument value for a call. The argument's
  * type kind is stored in the instruction's imm field for later
  * optimisations or code generation. */
