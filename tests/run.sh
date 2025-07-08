@@ -165,12 +165,33 @@ cc -o "$DIR/opt_unreachable_tests" ir_unreach.o util_unreach.o label_unreach.o e
 rm -f ir_unreach.o util_unreach.o label_unreach.o error_unreach.o opt_main.o \
       opt_constprop_unreach.o opt_cse_unreach.o opt_fold_unreach.o \
       opt_dce_unreach.o opt_inline_unreach.o opt_unreach.o opt_alias_unreach.o "$DIR/test_opt_unreachable.o"
+cc -Iinclude -Wall -Wextra -std=c99 -c src/ir_core.c -o ir_licm.o
+cc -Iinclude -Wall -Wextra -std=c99 -c src/util.c -o util_licm.o
+cc -Iinclude -Wall -Wextra -std=c99 -c src/label.c -o label_licm.o
+cc -Iinclude -Wall -Wextra -std=c99 -c src/error.c -o error_licm.o
+cc -Iinclude -Wall -Wextra -std=c99 -c src/opt.c -o opt_main_licm.o
+cc -Iinclude -Wall -Wextra -std=c99 -c src/opt_constprop.c -o opt_constprop_licm.o
+cc -Iinclude -Wall -Wextra -std=c99 -c src/opt_cse.c -o opt_cse_licm.o
+cc -Iinclude -Wall -Wextra -std=c99 -c src/opt_fold.c -o opt_fold_licm.o
+cc -Iinclude -Wall -Wextra -std=c99 -c src/opt_licm.c -o opt_licm.o
+cc -Iinclude -Wall -Wextra -std=c99 -c src/opt_inline.c -o opt_inline_licm.o
+cc -Iinclude -Wall -Wextra -std=c99 -c src/opt_unreachable.c -o opt_unreach_licm.o
+cc -Iinclude -Wall -Wextra -std=c99 -c src/opt_dce.c -o opt_dce_licm.o
+cc -Iinclude -Wall -Wextra -std=c99 -c src/opt_alias.c -o opt_alias_licm.o
+cc -Iinclude -Wall -Wextra -std=c99 -c "$DIR/unit/test_opt_licm.c" -o "$DIR/test_opt_licm.o"
+cc -o "$DIR/opt_licm_tests" ir_licm.o util_licm.o label_licm.o error_licm.o \
+    opt_main_licm.o opt_constprop_licm.o opt_cse_licm.o opt_fold_licm.o opt_licm.o \
+    opt_inline_licm.o opt_unreach_licm.o opt_dce_licm.o opt_alias_licm.o "$DIR/test_opt_licm.o"
+rm -f ir_licm.o util_licm.o label_licm.o error_licm.o opt_main_licm.o \
+      opt_constprop_licm.o opt_cse_licm.o opt_fold_licm.o opt_licm.o \
+      opt_inline_licm.o opt_unreach_licm.o opt_dce_licm.o opt_alias_licm.o "$DIR/test_opt_licm.o"
 # run unit tests
 "$DIR/unit_tests"
 "$DIR/cli_tests"
 "$DIR/parser_alloc_tests"
 "$DIR/ir_core_tests"
 "$DIR/opt_unreachable_tests"
+"$DIR/opt_licm_tests"
 # remaining unit test binaries
 "$DIR/cond_expr_tests"
 "$DIR/complex_expr_tests"
