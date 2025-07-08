@@ -146,7 +146,7 @@ int check_func(func_t *func, symtable_t *funcs, symtable_t *globals,
         return 1;
     }
 
-    warn_unreachable_function(func);
+    warn_unreachable_function(func, funcs);
     int mismatch = decl->type != func->return_type ||
                    decl->param_count != func->param_count ||
                    decl->is_variadic != func->is_variadic;

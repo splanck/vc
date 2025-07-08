@@ -150,6 +150,8 @@ static void propagate_through_instruction(const_track_t *ct, ir_instr_t *ins)
     case IR_STORE_IDX:
     case IR_CALL:
     case IR_CALL_PTR:
+    case IR_CALL_NR:
+    case IR_CALL_PTR_NR:
     case IR_ARG:
         clear_var_list(ct->vars);
         if (ins->dest >= 0 && (size_t)ins->dest < max_id)

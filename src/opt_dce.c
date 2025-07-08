@@ -19,6 +19,8 @@ static int has_side_effect(ir_instr_t *ins)
     case IR_STORE_PARAM:
     case IR_CALL:
     case IR_CALL_PTR:
+    case IR_CALL_NR:
+    case IR_CALL_PTR_NR:
     case IR_ARG:
     case IR_RETURN:
     case IR_RETURN_AGG:

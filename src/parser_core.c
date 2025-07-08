@@ -15,6 +15,8 @@
 #include "ast_expr.h"
 #include "util.h"
 #include "symtable.h"
+#include <string.h>
+
 
 /* Helper prototypes */
 static int parse_param_list(parser_t *p, symtable_t *symtab,
@@ -23,6 +25,28 @@ static int parse_param_list(parser_t *p, symtable_t *symtab,
                             int **restrict_flags,
                             size_t *count, int *is_variadic);
 static int parse_func_body(parser_t *p, stmt_t ***body, size_t *count);
+
+/* Parse '__attribute__((noreturn))' if present */
+static int parse_gnu_noreturn(parser_t *p)
+{
+    size_t save = p->pos;
+    token_t *tok = peek(p);
+    if (!tok || tok->type != TOK_IDENT || strcmp(tok->lexeme, "__attribute__") != 0)
+        return 0;
+    p->pos++;
+    if (!match(p, TOK_LPAREN) || !match(p, TOK_LPAREN)) {
+        p->pos = save; return 0;
+    }
+    tok = peek(p);
+    if (!tok || tok->type != TOK_IDENT || strcmp(tok->lexeme, "noreturn") != 0) {
+        p->pos = save; return 0;
+    }
+    p->pos++;
+    if (!match(p, TOK_RPAREN) || !match(p, TOK_RPAREN)) {
+        p->pos = save; return 0;
+    }
+    return 1;
+}
 /* Initialize the parser with a token array and reset position */
 void parser_init(parser_t *p, token_t *tokens, size_t count)
 {
@@ -86,6 +110,7 @@ static const char *token_names[] = {
     [TOK_KW_RESTRICT] = "\"restrict\"",
     [TOK_KW_REGISTER] = "\"register\"",
     [TOK_KW_INLINE] = "\"inline\"",
+    [TOK_KW_NORETURN] = "\"_Noreturn\"",
     [TOK_KW_STATIC_ASSERT] = "\"_Static_assert\"",
     [TOK_KW_RETURN] = "\"return\"",
     [TOK_KW_IF] = "\"if\"",
@@ -332,7 +357,8 @@ static int parse_func_body(parser_t *p, stmt_t ***body, size_t *count)
 }
 
 /* Parse a full function definition */
-func_t *parser_parse_func(parser_t *p, symtable_t *symtab, int is_inline)
+func_t *parser_parse_func(parser_t *p, symtable_t *symtab,
+                          int is_inline, int is_noreturn)
 {
     type_kind_t ret_type;
     char *ret_tag = NULL;
@@ -374,6 +400,9 @@ func_t *parser_parse_func(parser_t *p, symtable_t *symtab, int is_inline)
                           &param_tags, &param_restrict, &pcount, &is_variadic))
         return NULL;
 
+    if (parse_gnu_noreturn(p))
+        is_noreturn = 1;
+
     if (!match(p, TOK_LBRACE)) {
         free(param_names);
         free(param_types);
@@ -405,7 +434,7 @@ func_t *parser_parse_func(parser_t *p, symtable_t *symtab, int is_inline)
                                param_tags,
                                param_sizes, param_restrict, pcount,
                                is_variadic,
-                               body, count, is_inline);
+                               body, count, is_inline, is_noreturn);
     if (!fn) {
         for (size_t i = 0; i < count; i++)
             ast_free_stmt(body[i]);
