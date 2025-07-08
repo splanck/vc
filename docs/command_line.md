@@ -144,3 +144,17 @@ main:
 
 Any program compiled with the same options will produce assembly identical to
 the corresponding `.s` file under `tests/fixtures`.
+
+## Developer Notes
+
+Command-line arguments are parsed in `cli_parse_args`. The function delegates
+actual option handling to helper functions:
+
+- `parse_optimization_opts` – toggles optimization passes and sets `-O` levels.
+- `parse_io_paths` – collects include directories, library paths and output
+  locations.
+- `parse_misc_opts` – processes all remaining flags such as `--debug` or
+  `--link`.
+
+Splitting the logic keeps `cli_parse_args` short and makes each option group
+easier to maintain.
