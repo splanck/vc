@@ -43,6 +43,10 @@ void compute_alias_sets(ir_builder_t *ir)
     alias_ent_t *vars = NULL;
     int next_id = 1;
 
+    for (ir_instr_t *ins = ir->head; ins; ins = ins->next)
+        if (ins->alias_set >= next_id)
+            next_id = ins->alias_set + 1;
+
     for (ir_instr_t *ins = ir->head; ins; ins = ins->next) {
         switch (ins->op) {
         case IR_LOAD:
@@ -51,12 +55,12 @@ void compute_alias_sets(ir_builder_t *ir)
         case IR_STORE_IDX:
         case IR_BFLOAD:
         case IR_BFSTORE:
-            if (ins->name)
+            if (ins->name && ins->alias_set == 0)
                 ins->alias_set = lookup_alias(&vars, ins->name, &next_id);
             break;
         case IR_LOAD_PTR:
         case IR_STORE_PTR:
-            if (ins->is_restrict)
+            if (ins->is_restrict && ins->alias_set == 0)
                 ins->alias_set = next_id++;
             break;
         default:

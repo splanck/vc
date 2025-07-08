@@ -95,6 +95,8 @@ typedef struct ir_instr {
     size_t column;
 } ir_instr_t;
 
+typedef struct alias_ent alias_ent_t;
+
 typedef struct {
     ir_instr_t *head;
     ir_instr_t *tail;
@@ -102,6 +104,8 @@ typedef struct {
     const char *cur_file;
     size_t cur_line;
     size_t cur_column;
+    alias_ent_t *aliases;
+    int next_alias_id;
 } ir_builder_t;
 
 /*
