@@ -131,6 +131,21 @@ expr_t *ast_make_wchar(char value, size_t line, size_t column)
     return make_char(value, line, column, 1);
 }
 
+/* Create a complex number literal expression node. */
+expr_t *ast_make_complex_literal(double real, double imag,
+                                 size_t line, size_t column)
+{
+    expr_t *expr = malloc(sizeof(*expr));
+    if (!expr)
+        return NULL;
+    expr->kind = EXPR_COMPLEX_LITERAL;
+    expr->line = line;
+    expr->column = column;
+    expr->complex_lit.real = real;
+    expr->complex_lit.imag = imag;
+    return expr;
+}
+
 /* Create a binary operation expression node. */
 expr_t *ast_make_binary(binop_t op, expr_t *left, expr_t *right,
                         size_t line, size_t column)
@@ -401,6 +416,8 @@ void ast_free_expr(expr_t *expr)
         free(expr->string.value);
         break;
     case EXPR_CHAR:
+        break;
+    case EXPR_COMPLEX_LITERAL:
         break;
     case EXPR_UNARY:
         ast_free_expr(expr->unary.operand);

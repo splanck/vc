@@ -60,6 +60,14 @@ static expr_t *clone_char(const expr_t *expr)
     return ast_make_char(expr->ch.value, expr->line, expr->column);
 }
 
+/* Duplicate a complex literal expression node. */
+static expr_t *clone_complex_literal(const expr_t *expr)
+{
+    return ast_make_complex_literal(expr->complex_lit.real,
+                                    expr->complex_lit.imag,
+                                    expr->line, expr->column);
+}
+
 /* Clone a unary operation and its operand. */
 static expr_t *clone_unary(const expr_t *expr)
 {
@@ -290,6 +298,8 @@ expr_t *clone_expr(const expr_t *expr)
         return clone_string(expr);
     case EXPR_CHAR:
         return clone_char(expr);
+    case EXPR_COMPLEX_LITERAL:
+        return clone_complex_literal(expr);
     case EXPR_UNARY:
         return clone_unary(expr);
     case EXPR_BINARY:

@@ -34,6 +34,9 @@ typedef enum {
     TYPE_FLOAT,
     TYPE_DOUBLE,
     TYPE_LDOUBLE,
+    TYPE_FLOAT_COMPLEX,
+    TYPE_DOUBLE_COMPLEX,
+    TYPE_LDOUBLE_COMPLEX,
     TYPE_PTR,
     TYPE_ARRAY,
     TYPE_VOID,
@@ -49,6 +52,7 @@ typedef enum {
     EXPR_IDENT,
     EXPR_STRING,
     EXPR_CHAR,
+    EXPR_COMPLEX_LITERAL,
     EXPR_UNARY,
     EXPR_BINARY,
     EXPR_COND,
@@ -142,6 +146,10 @@ struct expr {
             char value;
             int is_wide;
         } ch;
+        struct {
+            double real;
+            double imag;
+        } complex_lit;
         struct {
             unop_t op;
             expr_t *operand;
