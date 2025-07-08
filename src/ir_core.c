@@ -23,6 +23,12 @@
 #include "ast.h"
 #include "error.h"
 
+typedef struct alias_ent {
+    const char *name;
+    int set;
+    struct alias_ent *next;
+} alias_ent_t;
+
 
 /*
  * Reset the builder so new instructions can be emitted.
@@ -35,6 +41,8 @@ void ir_builder_init(ir_builder_t *b)
     b->cur_file = "";
     b->cur_line = 0;
     b->cur_column = 0;
+    b->aliases = NULL;
+    b->next_alias_id = 1;
 }
 
 void ir_builder_set_loc(ir_builder_t *b, const char *file, size_t line, size_t column)
@@ -57,6 +65,12 @@ void ir_builder_free(ir_builder_t *b)
     }
     b->head = b->tail = NULL;
     b->next_value_id = 0;
+    while (b->aliases) {
+        alias_ent_t *n = b->aliases->next;
+        free(b->aliases);
+        b->aliases = n;
+    }
+    b->next_alias_id = 0;
 }
 
 /* Allocate and append a blank instruction to the builder's list. */
@@ -114,6 +128,24 @@ static void remove_instr(ir_builder_t *b, ir_instr_t *ins)
     free(cur->name);
     free(cur->data);
     free(cur);
+}
+
+/* Lookup or create an alias set for the given variable name */
+static int get_alias(ir_builder_t *b, const char *name)
+{
+    alias_ent_t *e = b->aliases;
+    while (e && strcmp(e->name, name) != 0)
+        e = e->next;
+    if (e)
+        return e->set;
+    e = malloc(sizeof(*e));
+    if (!e)
+        return 0;
+    e->name = name;
+    e->set = b->next_alias_id++;
+    e->next = b->aliases;
+    b->aliases = e;
+    return e->set;
 }
 
 /* Allocate a blank instruction after `pos` and insert it into the list */
@@ -255,6 +287,8 @@ ir_value_t ir_build_load(ir_builder_t *b, const char *name)
         remove_instr(b, ins);
         return (ir_value_t){0};
     }
+    if (name)
+        ins->alias_set = get_alias(b, name);
     return (ir_value_t){ins->dest};
 }
 
@@ -271,6 +305,8 @@ ir_value_t ir_build_load_vol(ir_builder_t *b, const char *name)
         return (ir_value_t){0};
     }
     ins->is_volatile = 1;
+    if (name)
+        ins->alias_set = get_alias(b, name);
     return (ir_value_t){ins->dest};
 }
 
@@ -290,6 +326,8 @@ void ir_build_store(ir_builder_t *b, const char *name, ir_value_t val)
         remove_instr(b, ins);
         return;
     }
+    if (name)
+        ins->alias_set = get_alias(b, name);
 }
 
 void ir_build_store_vol(ir_builder_t *b, const char *name, ir_value_t val)
@@ -305,6 +343,8 @@ void ir_build_store_vol(ir_builder_t *b, const char *name, ir_value_t val)
         return;
     }
     ins->is_volatile = 1;
+    if (name)
+        ins->alias_set = get_alias(b, name);
 }
 
 /*
@@ -375,6 +415,7 @@ ir_value_t ir_build_load_ptr_res(ir_builder_t *b, ir_value_t addr)
     ins->dest = alloc_value_id(b);
     ins->src1 = addr.id;
     ins->is_restrict = 1;
+    ins->alias_set = b->next_alias_id++;
     return (ir_value_t){ins->dest};
 }
 
@@ -400,6 +441,7 @@ void ir_build_store_ptr_res(ir_builder_t *b, ir_value_t addr, ir_value_t val)
     ins->src1 = addr.id;
     ins->src2 = val.id;
     ins->is_restrict = 1;
+    ins->alias_set = b->next_alias_id++;
 }
 
 /* Emit IR_PTR_ADD adding `idx` (scaled by element size) to pointer `ptr`. */
@@ -448,6 +490,8 @@ ir_value_t ir_build_load_idx(ir_builder_t *b, const char *name, ir_value_t idx)
         remove_instr(b, ins);
         return (ir_value_t){0};
     }
+    if (name)
+        ins->alias_set = get_alias(b, name);
     return (ir_value_t){ins->dest};
 }
 
@@ -466,6 +510,8 @@ ir_value_t ir_build_load_idx_vol(ir_builder_t *b, const char *name, ir_value_t i
         return (ir_value_t){0};
     }
     ins->is_volatile = 1;
+    if (name)
+        ins->alias_set = get_alias(b, name);
     return (ir_value_t){ins->dest};
 }
 
@@ -486,6 +532,8 @@ void ir_build_store_idx(ir_builder_t *b, const char *name, ir_value_t idx,
         remove_instr(b, ins);
         return;
     }
+    if (name)
+        ins->alias_set = get_alias(b, name);
 }
 
 /* Volatile variant of IR_STORE_IDX assigning `val` to `name[idx]`. */
@@ -504,6 +552,8 @@ void ir_build_store_idx_vol(ir_builder_t *b, const char *name, ir_value_t idx,
         return;
     }
     ins->is_volatile = 1;
+    if (name)
+        ins->alias_set = get_alias(b, name);
 }
 
 /* Emit IR_ALLOCA reserving stack space of the given size. */
