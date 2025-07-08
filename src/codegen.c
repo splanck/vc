@@ -38,6 +38,7 @@
  */
 int export_syms = 0;
 static int debug_info = 0;
+int dwarf_enabled = 0;
 
 /*
  * Enable or disable symbol export.
@@ -55,6 +56,12 @@ void codegen_set_export(int flag)
 void codegen_set_debug(int flag)
 {
     debug_info = flag;
+}
+
+/* Enable or disable DWARF output */
+void codegen_set_dwarf(int flag)
+{
+    dwarf_enabled = flag;
 }
 
 
@@ -189,5 +196,8 @@ void codegen_emit_x86(FILE *out, ir_builder_t *ir, int x64,
         fputs(text, out);
         free(text);
     }
+
+    if (dwarf_enabled)
+        fputs(".section .debug_info\n    .byte 0\n", out);
 }
 

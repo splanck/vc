@@ -46,7 +46,8 @@ typedef enum {
     CLI_OPT_DUMP_TOKENS,
     CLI_OPT_DEP_ONLY,
     CLI_OPT_DEP,
-    CLI_OPT_NO_WARN_UNREACHABLE
+    CLI_OPT_NO_WARN_UNREACHABLE,
+    CLI_OPT_EMIT_DWARF
 } cli_opt_id;
 
 /* Command line options parsed from argv */
@@ -62,6 +63,7 @@ typedef struct {
     bool dump_tokens;   /* dump token list to stdout */
     bool preprocess;    /* run preprocessor only and print to stdout */
     bool debug;         /* emit debug directives */
+    bool emit_dwarf;    /* emit DWARF line and symbol data */
     bool color_diag;    /* use ANSI colors in diagnostics */
     bool dep_only;      /* generate dependencies only */
     bool deps;          /* generate dependency file */

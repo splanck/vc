@@ -525,6 +525,21 @@ else
     echo "Skipping compile_option_intel (nasm not found)"
 fi
 
+# test --emit-dwarf option
+obj_tmp=$(mktemp tmp.XXXXXX)
+obj_out="${obj_tmp}.o"
+rm -f "${obj_tmp}"
+"$BINARY" --emit-dwarf -c -o "${obj_out}" "$DIR/fixtures/simple_add.c"
+if ! objdump -h "${obj_out}" | grep -q ".debug_line"; then
+    echo "Test emit_dwarf_line failed"
+    fail=1
+fi
+if ! objdump -h "${obj_out}" | grep -q ".debug_info"; then
+    echo "Test emit_dwarf_info failed"
+    fail=1
+fi
+rm -f "${obj_out}"
+
 # test --link option with spaces and semicolons in output path
 link_tmpdir=$(mktemp -d)
 trap 'rm -rf "$link_tmpdir"' EXIT

@@ -50,6 +50,9 @@ void codegen_set_export(int flag);
 /* Toggle emission of .file and .loc directives */
 void codegen_set_debug(int flag);
 
+/* Toggle emission of DWARF sections */
+void codegen_set_dwarf(int flag);
+
 /*
  * These flags are global variables defined in codegen.c so that other
  * code generation modules can inspect them.
