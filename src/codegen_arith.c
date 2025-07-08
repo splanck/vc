@@ -15,6 +15,8 @@
 #include "codegen_arith.h"
 #include "regalloc_x86.h"
 #include "label.h"
+#include "consteval.h"
+#include "consteval.h"
 
 #define SCRATCH_REG 0
 
@@ -59,6 +61,127 @@ static const char *loc_str(char buf[32], regalloc_t *ra, int id, int x64,
 }
 
 /* small helpers for the individual arithmetic ops */
+/* Convert between integer and floating-point types. */
+static void emit_cast(strbuf_t *sb, ir_instr_t *ins,
+                      regalloc_t *ra, int x64,
+                      asm_syntax_t syntax)
+{
+    char b1[32];
+    char b2[32];
+    type_kind_t src = (type_kind_t)((unsigned long long)ins->imm >> 32);
+    type_kind_t dst = (type_kind_t)(ins->imm & 0xffffffffu);
+
+    const char *reg0 = fmt_reg("%xmm0", syntax);
+    const char *sfx = x64 ? "q" : "l";
+
+    if (is_intlike(src) && dst == TYPE_FLOAT) {
+        if (syntax == ASM_INTEL)
+            strbuf_appendf(sb, "    cvtsi2ss %s, %s\n", reg0,
+                           loc_str(b1, ra, ins->src1, x64, syntax));
+        else
+            strbuf_appendf(sb, "    cvtsi2ss %s, %s\n",
+                           loc_str(b1, ra, ins->src1, x64, syntax), reg0);
+        if (ra && ra->loc[ins->dest] >= 0)
+            strbuf_appendf(sb, "    movd %s, %s\n", reg0,
+                           loc_str(b2, ra, ins->dest, x64, syntax));
+        else
+            strbuf_appendf(sb, "    movss %s, %s\n", reg0,
+                           loc_str(b2, ra, ins->dest, x64, syntax));
+        return;
+    }
+
+    if (is_intlike(src) && dst == TYPE_DOUBLE) {
+        if (syntax == ASM_INTEL)
+            strbuf_appendf(sb, "    cvtsi2sd %s, %s\n", reg0,
+                           loc_str(b1, ra, ins->src1, x64, syntax));
+        else
+            strbuf_appendf(sb, "    cvtsi2sd %s, %s\n",
+                           loc_str(b1, ra, ins->src1, x64, syntax), reg0);
+        if (ra && ra->loc[ins->dest] >= 0)
+            strbuf_appendf(sb, "    movq %s, %s\n", reg0,
+                           loc_str(b2, ra, ins->dest, x64, syntax));
+        else
+            strbuf_appendf(sb, "    movsd %s, %s\n", reg0,
+                           loc_str(b2, ra, ins->dest, x64, syntax));
+        return;
+    }
+
+    if (src == TYPE_FLOAT && is_intlike(dst)) {
+        if (syntax == ASM_INTEL)
+            strbuf_appendf(sb, "    movss %s, %s\n", reg0,
+                           loc_str(b1, ra, ins->src1, x64, syntax));
+        else
+            strbuf_appendf(sb, "    movss %s, %s\n",
+                           loc_str(b1, ra, ins->src1, x64, syntax), reg0);
+        if (syntax == ASM_INTEL)
+            strbuf_appendf(sb, "    cvttss2si %s, %s\n", reg0,
+                           loc_str(b2, ra, ins->dest, x64, syntax));
+        else
+            strbuf_appendf(sb, "    cvttss2si %s, %s\n", reg0,
+                           loc_str(b2, ra, ins->dest, x64, syntax));
+        return;
+    }
+
+    if (src == TYPE_DOUBLE && is_intlike(dst)) {
+        if (syntax == ASM_INTEL)
+            strbuf_appendf(sb, "    movsd %s, %s\n", reg0,
+                           loc_str(b1, ra, ins->src1, x64, syntax));
+        else
+            strbuf_appendf(sb, "    movsd %s, %s\n",
+                           loc_str(b1, ra, ins->src1, x64, syntax), reg0);
+        if (syntax == ASM_INTEL)
+            strbuf_appendf(sb, "    cvttsd2si %s, %s\n", reg0,
+                           loc_str(b2, ra, ins->dest, x64, syntax));
+        else
+            strbuf_appendf(sb, "    cvttsd2si %s, %s\n", reg0,
+                           loc_str(b2, ra, ins->dest, x64, syntax));
+        return;
+    }
+
+    if (src == TYPE_FLOAT && dst == TYPE_DOUBLE) {
+        if (syntax == ASM_INTEL)
+            strbuf_appendf(sb, "    movss %s, %s\n", reg0,
+                           loc_str(b1, ra, ins->src1, x64, syntax));
+        else
+            strbuf_appendf(sb, "    movss %s, %s\n",
+                           loc_str(b1, ra, ins->src1, x64, syntax), reg0);
+        strbuf_appendf(sb, "    cvtss2sd %s, %s\n", reg0, reg0);
+        if (ra && ra->loc[ins->dest] >= 0)
+            strbuf_appendf(sb, "    movq %s, %s\n", reg0,
+                           loc_str(b2, ra, ins->dest, x64, syntax));
+        else
+            strbuf_appendf(sb, "    movsd %s, %s\n", reg0,
+                           loc_str(b2, ra, ins->dest, x64, syntax));
+        return;
+    }
+
+    if (src == TYPE_DOUBLE && dst == TYPE_FLOAT) {
+        if (syntax == ASM_INTEL)
+            strbuf_appendf(sb, "    movsd %s, %s\n", reg0,
+                           loc_str(b1, ra, ins->src1, x64, syntax));
+        else
+            strbuf_appendf(sb, "    movsd %s, %s\n",
+                           loc_str(b1, ra, ins->src1, x64, syntax), reg0);
+        strbuf_appendf(sb, "    cvtsd2ss %s, %s\n", reg0, reg0);
+        if (ra && ra->loc[ins->dest] >= 0)
+            strbuf_appendf(sb, "    movd %s, %s\n", reg0,
+                           loc_str(b2, ra, ins->dest, x64, syntax));
+        else
+            strbuf_appendf(sb, "    movss %s, %s\n", reg0,
+                           loc_str(b2, ra, ins->dest, x64, syntax));
+        return;
+    }
+
+    /* Default case: just move the value */
+    if (syntax == ASM_INTEL)
+        strbuf_appendf(sb, "    mov%s %s, %s\n", sfx,
+                       loc_str(b2, ra, ins->dest, x64, syntax),
+                       loc_str(b1, ra, ins->src1, x64, syntax));
+    else
+        strbuf_appendf(sb, "    mov%s %s, %s\n", sfx,
+                       loc_str(b1, ra, ins->src1, x64, syntax),
+                       loc_str(b2, ra, ins->dest, x64, syntax));
+}
 /* Add a scaled index to a pointer operand. */
 static void emit_ptr_add(strbuf_t *sb, ir_instr_t *ins,
                          regalloc_t *ra, int x64,
@@ -541,6 +664,9 @@ void emit_arith_instr(strbuf_t *sb, ir_instr_t *ins,
         break;
     case IR_XOR:
         emit_bitwise(sb, ins, ra, x64, "xor", syntax);
+        break;
+    case IR_CAST:
+        emit_cast(sb, ins, ra, x64, syntax);
         break;
     case IR_CMPEQ: case IR_CMPNE: case IR_CMPLT: case IR_CMPGT:
     case IR_CMPLE: case IR_CMPGE:
