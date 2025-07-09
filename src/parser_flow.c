@@ -14,9 +14,7 @@
 #include "vector.h"
 #include "ast_stmt.h"
 #include "ast_expr.h"
-
-/* Forward declaration from parser_decl.c */
-stmt_t *parser_parse_var_decl(parser_t *p);
+#include "parser_decl_var.h"
 
 /* Parse an if statement starting at the 'if' keyword. */
 stmt_t *parser_parse_if_stmt(parser_t *p)

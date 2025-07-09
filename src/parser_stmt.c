@@ -3,7 +3,8 @@
  *
  * This module acts as a thin dispatcher for statement parsing.  It
  * recognizes the statement kind and forwards to the appropriate helper
- * in parser_decl.c or parser_flow.c.  Only basic block and simple
+ * in parser_decl_var.c, parser_decl_struct.c, parser_decl_enum.c or
+ * parser_flow.c.  Only basic block and simple
  * statements are handled directly here.  Declaration parsing is
  * performed by small helper routines that leave the parser state
  * unchanged on failure so callers can attempt multiple forms.
@@ -19,6 +20,9 @@
 #include "parser_types.h"
 #include "ast_stmt.h"
 #include "ast_expr.h"
+#include "parser_decl_var.h"
+#include "parser_decl_struct.h"
+#include "parser_decl_enum.h"
 
 /* Forward declarations for control flow helpers */
 stmt_t *parser_parse_if_stmt(parser_t *p);
@@ -32,7 +36,6 @@ static stmt_t *parse_tagged_decl(parser_t *p, token_type_t keyword,
                                  stmt_t *(*decl_fn)(parser_t *),
                                  stmt_t *(*var_decl_fn)(parser_t *));
 static stmt_t *parse_enum_declaration(parser_t *p);
-stmt_t *parser_parse_static_assert(parser_t *p);
 static stmt_t *parse_struct_declaration(parser_t *p);
 static stmt_t *parse_union_declaration(parser_t *p);
 static stmt_t *maybe_parse_var_decl(parser_t *p);
