@@ -199,6 +199,10 @@ static void propagate_through_instruction(const_track_t *ct, ir_instr_t *ins)
     case IR_ADD: case IR_SUB: case IR_MUL: case IR_DIV: case IR_MOD:
     case IR_SHL: case IR_SHR: case IR_AND: case IR_OR: case IR_XOR:
     case IR_FADD: case IR_FSUB: case IR_FMUL: case IR_FDIV:
+    case IR_CAST:
+    case IR_CPLX_CONST:
+    case IR_CPLX_ADD: case IR_CPLX_SUB:
+    case IR_CPLX_MUL: case IR_CPLX_DIV:
     case IR_PTR_ADD:
     case IR_PTR_DIFF:
     case IR_CMPEQ: case IR_CMPNE: case IR_CMPLT:
