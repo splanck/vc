@@ -17,18 +17,12 @@
 #include <limits.h>
 #include <stdint.h>
 #include "ir_core.h"
+#include "ir_builder.h"
 #include "label.h"
 #include "strbuf.h"
 #include "util.h"
 #include "ast.h"
 #include "error.h"
-
-typedef struct alias_ent {
-    const char *name;
-    int set;
-    struct alias_ent *next;
-} alias_ent_t;
-
 
 /*
  * Reset the builder so new instructions can be emitted.
@@ -73,114 +67,7 @@ void ir_builder_free(ir_builder_t *b)
     b->next_alias_id = 0;
 }
 
-/* Allocate and append a blank instruction to the builder's list. */
-static ir_instr_t *append_instr(ir_builder_t *b)
-{
-    ir_instr_t *ins = calloc(1, sizeof(*ins));
-    if (!ins)
-        return NULL;
-    ins->dest = -1;
-    ins->name = NULL;
-    ins->data = NULL;
-    ins->is_volatile = 0;
-    ins->is_restrict = 0;
-    ins->alias_set = 0;
-    ins->file = b->cur_file;
-    ins->line = b->cur_line;
-    ins->column = b->cur_column;
-    if (!b->head)
-        b->head = ins;
-    else
-        b->tail->next = ins;
-    b->tail = ins;
-    return ins;
-}
 
-/* Allocate the next unique value identifier or abort on overflow */
-static int alloc_value_id(ir_builder_t *b)
-{
-    if (b->next_value_id >= (size_t)INT_MAX) {
-        fprintf(stderr, "ir_core: too many values\n");
-        exit(1);
-    }
-    return (int)b->next_value_id++;
-}
-
-/* Remove instruction "ins" from the builder list and free it. */
-static void remove_instr(ir_builder_t *b, ir_instr_t *ins)
-{
-    if (!b || !ins)
-        return;
-    ir_instr_t *prev = NULL;
-    ir_instr_t *cur = b->head;
-    while (cur && cur != ins) {
-        prev = cur;
-        cur = cur->next;
-    }
-    if (!cur)
-        return;
-    if (prev)
-        prev->next = cur->next;
-    else
-        b->head = cur->next;
-    if (b->tail == cur)
-        b->tail = prev;
-    free(cur->name);
-    free(cur->data);
-    free(cur);
-}
-
-/* Lookup or create an alias set for the given variable name */
-static int get_alias(ir_builder_t *b, const char *name)
-{
-    alias_ent_t *e = b->aliases;
-    while (e && strcmp(e->name, name) != 0)
-        e = e->next;
-    if (e)
-        return e->set;
-    e = malloc(sizeof(*e));
-    if (!e)
-        return 0;
-    e->name = name;
-    e->set = b->next_alias_id++;
-    e->next = b->aliases;
-    b->aliases = e;
-    return e->set;
-}
-
-/* Allocate a blank instruction after `pos` and insert it into the list */
-ir_instr_t *ir_insert_after(ir_builder_t *b, ir_instr_t *pos)
-{
-    if (!b)
-        return NULL;
-
-    ir_instr_t *ins = calloc(1, sizeof(*ins));
-    if (!ins)
-        return NULL;
-    ins->dest = -1;
-    ins->name = NULL;
-    ins->data = NULL;
-    ins->is_volatile = 0;
-    ins->is_restrict = 0;
-    ins->alias_set = 0;
-    ins->file = b->cur_file;
-    ins->line = b->cur_line;
-    ins->column = b->cur_column;
-
-    if (!pos) {
-        ins->next = b->head;
-        b->head = ins;
-        if (!b->tail)
-            b->tail = ins;
-    } else {
-        ins->next = pos->next;
-        pos->next = ins;
-        if (b->tail == pos)
-            b->tail = ins;
-    }
-
-    return ins;
-}
 
 /*
  * Emit IR_CONST. dest gets a fresh id and imm stores the constant
