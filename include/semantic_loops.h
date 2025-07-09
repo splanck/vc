@@ -30,4 +30,11 @@ int check_for_stmt(stmt_t *stmt, symtable_t *vars, symtable_t *funcs,
                    label_table_t *labels, ir_builder_t *ir,
                    type_kind_t func_ret_type);
 
+/* Validate a break statement */
+int check_break_stmt(stmt_t *stmt, const char *break_label, ir_builder_t *ir);
+
+/* Validate a continue statement */
+int check_continue_stmt(stmt_t *stmt, const char *continue_label,
+                        ir_builder_t *ir);
+
 #endif /* VC_SEMANTIC_LOOPS_H */

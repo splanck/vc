@@ -329,21 +329,6 @@ static int handle_return_stmt(stmt_t *stmt, symtable_t *vars,
     return 1;
 }
 
-/*
- * Handle break and continue statements. The target label must be
- * provided by the caller. If no valid label is available an error
- * is reported.
- */
-static int handle_loop_stmt(stmt_t *stmt, const char *target,
-                            ir_builder_t *ir)
-{
-    if (!target) {
-        error_set(stmt->line, stmt->column, error_current_file, error_current_function);
-        return 0;
-    }
-    ir_build_br(ir, target);
-    return 1;
-}
 
 /*
  * Handle a label statement. The label name is recorded in the table
@@ -448,23 +433,6 @@ static int check_goto_stmt(stmt_t *stmt, label_table_t *labels,
     return 1;
 }
 
-/*
- * Wrapper used to validate a break statement.
- */
-static int check_break_stmt(stmt_t *stmt, const char *break_label,
-                            ir_builder_t *ir)
-{
-    return handle_loop_stmt(stmt, break_label, ir);
-}
-
-/*
- * Wrapper used to validate a continue statement.
- */
-static int check_continue_stmt(stmt_t *stmt, const char *continue_label,
-                               ir_builder_t *ir)
-{
-    return handle_loop_stmt(stmt, continue_label, ir);
-}
 
 /* Evaluate a _Static_assert expression and emit an error if zero */
 static int check_static_assert_stmt(stmt_t *stmt, symtable_t *vars)

@@ -10,6 +10,7 @@
 #include "semantic_loops.h"
 #include "semantic_expr.h"
 #include "label.h"
+#include "error.h"
 
 /* Forward declaration from semantic_stmt.c */
 extern int check_stmt(stmt_t *stmt, symtable_t *vars, symtable_t *funcs,
@@ -135,5 +136,31 @@ int check_for_stmt(stmt_t *stmt, symtable_t *vars, symtable_t *funcs,
     ir_build_label(ir, end_label);
     symtable_pop_scope(vars, old_head);
     return 1;
+}
+
+/* Internal helper used by break/continue handlers */
+static int handle_loop_stmt(stmt_t *stmt, const char *target,
+                            ir_builder_t *ir)
+{
+    if (!target) {
+        error_set(stmt->line, stmt->column, error_current_file,
+                  error_current_function);
+        return 0;
+    }
+    ir_build_br(ir, target);
+    return 1;
+}
+
+/* Validate a break statement */
+int check_break_stmt(stmt_t *stmt, const char *break_label, ir_builder_t *ir)
+{
+    return handle_loop_stmt(stmt, break_label, ir);
+}
+
+/* Validate a continue statement */
+int check_continue_stmt(stmt_t *stmt, const char *continue_label,
+                        ir_builder_t *ir)
+{
+    return handle_loop_stmt(stmt, continue_label, ir);
 }
 
