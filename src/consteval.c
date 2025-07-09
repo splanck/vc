@@ -8,6 +8,7 @@
 #include <stdlib.h>
 #include <errno.h>
 #include <limits.h>
+#include <string.h>
 #include "error.h"
 #include "consteval.h"
 #include "symtable.h"
