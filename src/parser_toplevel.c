@@ -366,6 +366,32 @@ static int parse_type_specifier(parser_t *p, size_t spec_pos, type_kind_t *type,
     return 1;
 }
 
+/* Parse the base type, optional pointer qualifier and identifier name for a
+ * top-level declaration.  On success all parsed information is returned through
+ * the out parameters and the parser is positioned just after the identifier. */
+static int parse_decl_type_and_name(parser_t *p, size_t spec_pos,
+                                    type_kind_t *type, size_t *elem_size,
+                                    int *is_restrict, char **tag_name,
+                                    const char **name)
+{
+    if (!parse_type_specifier(p, spec_pos, type, elem_size,
+                              is_restrict, tag_name))
+        return 0;
+
+    token_t *id = peek(p);
+    if (!id || id->type != TOK_IDENT) {
+        free(*tag_name);
+        *tag_name = NULL;
+        p->pos = spec_pos;
+        return 0;
+    }
+
+    p->pos++;
+    if (name)
+        *name = id->lexeme;
+    return 1;
+}
+
 /* Check for and parse a function prototype or definition following an
  * identifier.  The parser must be positioned just past the identifier.
  * If a '(' token is present parse_func_prototype is invoked and the parser is
@@ -564,26 +590,19 @@ static int parse_function_or_var(parser_t *p, symtable_t *funcs,
     size_t elem_size;
     int is_restrict;
     char *tag_name = NULL;
+    const char *name;
 
-    if (!parse_type_specifier(p, spec_pos, &t, &elem_size,
-                              &is_restrict, &tag_name))
+    if (!parse_decl_type_and_name(p, spec_pos, &t, &elem_size,
+                                  &is_restrict, &tag_name, &name))
         return 0;
 
-    token_t *id = peek(p);
-    if (!id || id->type != TOK_IDENT) {
-        free(tag_name);
-        p->pos = spec_pos;
-        return 0;
-    }
-    p->pos++;
-
-    if (parse_function_prototype(p, funcs, id->lexeme, t, tag_name,
+    if (parse_function_prototype(p, funcs, name, t, tag_name,
                                  spec_pos, is_inline, is_noreturn, out_func)) {
         free(tag_name);
         return 1;
     }
 
-    int rv = parse_global_var_init(p, id->lexeme, t, elem_size, is_static,
+    int rv = parse_global_var_init(p, name, t, elem_size, is_static,
                                    is_register, is_extern, is_const,
                                    is_volatile, is_restrict, tag_name,
                                    line, column, out_global);
