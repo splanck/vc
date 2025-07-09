@@ -11,6 +11,8 @@
 #include <stddef.h>
 #include "token.h"
 #include "ast.h"
+#include "ast_expr.h"
+#include "ast_stmt.h"
 #include "symtable.h"
 
 /* Parser state */

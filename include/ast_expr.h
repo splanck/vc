@@ -15,6 +15,111 @@
 
 #include "ast.h"
 
+struct expr {
+    expr_kind_t kind;
+    size_t line;
+    size_t column;
+    union {
+        struct {
+            char *value;
+            int is_unsigned;
+            int long_count; /* 0=int,1=long,2=long long */
+        } number;
+        struct {
+            char *name;
+        } ident;
+        struct {
+            char *value;
+            int is_wide;
+        } string;
+        struct {
+            char value;
+            int is_wide;
+        } ch;
+        struct {
+            double real;
+            double imag;
+        } complex_lit;
+        struct {
+            unop_t op;
+            expr_t *operand;
+        } unary;
+        struct {
+            binop_t op;
+            expr_t *left;
+            expr_t *right;
+        } binary;
+        struct {
+            expr_t *cond;
+            expr_t *then_expr;
+            expr_t *else_expr;
+        } cond;
+        struct {
+            char *name;
+            expr_t *value;
+        } assign;
+        struct {
+            expr_t *array;
+            expr_t *index;
+        } index;
+        struct {
+            expr_t *array;
+            expr_t *index;
+            expr_t *value;
+        } assign_index;
+        struct {
+            expr_t *object;
+            char *member;
+            expr_t *value;
+            int via_ptr;
+        } assign_member;
+        struct {
+            expr_t *object;
+            char *member;
+            int via_ptr;
+        } member;
+        struct {
+            char *name;
+            expr_t **args;
+            size_t arg_count;
+        } call;
+        struct {
+            type_kind_t type;
+            size_t array_size;
+            size_t elem_size;
+            expr_t *expr;
+        } cast;
+        struct {
+            int is_type;
+            type_kind_t type;
+            size_t array_size;
+            size_t elem_size;
+            expr_t *expr;
+        } sizeof_expr;
+        struct {
+            type_kind_t type;
+            char *tag;
+            char **members;
+            size_t member_count;
+        } offsetof_expr;
+        struct {
+            int is_type;
+            type_kind_t type;
+            size_t array_size;
+            size_t elem_size;
+            expr_t *expr;
+        } alignof_expr;
+        struct {
+            type_kind_t type;
+            size_t array_size;
+            size_t elem_size;
+            expr_t *init;
+            init_entry_t *init_list;
+            size_t init_count;
+        } compound;
+    };
+};
+
 /* Create a numeric literal expression. */
 expr_t *ast_make_number(const char *value, size_t line, size_t column);
 /* Create an identifier expression. */

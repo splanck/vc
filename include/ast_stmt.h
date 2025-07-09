@@ -15,6 +15,159 @@
 #define VC_AST_STMT_H
 
 #include "ast.h"
+#include "ast_expr.h"
+
+struct switch_case {
+    expr_t *expr;
+    stmt_t *body;
+};
+
+struct enumerator {
+    char *name;
+    expr_t *value; /* may be NULL */
+};
+
+struct union_member {
+    char *name;
+    type_kind_t type;
+    size_t elem_size;
+    size_t offset;
+    unsigned bit_width;
+    unsigned bit_offset;
+    int is_flexible;
+};
+
+struct struct_member {
+    char *name;
+    type_kind_t type;
+    size_t elem_size;
+    size_t offset;
+    unsigned bit_width;
+    unsigned bit_offset;
+    int is_flexible;
+};
+
+struct stmt {
+    stmt_kind_t kind;
+    size_t line;
+    size_t column;
+    union {
+        struct {
+            expr_t *expr;
+        } expr;
+        struct {
+            /* expression may be NULL for 'return;' in void functions */
+            expr_t *expr;
+        } ret;
+        struct {
+            char *name;
+            type_kind_t type;
+            size_t array_size;
+            expr_t *size_expr;
+            expr_t *align_expr;
+            size_t alignment;
+            size_t elem_size;
+            char *tag; /* NULL for basic types */
+            int is_static;
+            int is_register;
+            int is_extern;
+            int is_const;
+            int is_volatile;
+            int is_restrict;
+            /* optional initializer expression */
+            expr_t *init;
+            /* optional initializer list for arrays */
+            init_entry_t *init_list;
+            size_t init_count;
+            union_member_t *members;
+            size_t member_count;
+            /* function pointer metadata */
+            type_kind_t func_ret_type;
+            type_kind_t *func_param_types;
+            size_t func_param_count;
+            int func_variadic;
+        } var_decl;
+        struct {
+            expr_t *cond;
+            stmt_t *then_branch;
+            stmt_t *else_branch; /* may be NULL */
+        } if_stmt;
+        struct {
+            expr_t *cond;
+            stmt_t *body;
+        } while_stmt;
+        struct {
+            expr_t *cond;
+            stmt_t *body;
+        } do_while_stmt;
+        struct {
+            stmt_t *init_decl; /* optional variable declaration */
+            expr_t *init;       /* optional init expression */
+            expr_t *cond;
+            expr_t *incr;
+            stmt_t *body;
+        } for_stmt;
+        struct {
+            expr_t *expr;
+            switch_case_t *cases;
+            size_t case_count;
+            stmt_t *default_body; /* may be NULL */
+        } switch_stmt;
+        struct {
+            char *name;
+        } label;
+        struct {
+            char *name;
+        } goto_stmt;
+        struct {
+            expr_t *expr;
+            char *message;
+        } static_assert;
+        struct {
+            char *name;
+            type_kind_t type;
+            size_t array_size;
+            size_t elem_size;
+        } typedef_decl;
+        struct {
+            char *tag;
+            enumerator_t *items;
+            size_t count;
+        } enum_decl;
+        struct {
+            char *tag;
+            struct_member_t *members;
+            size_t count;
+        } struct_decl;
+        struct {
+            char *tag;
+            union_member_t *members;
+            size_t count;
+        } union_decl;
+        struct {
+            stmt_t **stmts;
+            size_t count;
+        } block;
+    };
+};
+
+/* Function definition structure */
+struct func {
+    char *name;
+    type_kind_t return_type;
+    char *return_tag;
+    char **param_names;
+    type_kind_t *param_types;
+    char **param_tags;
+    size_t *param_elem_sizes;
+    int *param_is_restrict;
+    size_t param_count;
+    int is_variadic;
+    stmt_t **body;
+    size_t body_count;
+    int is_inline;
+    int is_noreturn;
+};
 
 /* Create a statement from a single expression. */
 stmt_t *ast_make_expr_stmt(expr_t *expr, size_t line, size_t column);

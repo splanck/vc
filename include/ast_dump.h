@@ -8,7 +8,7 @@
 #ifndef VC_AST_DUMP_H
 #define VC_AST_DUMP_H
 
-#include "ast.h"
+#include "ast_stmt.h"
 
 /*
  * Convert the parsed AST into a textual representation.
