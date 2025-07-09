@@ -25,6 +25,9 @@ static int parse_decl_specs(parser_t *p, int *is_extern, int *is_static,
                             type_kind_t *base_type,
                             char **tag_name, size_t *elem_size,
                             expr_t **align_expr, token_t **kw_tok);
+static void parse_pointer_suffix(parser_t *p, type_kind_t *type,
+                                 int *is_restrict);
+static void parse_align_spec(parser_t *p, expr_t **align_expr);
 static int parse_array_suffix(parser_t *p, type_kind_t *type, char **name,
                               size_t *arr_size, expr_t **size_expr);
 static int parse_braced_initializer(parser_t *p, init_entry_t **init_list,
@@ -53,6 +56,25 @@ static void assign_member(int is_union, union_member_t *um,
                           unsigned bit_width);
 /* Free names for partially parsed member vectors. */
 static void free_parsed_members(vector_t *v, int is_union);
+
+/* Parse an optional '*' pointer suffix followed by 'restrict'. */
+static void parse_pointer_suffix(parser_t *p, type_kind_t *type,
+                                 int *is_restrict)
+{
+    *is_restrict = 0;
+    if (match(p, TOK_STAR)) {
+        *type = TYPE_PTR;
+        *is_restrict = match(p, TOK_KW_RESTRICT);
+    }
+}
+
+/* Parse an optional _Alignas specification. */
+static void parse_align_spec(parser_t *p, expr_t **align_expr)
+{
+    if (align_expr)
+        *align_expr = NULL;
+    parse_alignas_spec(p, align_expr);
+}
 
 /* Parse declaration specifiers like storage class and base type. */
 static int parse_decl_specs(parser_t *p, int *is_extern, int *is_static,
@@ -103,14 +125,8 @@ static int parse_decl_specs(parser_t *p, int *is_extern, int *is_static,
             *base_type = *type;
     }
 
-    *is_restrict = 0;
-    if (match(p, TOK_STAR)) {
-        *type = TYPE_PTR;
-        *is_restrict = match(p, TOK_KW_RESTRICT);
-    }
-    if (align_expr)
-        *align_expr = NULL;
-    parse_alignas_spec(p, align_expr);
+    parse_pointer_suffix(p, type, is_restrict);
+    parse_align_spec(p, align_expr);
     return 1;
 }
 
