@@ -25,6 +25,17 @@ typedef struct {
     var_const_t *vars;
 } const_track_t;
 
+/* Update destination entry in constant tracking tables */
+static void update_const(const_track_t *ct, ir_instr_t *ins, int val, int cst)
+{
+    size_t max_id = ct->max_id;
+    if (ins->dest >= 0 && (size_t)ins->dest < max_id) {
+        ct->is_const[ins->dest] = cst;
+        if (cst)
+            ct->values[ins->dest] = val;
+    }
+}
+
 /* Reset all entries in a variable constant list */
 static void clear_var_list(var_const_t *head)
 {
@@ -199,10 +210,6 @@ static void propagate_through_instruction(const_track_t *ct, ir_instr_t *ins)
     case IR_ADD: case IR_SUB: case IR_MUL: case IR_DIV: case IR_MOD:
     case IR_SHL: case IR_SHR: case IR_AND: case IR_OR: case IR_XOR:
     case IR_FADD: case IR_FSUB: case IR_FMUL: case IR_FDIV:
-    case IR_CAST:
-    case IR_CPLX_CONST:
-    case IR_CPLX_ADD: case IR_CPLX_SUB:
-    case IR_CPLX_MUL: case IR_CPLX_DIV:
     case IR_PTR_ADD:
     case IR_PTR_DIFF:
     case IR_CMPEQ: case IR_CMPNE: case IR_CMPLT:
@@ -211,6 +218,12 @@ static void propagate_through_instruction(const_track_t *ct, ir_instr_t *ins)
             ct->is_const[ins->dest] = 0;
         if (ins->op == IR_FUNC_BEGIN)
             clear_var_list(ct->vars);
+        break;
+    case IR_CAST:
+    case IR_CPLX_CONST:
+    case IR_CPLX_ADD: case IR_CPLX_SUB:
+    case IR_CPLX_MUL: case IR_CPLX_DIV:
+        update_const(ct, ins, 0, 0);
         break;
     }
 }
