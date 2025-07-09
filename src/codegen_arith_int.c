@@ -160,13 +160,14 @@ void emit_div(strbuf_t *sb, ir_instr_t *ins,
     strbuf_appendf(sb, "    idiv%s %s\n", sfx,
                    loc_str(b1, ra, ins->src2, x64, syntax));
     if (ra && ra->loc[ins->dest] >= 0 &&
-        strcmp(regalloc_reg_name(ra->loc[ins->dest]), ax) != 0)
+        strcmp(regalloc_reg_name(ra->loc[ins->dest]), ax) != 0) {
         if (syntax == ASM_INTEL)
             strbuf_appendf(sb, "    mov%s %s, %s\n", sfx,
                            loc_str(b2, ra, ins->dest, x64, syntax), ax);
         else
             strbuf_appendf(sb, "    mov%s %s, %s\n", sfx, ax,
                            loc_str(b2, ra, ins->dest, x64, syntax));
+    }
 }
 
 void emit_mod(strbuf_t *sb, ir_instr_t *ins,
@@ -188,7 +189,7 @@ void emit_mod(strbuf_t *sb, ir_instr_t *ins,
                    loc_str(b1, ra, ins->src2, x64, syntax));
     if (ra && ra->loc[ins->dest] >= 0 &&
         strcmp(regalloc_reg_name(ra->loc[ins->dest]),
-               x64 ? "%rdx" : "%edx") != 0)
+               x64 ? "%rdx" : "%edx") != 0) {
         if (syntax == ASM_INTEL)
             strbuf_appendf(sb, "    mov%s %s, %s\n", sfx,
                            loc_str(b2, ra, ins->dest, x64, syntax),
@@ -197,6 +198,7 @@ void emit_mod(strbuf_t *sb, ir_instr_t *ins,
             strbuf_appendf(sb, "    mov%s %s, %s\n", sfx,
                            fmt_reg(x64 ? "%rdx" : "%edx", syntax),
                            loc_str(b2, ra, ins->dest, x64, syntax));
+    }
 }
 
 void emit_shift(strbuf_t *sb, ir_instr_t *ins,
