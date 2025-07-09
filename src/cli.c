@@ -398,6 +398,111 @@ static int parse_misc_opts(int opt, const char *arg, const char *prog,
 }
 
 /*
+ * Prepend flags found in the VCFLAGS environment variable. The updated
+ * argument vector is stored in *argv and its length in *argc. When no
+ * environment flags are present the inputs are left untouched. The
+ * returned pointers must be freed by the caller.
+ */
+static int load_vcflags(int *argc, char ***argv, char ***out_argv,
+                        char **out_buf)
+{
+    char **vcargv = NULL;
+    char *vcbuf = NULL;
+    int vcargc = 0;
+    const char *env = getenv("VCFLAGS");
+    if (env && *env) {
+        vcbuf = vc_strdup(env);
+        if (!vcbuf) {
+            fprintf(stderr, "Out of memory while processing VCFLAGS.\n");
+            return 1;
+        }
+
+        char *tmp = vc_strdup(env);
+        if (!tmp) {
+            fprintf(stderr, "Out of memory while processing VCFLAGS.\n");
+            free(vcbuf);
+            return 1;
+        }
+        for (char *t = strtok(tmp, " "); t; t = strtok(NULL, " "))
+            vcargc++;
+        free(tmp);
+
+        vcargv = malloc(sizeof(char *) * (*argc + vcargc));
+        if (!vcargv) {
+            fprintf(stderr, "Out of memory while processing VCFLAGS.\n");
+            free(vcbuf);
+            return 1;
+        }
+
+        vcargv[0] = (*argv)[0];
+        int idx = 1;
+        for (char *t = strtok(vcbuf, " "); t; t = strtok(NULL, " "))
+            vcargv[idx++] = t;
+        for (int i = 1; i < *argc; i++)
+            vcargv[idx++] = (*argv)[i];
+
+        *argv = vcargv;
+        *argc += vcargc;
+    }
+
+    *out_argv = vcargv;
+    *out_buf = vcbuf;
+    return 0;
+}
+
+/*
+ * Convert shorthand options like -M and -MD to the long forms expected by
+ * getopt_long. The argument vector is modified in place and the updated
+ * count stored back to *argc.
+ */
+static void scan_shortcuts(int *argc, char **argv)
+{
+    int new_argc = 1;
+    for (int i = 1; i < *argc; i++) {
+        if (strcmp(argv[i], "-MD") == 0)
+            argv[new_argc++] = "--MD";
+        else if (strcmp(argv[i], "-M") == 0)
+            argv[new_argc++] = "--M";
+        else
+            argv[new_argc++] = argv[i];
+    }
+    *argc = new_argc;
+}
+
+/*
+ * Validate final options and collect source file paths after getopt
+ * processing completes.
+ */
+static int finalize_options(int argc, char **argv, const char *prog,
+                            cli_options_t *opts)
+{
+    if (optind >= argc) {
+        fprintf(stderr, "Error: no source file specified.\n");
+        print_usage(prog);
+        cli_free_opts(opts);
+        return 1;
+    }
+
+    for (int i = optind; i < argc; i++) {
+        if (push_source(opts, argv[i])) {
+            cli_free_opts(opts);
+            return 1;
+        }
+    }
+
+    if (!opts->output && !opts->dump_asm && !opts->dump_ir &&
+        !opts->dump_tokens && !opts->dump_ast && !opts->preprocess &&
+        !opts->dep_only) {
+        fprintf(stderr, "Error: no output path specified.\n");
+        print_usage(prog);
+        cli_free_opts(opts);
+        return 1;
+    }
+
+    return 0;
+}
+
+/*
  * Parse argv using getopt_long and fill the cli_options_t structure
  * with the selected settings. The long_opts table defines the
  * mapping between short (-o) and long (--output) options. Default
@@ -412,57 +517,13 @@ int cli_parse_args(int argc, char **argv, cli_options_t *opts)
     optreset = 1;
 #endif
 
-    /* Prepend flags from VCFLAGS environment variable */
     char **vcflags_argv = NULL;
     char *vcflags_buf = NULL;
-    int vcflags_argc = 0;
-    const char *env = getenv("VCFLAGS");
-    if (env && *env) {
-        vcflags_buf = vc_strdup(env);
-        if (!vcflags_buf) {
-            fprintf(stderr, "Out of memory while processing VCFLAGS.\n");
-            return 1;
-        }
 
-        /* Count tokens */
-        char *tmp = vc_strdup(env);
-        if (!tmp) {
-            fprintf(stderr, "Out of memory while processing VCFLAGS.\n");
-            return 1;
-        }
-        for (char *t = strtok(tmp, " "); t; t = strtok(NULL, " "))
-            vcflags_argc++;
-        free(tmp);
+    if (load_vcflags(&argc, &argv, &vcflags_argv, &vcflags_buf))
+        return 1;
 
-        vcflags_argv = malloc(sizeof(char *) * (argc + vcflags_argc));
-        if (!vcflags_argv) {
-            fprintf(stderr, "Out of memory while processing VCFLAGS.\n");
-            return 1;
-        }
-
-        vcflags_argv[0] = argv[0];
-        int idx = 1;
-        for (char *t = strtok(vcflags_buf, " "); t; t = strtok(NULL, " "))
-            vcflags_argv[idx++] = t;
-        for (int i = 1; i < argc; i++)
-            vcflags_argv[idx++] = argv[i];
-
-        argv = vcflags_argv;
-        argc += vcflags_argc;
-    }
-
-    /* Pre-scan argv for -M and -MD options */
-    int new_argc = 1;
-    for (int i = 1; i < argc; i++) {
-        if (strcmp(argv[i], "-MD") == 0) {
-            argv[new_argc++] = "--MD";
-        } else if (strcmp(argv[i], "-M") == 0) {
-            argv[new_argc++] = "--M";
-        } else {
-            argv[new_argc++] = argv[i];
-        }
-    }
-    argc = new_argc;
+    scan_shortcuts(&argc, argv);
 
     static struct option long_opts[] = {
         {"help",    no_argument,       0, 'h'},
@@ -502,6 +563,8 @@ int cli_parse_args(int argc, char **argv, cli_options_t *opts)
         int ret;
         if ((ret = parse_optimization_opts(opt, optarg, opts)) == 1) {
             cli_free_opts(opts);
+            free(vcflags_argv);
+            free(vcflags_buf);
             return 1;
         } else if (ret == 0) {
             continue;
@@ -509,6 +572,8 @@ int cli_parse_args(int argc, char **argv, cli_options_t *opts)
 
         if ((ret = parse_io_paths(opt, optarg, opts)) == 1) {
             cli_free_opts(opts);
+            free(vcflags_argv);
+            free(vcflags_buf);
             return 1;
         } else if (ret == 0) {
             continue;
@@ -516,6 +581,8 @@ int cli_parse_args(int argc, char **argv, cli_options_t *opts)
 
         if ((ret = parse_misc_opts(opt, optarg, argv[0], opts)) == 1) {
             cli_free_opts(opts);
+            free(vcflags_argv);
+            free(vcflags_buf);
             return 1;
         } else if (ret == 0) {
             continue;
@@ -523,32 +590,14 @@ int cli_parse_args(int argc, char **argv, cli_options_t *opts)
 
     print_usage(argv[0]);
     cli_free_opts(opts);
+    free(vcflags_argv);
+    free(vcflags_buf);
     return 1;
     }
 
-    if (optind >= argc) {
-        fprintf(stderr, "Error: no source file specified.\n");
-        print_usage(argv[0]);
-        cli_free_opts(opts);
-        return 1;
-    }
-
-    for (int i = optind; i < argc; i++) {
-        if (push_source(opts, argv[i])) {
-            cli_free_opts(opts);
-            return 1;
-        }
-    }
-
-    if (!opts->output && !opts->dump_asm && !opts->dump_ir &&
-        !opts->dump_tokens && !opts->dump_ast && !opts->preprocess &&
-        !opts->dep_only) {
-        fprintf(stderr, "Error: no output path specified.\n");
-        print_usage(argv[0]);
-        cli_free_opts(opts);
-        return 1;
-    }
-
-    return 0;
+    int ret = finalize_options(argc, argv, argv[0], opts);
+    free(vcflags_argv);
+    free(vcflags_buf);
+    return ret;
 }
 
