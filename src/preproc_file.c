@@ -25,7 +25,7 @@
 #include <unistd.h>
 #include "preproc_file.h"
 #include "preproc_macros.h"
-#include "preproc_expr.h"
+#include "preproc_cond.h"
 #include "preproc_include.h"
 #include "preproc_path.h"
 #include "semantic_global.h"
@@ -246,134 +246,7 @@ static int handle_define(char *line, vector_t *macros, vector_t *conds)
     return ok;
 }
 
-/* Push a new state for #ifdef/#ifndef directives.  When "neg" is non-zero
- * the condition is inverted as for #ifndef. */
-static int cond_push_ifdef_common(char *line, vector_t *macros,
-                                  vector_t *conds, int neg)
-{
-    char *n = line + (neg ? 7 : 6);
-    n = skip_ws(n);
-    char *id = n;
-    while (isalnum((unsigned char)*n) || *n == '_')
-        n++;
-    *n = '\0';
-    cond_state_t st;
-    st.parent_active = is_active(conds);
-    st.taken = 0;
-    int defined = is_macro_defined(macros, id);
-    if (st.parent_active && (neg ? !defined : defined)) {
-        st.taking = 1;
-        st.taken = 1;
-    } else {
-        st.taking = 0;
-    }
-    if (!vector_push(conds, &st)) {
-        vc_oom();
-        return 0;
-    }
-    return 1;
-}
 
-/* Push a new state for an #ifdef directive */
-static int cond_push_ifdef(char *line, vector_t *macros, vector_t *conds)
-{
-    return cond_push_ifdef_common(line, macros, conds, 0);
-}
-
-/* Push a new state for an #ifndef directive */
-static int cond_push_ifndef(char *line, vector_t *macros, vector_t *conds)
-{
-    return cond_push_ifdef_common(line, macros, conds, 1);
-}
-
-/* Push a new state for a generic #if expression */
-static int cond_push_ifexpr(char *line, vector_t *macros, vector_t *conds)
-{
-    char *expr = line + 3;
-    cond_state_t st;
-    st.parent_active = is_active(conds);
-    st.taken = 0;
-    if (st.parent_active && eval_expr(expr, macros)) {
-        st.taking = 1;
-        st.taken = 1;
-    } else {
-        st.taking = 0;
-    }
-    if (!vector_push(conds, &st)) {
-        vc_oom();
-        return 0;
-    }
-    return 1;
-}
-
-/* Handle an #elif directive */
-static void cond_handle_elif(char *line, vector_t *macros, vector_t *conds)
-{
-    if (!conds->count)
-        return;
-    cond_state_t *st =
-        &((cond_state_t *)conds->data)[conds->count - 1];
-    if (st->parent_active) {
-        if (st->taken) {
-            st->taking = 0;
-        } else {
-            char *expr = line + 5;
-            st->taking = eval_expr(expr, macros);
-            if (st->taking)
-                st->taken = 1;
-        }
-    } else {
-        st->taking = 0;
-    }
-}
-
-/* Handle an #else directive */
-static void cond_handle_else(vector_t *conds)
-{
-    if (!conds->count)
-        return;
-    cond_state_t *st =
-        &((cond_state_t *)conds->data)[conds->count - 1];
-    if (st->parent_active && !st->taken) {
-        st->taking = 1;
-        st->taken = 1;
-    } else {
-        st->taking = 0;
-    }
-}
-
-/* Handle an #endif directive */
-static void cond_handle_endif(vector_t *conds)
-{
-    if (conds->count)
-        conds->count--;
-}
-
-/*
- * Dispatch conditional directives to the specific helper handlers.
- */
-static int handle_conditional(char *line, vector_t *macros, vector_t *conds)
-{
-    if (strncmp(line, "#ifdef", 6) == 0 && isspace((unsigned char)line[6])) {
-        return cond_push_ifdef(line, macros, conds);
-    } else if (strncmp(line, "#ifndef", 7) == 0 &&
-               isspace((unsigned char)line[7])) {
-        return cond_push_ifndef(line, macros, conds);
-    } else if (strncmp(line, "#if", 3) == 0 && isspace((unsigned char)line[3])) {
-        return cond_push_ifexpr(line, macros, conds);
-    } else if (strncmp(line, "#elif", 5) == 0 &&
-               isspace((unsigned char)line[5])) {
-        cond_handle_elif(line, macros, conds);
-        return 1;
-    } else if (strncmp(line, "#else", 5) == 0) {
-        cond_handle_else(conds);
-        return 1;
-    } else if (strncmp(line, "#endif", 6) == 0) {
-        cond_handle_endif(conds);
-        return 1;
-    }
-    return 1;
-}
 
 /*
  * Append a #pragma directive to the output when the current

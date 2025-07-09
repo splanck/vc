@@ -12,7 +12,7 @@ CORE_SRC = src/main.c src/compile.c src/compile_tokenize.c src/compile_parse.c s
            src/codegen.c src/codegen_mem.c src/codegen_loadstore.c src/codegen_arith_int.c src/codegen_arith_float.c src/codegen_branch.c \
            src/codegen_float.c src/codegen_complex.c \
            src/regalloc.c src/regalloc_x86.c src/strbuf.c src/util.c src/vector.c src/ir_dump.c src/ast_dump.c src/label.c \
-           src/preproc_macros.c src/preproc_expr.c src/preproc_file.c \
+           src/preproc_macros.c src/preproc_expr.c src/preproc_cond.c src/preproc_file.c \
            src/preproc_include.c src/preproc_path.c
 
 # Optional optimization sources
@@ -25,7 +25,7 @@ OBJ := $(SRC:.c=.o)
 HDR = include/token.h include/ast.h include/ast_clone.h include/ast_expr.h include/ast_stmt.h include/parser.h include/symtable.h include/semantic.h     include/consteval.h include/semantic_expr.h include/semantic_arith.h include/semantic_mem.h include/semantic_call.h include/semantic_loops.h include/semantic_switch.h include/semantic_stmt.h include/semantic_var.h include/semantic_init.h include/semantic_global.h \
     include/ir_core.h include/ir_global.h include/ir_dump.h include/ast_dump.h include/opt.h include/codegen.h include/codegen_mem.h include/codegen_loadstore.h include/codegen_arith.h include/codegen_arith_int.h include/codegen_arith_float.h include/codegen_branch.h include/strbuf.h \
     include/util.h include/command.h include/cli.h include/vector.h include/regalloc_x86.h include/label.h include/error.h \
-    include/preproc.h include/preproc_file.h include/preproc_macros.h include/preproc_expr.h include/preproc_path.h include/parser_types.h include/parser_core.h include/startup.h
+    include/preproc.h include/preproc_file.h include/preproc_macros.h include/preproc_expr.h include/preproc_cond.h include/preproc_path.h include/parser_types.h include/parser_core.h include/startup.h
 PREFIX ?= /usr/local
 INCLUDEDIR ?= $(PREFIX)/include/vc
 MANDIR ?= $(PREFIX)/share/man
@@ -219,6 +219,9 @@ src/preproc_macros.o: src/preproc_macros.c $(HDR)
 
 src/preproc_expr.o: src/preproc_expr.c $(HDR)
 	$(CC) $(CFLAGS) $(OPTFLAGS) -Iinclude -c src/preproc_expr.c -o src/preproc_expr.o
+src/preproc_cond.o: src/preproc_cond.c $(HDR)
+	$(CC) $(CFLAGS) $(OPTFLAGS) -Iinclude -c src/preproc_cond.c -o src/preproc_cond.o
+
 
 src/preproc_file.o: src/preproc_file.c $(HDR)
 	$(CC) $(CFLAGS) $(OPTFLAGS) -Iinclude -c src/preproc_file.c -o src/preproc_file.o
