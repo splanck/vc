@@ -328,12 +328,9 @@ static int compile_output_stage(compile_context_t *ctx, const char *output,
                                use_x86_64, compile_obj, cli);
 }
 
-/* Emit assembly or an object file */
-
-/* Compile a single translation unit */
-#ifndef UNIT_TESTING
-static int compile_single_unit(const char *source, const cli_options_t *cli,
-                               const char *output, int compile_obj)
+/* --- Helpers for compile_single_unit --- */
+static void setup_compile_context(compile_context_t *ctx, const char *source,
+                                  const cli_options_t *cli)
 {
     error_current_file = source ? source : "";
     error_current_function = NULL;
@@ -341,42 +338,79 @@ static int compile_single_unit(const char *source, const cli_options_t *cli,
     codegen_set_export(cli->link);
     codegen_set_debug(cli->debug || cli->emit_dwarf);
     codegen_set_dwarf(cli->emit_dwarf);
+    compile_ctx_init(ctx);
+}
 
+static int run_tokenization(compile_context_t *ctx, const char *source,
+                            const cli_options_t *cli)
+{
+    int ok = compile_tokenize_stage(ctx, source, cli,
+                                    &cli->include_dirs,
+                                    &cli->defines,
+                                    &cli->undefines);
+    if (ok && cli->dump_tokens) {
+        char *text = tokens_to_string(ctx->tokens, ctx->tok_count);
+        if (text) {
+            printf("%s", text);
+            free(text);
+        }
+    }
+    return ok;
+}
+
+static int run_parsing(compile_context_t *ctx, const cli_options_t *cli)
+{
+    int ok = compile_parse_stage(ctx);
+    if (ok && cli->dump_ast) {
+        char *text = ast_to_string((func_t **)ctx->func_list_v.data,
+                                   ctx->func_list_v.count,
+                                   (stmt_t **)ctx->glob_list_v.data,
+                                   ctx->glob_list_v.count);
+        if (text) {
+            printf("%s", text);
+            free(text);
+        }
+    }
+    return ok;
+}
+
+static int run_semantics(compile_context_t *ctx)
+{
+    return compile_semantic_stage(ctx);
+}
+
+static int run_optimization_and_output(compile_context_t *ctx,
+                                       const cli_options_t *cli,
+                                       const char *output,
+                                       int compile_obj)
+{
+    int ok = compile_optimize_stage(ctx, &cli->opt_cfg);
+    if (ok)
+        ok = compile_output_stage(ctx, output, cli->dump_ir,
+                                  cli->dump_asm, cli->use_x86_64,
+                                  compile_obj, cli);
+    return ok;
+}
+
+/* Emit assembly or an object file */
+
+/* Compile a single translation unit */
+#ifndef UNIT_TESTING
+static int compile_single_unit(const char *source, const cli_options_t *cli,
+                               const char *output, int compile_obj)
+{
     int ok = 1;
     compile_context_t ctx;
-    compile_ctx_init(&ctx);
 
-    ok = compile_tokenize_stage(&ctx, source, cli,
-                                &cli->include_dirs,
-                                &cli->defines, &cli->undefines);
-    if (ok && cli->dump_tokens) {
-        char *text = tokens_to_string(ctx.tokens, ctx.tok_count);
-        if (text) {
-            printf("%s", text);
-            free(text);
-        }
-    }
+    setup_compile_context(&ctx, source, cli);
+
+    ok = run_tokenization(&ctx, source, cli);
     if (ok && !cli->dump_tokens)
-        ok = compile_parse_stage(&ctx);
-    if (ok && cli->dump_ast && !cli->dump_tokens) {
-        char *text = ast_to_string((func_t **)ctx.func_list_v.data,
-                                   ctx.func_list_v.count,
-                                   (stmt_t **)ctx.glob_list_v.data,
-                                   ctx.glob_list_v.count);
-        if (text) {
-            printf("%s", text);
-            free(text);
-        }
-    }
+        ok = run_parsing(&ctx, cli);
     if (ok && !cli->dump_ast && !cli->dump_tokens)
-        ok = compile_semantic_stage(&ctx);
-    if (ok && !cli->dump_ast && !cli->dump_tokens) {
-        ok = compile_optimize_stage(&ctx, &cli->opt_cfg);
-        if (ok)
-            ok = compile_output_stage(&ctx, output, cli->dump_ir,
-                                     cli->dump_asm, cli->use_x86_64,
-                                     compile_obj, cli);
-    }
+        ok = run_semantics(&ctx);
+    if (ok && !cli->dump_ast && !cli->dump_tokens)
+        ok = run_optimization_and_output(&ctx, cli, output, compile_obj);
 
     if (ok && cli->deps)
         ok = write_dep_file(output ? output : source, &ctx.deps);
