@@ -14,6 +14,7 @@
 
 #include "vector.h"
 #include "strbuf.h"
+#include "preproc_file.h"
 
 /*
  * Stored macro definition.
@@ -50,5 +51,18 @@ void preproc_set_location(const char *file, size_t line, size_t column);
 
 /* Set the current function name for __func__ expansion */
 void preproc_set_function(const char *name);
+
+/* Add a macro definition to the table */
+int add_macro(const char *name, const char *value, vector_t *params,
+              int variadic, vector_t *macros);
+
+/* Handle a '#define' directive when processing a line */
+int handle_define(char *line, vector_t *macros, vector_t *conds);
+
+/* Wrapper used by process_line for '#define' */
+int handle_define_directive(char *line, const char *dir, vector_t *macros,
+                            vector_t *conds, strbuf_t *out,
+                            const vector_t *incdirs, vector_t *stack,
+                            preproc_context_t *ctx);
 
 #endif /* VC_PREPROC_MACROS_H */
