@@ -41,6 +41,16 @@ static int parse_union_members(parser_t *p, vector_t *members_v);
 /* Parse a single struct/union member and return it through out parameters. */
 static int parse_member(parser_t *p, int is_union,
                         union_member_t *um, struct_member_t *sm);
+/* Helpers for member parsing */
+static int parse_member_array(parser_t *p, int is_union, type_kind_t *type,
+                              size_t *arr_size, int *is_flexible);
+static int parse_member_bitfield(parser_t *p, type_kind_t type,
+                                 unsigned *bit_width);
+static void assign_member(int is_union, union_member_t *um,
+                          struct_member_t *sm, const char *name,
+                          type_kind_t type, size_t elem_size,
+                          size_t arr_size, int is_flexible,
+                          unsigned bit_width);
 /* Free names for partially parsed member vectors. */
 static void free_parsed_members(vector_t *v, int is_union);
 
@@ -229,6 +239,89 @@ stmt_t *parser_parse_static_assert(parser_t *p)
     return ast_make_static_assert(expr, str, kw->line, kw->column);
 }
 
+/* Parse optional array declarator for a struct/union member */
+static int parse_member_array(parser_t *p, int is_union, type_kind_t *type,
+                              size_t *arr_size, int *is_flexible)
+{
+    *arr_size = 0;
+    *is_flexible = 0;
+    if (!match(p, TOK_LBRACKET))
+        return 1;
+    if (match(p, TOK_RBRACKET)) {
+        if (is_union)
+            return 0;
+        *type = TYPE_ARRAY;
+        *is_flexible = 1;
+        return 1;
+    }
+    token_t *num = peek(p);
+    if (!num || num->type != TOK_NUMBER)
+        return 0;
+    p->pos++;
+    if (!vc_strtoul_size(num->lexeme, arr_size)) {
+        error_set(num->line, num->column,
+                  error_current_file, error_current_function);
+        error_print("Integer constant out of range");
+        return 0;
+    }
+    if (!match(p, TOK_RBRACKET))
+        return 0;
+    *type = TYPE_ARRAY;
+    return 1;
+}
+
+/* Parse optional bit-field width for a struct/union member */
+static int parse_member_bitfield(parser_t *p, type_kind_t type,
+                                 unsigned *bit_width)
+{
+    *bit_width = 0;
+    if (!match(p, TOK_COLON))
+        return 1;
+    if (type == TYPE_ARRAY)
+        return 0;
+    token_t *num = peek(p);
+    if (!num || num->type != TOK_NUMBER)
+        return 0;
+    p->pos++;
+    if (!vc_strtoul_unsigned(num->lexeme, bit_width)) {
+        error_set(num->line, num->column,
+                  error_current_file, error_current_function);
+        error_print("Integer constant out of range");
+        return 0;
+    }
+    return 1;
+}
+
+/* Assign parsed member information to the correct output struct */
+static void assign_member(int is_union, union_member_t *um,
+                          struct_member_t *sm, const char *name,
+                          type_kind_t type, size_t elem_size,
+                          size_t arr_size, int is_flexible,
+                          unsigned bit_width)
+{
+    size_t mem_sz = elem_size;
+    if (type == TYPE_ARRAY)
+        mem_sz *= arr_size;
+
+    if (is_union) {
+        um->name = (char *)name;
+        um->type = type;
+        um->elem_size = mem_sz;
+        um->offset = 0;
+        um->bit_width = bit_width;
+        um->bit_offset = 0;
+        um->is_flexible = 0;
+    } else {
+        sm->name = (char *)name;
+        sm->type = type;
+        sm->elem_size = mem_sz;
+        sm->offset = 0;
+        sm->bit_width = bit_width;
+        sm->bit_offset = 0;
+        sm->is_flexible = is_flexible;
+    }
+}
+
 /* Parse a single struct or union member. */
 static int parse_member(parser_t *p, int is_union,
                         union_member_t *um, struct_member_t *sm)
@@ -243,74 +336,25 @@ static int parse_member(parser_t *p, int is_union,
     if (!id || id->type != TOK_IDENT)
         return 0;
     p->pos++;
+
     size_t arr_size = 0;
     int is_flexible = 0;
-    if (match(p, TOK_LBRACKET)) {
-        if (match(p, TOK_RBRACKET)) {
-            if (is_union)
-                return 0;
-            mt = TYPE_ARRAY;
-            is_flexible = 1;
-        } else {
-            token_t *num = peek(p);
-            if (!num || num->type != TOK_NUMBER)
-                return 0;
-            p->pos++;
-            if (!vc_strtoul_size(num->lexeme, &arr_size)) {
-                error_set(num->line, num->column,
-                          error_current_file, error_current_function);
-                error_print("Integer constant out of range");
-                return 0;
-            }
-            if (!match(p, TOK_RBRACKET))
-                return 0;
-            mt = TYPE_ARRAY;
-        }
-    }
-
-    unsigned bit_width = 0;
-    if (match(p, TOK_COLON)) {
-        if (mt == TYPE_ARRAY)
-            return 0;
-        token_t *num = peek(p);
-        if (!num || num->type != TOK_NUMBER)
-            return 0;
-        p->pos++;
-        if (!vc_strtoul_unsigned(num->lexeme, &bit_width)) {
-            error_set(num->line, num->column,
-                      error_current_file, error_current_function);
-            error_print("Integer constant out of range");
-            return 0;
-        }
-    }
-    if (!match(p, TOK_SEMI))
+    if (!parse_member_array(p, is_union, &mt, &arr_size, &is_flexible))
         return 0;
 
-    size_t mem_sz = elem_size;
-    if (mt == TYPE_ARRAY)
-        mem_sz *= arr_size;
+    unsigned bit_width = 0;
+    if (!parse_member_bitfield(p, mt, &bit_width))
+        return 0;
+
+    if (!match(p, TOK_SEMI))
+        return 0;
 
     char *name = vc_strdup(id->lexeme);
     if (!name)
         return 0;
 
-    if (is_union) {
-        um->name = name;
-        um->type = mt;
-        um->elem_size = mem_sz;
-        um->offset = 0;
-        um->bit_width = bit_width;
-        um->bit_offset = 0;
-        um->is_flexible = 0;
-    } else {
-        sm->name = name;
-        sm->type = mt;
-        sm->elem_size = mem_sz;
-        sm->offset = 0;
-        sm->bit_width = bit_width;
-        sm->bit_offset = 0;
-        sm->is_flexible = is_flexible;
-    }
+    assign_member(is_union, um, sm, name, mt, elem_size,
+                  arr_size, is_flexible, bit_width);
 
     return 1;
 }
