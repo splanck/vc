@@ -9,6 +9,7 @@
 
 #include "util.h"
 #include "preproc_include.h"
+#include "preproc_cond.h"
 #include "preproc_path.h"
 
 /* Return 1 if all conditional states on the stack are active */
