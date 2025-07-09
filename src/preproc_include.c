@@ -12,11 +12,7 @@
 #include "preproc_cond.h"
 #include "preproc_file_io.h"
 #include "preproc_path.h"
-
-/* external declaration from preproc_file.c */
-int process_file(const char *path, vector_t *macros, vector_t *conds,
-                 strbuf_t *out, const vector_t *incdirs, vector_t *stack,
-                 preproc_context_t *ctx, size_t idx);
+#include "preproc_file.h"
 
 /* Return 1 if all conditional states on the stack are active */
 static int stack_active(vector_t *conds)

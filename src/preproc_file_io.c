@@ -10,6 +10,7 @@
 #include "preproc_file_io.h"
 #include "preproc_macros.h"
 #include "preproc_path.h"
+#include "preproc_file.h"
 
 int include_stack_contains(vector_t *stack, const char *path)
 {
@@ -161,9 +162,7 @@ int process_all_lines(char **lines, const char *path, const char *dir,
                       const vector_t *incdirs, vector_t *stack,
                       preproc_context_t *ctx)
 {
-    extern int process_line(char *, const char *, vector_t *, vector_t *,
-                            strbuf_t *, const vector_t *, vector_t *,
-                            preproc_context_t *);
+    /* defined in preproc_directives.c */
     for (size_t i = 0; lines[i]; i++) {
         preproc_set_location(path, i + 1, 1);
         if (!process_line(lines[i], dir, macros, conds, out, incdirs, stack,

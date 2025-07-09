@@ -15,6 +15,7 @@
 #define VC_PREPROC_FILE_H
 
 #include "vector.h"
+#include "strbuf.h"
 
 /* Context used by the preprocessor.
  *
@@ -40,5 +41,16 @@ void preproc_context_free(preproc_context_t *ctx);
 char *preproc_run(preproc_context_t *ctx, const char *path,
                   const vector_t *include_dirs, const vector_t *defines,
                   const vector_t *undefines);
+
+/* Internal helpers shared across preprocessing modules */
+int process_line(char *line, const char *dir, vector_t *macros,
+                 vector_t *conds, strbuf_t *out,
+                 const vector_t *incdirs, vector_t *stack,
+                 preproc_context_t *ctx);
+int process_file(const char *path, vector_t *macros, vector_t *conds,
+                 strbuf_t *out, const vector_t *incdirs, vector_t *stack,
+                 preproc_context_t *ctx, size_t idx);
+int add_macro(const char *name, const char *value, vector_t *params,
+              int variadic, vector_t *macros);
 
 #endif /* VC_PREPROC_FILE_H */
