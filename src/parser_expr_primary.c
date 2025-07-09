@@ -21,6 +21,7 @@
 expr_t *parser_parse_expr(parser_t *p);
 
 static expr_t *parse_prefix_expr(parser_t *p);
+static expr_t *parse_prefix_operator(parser_t *p);
 static expr_t *parse_cast(parser_t *p);
 static expr_t *parse_preinc(parser_t *p);
 static expr_t *parse_predec(parser_t *p);
@@ -35,6 +36,8 @@ static int parse_struct_union_tag(parser_t *p, type_kind_t *out_type,
                                   char **out_tag);
 static int parse_type(parser_t *p, type_kind_t *out_type, size_t *out_size,
                       size_t *elem_size);
+static expr_t *apply_postfix_ops(parser_t *p, expr_t *base);
+static int parse_offsetof_members(parser_t *p, vector_t *names);
 
 /*
  * Free all expr_t pointers stored in a vector and release the vector
@@ -251,7 +254,7 @@ static expr_t *parse_postincdec(parser_t *p, expr_t *base)
 }
 
 /* Apply postfix operations like indexing and member access. */
-static expr_t *parse_call_or_postfix(parser_t *p, expr_t *base)
+static expr_t *apply_postfix_ops(parser_t *p, expr_t *base)
 {
     while (1) {
         expr_t *next = base;
@@ -344,7 +347,7 @@ static expr_t *parse_postfix_expr(parser_t *p)
     expr_t *base = parse_base_term(p);
     if (!base)
         return NULL;
-    return parse_call_or_postfix(p, base);
+    return apply_postfix_ops(p, base);
 }
 
 /* Prefix operator helpers */
@@ -438,6 +441,39 @@ static expr_t *parse_alignof(parser_t *p)
     return ast_make_alignof_expr(e, kw->line, kw->column);
 }
 
+/*
+ * Check for a prefix operator and dispatch to the
+ * corresponding helper. Returns NULL if no operator
+ * is present.
+ */
+static expr_t *parse_prefix_operator(parser_t *p)
+{
+    static const struct {
+        token_type_t tok;
+        expr_t *(*fn)(parser_t *);
+    } table[] = {
+        { TOK_INC,       parse_preinc },
+        { TOK_DEC,       parse_predec },
+        { TOK_STAR,      parse_deref },
+        { TOK_AMP,       parse_addr },
+        { TOK_MINUS,     parse_neg },
+        { TOK_NOT,       parse_not },
+        { TOK_KW_SIZEOF, parse_sizeof },
+        { TOK_KW_ALIGNOF, parse_alignof }
+    };
+
+    token_t *tok = peek(p);
+    if (!tok)
+        return NULL;
+
+    for (size_t i = 0; i < sizeof(table)/sizeof(table[0]); i++) {
+        if (match(p, table[i].tok))
+            return table[i].fn(p);
+    }
+
+    return NULL;
+}
+
 /* Parse 'struct tag' or 'union tag' and return the tag name. */
 static int parse_struct_union_tag(parser_t *p, type_kind_t *out_type,
                                   char **out_tag)
@@ -464,6 +500,34 @@ static int parse_struct_union_tag(parser_t *p, type_kind_t *out_type,
     return 1;
 }
 
+/* Parse the member path for an offsetof expression into a vector. */
+static int parse_offsetof_members(parser_t *p, vector_t *names_v)
+{
+    token_t *id = peek(p);
+    if (!id || id->type != TOK_IDENT)
+        return 0;
+    p->pos++;
+    char *dup = vc_strdup(id->lexeme);
+    if (!dup || !vector_push(names_v, &dup)) {
+        free(dup);
+        return 0;
+    }
+
+    while (match(p, TOK_DOT)) {
+        id = peek(p);
+        if (!id || id->type != TOK_IDENT)
+            return 0;
+        p->pos++;
+        dup = vc_strdup(id->lexeme);
+        if (!dup || !vector_push(names_v, &dup)) {
+            free(dup);
+            return 0;
+        }
+    }
+
+    return 1;
+}
+
 /* Parse an offsetof builtin expression. */
 static expr_t *parse_offsetof(parser_t *p)
 {
@@ -480,33 +544,7 @@ static expr_t *parse_offsetof(parser_t *p)
     }
 
     vector_t names_v; vector_init(&names_v, sizeof(char *));
-    token_t *id = peek(p);
-    if (!id || id->type != TOK_IDENT) {
-        vector_free(&names_v); free(tag); return NULL;
-    }
-    p->pos++;
-    char *dup = vc_strdup(id->lexeme);
-    if (!dup || !vector_push(&names_v, &dup)) {
-        free(dup); vector_free(&names_v); free(tag); return NULL;
-    }
-    while (match(p, TOK_DOT)) {
-        id = peek(p);
-        if (!id || id->type != TOK_IDENT) {
-            for (size_t i = 0; i < names_v.count; i++)
-                free(((char **)names_v.data)[i]);
-            vector_free(&names_v); free(tag); return NULL;
-        }
-        p->pos++;
-        dup = vc_strdup(id->lexeme);
-        if (!dup || !vector_push(&names_v, &dup)) {
-            free(dup);
-            for (size_t i = 0; i < names_v.count; i++)
-                free(((char **)names_v.data)[i]);
-            vector_free(&names_v); free(tag); return NULL;
-        }
-    }
-
-    if (!match(p, TOK_RPAREN)) {
+    if (!parse_offsetof_members(p, &names_v) || !match(p, TOK_RPAREN)) {
         for (size_t i = 0; i < names_v.count; i++)
             free(((char **)names_v.data)[i]);
         vector_free(&names_v); free(tag); return NULL;
@@ -557,28 +595,9 @@ static expr_t *parse_cast(parser_t *p)
 /* Handle prefix unary operators before a primary expression. */
 static expr_t *parse_prefix_expr(parser_t *p)
 {
-    static const struct {
-        token_type_t tok;
-        expr_t *(*fn)(parser_t *);
-    } table[] = {
-        { TOK_INC,     parse_preinc },
-        { TOK_DEC,     parse_predec },
-        { TOK_STAR,    parse_deref },
-        { TOK_AMP,     parse_addr },
-        { TOK_MINUS,   parse_neg },
-        { TOK_NOT,     parse_not },
-        { TOK_KW_SIZEOF, parse_sizeof },
-        { TOK_KW_ALIGNOF, parse_alignof }
-    };
-
-    token_t *tok = peek(p);
-    if (!tok)
-        return NULL;
-
-    for (size_t i = 0; i < sizeof(table)/sizeof(table[0]); i++) {
-        if (match(p, table[i].tok))
-            return table[i].fn(p);
-    }
+    expr_t *op = parse_prefix_operator(p);
+    if (op)
+        return op;
 
     return parse_postfix_expr(p);
 }
