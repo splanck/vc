@@ -9,13 +9,7 @@
 
 #include "util.h"
 #include "preproc_include.h"
-
-/* Default system include search paths */
-static const char *std_include_dirs[] = {
-    "/usr/local/include",
-    "/usr/include",
-    NULL
-};
+#include "preproc_path.h"
 
 /* Return 1 if all conditional states on the stack are active */
 static int stack_active(vector_t *conds)
@@ -35,118 +29,6 @@ static int is_active(vector_t *conds)
 }
 
 /* Return non-zero when the include stack already contains PATH. */
-static int include_stack_contains(vector_t *stack, const char *path)
-{
-    char *canon = realpath(path, NULL);
-    if (!canon) {
-        if (errno != ENOENT)
-            perror(path);
-        return 0;
-    }
-    for (size_t i = 0; i < stack->count; i++) {
-        const include_entry_t *e = &((include_entry_t *)stack->data)[i];
-        if (strcmp(e->path, canon) == 0) {
-            free(canon);
-            return 1;
-        }
-    }
-    free(canon);
-    return 0;
-}
-
-/* Return non-zero when the pragma_once list contains PATH */
-static int pragma_once_contains(preproc_context_t *ctx, const char *path)
-{
-    char *canon = realpath(path, NULL);
-    if (!canon)
-        canon = vc_strdup(path);
-    if (!canon)
-        return 0;
-    for (size_t i = 0; i < ctx->pragma_once_files.count; i++) {
-        const char *p = ((const char **)ctx->pragma_once_files.data)[i];
-        if (strcmp(p, canon) == 0) {
-            free(canon);
-            return 1;
-        }
-    }
-    free(canon);
-    return 0;
-}
-
-/* Locate the full path of an include file */
-static char *find_include_path(const char *fname, char endc, const char *dir,
-                               const vector_t *incdirs, size_t start,
-                               size_t *out_idx)
-{
-    size_t fname_len = strlen(fname);
-    size_t max_len = fname_len;
-    if (endc == '"' && dir && start == 0) {
-        size_t len = strlen(dir) + fname_len;
-        if (len > max_len)
-            max_len = len;
-    }
-    for (size_t i = 0; i < incdirs->count; i++) {
-        const char *base = ((const char **)incdirs->data)[i];
-        size_t len = strlen(base) + 1 + fname_len;
-        if (len > max_len)
-            max_len = len;
-    }
-    for (size_t i = 0; std_include_dirs[i]; i++) {
-        size_t len = strlen(std_include_dirs[i]) + 1 + fname_len;
-        if (len > max_len)
-            max_len = len;
-    }
-    char *out_path = vc_alloc_or_exit(max_len + 1);
-    if (endc == '"' && dir && start == 0) {
-        snprintf(out_path, max_len + 1, "%s%s", dir, fname);
-        if (access(out_path, R_OK) == 0) {
-            if (out_idx)
-                *out_idx = (size_t)-1;
-            return out_path;
-        }
-    }
-    for (size_t i = start; i < incdirs->count; i++) {
-        const char *base = ((const char **)incdirs->data)[i];
-        snprintf(out_path, max_len + 1, "%s/%s", base, fname);
-        if (access(out_path, R_OK) == 0) {
-            if (out_idx)
-                *out_idx = i;
-            return out_path;
-        }
-    }
-    size_t builtin_start = 0;
-    if (start > incdirs->count)
-        builtin_start = start - incdirs->count;
-    if (endc == '<') {
-        for (size_t i = builtin_start; std_include_dirs[i]; i++) {
-            snprintf(out_path, max_len + 1, "%s/%s", std_include_dirs[i], fname);
-            if (access(out_path, R_OK) == 0) {
-                if (out_idx)
-                    *out_idx = incdirs->count + i;
-                return out_path;
-            }
-        }
-        free(out_path);
-        return NULL;
-    }
-    snprintf(out_path, max_len + 1, "%s", fname);
-    if (access(out_path, R_OK) == 0) {
-        if (out_idx)
-            *out_idx = (size_t)-1;
-        return out_path;
-    }
-    for (size_t i = builtin_start; std_include_dirs[i]; i++) {
-        snprintf(out_path, max_len + 1, "%s/%s", std_include_dirs[i], fname);
-        if (access(out_path, R_OK) == 0) {
-            if (out_idx)
-                *out_idx = incdirs->count + i;
-            return out_path;
-        }
-    }
-    free(out_path);
-    return NULL;
-}
-
 /* Parse the include filename from LINE. ENDC receives '"' or '>' */
 static char *parse_include_name(char *line, char *endc)
 {
