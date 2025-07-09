@@ -41,13 +41,6 @@ static const char *reg_str(int reg, asm_syntax_t syntax)
     return name;
 }
 
-static const char *fmt_reg(const char *name, asm_syntax_t syntax)
-{
-    if (syntax == ASM_INTEL && name[0] == '%')
-        return name + 1;
-    return name;
-}
-
 /* Format the location for operand `id`. */
 static const char *loc_str(char buf[32], regalloc_t *ra, int id, int x64,
                            asm_syntax_t syntax)
