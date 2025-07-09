@@ -219,6 +219,45 @@ static char *expand_params(const char *value, const vector_t *params, char **arg
     return out;
 }
 
+/* Duplicate an argument substring trimming surrounding whitespace. */
+static char *dup_arg_segment(const char *line, size_t start, size_t end)
+{
+    while (start < end && (line[start] == ' ' || line[start] == '\t'))
+        start++;
+    while (end > start && (line[end - 1] == ' ' || line[end - 1] == '\t'))
+        end--;
+    return vc_strndup(line + start, end - start);
+}
+
+/* Scan for the next argument delimiter updating nesting level.
+ * On success sets *out_end to the delimiter index and returns the
+ * delimiter character ',' or ')'.  Returns 0 on unmatched parentheses. */
+static char find_arg_delim(const char *line, size_t *p, int *nest,
+                           size_t *out_end)
+{
+    for (;; (*p)++) {
+        char c = line[*p];
+        if (c == '\0')
+            return 0;
+        if (c == '(') {
+            (*nest)++;
+            continue;
+        }
+        if (c == ')') {
+            if (*nest > 0) {
+                (*nest)--;
+                continue;
+            }
+            *out_end = *p;
+            return ')';
+        }
+        if (c == ',' && *nest == 0) {
+            *out_end = *p;
+            return ',';
+        }
+    }
+}
+
 /* Parse the argument list for a parameterized macro call.
  *
  * "pos" should point to the character immediately following the macro
@@ -243,52 +282,24 @@ static int parse_macro_args(const char *line, size_t *pos, vector_t *out)
 
     size_t arg_start = p;
     int nest = 0;
-    for (;; p++) {
-        char c = line[p];
-        if (c == '\0')
-            return 0; /* unmatched '(' */
-        if (c == '(') {
-            nest++;
-            continue;
+    for (;;) {
+        size_t end;
+        char delim = find_arg_delim(line, &p, &nest, &end);
+        if (!delim)
+            break;
+        char *dup = dup_arg_segment(line, arg_start, end);
+        if (!dup || !vector_push(out, &dup)) {
+            free(dup);
+            goto fail;
         }
-        if (c == ')') {
-            if (nest > 0) {
-                nest--;
-                continue;
-            }
-            size_t a = arg_start;
-            while (a < p && (line[a] == ' ' || line[a] == '\t'))
-                a++;
-            size_t end = p;
-            while (end > a && (line[end - 1] == ' ' || line[end - 1] == '\t'))
-                end--;
-            char *dup = vc_strndup(line + a, end - a);
-            if (!dup || !vector_push(out, &dup)) {
-                free(dup);
-                goto fail;
-            }
-            *pos = p + 1;
+        if (delim == ')') {
+            *pos = end + 1;
             return 1;
         }
-        if (c == ',' && nest == 0) {
-            size_t a = arg_start;
-            while (a < p && (line[a] == ' ' || line[a] == '\t'))
-                a++;
-            size_t end = p;
-            while (end > a && (line[end - 1] == ' ' || line[end - 1] == '\t'))
-                end--;
-            char *dup = vc_strndup(line + a, end - a);
-            if (!dup || !vector_push(out, &dup)) {
-                free(dup);
-                goto fail;
-            }
-            p++; /* skip ',' */
-            while (line[p] == ' ' || line[p] == '\t')
-                p++;
-            arg_start = p;
-            p--; /* balance for loop increment */
-            continue;
-        }
+        p++; /* skip ',' */
+        while (line[p] == ' ' || line[p] == '\t')
+            p++;
+        arg_start = p;
     }
 fail:
     for (size_t i = 0; i < out->count; i++)
