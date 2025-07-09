@@ -19,6 +19,7 @@
 #include "symtable.h"
 #include "ir_global.h"
 #include "util.h"
+#include "semantic_inline.h"
 #include "label.h"
 #include "error.h"
 #include "preproc_macros.h"
@@ -32,10 +33,6 @@ void semantic_set_pack(size_t align)
 {
     semantic_pack_alignment = align;
 }
-
-/* Track inline functions already emitted */
-static const char **inline_emitted = NULL;
-static size_t inline_emitted_count = 0;
 
 /*
  * Lay out union members sequentially and return the size of the largest
@@ -102,24 +99,6 @@ size_t layout_struct_members(struct_member_t *members, size_t count)
     return byte_off;
 }
 
-static int inline_already_emitted(const char *name)
-{
-    for (size_t i = 0; i < inline_emitted_count; i++)
-        if (strcmp(inline_emitted[i], name) == 0)
-            return 1;
-    return 0;
-}
-
-static int mark_inline_emitted(const char *name)
-{
-    const char **tmp = realloc((void *)inline_emitted,
-                               (inline_emitted_count + 1) * sizeof(*tmp));
-    if (!tmp)
-        return 0;
-    inline_emitted = tmp;
-    inline_emitted[inline_emitted_count++] = vc_strdup(name ? name : "");
-    return 1;
-}
 
 /*
  * Validate a function definition against its prior declaration and emit
@@ -140,7 +119,7 @@ int check_func(func_t *func, symtable_t *funcs, symtable_t *globals,
         error_set(0, 0, error_current_file, error_current_function);
         return 0;
     }
-    if (decl->is_inline && inline_already_emitted(func->name)) {
+    if (decl->is_inline && semantic_inline_already_emitted(func->name)) {
         preproc_set_function(NULL);
         error_current_function = NULL;
         return 1;
@@ -184,7 +163,7 @@ int check_func(func_t *func, symtable_t *funcs, symtable_t *globals,
     label_table_free(&labels);
     locals.globals = NULL;
     symtable_free(&locals);
-    if (decl->is_inline && !mark_inline_emitted(func->name)) {
+    if (decl->is_inline && !semantic_mark_inline_emitted(func->name)) {
         error_set(0, 0, error_current_file, error_current_function);
         preproc_set_function(NULL);
         error_current_function = NULL;
@@ -602,10 +581,6 @@ int check_global(stmt_t *decl, symtable_t *globals, ir_builder_t *ir)
 
 void semantic_global_cleanup(void)
 {
-    for (size_t i = 0; i < inline_emitted_count; i++)
-        free((void *)inline_emitted[i]);
-    free((void *)inline_emitted);
-    inline_emitted = NULL;
-    inline_emitted_count = 0;
+    semantic_inline_cleanup();
 }
 

@@ -14,5 +14,6 @@
 #include "semantic_loops.h"
 #include "semantic_switch.h"
 #include "semantic_global.h"
+#include "semantic_inline.h"
 
 #endif /* VC_SEMANTIC_H */
