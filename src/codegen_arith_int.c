@@ -1,27 +1,18 @@
 /*
- * Emitters for arithmetic IR instructions.
- *
- * Functions in this file translate high level arithmetic operations to
- * x86 assembly after register allocation.  Helpers choose the correct
- * register names and instruction suffixes depending on whether the
- * 32-bit or 64-bit backend is requested via the `x64` flag.
- *
- * Part of vc under the BSD 2-Clause license.
- * See LICENSE for details.
+ * Integer arithmetic helpers extracted from codegen_arith.c
  */
 
 #include <stdio.h>
 #include <string.h>
 #include "codegen_arith.h"
+#include "codegen_arith_int.h"
+#include "codegen_arith_float.h"
 #include "codegen_float.h"
 #include "regalloc_x86.h"
 #include "label.h"
-#include "consteval.h"
-#include "consteval.h"
 
 #define SCRATCH_REG 0
 
-/* Return the register name for the given allocator index. */
 static const char *reg_str(int reg, asm_syntax_t syntax)
 {
     const char *name = regalloc_reg_name(reg);
@@ -30,7 +21,6 @@ static const char *reg_str(int reg, asm_syntax_t syntax)
     return name;
 }
 
-/* Format an arbitrary register name. */
 static const char *fmt_reg(const char *name, asm_syntax_t syntax)
 {
     if (syntax == ASM_INTEL && name[0] == '%')
@@ -38,7 +28,6 @@ static const char *fmt_reg(const char *name, asm_syntax_t syntax)
     return name;
 }
 
-/* Format the location of operand `id` for assembly output. */
 static const char *loc_str(char buf[32], regalloc_t *ra, int id, int x64,
                            asm_syntax_t syntax)
 {
@@ -61,140 +50,9 @@ static const char *loc_str(char buf[32], regalloc_t *ra, int id, int x64,
     return buf;
 }
 
-/* small helpers for the individual arithmetic ops */
-/* Convert between integer and floating-point types. */
-static void emit_cast(strbuf_t *sb, ir_instr_t *ins,
-                      regalloc_t *ra, int x64,
-                      asm_syntax_t syntax)
-{
-    char b1[32];
-    char b2[32];
-    type_kind_t src = (type_kind_t)((unsigned long long)ins->imm >> 32);
-    type_kind_t dst = (type_kind_t)(ins->imm & 0xffffffffu);
-
-    int r0 = regalloc_xmm_acquire();
-    const char *reg0 = fmt_reg(regalloc_xmm_name(r0), syntax);
-    const char *sfx = x64 ? "q" : "l";
-
-    if (is_intlike(src) && dst == TYPE_FLOAT) {
-        if (syntax == ASM_INTEL)
-            strbuf_appendf(sb, "    cvtsi2ss %s, %s\n", reg0,
-                           loc_str(b1, ra, ins->src1, x64, syntax));
-        else
-            strbuf_appendf(sb, "    cvtsi2ss %s, %s\n",
-                           loc_str(b1, ra, ins->src1, x64, syntax), reg0);
-        if (ra && ra->loc[ins->dest] >= 0)
-            strbuf_appendf(sb, "    movd %s, %s\n", reg0,
-                           loc_str(b2, ra, ins->dest, x64, syntax));
-        else
-            strbuf_appendf(sb, "    movss %s, %s\n", reg0,
-                           loc_str(b2, ra, ins->dest, x64, syntax));
-        regalloc_xmm_release(r0);
-        return;
-    }
-
-    if (is_intlike(src) && dst == TYPE_DOUBLE) {
-        if (syntax == ASM_INTEL)
-            strbuf_appendf(sb, "    cvtsi2sd %s, %s\n", reg0,
-                           loc_str(b1, ra, ins->src1, x64, syntax));
-        else
-            strbuf_appendf(sb, "    cvtsi2sd %s, %s\n",
-                           loc_str(b1, ra, ins->src1, x64, syntax), reg0);
-        if (ra && ra->loc[ins->dest] >= 0)
-            strbuf_appendf(sb, "    movq %s, %s\n", reg0,
-                           loc_str(b2, ra, ins->dest, x64, syntax));
-        else
-            strbuf_appendf(sb, "    movsd %s, %s\n", reg0,
-                           loc_str(b2, ra, ins->dest, x64, syntax));
-        regalloc_xmm_release(r0);
-        return;
-    }
-
-    if (src == TYPE_FLOAT && is_intlike(dst)) {
-        if (syntax == ASM_INTEL)
-            strbuf_appendf(sb, "    movss %s, %s\n", reg0,
-                           loc_str(b1, ra, ins->src1, x64, syntax));
-        else
-            strbuf_appendf(sb, "    movss %s, %s\n",
-                           loc_str(b1, ra, ins->src1, x64, syntax), reg0);
-        if (syntax == ASM_INTEL)
-            strbuf_appendf(sb, "    cvttss2si %s, %s\n", reg0,
-                           loc_str(b2, ra, ins->dest, x64, syntax));
-        else
-            strbuf_appendf(sb, "    cvttss2si %s, %s\n", reg0,
-                           loc_str(b2, ra, ins->dest, x64, syntax));
-        regalloc_xmm_release(r0);
-        return;
-    }
-
-    if (src == TYPE_DOUBLE && is_intlike(dst)) {
-        if (syntax == ASM_INTEL)
-            strbuf_appendf(sb, "    movsd %s, %s\n", reg0,
-                           loc_str(b1, ra, ins->src1, x64, syntax));
-        else
-            strbuf_appendf(sb, "    movsd %s, %s\n",
-                           loc_str(b1, ra, ins->src1, x64, syntax), reg0);
-        if (syntax == ASM_INTEL)
-            strbuf_appendf(sb, "    cvttsd2si %s, %s\n", reg0,
-                           loc_str(b2, ra, ins->dest, x64, syntax));
-        else
-            strbuf_appendf(sb, "    cvttsd2si %s, %s\n", reg0,
-                           loc_str(b2, ra, ins->dest, x64, syntax));
-        regalloc_xmm_release(r0);
-        return;
-    }
-
-    if (src == TYPE_FLOAT && dst == TYPE_DOUBLE) {
-        if (syntax == ASM_INTEL)
-            strbuf_appendf(sb, "    movss %s, %s\n", reg0,
-                           loc_str(b1, ra, ins->src1, x64, syntax));
-        else
-            strbuf_appendf(sb, "    movss %s, %s\n",
-                           loc_str(b1, ra, ins->src1, x64, syntax), reg0);
-        strbuf_appendf(sb, "    cvtss2sd %s, %s\n", reg0, reg0);
-        if (ra && ra->loc[ins->dest] >= 0)
-            strbuf_appendf(sb, "    movq %s, %s\n", reg0,
-                           loc_str(b2, ra, ins->dest, x64, syntax));
-        else
-            strbuf_appendf(sb, "    movsd %s, %s\n", reg0,
-                           loc_str(b2, ra, ins->dest, x64, syntax));
-        regalloc_xmm_release(r0);
-        return;
-    }
-
-    if (src == TYPE_DOUBLE && dst == TYPE_FLOAT) {
-        if (syntax == ASM_INTEL)
-            strbuf_appendf(sb, "    movsd %s, %s\n", reg0,
-                           loc_str(b1, ra, ins->src1, x64, syntax));
-        else
-            strbuf_appendf(sb, "    movsd %s, %s\n",
-                           loc_str(b1, ra, ins->src1, x64, syntax), reg0);
-        strbuf_appendf(sb, "    cvtsd2ss %s, %s\n", reg0, reg0);
-        if (ra && ra->loc[ins->dest] >= 0)
-            strbuf_appendf(sb, "    movd %s, %s\n", reg0,
-                           loc_str(b2, ra, ins->dest, x64, syntax));
-        else
-            strbuf_appendf(sb, "    movss %s, %s\n", reg0,
-                           loc_str(b2, ra, ins->dest, x64, syntax));
-        regalloc_xmm_release(r0);
-        return;
-    }
-
-    /* Default case: just move the value */
-    if (syntax == ASM_INTEL)
-        strbuf_appendf(sb, "    mov%s %s, %s\n", sfx,
-                       loc_str(b2, ra, ins->dest, x64, syntax),
-                       loc_str(b1, ra, ins->src1, x64, syntax));
-    else
-        strbuf_appendf(sb, "    mov%s %s, %s\n", sfx,
-                       loc_str(b1, ra, ins->src1, x64, syntax),
-                       loc_str(b2, ra, ins->dest, x64, syntax));
-    regalloc_xmm_release(r0);
-}
-/* Add a scaled index to a pointer operand. */
-static void emit_ptr_add(strbuf_t *sb, ir_instr_t *ins,
-                         regalloc_t *ra, int x64,
-                         asm_syntax_t syntax)
+void emit_ptr_add(strbuf_t *sb, ir_instr_t *ins,
+                  regalloc_t *ra, int x64,
+                  asm_syntax_t syntax)
 {
     char b1[32];
     char b2[32];
@@ -224,10 +82,9 @@ static void emit_ptr_add(strbuf_t *sb, ir_instr_t *ins,
                        loc_str(b2, ra, ins->dest, x64, syntax));
 }
 
-/* Compute the difference between two pointers. */
-static void emit_ptr_diff(strbuf_t *sb, ir_instr_t *ins,
-                          regalloc_t *ra, int x64,
-                          asm_syntax_t syntax)
+void emit_ptr_diff(strbuf_t *sb, ir_instr_t *ins,
+                   regalloc_t *ra, int x64,
+                   asm_syntax_t syntax)
 {
     char b1[32];
     char b2[32];
@@ -256,24 +113,9 @@ static void emit_ptr_diff(strbuf_t *sb, ir_instr_t *ins,
     }
 }
 
-
-/* Generate a long double binary operation using the x87 FPU. */
-static void emit_long_float_binop(strbuf_t *sb, ir_instr_t *ins,
-                                  regalloc_t *ra, int x64, const char *op,
-                                  asm_syntax_t syntax)
-{
-    char b1[32];
-    char b2[32];
-    strbuf_appendf(sb, "    fldt %s\n", loc_str(b1, ra, ins->src1, x64, syntax));
-    strbuf_appendf(sb, "    fldt %s\n", loc_str(b1, ra, ins->src2, x64, syntax));
-    strbuf_appendf(sb, "    %s\n", op);
-    strbuf_appendf(sb, "    fstpt %s\n", loc_str(b2, ra, ins->dest, x64, syntax));
-}
-
-/* Handle basic integer arithmetic operations. */
-static void emit_int_arith(strbuf_t *sb, ir_instr_t *ins,
-                           regalloc_t *ra, int x64, const char *op,
-                           asm_syntax_t syntax)
+void emit_int_arith(strbuf_t *sb, ir_instr_t *ins,
+                    regalloc_t *ra, int x64, const char *op,
+                    asm_syntax_t syntax)
 {
     char b1[32];
     char destb[32];
@@ -300,10 +142,9 @@ static void emit_int_arith(strbuf_t *sb, ir_instr_t *ins,
     }
 }
 
-/* Generate code for signed integer division. */
-static void emit_div(strbuf_t *sb, ir_instr_t *ins,
-                     regalloc_t *ra, int x64,
-                     asm_syntax_t syntax)
+void emit_div(strbuf_t *sb, ir_instr_t *ins,
+              regalloc_t *ra, int x64,
+              asm_syntax_t syntax)
 {
     char b1[32];
     char b2[32];
@@ -328,10 +169,9 @@ static void emit_div(strbuf_t *sb, ir_instr_t *ins,
                            loc_str(b2, ra, ins->dest, x64, syntax));
 }
 
-/* Generate code for the modulus operation. */
-static void emit_mod(strbuf_t *sb, ir_instr_t *ins,
-                     regalloc_t *ra, int x64,
-                     asm_syntax_t syntax)
+void emit_mod(strbuf_t *sb, ir_instr_t *ins,
+              regalloc_t *ra, int x64,
+              asm_syntax_t syntax)
 {
     char b1[32];
     char b2[32];
@@ -359,10 +199,9 @@ static void emit_mod(strbuf_t *sb, ir_instr_t *ins,
                            loc_str(b2, ra, ins->dest, x64, syntax));
 }
 
-/* Generate left or right shift instructions. */
-static void emit_shift(strbuf_t *sb, ir_instr_t *ins,
-                       regalloc_t *ra, int x64, const char *op,
-                       asm_syntax_t syntax)
+void emit_shift(strbuf_t *sb, ir_instr_t *ins,
+                regalloc_t *ra, int x64, const char *op,
+                asm_syntax_t syntax)
 {
     char b1[32];
     char b2[32];
@@ -387,10 +226,9 @@ static void emit_shift(strbuf_t *sb, ir_instr_t *ins,
     }
 }
 
-/* Handle bitwise AND/OR/XOR operations. */
-static void emit_bitwise(strbuf_t *sb, ir_instr_t *ins,
-                         regalloc_t *ra, int x64, const char *op,
-                         asm_syntax_t syntax)
+void emit_bitwise(strbuf_t *sb, ir_instr_t *ins,
+                  regalloc_t *ra, int x64, const char *op,
+                  asm_syntax_t syntax)
 {
     char b1[32];
     char b2[32];
@@ -412,10 +250,9 @@ static void emit_bitwise(strbuf_t *sb, ir_instr_t *ins,
     }
 }
 
-/* Emit comparison operations producing boolean results. */
-static void emit_cmp(strbuf_t *sb, ir_instr_t *ins,
-                     regalloc_t *ra, int x64,
-                     asm_syntax_t syntax)
+void emit_cmp(strbuf_t *sb, ir_instr_t *ins,
+              regalloc_t *ra, int x64,
+              asm_syntax_t syntax)
 {
     char b1[32];
     char b2[32];
@@ -454,10 +291,9 @@ static void emit_cmp(strbuf_t *sb, ir_instr_t *ins,
     }
 }
 
-/* Emit short-circuiting logical AND. */
-static void emit_logand(strbuf_t *sb, ir_instr_t *ins,
-                        regalloc_t *ra, int x64,
-                        asm_syntax_t syntax)
+void emit_logand(strbuf_t *sb, ir_instr_t *ins,
+                 regalloc_t *ra, int x64,
+                 asm_syntax_t syntax)
 {
     char b1[32];
     char b2[32];
@@ -510,10 +346,9 @@ static void emit_logand(strbuf_t *sb, ir_instr_t *ins,
     strbuf_appendf(sb, "%s:\n", end);
 }
 
-/* Emit short-circuiting logical OR. */
-static void emit_logor(strbuf_t *sb, ir_instr_t *ins,
-                       regalloc_t *ra, int x64,
-                       asm_syntax_t syntax)
+void emit_logor(strbuf_t *sb, ir_instr_t *ins,
+                regalloc_t *ra, int x64,
+                asm_syntax_t syntax)
 {
     char b1[32];
     char b2[32];
@@ -566,14 +401,6 @@ static void emit_logor(strbuf_t *sb, ir_instr_t *ins,
     strbuf_appendf(sb, "%s:\n", end);
 }
 
-/*
- * Top-level dispatcher for arithmetic instructions.
- *
- * `ra` contains the locations assigned by the register allocator and is
- * used to decide whether a result must be written back to memory.  The
- * `x64` flag selects between 32- and 64-bit instruction forms and register
- * names.
- */
 void emit_arith_instr(strbuf_t *sb, ir_instr_t *ins,
                       regalloc_t *ra, int x64,
                       asm_syntax_t syntax)
