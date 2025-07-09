@@ -282,7 +282,7 @@ static void emit_bfstore(strbuf_t *sb, ir_instr_t *ins,
     else
         strbuf_appendf(sb, "    and%s $%llu, %s\n", sfx, mask,
                        x64 ? fmt_reg("%rcx", syntax) : fmt_reg("%ecx", syntax));
-    if (shift)
+    if (shift) {
         if (syntax == ASM_INTEL)
             strbuf_appendf(sb, "    shl%s %s, %u\n", sfx,
                            x64 ? fmt_reg("%rcx", syntax) : fmt_reg("%ecx", syntax),
@@ -290,6 +290,7 @@ static void emit_bfstore(strbuf_t *sb, ir_instr_t *ins,
         else
             strbuf_appendf(sb, "    shl%s $%u, %s\n", sfx, shift,
                            x64 ? fmt_reg("%rcx", syntax) : fmt_reg("%ecx", syntax));
+    }
     strbuf_appendf(sb, "    or%s %s, %s\n", sfx,
                    x64 ? fmt_reg("%rcx", syntax) : fmt_reg("%ecx", syntax),
                    scratch);
