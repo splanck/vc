@@ -22,7 +22,9 @@
  * subset of the sources still resolve these symbols.
  */
 void macro_free(macro_t *m) { (void)m; }
+#ifndef NO_VECTOR_FREE_STUB
 void vector_free(vector_t *v) { (void)v; }
+#endif
 #endif
 
 /* Print a generic out of memory message */

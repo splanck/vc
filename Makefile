@@ -5,7 +5,7 @@ BIN = vc
 # The resulting binary accepts -c/--compile to assemble objects using cc
 # Core compiler sources
 
-CORE_SRC = src/main.c src/compile.c src/compile_stage.c src/compile_link.c src/compile_tokenize.c src/compile_parse.c src/compile_output.c src/startup.c src/command.c src/cli.c src/lexer.c src/ast_expr.c src/ast_stmt.c src/ast_clone.c src/parser_core.c src/parser_toplevel.c src/symtable_core.c src/symtable_globals.c src/symtable_struct.c src/parser_expr.c src/parser_expr_primary.c src/parser_expr_binary.c src/parser_init.c \
+CORE_SRC = src/main.c src/compile.c src/compile_stage.c src/compile_link.c src/compile_tokenize.c src/compile_parse.c src/compile_output.c src/startup.c src/command.c src/cli.c src/cli_env.c src/cli_opts.c src/lexer.c src/ast_expr.c src/ast_stmt.c src/ast_clone.c src/parser_core.c src/parser_toplevel.c src/symtable_core.c src/symtable_globals.c src/symtable_struct.c src/parser_expr.c src/parser_expr_primary.c src/parser_expr_binary.c src/parser_init.c \
            src/parser_decl.c src/parser_flow.c src/parser_stmt.c src/parser_types.c \
            src/semantic_expr.c src/semantic_arith.c src/semantic_mem.c src/semantic_call.c \
            src/semantic_loops.c src/semantic_switch.c src/semantic_init.c src/semantic_var.c src/semantic_stmt.c src/semantic_inline.c src/semantic_global.c src/consteval.c src/error.c src/ir_core.c src/ir_const.c src/ir_memory.c src/ir_control.c src/ir_global.c \
@@ -73,6 +73,10 @@ src/startup.o: src/startup.c $(HDR)
 
 src/cli.o: src/cli.c $(HDR)
 	$(CC) $(CFLAGS) $(OPTFLAGS) -Iinclude -c src/cli.c -o src/cli.o
+src/cli_env.o: src/cli_env.c $(HDR)
+	$(CC) $(CFLAGS) $(OPTFLAGS) -Iinclude -c src/cli_env.c -o src/cli_env.o
+src/cli_opts.o: src/cli_opts.c $(HDR)
+	$(CC) $(CFLAGS) $(OPTFLAGS) -Iinclude -c src/cli_opts.c -o src/cli_opts.o
 
 src/lexer.o: src/lexer.c $(HDR)
 	$(CC) $(CFLAGS) $(OPTFLAGS) -Iinclude -c src/lexer.c -o src/lexer.o
