@@ -12,6 +12,7 @@
 #include "token.h"
 #include "preproc.h"
 #include "strbuf.h"
+#include "semantic_global.h"
 
 /* Use binary mode for temporary files on platforms that require it */
 #if defined(_WIN32)
