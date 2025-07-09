@@ -13,7 +13,7 @@ CORE_SRC = src/main.c src/compile.c src/compile_stage.c src/compile_link.c src/c
            src/codegen_float.c src/codegen_complex.c \
            src/regalloc.c src/regalloc_x86.c src/strbuf.c src/util.c src/vector.c src/ir_dump.c src/ir_builder.c src/ast_dump.c src/label.c \
            src/preproc_macros.c src/preproc_expr.c src/preproc_cond.c src/preproc_file.c \
-           src/preproc_file_io.c src/preproc_include.c src/preproc_path.c
+           src/preproc_directives.c src/preproc_file_io.c src/preproc_include.c src/preproc_path.c
 
 # Optional optimization sources
 OPT_SRC = src/opt.c src/opt_constprop.c src/opt_cse.c src/opt_fold.c src/opt_licm.c src/opt_dce.c src/opt_inline.c src/opt_unreachable.c src/opt_alias.c
@@ -248,6 +248,9 @@ src/preproc_cond.o: src/preproc_cond.c $(HDR)
 
 src/preproc_file.o: src/preproc_file.c $(HDR)
 	$(CC) $(CFLAGS) $(OPTFLAGS) -Iinclude -c src/preproc_file.c -o src/preproc_file.o
+
+src/preproc_directives.o: src/preproc_directives.c $(HDR)
+	$(CC) $(CFLAGS) $(OPTFLAGS) -Iinclude -c src/preproc_directives.c -o src/preproc_directives.o
 
 src/preproc_file_io.o: src/preproc_file_io.c $(HDR)
 	$(CC) $(CFLAGS) $(OPTFLAGS) -Iinclude -c src/preproc_file_io.c -o src/preproc_file_io.o
