@@ -268,6 +268,52 @@ static int check_if_stmt(stmt_t *stmt, symtable_t *vars, symtable_t *funcs,
 
 
 /*
+ * Validate a struct or union return expression. The type must match
+ * the function signature and the size of the returned aggregate must
+ * agree with the expected size recorded for the function. Returns
+ * non-zero on success.
+ */
+static int validate_struct_return(stmt_t *stmt, symtable_t *vars,
+                                  symtable_t *funcs, type_kind_t expr_type,
+                                  type_kind_t func_ret_type)
+{
+    if (expr_type != func_ret_type) {
+        error_set(stmt->ret.expr->line, stmt->ret.expr->column,
+                  error_current_file, error_current_function);
+        return 0;
+    }
+
+    symbol_t *func_sym = symtable_lookup(funcs,
+                                         error_current_function ?
+                                         error_current_function : "");
+    size_t expected = func_sym ? func_sym->ret_struct_size : 0;
+    size_t actual = 0;
+
+    if (stmt->ret.expr->kind == EXPR_IDENT) {
+        symbol_t *vsym = symtable_lookup(vars, stmt->ret.expr->ident.name);
+        if (vsym)
+            actual = (expr_type == TYPE_STRUCT)
+                ? vsym->struct_total_size : vsym->total_size;
+    } else if (stmt->ret.expr->kind == EXPR_CALL) {
+        symbol_t *fsym = symtable_lookup(funcs, stmt->ret.expr->call.name);
+        if (!fsym)
+            fsym = symtable_lookup(vars, stmt->ret.expr->call.name);
+        if (fsym)
+            actual = fsym->ret_struct_size;
+    } else if (stmt->ret.expr->kind == EXPR_COMPLIT) {
+        actual = stmt->ret.expr->compound.elem_size;
+    }
+
+    if (expected && actual && expected != actual) {
+        error_set(stmt->ret.expr->line, stmt->ret.expr->column,
+                  error_current_file, error_current_function);
+        return 0;
+    }
+
+    return 1;
+}
+
+/*
  * Handle a return statement. The optional expression is validated
  * and emitted as the function result. For void functions a zero
  * constant is returned when no expression is present.
@@ -289,36 +335,14 @@ static int handle_return_stmt(stmt_t *stmt, symtable_t *vars,
     ir_value_t val;
     type_kind_t vt = check_expr(stmt->ret.expr, vars, funcs, ir, &val);
     if (vt == TYPE_UNKNOWN) {
-        error_set(stmt->ret.expr->line, stmt->ret.expr->column, error_current_file, error_current_function);
+        error_set(stmt->ret.expr->line, stmt->ret.expr->column,
+                  error_current_file, error_current_function);
         return 0;
     }
 
     if (func_ret_type == TYPE_STRUCT || func_ret_type == TYPE_UNION) {
-        if (vt != func_ret_type) {
-            error_set(stmt->ret.expr->line, stmt->ret.expr->column, error_current_file, error_current_function);
+        if (!validate_struct_return(stmt, vars, funcs, vt, func_ret_type))
             return 0;
-        }
-        symbol_t *func_sym = symtable_lookup(funcs, error_current_function ? error_current_function : "");
-        size_t expected = func_sym ? func_sym->ret_struct_size : 0;
-        size_t actual = 0;
-        if (stmt->ret.expr->kind == EXPR_IDENT) {
-            symbol_t *vsym = symtable_lookup(vars, stmt->ret.expr->ident.name);
-            if (vsym) {
-                actual = (vt == TYPE_STRUCT) ? vsym->struct_total_size : vsym->total_size;
-            }
-        } else if (stmt->ret.expr->kind == EXPR_CALL) {
-            symbol_t *fsym = symtable_lookup(funcs, stmt->ret.expr->call.name);
-            if (!fsym)
-                fsym = symtable_lookup(vars, stmt->ret.expr->call.name);
-            if (fsym)
-                actual = fsym->ret_struct_size;
-        } else if (stmt->ret.expr->kind == EXPR_COMPLIT) {
-            actual = stmt->ret.expr->compound.elem_size;
-        }
-        if (expected && actual && expected != actual) {
-            error_set(stmt->ret.expr->line, stmt->ret.expr->column, error_current_file, error_current_function);
-            return 0;
-        }
         ir_value_t ret_ptr = ir_build_load_param(ir, 0);
         ir_build_store_ptr(ir, ret_ptr, val);
         ir_build_return_agg(ir, ret_ptr);
