@@ -15,5 +15,7 @@
 #define VC_PREPROC_H
 
 #include "preproc_file.h"
+#include "preproc_path.h"
+#include "preproc_cond.h"
 
 #endif /* VC_PREPROC_H */
