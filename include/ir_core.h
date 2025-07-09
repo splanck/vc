@@ -131,17 +131,6 @@ void ir_builder_free(ir_builder_t *b);
 /* Allocate and insert a blank instruction after `pos`. */
 ir_instr_t *ir_insert_after(ir_builder_t *b, ir_instr_t *pos);
 
-/* Emit IR_CONST for `value` and return the resulting value id. */
-ir_value_t ir_build_const(ir_builder_t *b, long long value);
-
-/* Emit IR_CPLX_CONST building a complex literal. */
-ir_value_t ir_build_cplx_const(ir_builder_t *b, double real, double imag);
-
-/* Emit IR_LOAD of variable `name`. */
-ir_value_t ir_build_load(ir_builder_t *b, const char *name);
-
-/* Emit a volatile IR_LOAD of variable `name`. */
-ir_value_t ir_build_load_vol(ir_builder_t *b, const char *name);
 
 /* Emit the binary operation `op` with operands `left` and `right`. */
 ir_value_t ir_build_binop(ir_builder_t *b, ir_op_t op, ir_value_t left,
@@ -163,93 +152,8 @@ ir_value_t ir_build_logor(ir_builder_t *b, ir_value_t left, ir_value_t right);
 ir_value_t ir_build_cast(ir_builder_t *b, ir_value_t val,
                          type_kind_t src_type, type_kind_t dst_type);
 
-/* Emit IR_STORE of `val` into variable `name`. */
-void ir_build_store(ir_builder_t *b, const char *name, ir_value_t val);
-
-/* Emit a volatile IR_STORE of `val` into variable `name`. */
-void ir_build_store_vol(ir_builder_t *b, const char *name, ir_value_t val);
-
-/* Load function parameter `index` via IR_LOAD_PARAM. */
-ir_value_t ir_build_load_param(ir_builder_t *b, int index);
-
-/* Store `val` into parameter slot `index` using IR_STORE_PARAM. */
-void ir_build_store_param(ir_builder_t *b, int index, ir_value_t val);
-
-/* Obtain the address of variable `name` via IR_ADDR. */
-ir_value_t ir_build_addr(ir_builder_t *b, const char *name);
-
-/* Emit IR_LOAD_PTR from pointer `addr`. */
-ir_value_t ir_build_load_ptr(ir_builder_t *b, ir_value_t addr);
-
-/* Restrict-qualified pointer load. */
-ir_value_t ir_build_load_ptr_res(ir_builder_t *b, ir_value_t addr);
-
-/* Emit IR_STORE_PTR writing `val` to pointer `addr`. */
-void ir_build_store_ptr(ir_builder_t *b, ir_value_t addr, ir_value_t val);
-
-/* Restrict-qualified pointer store. */
-void ir_build_store_ptr_res(ir_builder_t *b, ir_value_t addr, ir_value_t val);
-
-/* Emit IR_PTR_ADD adding `idx` (scaled by `elem_size`) to `ptr`. */
-ir_value_t ir_build_ptr_add(ir_builder_t *b, ir_value_t ptr, ir_value_t idx,
-                            int elem_size);
-
-/* Emit IR_PTR_DIFF computing `a - bptr` in elements of size `elem_size`. */
-ir_value_t ir_build_ptr_diff(ir_builder_t *b, ir_value_t a, ir_value_t bptr,
-                             int elem_size);
-
-/* Load element `name[idx]` using IR_LOAD_IDX. */
-ir_value_t ir_build_load_idx(ir_builder_t *b, const char *name, ir_value_t idx);
-
-/* Volatile version of IR_LOAD_IDX. */
-ir_value_t ir_build_load_idx_vol(ir_builder_t *b, const char *name,
-                                 ir_value_t idx);
-
-/* Store `val` into `name[idx]` using IR_STORE_IDX. */
-void ir_build_store_idx(ir_builder_t *b, const char *name, ir_value_t idx,
-                        ir_value_t val);
-
-/* Volatile version of IR_STORE_IDX. */
-void ir_build_store_idx_vol(ir_builder_t *b, const char *name, ir_value_t idx,
-                            ir_value_t val);
-
-
-/* Emit IR_ALLOCA reserving `size` bytes on the stack. */
-ir_value_t ir_build_alloca(ir_builder_t *b, ir_value_t size);
-
-/* Emit IR_RETURN of `val`. */
-void ir_build_return(ir_builder_t *b, ir_value_t val);
-
-/* Emit IR_RETURN_AGG writing the aggregate pointed to by `ptr`. */
-void ir_build_return_agg(ir_builder_t *b, ir_value_t ptr);
-
-/* Push `val` as an argument via IR_ARG. The argument's type is stored in imm. */
-void ir_build_arg(ir_builder_t *b, ir_value_t val, type_kind_t type);
-
-/* Emit IR_CALL to `name` expecting `arg_count` previously pushed args. */
-ir_value_t ir_build_call(ir_builder_t *b, const char *name, size_t arg_count);
-ir_value_t ir_build_call_nr(ir_builder_t *b, const char *name, size_t arg_count);
-ir_value_t ir_build_call_ptr(ir_builder_t *b, ir_value_t func, size_t arg_count);
-ir_value_t ir_build_call_ptr_nr(ir_builder_t *b, ir_value_t func, size_t arg_count);
-
-/* Mark the start of a function with IR_FUNC_BEGIN. */
-void ir_build_func_begin(ir_builder_t *b, const char *name);
-
-/* Mark the end of the current function with IR_FUNC_END. */
-void ir_build_func_end(ir_builder_t *b);
-
-/* Emit IR_BR jumping to `label`. */
-void ir_build_br(ir_builder_t *b, const char *label);
-
-/* Emit IR_BCOND using `cond` to branch to `label`. */
-void ir_build_bcond(ir_builder_t *b, ir_value_t cond, const char *label);
-
-/* Emit IR_LABEL marking the current position as `label`. */
-void ir_build_label(ir_builder_t *b, const char *label);
-
-/* Define a global string literal and return its value id (IR_GLOB_STRING). */
-ir_value_t ir_build_string(ir_builder_t *b, const char *data);
-/* Define a global wide string literal and return its value id (IR_GLOB_WSTRING). */
-ir_value_t ir_build_wstring(ir_builder_t *b, const char *data);
+#include "ir_const.h"
+#include "ir_memory.h"
+#include "ir_control.h"
 
 #endif /* VC_IR_CORE_H */
