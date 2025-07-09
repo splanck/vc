@@ -50,7 +50,5 @@ int process_line(char *line, const char *dir, vector_t *macros,
 int process_file(const char *path, vector_t *macros, vector_t *conds,
                  strbuf_t *out, const vector_t *incdirs, vector_t *stack,
                  preproc_context_t *ctx, size_t idx);
-int add_macro(const char *name, const char *value, vector_t *params,
-              int variadic, vector_t *macros);
 
 #endif /* VC_PREPROC_FILE_H */
