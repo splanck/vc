@@ -145,9 +145,10 @@ cc -Wl,--gc-sections -o "$DIR/temp_file_tests" compile_temp.o "$DIR/test_temp_fi
 rm -f compile_temp.o "$DIR/test_temp_file.o"
 # build compile_source_obj temp file failure test
 cc -Iinclude -Wall -Wextra -std=c99 -DUNIT_TESTING -Dcompile_unit=test_compile_unit -ffunction-sections -fdata-sections -c src/compile.c -o compile_obj_fail.o
+cc -Iinclude -Wall -Wextra -std=c99 -DUNIT_TESTING -Dcompile_unit=test_compile_unit -ffunction-sections -fdata-sections -c src/compile_link.c -o compile_link_obj_fail.o
 cc -Iinclude -Wall -Wextra -std=c99 -c "$DIR/unit/test_compile_obj_fail.c" -o "$DIR/test_compile_obj_fail.o"
-cc -Wl,--gc-sections -o "$DIR/compile_obj_fail" compile_obj_fail.o "$DIR/test_compile_obj_fail.o"
-rm -f compile_obj_fail.o "$DIR/test_compile_obj_fail.o"
+cc -Wl,--gc-sections -o "$DIR/compile_obj_fail" compile_obj_fail.o compile_link_obj_fail.o "$DIR/test_compile_obj_fail.o"
+rm -f compile_obj_fail.o compile_link_obj_fail.o "$DIR/test_compile_obj_fail.o"
 # build constant folding tests
 cc -Iinclude -Wall -Wextra -std=c99 -Dmalloc=test_malloc -Dcalloc=test_calloc -Dfree=test_free -c src/ir_core.c -o ir_fold.o
 cc -Iinclude -Wall -Wextra -std=c99 -Dmalloc=test_malloc -Dcalloc=test_calloc -Dfree=test_free -c src/util.c -o util_fold.o
