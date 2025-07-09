@@ -10,7 +10,7 @@
 #ifndef VC_SEMANTIC_GLOBAL_H
 #define VC_SEMANTIC_GLOBAL_H
 
-#include "ast.h"
+#include "ast_stmt.h"
 #include "ir_core.h"
 #include "symtable.h"
 

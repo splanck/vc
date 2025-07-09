@@ -9,7 +9,7 @@
 #define VC_SYMTABLE_H
 
 #include <stddef.h>
-#include "ast.h"
+#include "ast_stmt.h"
 #include "ir_core.h"
 
 /* Symbol table entry */

@@ -8,7 +8,7 @@
 #ifndef VC_CONSTEVAL_H
 #define VC_CONSTEVAL_H
 
-#include "ast.h"
+#include "ast_expr.h"
 #include "symtable.h"
 
 int is_intlike(type_kind_t t);
