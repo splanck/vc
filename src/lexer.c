@@ -279,11 +279,69 @@ static void read_number(const char *src, size_t *i, size_t *col,
     *col += len;
 }
 
+/* Simple lookup table for escape sequences */
+typedef struct {
+    char esc;
+    char value;
+} escape_entry_t;
+
+static const escape_entry_t escape_table[] = {
+    { 'n', '\n' },
+    { 't', '\t' },
+    { 'r', '\r' },
+    { 'b', '\b' },
+    { 'f', '\f' },
+    { 'v', '\v' },
+    { '\\', '\\' },
+    { '\'', '\'' },
+    { '"', '"' }
+};
+
+/* Parse up to three octal digits and clamp to 255 */
+static int parse_octal(const char *src, size_t *i,
+                       size_t line, size_t column)
+{
+    int value = 0;
+    int digits = 0;
+    int overflow = 0;
+    while (digits < 3 && src[*i] >= '0' && src[*i] <= '7') {
+        int digit = src[*i] - '0';
+        int next = value * 8 + digit;
+        if (next > 255) {
+            overflow = 1;
+            value = 255;
+        } else {
+            value = next;
+        }
+        (*i)++;
+        digits++;
+    }
+    if (overflow) {
+        error_set(line, column, error_current_file, error_current_function);
+        error_print("Escape sequence out of range");
+    }
+    return value;
+}
+
+/* Parse one or two hexadecimal digits following 'x' */
+static int parse_hex(const char *src, size_t *i)
+{
+    (*i)++; /* skip 'x' */
+    int value = 0;
+    int digits = 0;
+    while (isxdigit((unsigned char)src[*i]) && digits < 2) {
+        char d = src[*i];
+        int hexval = (d >= '0' && d <= '9') ? d - '0' :
+                     (d >= 'a' && d <= 'f') ? d - 'a' + 10 :
+                     (d >= 'A' && d <= 'F') ? d - 'A' + 10 : 0;
+        value = value * 16 + hexval;
+        (*i)++;
+        digits++;
+    }
+    return value;
+}
+
 /* Translate escape sequences within character and string literals */
-/*
- * Translate escape sequences within character and string literals. The
- * index pointer is advanced past the consumed characters.
- */
 static int unescape_char(const char *src, size_t *i,
                          size_t line, size_t column)
 {
@@ -291,75 +349,20 @@ static int unescape_char(const char *src, size_t *i,
         return 0;
 
     char c = src[*i];
-    switch (c) {
-    case 'n':
-        (*i)++;
-        return '\n';
-    case 't':
-        (*i)++;
-        return '\t';
-    case 'r':
-        (*i)++;
-        return '\r';
-    case 'b':
-        (*i)++;
-        return '\b';
-    case 'f':
-        (*i)++;
-        return '\f';
-    case 'v':
-        (*i)++;
-        return '\v';
-    case '\\':
-        (*i)++;
-        return '\\';
-    case '\'':
-        (*i)++;
-        return '\''; /* single quote */
-    case '"':
-        (*i)++;
-        return '"';
-    case 'x': { /* hexadecimal */
-        (*i)++; /* skip 'x' */
-        int value = 0;
-        int digits = 0;
-        while (isxdigit((unsigned char)src[*i]) && digits < 2) {
-            char d = src[*i];
-            int hexval = (d >= '0' && d <= '9') ? d - '0' :
-                         (d >= 'a' && d <= 'f') ? d - 'a' + 10 :
-                         (d >= 'A' && d <= 'F') ? d - 'A' + 10 : 0;
-            value = value * 16 + hexval;
+    for (size_t n = 0; n < sizeof(escape_table)/sizeof(escape_table[0]); n++) {
+        if (c == escape_table[n].esc) {
             (*i)++;
-            digits++;
+            return escape_table[n].value;
         }
-        return value;
     }
-    default:
-        if (c >= '0' && c <= '7') { /* octal */
-            int value = 0;
-            int digits = 0;
-            int overflow = 0;
-            while (digits < 3 && src[*i] >= '0' && src[*i] <= '7') {
-                int digit = src[*i] - '0';
-                int next = value * 8 + digit;
-                if (next > 255) {
-                    overflow = 1;
-                    value = 255;
-                } else {
-                    value = next;
-                }
-                (*i)++;
-                digits++;
-            }
-            if (overflow) {
-                error_set(line, column, error_current_file, error_current_function);
-                error_print("Escape sequence out of range");
-            }
-            return value;
-        }
-        (*i)++;
-        return c;
-    }
+
+    if (c == 'x')
+        return parse_hex(src, i);
+    if (c >= '0' && c <= '7')
+        return parse_octal(src, i, line, column);
+
+    (*i)++;
+    return c;
 }
 
 /* Parse a character constant like '\n' or 'a' */
