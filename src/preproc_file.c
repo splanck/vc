@@ -27,19 +27,13 @@
 #include "preproc_macros.h"
 #include "preproc_expr.h"
 #include "preproc_include.h"
+#include "preproc_path.h"
 #include "semantic_global.h"
 #include "util.h"
 #include "vector.h"
 #include "strbuf.h"
 
 #define MAX_INCLUDE_DEPTH 20
-
-/* Default system include search paths */
-static const char *std_include_dirs[] = {
-    "/usr/local/include",
-    "/usr/include",
-    NULL
-};
 
 /* Advance P past spaces and tabs and return the updated pointer */
 static char *skip_ws(char *p)
@@ -52,33 +46,6 @@ static char *skip_ws(char *p)
 
 
 /* Record PATH in the dependency list if not already present */
-static int record_dependency(preproc_context_t *ctx, const char *path)
-{
-    char *canon = realpath(path, NULL);
-    if (!canon)
-        canon = vc_strdup(path);
-    if (!canon)
-        return 0;
-
-    for (size_t i = 0; i < ctx->deps.count; i++) {
-        const char *p = ((const char **)ctx->deps.data)[i];
-        if (strcmp(p, canon) == 0) {
-            free(canon);
-            return 1;
-        }
-    }
-
-    if (!vector_push(&ctx->deps, &canon)) {
-        free(canon);
-        vc_oom();
-        return 0;
-    }
-
-    return 1;
-}
-
-
-
 static void free_param_vector(vector_t *v);
 
 /* Return 1 if all conditional states on the stack are active */
@@ -100,57 +67,6 @@ static int is_active(vector_t *conds)
 
 
 /* Canonicalize PATH and push it on the include stack */
-static int include_stack_push(vector_t *stack, const char *path, size_t idx)
-{
-    char *canon = realpath(path, NULL);
-    if (!canon) {
-        canon = vc_strdup(path);
-        if (!canon) {
-            vc_oom();
-            return 0;
-        }
-    }
-    include_entry_t ent = { canon, idx };
-    if (!vector_push(stack, &ent)) {
-        free(canon);
-        vc_oom();
-        return 0;
-    }
-    return 1;
-}
-
-/* Pop and free the top element from the include stack */
-static void include_stack_pop(vector_t *stack)
-{
-    if (stack->count) {
-        include_entry_t *e = &((include_entry_t *)stack->data)[stack->count - 1];
-        free(e->path);
-        stack->count--;
-    }
-}
-
-/* Canonicalize PATH and store it in the pragma_once list */
-static int pragma_once_add(preproc_context_t *ctx, const char *path)
-{
-    char *canon = realpath(path, NULL);
-    if (!canon)
-        canon = vc_strdup(path);
-    if (!canon)
-        return 0;
-    for (size_t i = 0; i < ctx->pragma_once_files.count; i++) {
-        const char *p = ((const char **)ctx->pragma_once_files.data)[i];
-        if (strcmp(p, canon) == 0) {
-            free(canon);
-            return 1;
-        }
-    }
-    if (!vector_push(&ctx->pragma_once_files, &canon)) {
-        free(canon);
-        vc_oom();
-        return 0;
-    }
-    return 1;
-}
 
 /* forward declaration for recursive include handling */
 int process_file(const char *path, vector_t *macros,
@@ -487,80 +403,6 @@ static int handle_directive(char *line, const char *dir, vector_t *macros,
                             const vector_t *incdirs, vector_t *stack,
                             preproc_context_t *ctx);
 
-static char *read_file_lines(const char *path, char ***out_lines)
-{
-    char *text = vc_read_file(path);
-    if (!text)
-        return NULL;
-
-    size_t len = strlen(text);
-
-    /* splice lines ending with a backslash */
-    size_t w = 0;
-    for (size_t r = 0; r < len; r++) {
-        if (text[r] == '\\' && r + 1 < len && text[r + 1] == '\n') {
-            r++; /* skip the newline */
-            continue;
-        }
-        text[w++] = text[r];
-    }
-    text[w] = '\0';
-    len = w;
-
-    size_t line_count = 1;
-    for (char *p = text; *p; p++)
-        if (*p == '\n')
-            line_count++;
-    if (len > 0 && text[len - 1] == '\n')
-        line_count--;
-
-    char **lines = vc_alloc_or_exit(sizeof(char *) * (line_count + 1));
-
-    size_t idx = 0;
-    lines[idx++] = text;
-    for (size_t i = 0; i < len; i++) {
-        if (text[i] == '\n') {
-            text[i] = '\0';
-            if (i + 1 < len)
-                lines[idx++] = &text[i + 1];
-        }
-    }
-    lines[idx] = NULL;
-    line_count = idx;
-    *out_lines = lines;
-    return text;
-}
-
-/* Load the contents of "path" into a line array and determine the
- * directory component of the path.  The text buffer backing the lines
- * is returned via *out_text and must be freed by the caller along with
- * the line array and directory string.  Returns non-zero on success. */
-static int load_file_lines(const char *path, char ***out_lines,
-                           char **out_dir, char **out_text)
-{
-    char **lines;
-    char *text = read_file_lines(path, &lines);
-    if (!text)
-        return 0;
-
-    char *dir = NULL;
-    const char *slash = strrchr(path, '/');
-    if (slash) {
-        size_t len = (size_t)(slash - path) + 1;
-        dir = vc_strndup(path, len);
-        if (!dir) {
-            free(lines);
-            free(text);
-            return 0;
-        }
-    }
-
-    *out_lines = lines;
-    *out_dir = dir;
-    *out_text = text;
-    return 1;
-}
-
 /* Process one line of input.  Leading whitespace is skipped before
  * dispatching to the directive handlers. */
 static int process_line(char *line, const char *dir, vector_t *macros,
@@ -582,29 +424,6 @@ static void cleanup_file_resources(char *text, char **lines, char *dir)
 
 /* Load PATH and push it onto the include stack.  On failure any allocated
  * resources are released and zero is returned. */
-static int load_and_register_file(const char *path, vector_t *stack,
-                                  size_t idx,
-                                  char ***out_lines, char **out_dir,
-                                  char **out_text,
-                                  preproc_context_t *ctx)
-{
-    if (!load_file_lines(path, out_lines, out_dir, out_text))
-        return 0;
-
-    if (!include_stack_push(stack, path, idx)) {
-        cleanup_file_resources(*out_text, *out_lines, *out_dir);
-        return 0;
-    }
-
-    if (!record_dependency(ctx, path)) {
-        cleanup_file_resources(*out_text, *out_lines, *out_dir);
-        include_stack_pop(stack);
-        return 0;
-    }
-
-    return 1;
-}
-
 /* Free a vector of parameter names */
 static void free_param_vector(vector_t *v)
 {
@@ -964,58 +783,6 @@ int process_file(const char *path, vector_t *macros,
 
     cleanup_file_resources(text, lines, dir);
     return ok;
-}
-
-/* Append colon-separated paths from ENV to SEARCH_DIRS */
-static int append_env_paths(const char *env, vector_t *search_dirs)
-{
-    if (!env || !*env)
-        return 1;
-
-    char *tmp = vc_strdup(env);
-    if (!tmp)
-        return 0;
-    char *tok, *sp;
-    tok = strtok_r(tmp, ":", &sp);
-    while (tok) {
-        if (*tok) {
-            char *dup = vc_strdup(tok);
-            if (!dup || !vector_push(search_dirs, &dup)) {
-                free(dup);
-                free(tmp);
-                return 0;
-            }
-        }
-        tok = strtok_r(NULL, ":", &sp);
-    }
-    free(tmp);
-    return 1;
-}
-
-/* Collect include search directories from CLI options and environment */
-static int collect_include_dirs(vector_t *search_dirs,
-                                const vector_t *include_dirs)
-{
-    vector_init(search_dirs, sizeof(char *));
-    for (size_t i = 0; i < include_dirs->count; i++) {
-        const char *s = ((const char **)include_dirs->data)[i];
-        char *dup = vc_strdup(s);
-        if (!dup || !vector_push(search_dirs, &dup)) {
-            free(dup);
-            free_string_vector(search_dirs);
-            return 0;
-        }
-    }
-
-    if (!append_env_paths(getenv("VCPATH"), search_dirs)) {
-        free_string_vector(search_dirs);
-        return 0;
-    }
-    if (!append_env_paths(getenv("VCINC"), search_dirs)) {
-        free_string_vector(search_dirs);
-        return 0;
-    }
-    return 1;
 }
 
 /* Initialize the vectors used during preprocessing */

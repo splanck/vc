@@ -11,6 +11,7 @@
 #include "vector.h"
 #include "strbuf.h"
 #include "preproc_file.h"
+#include "preproc_path.h"
 
 /* Conditional state used during directive processing */
 typedef struct {
@@ -18,12 +19,6 @@ typedef struct {
     int taking;
     int taken;
 } cond_state_t;
-
-/* Entry on the include stack */
-typedef struct {
-    char *path;
-    size_t dir_index;
-} include_entry_t;
 
 /* Process a standard #include directive */
 int handle_include(char *line, const char *dir, vector_t *macros,
