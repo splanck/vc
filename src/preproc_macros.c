@@ -330,6 +330,127 @@ static void emit_plain_char(const char *line, size_t *pos, strbuf_t *out)
  * updated to the index following the macro call.  Returns non-zero
  * when a macro expansion occurred.
  */
+/* Expand builtin macros such as __FILE__ and __LINE__.  "name" is the
+ * identifier text starting at line[*pos] with length "len" and "end"
+ * is the index after the identifier.  On success *pos is updated to
+ * "end" and non-zero is returned. */
+static int handle_builtin_macro(const char *name, size_t len, size_t end,
+                                size_t column, strbuf_t *out, size_t *pos)
+{
+    if (len == 8) {
+        if (strncmp(name, "__FILE__", 8) == 0) {
+            preproc_set_location(NULL, builtin_line, column);
+            strbuf_appendf(out, "\"%s\"", builtin_file);
+            *pos = end;
+            return 1;
+        } else if (strncmp(name, "__LINE__", 8) == 0) {
+            preproc_set_location(NULL, builtin_line, column);
+            strbuf_appendf(out, "%zu", builtin_line);
+            *pos = end;
+            return 1;
+        } else if (strncmp(name, "__DATE__", 8) == 0) {
+            preproc_set_location(NULL, builtin_line, column);
+            strbuf_appendf(out, "\"%s\"", build_date);
+            *pos = end;
+            return 1;
+        } else if (strncmp(name, "__TIME__", 8) == 0) {
+            preproc_set_location(NULL, builtin_line, column);
+            strbuf_appendf(out, "\"%s\"", build_time);
+            *pos = end;
+            return 1;
+        } else if (strncmp(name, "__STDC__", 8) == 0) {
+            preproc_set_location(NULL, builtin_line, column);
+            strbuf_append(out, "1");
+            *pos = end;
+            return 1;
+        } else if (strncmp(name, "__func__", 8) == 0) {
+            if (builtin_func) {
+                preproc_set_location(NULL, builtin_line, column);
+                strbuf_appendf(out, "\"%s\"", builtin_func);
+                *pos = end;
+                return 1;
+            }
+        }
+    } else if (len == 16 && strncmp(name, "__STDC_VERSION__", 16) == 0) {
+        preproc_set_location(NULL, builtin_line, column);
+        strbuf_append(out, "199901L");
+        *pos = end;
+        return 1;
+    }
+    return 0;
+}
+
+/* Expand a user-defined macro.  "pos" should point to the index right
+ * after the macro name.  When expansion succeeds *pos is updated to the
+ * index after the invocation and 1 is returned.  If the invocation was
+ * malformed zero is returned.  On failure a negative value is returned. */
+static int expand_user_macro(macro_t *m, const char *line, size_t *pos,
+                             vector_t *macros, strbuf_t *out, int depth)
+{
+    size_t p = *pos;
+    if (m->params.count || m->variadic) {
+        vector_t args;
+        if (parse_macro_args(line, &p, &args) &&
+            ((m->variadic && args.count >= m->params.count) ||
+             (!m->variadic && args.count == m->params.count))) {
+            char **ap = (char **)args.data;
+            char *va = NULL;
+            if (m->variadic) {
+                size_t fixed = m->params.count;
+                strbuf_t sb;
+                strbuf_init(&sb);
+                for (size_t a = fixed; a < args.count; a++) {
+                    if (a > fixed)
+                        strbuf_append(&sb, ",");
+                    strbuf_append(&sb, ((char **)args.data)[a]);
+                }
+                va = vc_strdup(sb.data ? sb.data : "");
+                strbuf_free(&sb);
+                ap = malloc((fixed + 1) * sizeof(char *));
+                if (!ap) {
+                    vc_oom();
+                    for (size_t t = 0; t < args.count; t++)
+                        free(((char **)args.data)[t]);
+                    vector_free(&args);
+                    free(va);
+                    return -1;
+                }
+                for (size_t a = 0; a < fixed; a++)
+                    ap[a] = ((char **)args.data)[a];
+                ap[fixed] = va;
+            }
+            if (!expand_macro_call(m, ap, macros, out, depth + 1)) {
+                for (size_t t = 0; t < args.count; t++)
+                    free(((char **)args.data)[t]);
+                vector_free(&args);
+                if (m->variadic) {
+                    free(va);
+                    free(ap);
+                }
+                return -1;
+            }
+            for (size_t t = 0; t < args.count; t++)
+                free(((char **)args.data)[t]);
+            vector_free(&args);
+            if (m->variadic) {
+                free(va);
+                free(ap);
+            }
+            *pos = p;
+            return 1;
+        }
+        for (size_t t = 0; t < args.count; t++)
+            free(((char **)args.data)[t]);
+        vector_free(&args);
+        return 0;
+    } else {
+        if (!expand_macro_call(m, NULL, macros, out, depth + 1))
+            return -1;
+        *pos = p;
+        return 1;
+    }
+}
+
 static int parse_macro_invocation(const char *line, size_t *pos,
                                   vector_t *macros, strbuf_t *out,
                                   size_t column, int depth)
@@ -349,111 +470,19 @@ static int parse_macro_invocation(const char *line, size_t *pos,
 
     size_t len = j - i;
 
-    /* handle builtin macros first */
-    if (len == 8) {
-        if (strncmp(line + i, "__FILE__", 8) == 0) {
-            preproc_set_location(NULL, builtin_line, column);
-            strbuf_appendf(out, "\"%s\"", builtin_file);
-            *pos = j;
-            return 1;
-        } else if (strncmp(line + i, "__LINE__", 8) == 0) {
-            preproc_set_location(NULL, builtin_line, column);
-            strbuf_appendf(out, "%zu", builtin_line);
-            *pos = j;
-            return 1;
-        } else if (strncmp(line + i, "__DATE__", 8) == 0) {
-            preproc_set_location(NULL, builtin_line, column);
-            strbuf_appendf(out, "\"%s\"", build_date);
-            *pos = j;
-            return 1;
-        } else if (strncmp(line + i, "__TIME__", 8) == 0) {
-            preproc_set_location(NULL, builtin_line, column);
-            strbuf_appendf(out, "\"%s\"", build_time);
-            *pos = j;
-            return 1;
-        } else if (strncmp(line + i, "__STDC__", 8) == 0) {
-            preproc_set_location(NULL, builtin_line, column);
-            strbuf_append(out, "1");
-            *pos = j;
-            return 1;
-        } else if (strncmp(line + i, "__func__", 8) == 0) {
-            if (builtin_func) {
-                preproc_set_location(NULL, builtin_line, column);
-                strbuf_appendf(out, "\"%s\"", builtin_func);
-                *pos = j;
-                return 1;
-            }
-        }
-    } else if (len == 16 && strncmp(line + i, "__STDC_VERSION__", 16) == 0) {
-        preproc_set_location(NULL, builtin_line, column);
-        strbuf_append(out, "199901L");
-        *pos = j;
-        return 1;
-    }
+    int r = handle_builtin_macro(line + i, len, j, column, out, pos);
+    if (r)
+        return r;
     for (size_t k = 0; k < macros->count; k++) {
         macro_t *m = &((macro_t *)macros->data)[k];
         if (strlen(m->name) == len && strncmp(m->name, line + i, len) == 0) {
             preproc_set_location(NULL, builtin_line, column);
-            if (m->params.count || m->variadic) {
-                size_t pos2 = j;
-                vector_t args;
-                if (parse_macro_args(line, &pos2, &args) &&
-                    ((m->variadic && args.count >= m->params.count) ||
-                     (!m->variadic && args.count == m->params.count))) {
-                    char **ap = (char **)args.data;
-                    char *va = NULL;
-                    if (m->variadic) {
-                        size_t fixed = m->params.count;
-                        strbuf_t sb;
-                        strbuf_init(&sb);
-                        for (size_t a = fixed; a < args.count; a++) {
-                            if (a > fixed)
-                                strbuf_append(&sb, ",");
-                            strbuf_append(&sb, ((char **)args.data)[a]);
-                        }
-                        va = vc_strdup(sb.data ? sb.data : "");
-                        strbuf_free(&sb);
-                        ap = malloc((fixed + 1) * sizeof(char *));
-                        if (!ap) {
-                            vc_oom();
-                            for (size_t t = 0; t < args.count; t++)
-                                free(((char **)args.data)[t]);
-                            vector_free(&args);
-                            free(va);
-                            return -1;
-                        }
-                        for (size_t a = 0; a < fixed; a++)
-                            ap[a] = ((char **)args.data)[a];
-                        ap[fixed] = va;
-                    }
-                    if (!expand_macro_call(m, ap, macros, out, depth + 1)) {
-                        for (size_t t = 0; t < args.count; t++)
-                            free(((char **)args.data)[t]);
-                        vector_free(&args);
-                        if (m->variadic) {
-                            free(va);
-                            free(ap);
-                        }
-                        return -1;
-                    }
-                    for (size_t t = 0; t < args.count; t++)
-                        free(((char **)args.data)[t]);
-                    vector_free(&args);
-                    if (m->variadic) {
-                        free(va);
-                        free(ap);
-                    }
+            size_t pos2 = j;
+            r = expand_user_macro(m, line, &pos2, macros, out, depth);
+            if (r) {
+                if (r > 0)
                     *pos = pos2;
-                    return 1;
-                }
-                for (size_t t = 0; t < args.count; t++)
-                    free(((char **)args.data)[t]);
-                vector_free(&args);
-            } else {
-                if (!expand_macro_call(m, NULL, macros, out, depth + 1))
-                    return -1;
-                *pos = j;
-                return 1;
+                return r;
             }
             break;
         }
