@@ -498,6 +498,10 @@ void ast_free_expr(expr_t *expr)
         free(expr->offsetof_expr.members);
         free(expr->offsetof_expr.tag);
         break;
+    case EXPR_ALIGNOF:
+        if (!expr->alignof_expr.is_type)
+            ast_free_expr(expr->alignof_expr.expr);
+        break;
     case EXPR_CALL:
         for (size_t i = 0; i < expr->call.arg_count; i++)
             ast_free_expr(expr->call.args[i]);
