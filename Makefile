@@ -9,7 +9,7 @@ CORE_SRC = src/main.c src/compile.c src/compile_tokenize.c src/compile_parse.c s
            src/parser_decl.c src/parser_flow.c src/parser_stmt.c src/parser_types.c \
            src/semantic_expr.c src/semantic_arith.c src/semantic_mem.c src/semantic_call.c \
            src/semantic_loops.c src/semantic_switch.c src/semantic_init.c src/semantic_var.c src/semantic_stmt.c src/semantic_global.c src/consteval.c src/error.c src/ir_core.c src/ir_global.c \
-           src/codegen.c src/codegen_mem.c src/codegen_loadstore.c src/codegen_arith.c src/codegen_branch.c \
+           src/codegen.c src/codegen_mem.c src/codegen_loadstore.c src/codegen_arith_int.c src/codegen_arith_float.c src/codegen_branch.c \
            src/codegen_float.c src/codegen_complex.c \
            src/regalloc.c src/regalloc_x86.c src/strbuf.c src/util.c src/vector.c src/ir_dump.c src/ast_dump.c src/label.c \
            src/preproc_macros.c src/preproc_expr.c src/preproc_file.c
@@ -22,7 +22,7 @@ EXTRA_SRC ?=
 SRC = $(CORE_SRC) $(OPT_SRC) $(EXTRA_SRC)
 OBJ := $(SRC:.c=.o)
 HDR = include/token.h include/ast.h include/ast_clone.h include/ast_expr.h include/ast_stmt.h include/parser.h include/symtable.h include/semantic.h     include/consteval.h include/semantic_expr.h include/semantic_arith.h include/semantic_mem.h include/semantic_call.h include/semantic_loops.h include/semantic_switch.h include/semantic_stmt.h include/semantic_var.h include/semantic_init.h include/semantic_global.h \
-    include/ir_core.h include/ir_global.h include/ir_dump.h include/ast_dump.h include/opt.h include/codegen.h include/codegen_mem.h include/codegen_loadstore.h include/codegen_arith.h include/codegen_branch.h include/strbuf.h \
+    include/ir_core.h include/ir_global.h include/ir_dump.h include/ast_dump.h include/opt.h include/codegen.h include/codegen_mem.h include/codegen_loadstore.h include/codegen_arith.h include/codegen_arith_int.h include/codegen_arith_float.h include/codegen_branch.h include/strbuf.h \
     include/util.h include/command.h include/cli.h include/vector.h include/regalloc_x86.h include/label.h include/error.h \
     include/preproc.h include/preproc_file.h include/preproc_macros.h include/preproc_expr.h include/parser_types.h include/parser_core.h include/startup.h
 PREFIX ?= /usr/local
@@ -169,6 +169,10 @@ src/codegen_arith.o: src/codegen_arith.c $(HDR)
 	$(CC) $(CFLAGS) $(OPTFLAGS) -Iinclude -c src/codegen_arith.c -o src/codegen_arith.o
 src/codegen_float.o: src/codegen_float.c $(HDR)
 	$(CC) $(CFLAGS) $(OPTFLAGS) -Iinclude -c src/codegen_float.c -o src/codegen_float.o
+src/codegen_arith_int.o: src/codegen_arith_int.c $(HDR)
+	$(CC) $(CFLAGS) $(OPTFLAGS) -Iinclude -c src/codegen_arith_int.c -o src/codegen_arith_int.o
+src/codegen_arith_float.o: src/codegen_arith_float.c $(HDR)
+	$(CC) $(CFLAGS) $(OPTFLAGS) -Iinclude -c src/codegen_arith_float.c -o src/codegen_arith_float.o
 
 src/codegen_complex.o: src/codegen_complex.c $(HDR)
 	$(CC) $(CFLAGS) $(OPTFLAGS) -Iinclude -c src/codegen_complex.c -o src/codegen_complex.o
