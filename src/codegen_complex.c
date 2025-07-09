@@ -18,28 +18,6 @@ static const char *fmt_reg(const char *name, asm_syntax_t syntax)
     return name;
 }
 
-static const char *loc_str(char buf[32], regalloc_t *ra, int id, int x64,
-                           asm_syntax_t syntax)
-{
-    if (!ra || id <= 0)
-        return "";
-    int loc = ra->loc[id];
-    if (loc >= 0)
-        return reg_str(loc, syntax);
-    if (x64) {
-        if (syntax == ASM_INTEL)
-            snprintf(buf, 32, "[rbp-%d]", -loc * 8);
-        else
-            snprintf(buf, 32, "-%d(%%rbp)", -loc * 8);
-    } else {
-        if (syntax == ASM_INTEL)
-            snprintf(buf, 32, "[ebp-%d]", -loc * 4);
-        else
-            snprintf(buf, 32, "-%d(%%ebp)", -loc * 4);
-    }
-    return buf;
-}
-
 /* Compute the location of the imaginary or real part of a complex value. */
 static const char *loc_str_off(char buf[32], regalloc_t *ra, int id,
                                int off, int x64, asm_syntax_t syntax)
@@ -111,7 +89,7 @@ void emit_cplx_addsub(strbuf_t *sb, ir_instr_t *ins, regalloc_t *ra,
 void emit_cplx_mul(strbuf_t *sb, ir_instr_t *ins, regalloc_t *ra,
                    int x64, asm_syntax_t syntax)
 {
-    char a[32], b[32], c[32], d[32], out[32];
+    char a[32], c[32], d[32], out[32];
     int r0 = regalloc_xmm_acquire();
     int r1 = regalloc_xmm_acquire();
     int r2 = regalloc_xmm_acquire();
@@ -180,7 +158,7 @@ void emit_cplx_mul(strbuf_t *sb, ir_instr_t *ins, regalloc_t *ra,
 void emit_cplx_div(strbuf_t *sb, ir_instr_t *ins, regalloc_t *ra,
                    int x64, asm_syntax_t syntax)
 {
-    char a[32], b[32], c[32], d[32], out[32];
+    char a[32], c[32], d[32], out[32];
     int r0 = regalloc_xmm_acquire();
     int r1 = regalloc_xmm_acquire();
     int r2 = regalloc_xmm_acquire();
