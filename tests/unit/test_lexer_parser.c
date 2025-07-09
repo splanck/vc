@@ -576,6 +576,24 @@ static void test_parser_bitfield(void)
     lexer_free_tokens(toks, count);
 }
 
+/* Ensure struct member parsing helpers work via parse_member_list */
+static void test_parser_member_helpers(void)
+{
+    const char *src = "struct S { int a; int b[2]; unsigned c : 3; };";
+    size_t count = 0;
+    token_t *toks = lexer_tokenize(src, &count);
+    parser_t p; parser_init(&p, toks, count);
+    stmt_t *stmt = parser_parse_struct_decl(&p);
+    ASSERT(stmt);
+    ASSERT(stmt->kind == STMT_STRUCT_DECL);
+    ASSERT(stmt->struct_decl.count == 3);
+    ASSERT(strcmp(stmt->struct_decl.members[0].name, "a") == 0);
+    ASSERT(stmt->struct_decl.members[1].type == TYPE_ARRAY);
+    ASSERT(stmt->struct_decl.members[2].bit_width == 3);
+    ast_free_stmt(stmt);
+    lexer_free_tokens(toks, count);
+}
+
 /* Parse a variable declaration using a struct tag. */
 static void test_parser_struct_tag_var(void)
 {
@@ -787,6 +805,7 @@ int main(void)
     test_parser_func();
     test_parser_block();
     test_parser_bitfield();
+    test_parser_member_helpers();
     test_parser_struct_tag_var();
     test_parser_struct_tag_func();
     test_parser_struct_tag_func_def();
