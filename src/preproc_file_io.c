@@ -8,6 +8,7 @@
 
 #include "util.h"
 #include "preproc_file_io.h"
+#include "preproc_macros.h"
 #include "preproc_path.h"
 
 int include_stack_contains(vector_t *stack, const char *path)
