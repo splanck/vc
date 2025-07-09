@@ -144,41 +144,37 @@ static type_kind_t check_ident_expr(expr_t *expr, symtable_t *vars,
     }
 }
 
-/*
- * Validate a ternary conditional expression.  Both branches are checked and
- * IR is emitted to select the appropriate value based on the condition.
- */
-static type_kind_t check_cond_expr(expr_t *expr, symtable_t *vars,
-                                   symtable_t *funcs, ir_builder_t *ir,
-                                   ir_value_t *out)
+/* Validate the operand types of a conditional expression. */
+static int validate_cond_operands(expr_t *expr, symtable_t *vars,
+                                  symtable_t *funcs, type_kind_t *ct,
+                                  type_kind_t *tt, type_kind_t *ft)
 {
-    /* First validate all sub-expressions using a temporary IR builder so that
-     * no instructions are emitted on failure. */
     ir_builder_t tmpb; ir_builder_init(&tmpb);
     ir_value_t tmpv;
-    type_kind_t ct = check_expr(expr->cond.cond, vars, funcs, &tmpb, &tmpv);
-    type_kind_t tt = check_expr(expr->cond.then_expr, vars, funcs, &tmpb, NULL);
-    type_kind_t ft = check_expr(expr->cond.else_expr, vars, funcs, &tmpb, NULL);
+    *ct = check_expr(expr->cond.cond, vars, funcs, &tmpb, &tmpv);
+    *tt = check_expr(expr->cond.then_expr, vars, funcs, &tmpb, NULL);
+    *ft = check_expr(expr->cond.else_expr, vars, funcs, &tmpb, NULL);
     ir_builder_free(&tmpb);
 
-    if (!is_intlike(ct) || tt == TYPE_UNKNOWN || ft == TYPE_UNKNOWN) {
-        if (!is_intlike(ct))
+    if (!is_intlike(*ct) || *tt == TYPE_UNKNOWN || *ft == TYPE_UNKNOWN) {
+        if (!is_intlike(*ct))
             error_set(expr->cond.cond->line, expr->cond.cond->column,
                       error_current_file, error_current_function);
-        if (out)
-            *out = (ir_value_t){0};
-        return TYPE_UNKNOWN;
+        return 0;
     }
-
-    if (!(is_intlike(tt) && is_intlike(ft))) {
+    if (!(is_intlike(*tt) && is_intlike(*ft))) {
         error_set(expr->line, expr->column, error_current_file,
                   error_current_function);
-        if (out)
-            *out = (ir_value_t){0};
-        return TYPE_UNKNOWN;
+        return 0;
     }
+    return 1;
+}
 
-    /* Re-evaluate using the real IR builder now that validation succeeded. */
+/* Emit IR for the conditional branches. */
+static int emit_cond_branches(expr_t *expr, symtable_t *vars,
+                              symtable_t *funcs, ir_builder_t *ir,
+                              ir_value_t *out)
+{
     ir_value_t cond_val;
     check_expr(expr->cond.cond, vars, funcs, ir, &cond_val);
 
@@ -186,13 +182,10 @@ static type_kind_t check_cond_expr(expr_t *expr, symtable_t *vars,
     int id = label_next_id();
     if (!label_format_suffix("L", id, "_false", flabel) ||
         !label_format_suffix("L", id, "_end", endlabel) ||
-        !label_format("tmp", id, tmp)) {
-        if (out)
-            *out = (ir_value_t){0};
-        return TYPE_UNKNOWN;
-    }
-    ir_build_bcond(ir, cond_val, flabel);
+        !label_format("tmp", id, tmp))
+        return 0;
 
+    ir_build_bcond(ir, cond_val, flabel);
     ir_value_t tval;
     check_expr(expr->cond.then_expr, vars, funcs, ir, &tval);
     ir_build_store(ir, tmp, tval);
@@ -206,10 +199,41 @@ static type_kind_t check_cond_expr(expr_t *expr, symtable_t *vars,
 
     if (out)
         *out = ir_build_load(ir, tmp);
+    return 1;
+}
+
+/* Determine the resulting type of a conditional expression. */
+static type_kind_t result_cond_type(type_kind_t tt, type_kind_t ft)
+{
     if (tt == TYPE_LLONG || tt == TYPE_ULLONG ||
         ft == TYPE_LLONG || ft == TYPE_ULLONG)
         return TYPE_LLONG;
     return TYPE_INT;
+}
+
+/*
+ * Validate a ternary conditional expression.  Both branches are checked and
+ * IR is emitted to select the appropriate value based on the condition.
+ */
+static type_kind_t check_cond_expr(expr_t *expr, symtable_t *vars,
+                                   symtable_t *funcs, ir_builder_t *ir,
+                                   ir_value_t *out)
+{
+    type_kind_t ct, tt, ft;
+    if (!validate_cond_operands(expr, vars, funcs, &ct, &tt, &ft)) {
+        if (out)
+            *out = (ir_value_t){0};
+        return TYPE_UNKNOWN;
+    }
+
+    if (!emit_cond_branches(expr, vars, funcs, ir, out)) {
+        if (out)
+            *out = (ir_value_t){0};
+        return TYPE_UNKNOWN;
+    }
+
+    (void)ct;
+    return result_cond_type(tt, ft);
 }
 
 /*
