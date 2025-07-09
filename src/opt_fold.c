@@ -165,6 +165,21 @@ static void fold_long_float_instr(ir_instr_t *ins, size_t max_id,
     }
 }
 
+/* Try folding a cast operation */
+static void fold_cast_instr(ir_instr_t *ins, size_t max_id,
+                            int *is_const, int *values)
+{
+    if ((size_t)ins->src1 < max_id && is_const[ins->src1]) {
+        int val = values[ins->src1];
+        ins->op = IR_CONST;
+        ins->imm = val;
+        ins->src1 = ins->src2 = 0;
+        update_const(ins, val, 1, max_id, is_const, values);
+    } else {
+        update_const(ins, 0, 0, max_id, is_const, values);
+    }
+}
+
 /* Try folding pointer addition */
 static void fold_ptr_add_instr(ir_instr_t *ins, size_t max_id,
                                int *is_const, int *values)
@@ -227,6 +242,9 @@ void fold_constants(ir_builder_t *ir)
         case IR_CMPGT: case IR_CMPLE: case IR_CMPGE:
         case IR_LOGAND: case IR_LOGOR:
             fold_int_instr(ins, max_id, is_const, values);
+            break;
+        case IR_CAST:
+            fold_cast_instr(ins, max_id, is_const, values);
             break;
         case IR_FADD: case IR_FSUB: case IR_FMUL: case IR_FDIV:
             fold_float_instr(ins, max_id, is_const, values);
