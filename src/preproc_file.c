@@ -27,6 +27,7 @@
 #include "preproc_macros.h"
 #include "preproc_cond.h"
 #include "preproc_include.h"
+#include "preproc_file_io.h"
 #include "preproc_path.h"
 #include "semantic_global.h"
 #include "util.h"
@@ -278,7 +279,7 @@ static int handle_directive(char *line, const char *dir, vector_t *macros,
 
 /* Process one line of input.  Leading whitespace is skipped before
  * dispatching to the directive handlers. */
-static int process_line(char *line, const char *dir, vector_t *macros,
+int process_line(char *line, const char *dir, vector_t *macros,
                         vector_t *conds, strbuf_t *out,
                         const vector_t *incdirs, vector_t *stack,
                         preproc_context_t *ctx)
@@ -288,15 +289,6 @@ static int process_line(char *line, const char *dir, vector_t *macros,
 }
 
 /* Free resources allocated by process_file */
-static void cleanup_file_resources(char *text, char **lines, char *dir)
-{
-    free(lines);
-    free(text);
-    free(dir);
-}
-
-/* Load PATH and push it onto the include stack.  On failure any allocated
- * resources are released and zero is returned. */
 /* Free a vector of parameter names */
 static void free_param_vector(vector_t *v)
 {
@@ -306,19 +298,6 @@ static void free_param_vector(vector_t *v)
 }
 
 /* Iterate over the loaded lines and process each one. */
-static int process_all_lines(char **lines, const char *path, const char *dir,
-                             vector_t *macros, vector_t *conds,
-                             strbuf_t *out, const vector_t *incdirs,
-                             vector_t *stack, preproc_context_t *ctx)
-{
-    for (size_t i = 0; lines[i]; i++) {
-        preproc_set_location(path, i + 1, 1);
-        if (!process_line(lines[i], dir, macros, conds, out, incdirs, stack,
-                          ctx))
-            return 0;
-    }
-    return 1;
-}
 /* Process a single #include directive and recursively handle the file. */
 static int handle_include_directive(char *line, const char *dir,
                                     vector_t *macros, vector_t *conds,
