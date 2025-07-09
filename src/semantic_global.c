@@ -263,41 +263,51 @@ static int check_static_assert_stmt(stmt_t *stmt, symtable_t *globals)
  * union members are assigned offsets and the resulting element size is stored
  * back into the declaration for later use.
  */
+/* Compute layout for a union variable declaration */
+static int compute_union_layout(stmt_t *decl, symtable_t *globals)
+{
+    if (decl->var_decl.member_count) {
+        size_t max = layout_union_members(decl->var_decl.members,
+                                          decl->var_decl.member_count);
+        decl->var_decl.elem_size = max;
+    } else if (decl->var_decl.tag) {
+        symbol_t *utype = symtable_lookup_union(globals, decl->var_decl.tag);
+        if (!utype) {
+            error_set(decl->line, decl->column, error_current_file,
+                      error_current_function);
+            return 0;
+        }
+        decl->var_decl.elem_size = utype->total_size;
+    }
+    return 1;
+}
+
+/* Compute layout for a struct variable declaration */
+static int compute_struct_layout(stmt_t *decl, symtable_t *globals)
+{
+    if (decl->var_decl.member_count) {
+        size_t total =
+            layout_struct_members((struct_member_t *)decl->var_decl.members,
+                                  decl->var_decl.member_count);
+        decl->var_decl.elem_size = total;
+    } else if (decl->var_decl.tag) {
+        symbol_t *stype = symtable_lookup_struct(globals, decl->var_decl.tag);
+        if (!stype) {
+            error_set(decl->line, decl->column, error_current_file,
+                      error_current_function);
+            return 0;
+        }
+        decl->var_decl.elem_size = stype->struct_total_size;
+    }
+    return 1;
+}
+
 static int compute_global_layout(stmt_t *decl, symtable_t *globals)
 {
-    if (decl->var_decl.type == TYPE_UNION) {
-        if (decl->var_decl.member_count) {
-            size_t max = layout_union_members(decl->var_decl.members,
-                                              decl->var_decl.member_count);
-            decl->var_decl.elem_size = max;
-        } else if (decl->var_decl.tag) {
-            symbol_t *utype = symtable_lookup_union(globals, decl->var_decl.tag);
-            if (!utype) {
-                error_set(decl->line, decl->column, error_current_file,
-                          error_current_function);
-                return 0;
-            }
-            decl->var_decl.elem_size = utype->total_size;
-        }
-    }
-
-    if (decl->var_decl.type == TYPE_STRUCT) {
-        if (decl->var_decl.member_count) {
-            size_t total =
-                layout_struct_members((struct_member_t *)decl->var_decl.members,
-                                      decl->var_decl.member_count);
-            decl->var_decl.elem_size = total;
-        } else if (decl->var_decl.tag) {
-            symbol_t *stype = symtable_lookup_struct(globals, decl->var_decl.tag);
-            if (!stype) {
-                error_set(decl->line, decl->column, error_current_file,
-                          error_current_function);
-                return 0;
-            }
-            decl->var_decl.elem_size = stype->struct_total_size;
-        }
-    }
-
+    if (decl->var_decl.type == TYPE_UNION)
+        return compute_union_layout(decl, globals);
+    if (decl->var_decl.type == TYPE_STRUCT)
+        return compute_struct_layout(decl, globals);
     return 1;
 }
 
@@ -533,8 +543,12 @@ static int emit_global_initializer(stmt_t *decl, symbol_t *sym,
     return 1;
 }
 
-static int check_var_decl_global(stmt_t *decl, symtable_t *globals,
-                                 ir_builder_t *ir)
+/*
+ * Register a global variable symbol and emit its initializer.  Returns
+ * non-zero on success.
+ */
+static int emit_global_symbol(stmt_t *decl, symtable_t *globals,
+                              ir_builder_t *ir)
 {
     symbol_t *sym = register_global_symbol(decl, globals);
     if (!sym)
@@ -571,7 +585,7 @@ int check_global(stmt_t *decl, symtable_t *globals, ir_builder_t *ir)
         }
         return 1;
     case STMT_VAR_DECL:
-        return check_var_decl_global(decl, globals, ir);
+        return emit_global_symbol(decl, globals, ir);
     default:
         break;
     }
