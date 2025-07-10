@@ -4,8 +4,8 @@
  * Preprocessor module for vc.
  *
  * This file drives reading source text and performing directive
- * processing.  It works with the helpers in `preproc_macros.c`
- * and `preproc_expr.c` to expand macros and evaluate conditional
+ * processing.  It works with the helpers in `preproc_expand.c`
+ * and `preproc_table.c` alongside `preproc_expr.c` to expand macros and evaluate conditional
  * expressions, forming a small stand-alone preprocessor used by
  * the compiler.  The core routine `process_file` reads input one
  * line at a time, handles `#include`, `#define`, conditional blocks
