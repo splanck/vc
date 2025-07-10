@@ -10,6 +10,7 @@
 
 #include <stddef.h>
 #include "vector.h"
+#include "cli.h"
 
 /* Duplicate a string using malloc. Returns NULL on allocation failure */
 char *vc_strdup(const char *s);
@@ -40,5 +41,11 @@ void free_string_vector(vector_t *v);
 
 /* Release a vector of macro_t elements */
 void free_macro_vector(vector_t *v);
+
+/* Assemble an mkstemp template path using cli->obj_dir */
+char *create_temp_template(const cli_options_t *cli, const char *prefix);
+
+/* Create and open the temporary file described by tmpl */
+int open_temp_file(char *tmpl);
 
 #endif /* VC_UTIL_H */

@@ -13,6 +13,14 @@
 #include <sys/types.h>
 #include <errno.h>
 #include <limits.h>
+#ifndef PATH_MAX
+# include <sys/param.h>
+#endif
+#ifndef PATH_MAX
+# define PATH_MAX 4096
+#endif
+#include <unistd.h>
+#include <fcntl.h>
 #include "util.h"
 #include "preproc_macros.h"
 
@@ -192,5 +200,74 @@ void free_macro_vector(vector_t *v)
     for (size_t i = 0; i < v->count; i++)
         macro_free(&((macro_t *)v->data)[i]);
     vector_free(v);
+}
+
+/*
+ * Assemble mkstemp template path using cli->obj_dir (or the process
+ * temporary directory) and the given prefix.  Returns a newly allocated
+ * string or NULL on error.
+ *
+ * errno will be ENAMETOOLONG if the resulting path would exceed PATH_MAX
+ * or snprintf detected truncation.
+ */
+char *
+create_temp_template(const cli_options_t *cli, const char *prefix)
+{
+    const char *dir = cli->obj_dir;
+    if (!dir || !*dir) {
+        dir = getenv("TMPDIR");
+        if (!dir || !*dir) {
+#ifdef P_tmpdir
+            dir = P_tmpdir;
+#else
+            dir = "/tmp";
+#endif
+        }
+    }
+    size_t len = strlen(dir) + strlen(prefix) + sizeof("/XXXXXX");
+    if (len >= PATH_MAX) {
+        errno = ENAMETOOLONG;
+        return NULL;
+    }
+    char *tmpl = malloc(len + 1);
+    if (!tmpl)
+        return NULL;
+
+    errno = 0;
+    int n = snprintf(tmpl, len + 1, "%s/%sXXXXXX", dir, prefix);
+    int err = errno;
+    if (n < 0) {
+        free(tmpl);
+        errno = err;
+        return NULL;
+    }
+    if ((size_t)n >= len + 1) {
+        free(tmpl);
+        errno = ENAMETOOLONG;
+        return NULL;
+    }
+
+    return tmpl;
+}
+
+/*
+ * Create and open the temporary file described by tmpl.  Returns the file
+ * descriptor on success or -1 on failure.  On error the file is unlinked
+ * and errno is preserved.
+ */
+int
+open_temp_file(char *tmpl)
+{
+    int fd = mkstemp(tmpl);
+    if (fd < 0)
+        return -1;
+    if (fcntl(fd, F_SETFD, FD_CLOEXEC) != 0) {
+        int err = errno;
+        close(fd);
+        unlink(tmpl);
+        errno = err;
+        return -1;
+    }
+    return fd;
 }
 
