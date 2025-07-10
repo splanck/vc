@@ -11,20 +11,12 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-#include <limits.h>
 #include <stdint.h>
-#ifndef PATH_MAX
-# include <sys/param.h>
-#endif
-#ifndef PATH_MAX
-# define PATH_MAX 4096
-#endif
-#include <unistd.h>
-#include <fcntl.h>
 #include <string.h>
 #include <errno.h>
 #include <spawn.h>
 #include <sys/wait.h>
+#include <unistd.h>
 
 #include "util.h"
 #include "cli.h"
@@ -63,74 +55,6 @@ extern char **environ;
 char *vc_obj_name(const char *source);
 
 
-/*
- * Assemble mkstemp template path using cli->obj_dir (or the process
- * temporary directory) and the given prefix.  Returns a newly allocated
- * string or NULL on error.
- *
- * errno will be ENAMETOOLONG if the resulting path would exceed PATH_MAX
- * or snprintf detected truncation.
- */
-static char *
-create_temp_template(const cli_options_t *cli, const char *prefix)
-{
-    const char *dir = cli->obj_dir;
-    if (!dir || !*dir) {
-        dir = getenv("TMPDIR");
-        if (!dir || !*dir) {
-#ifdef P_tmpdir
-            dir = P_tmpdir;
-#else
-            dir = "/tmp";
-#endif
-        }
-    }
-    size_t len = strlen(dir) + strlen(prefix) + sizeof("/XXXXXX");
-    if (len >= PATH_MAX) {
-        errno = ENAMETOOLONG;
-        return NULL;
-    }
-    char *tmpl = malloc(len + 1);
-    if (!tmpl)
-        return NULL;
-
-    errno = 0;
-    int n = snprintf(tmpl, len + 1, "%s/%sXXXXXX", dir, prefix);
-    int err = errno;
-    if (n < 0) {
-        free(tmpl);
-        errno = err;
-        return NULL;
-    }
-    if ((size_t)n >= len + 1) {
-        free(tmpl);
-        errno = ENAMETOOLONG;
-        return NULL;
-    }
-
-    return tmpl;
-}
-
-/*
- * Create and open the temporary file described by tmpl.  Returns the file
- * descriptor on success or -1 on failure.  On error the file is unlinked
- * and errno is preserved.
- */
-static int
-open_temp_file(char *tmpl)
-{
-    int fd = mkstemp(tmpl);
-    if (fd < 0)
-        return -1;
-    if (fcntl(fd, F_SETFD, FD_CLOEXEC) != 0) {
-        int err = errno;
-        close(fd);
-        unlink(tmpl);
-        errno = err;
-        return -1;
-    }
-    return fd;
-}
 
 /*
  * Create a temporary file and return its descriptor.  On success the path
