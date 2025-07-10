@@ -3,8 +3,11 @@
  *
  * This module implements a very small recursive descent parser for the
  * arithmetic used in `#if` and related directives.  The grammar supports the
- * `defined` operator, integer constants and the logical `!`, `&&` and `||`
- * operators.  Expressions are evaluated to an integer result used to control
+ * `defined` operator, integer constants and a subset of the C operators used in
+ * glibc headers.  Supported operators include unary `!` and `~`, the
+ * arithmetic `+`, `-`, `*`, `/`, `%`, bit shifts `<<` and `>>`, comparisons,
+ * bitwise `&`, `|`, `^` as well as the logical `&&` and `||` operators.
+ * Expressions are evaluated to an integer result used to control
  * conditional blocks during preprocessing.
  *
  * Part of vc under the BSD 2-Clause license.
@@ -86,11 +89,14 @@ static int parse_primary(expr_ctx_t *ctx)
     } else if (isdigit((unsigned char)*ctx->s)) {
         errno = 0;
         char *end;
-        long long val = strtoll(ctx->s, &end, 10);
+        long long val = strtoll(ctx->s, &end, 0);
         if (errno == ERANGE) {
             val = val < 0 ? LLONG_MIN : LLONG_MAX;
         }
         ctx->s = end;
+        while (*ctx->s == 'u' || *ctx->s == 'U' ||
+               *ctx->s == 'l' || *ctx->s == 'L')
+            ctx->s++;
         if (val > INT_MAX)
             return INT_MAX;
         if (val < INT_MIN)
@@ -103,32 +109,182 @@ static int parse_primary(expr_ctx_t *ctx)
     }
 }
 
-/* Handle unary negation in the expression grammar */
-static int parse_not(expr_ctx_t *ctx)
+/* Unary operators '!' and '~' */
+static int parse_unary(expr_ctx_t *ctx)
 {
     skip_ws(ctx);
     if (*ctx->s == '!') {
         ctx->s++;
-        return !parse_not(ctx);
+        return !parse_unary(ctx);
+    } else if (*ctx->s == '~') {
+        ctx->s++;
+        return ~parse_unary(ctx);
     }
     return parse_primary(ctx);
 }
 
-/* Parse left-associative '&&' operations */
+/* Multiplicative */
+static int parse_mul(expr_ctx_t *ctx)
+{
+    int val = parse_unary(ctx);
+    skip_ws(ctx);
+    while (*ctx->s == '*' || *ctx->s == '/' || *ctx->s == '%') {
+        char op = *ctx->s++;
+        int rhs = parse_unary(ctx);
+        switch (op) {
+        case '*': val = val * rhs; break;
+        case '/': val = rhs ? val / rhs : 0; break;
+        case '%': val = rhs ? val % rhs : 0; break;
+        }
+        skip_ws(ctx);
+    }
+    return val;
+}
+
+/* Additive */
+static int parse_add(expr_ctx_t *ctx)
+{
+    int val = parse_mul(ctx);
+    skip_ws(ctx);
+    while (*ctx->s == '+' || *ctx->s == '-') {
+        char op = *ctx->s++;
+        int rhs = parse_mul(ctx);
+        if (op == '+')
+            val += rhs;
+        else
+            val -= rhs;
+        skip_ws(ctx);
+    }
+    return val;
+}
+
+/* Shifts */
+static int parse_shift(expr_ctx_t *ctx)
+{
+    int val = parse_add(ctx);
+    skip_ws(ctx);
+    while (strncmp(ctx->s, "<<", 2) == 0 || strncmp(ctx->s, ">>", 2) == 0) {
+        int left = (ctx->s[0] == '<');
+        ctx->s += 2;
+        int rhs = parse_add(ctx);
+        if (left)
+            val <<= rhs;
+        else
+            val >>= rhs;
+        skip_ws(ctx);
+    }
+    return val;
+}
+
+/* Relational */
+static int parse_rel(expr_ctx_t *ctx)
+{
+    int val = parse_shift(ctx);
+    skip_ws(ctx);
+    while (1) {
+        if (strncmp(ctx->s, "<=", 2) == 0) {
+            ctx->s += 2;
+            int rhs = parse_shift(ctx);
+            val = val <= rhs;
+        } else if (strncmp(ctx->s, ">=", 2) == 0) {
+            ctx->s += 2;
+            int rhs = parse_shift(ctx);
+            val = val >= rhs;
+        } else if (*ctx->s == '<' && ctx->s[1] != '<') {
+            ctx->s++;
+            int rhs = parse_shift(ctx);
+            val = val < rhs;
+        } else if (*ctx->s == '>' && ctx->s[1] != '>') {
+            ctx->s++;
+            int rhs = parse_shift(ctx);
+            val = val > rhs;
+        } else {
+            break;
+        }
+        skip_ws(ctx);
+    }
+    return val;
+}
+
+/* Equality */
+static int parse_eq(expr_ctx_t *ctx)
+{
+    int val = parse_rel(ctx);
+    skip_ws(ctx);
+    while (1) {
+        if (strncmp(ctx->s, "==", 2) == 0) {
+            ctx->s += 2;
+            int rhs = parse_rel(ctx);
+            val = val == rhs;
+        } else if (strncmp(ctx->s, "!=", 2) == 0) {
+            ctx->s += 2;
+            int rhs = parse_rel(ctx);
+            val = val != rhs;
+        } else {
+            break;
+        }
+        skip_ws(ctx);
+    }
+    return val;
+}
+
+/* Bitwise AND */
+static int parse_band(expr_ctx_t *ctx)
+{
+    int val = parse_eq(ctx);
+    skip_ws(ctx);
+    while (*ctx->s == '&' && ctx->s[1] != '&') {
+        ctx->s++;
+        int rhs = parse_eq(ctx);
+        val &= rhs;
+        skip_ws(ctx);
+    }
+    return val;
+}
+
+/* Bitwise XOR */
+static int parse_xor(expr_ctx_t *ctx)
+{
+    int val = parse_band(ctx);
+    skip_ws(ctx);
+    while (*ctx->s == '^') {
+        ctx->s++;
+        int rhs = parse_band(ctx);
+        val ^= rhs;
+        skip_ws(ctx);
+    }
+    return val;
+}
+
+/* Bitwise OR */
+static int parse_bor(expr_ctx_t *ctx)
+{
+    int val = parse_xor(ctx);
+    skip_ws(ctx);
+    while (*ctx->s == '|' && ctx->s[1] != '|') {
+        ctx->s++;
+        int rhs = parse_xor(ctx);
+        val |= rhs;
+        skip_ws(ctx);
+    }
+    return val;
+}
+
+/* Logical AND */
 static int parse_and(expr_ctx_t *ctx)
 {
-    int val = parse_not(ctx);
+    int val = parse_bor(ctx);
     skip_ws(ctx);
     while (strncmp(ctx->s, "&&", 2) == 0) {
         ctx->s += 2;
-        int rhs = parse_not(ctx);
+        int rhs = parse_bor(ctx);
         val = val && rhs;
         skip_ws(ctx);
     }
     return val;
 }
 
-/* Parse left-associative '||' operations */
+/* Logical OR */
 static int parse_or(expr_ctx_t *ctx)
 {
     int val = parse_and(ctx);
