@@ -14,11 +14,15 @@
 #ifndef MULTIARCH
 #define MULTIARCH "x86_64-linux-gnu"
 #endif
+#ifndef GCC_INCLUDE_DIR
+#define GCC_INCLUDE_DIR "/usr/lib/gcc/" MULTIARCH "/include"
+#endif
 #endif
 
 static const char *std_include_dirs[] = {
 #ifdef __linux__
     "/usr/include/" MULTIARCH,
+    GCC_INCLUDE_DIR,
 #endif
     "/usr/local/include",
     "/usr/include",

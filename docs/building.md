@@ -32,7 +32,9 @@ This disables any NetBSD specific extensions.
 
 On Linux the compiler also searches `/usr/include/<multiarch>` for headers.
 The multiarch directory is determined at build time using `cc -print-multiarch`
-and defaults to `x86_64-linux-gnu` when detection fails.
+and defaults to `x86_64-linux-gnu` when detection fails. The GCC internal
+include directory reported by `cc -print-file-name=include` is also added so
+headers like `stddef.h` resolve correctly.
 
 `vc` can generate either 32-bit or 64-bit x86 assembly. Use the
 `--x86-64` flag when invoking the compiler to enable 64-bit output. The
