@@ -1,3 +1,2 @@
-#pragma once
 int once_var;
 int main() { return 0; }

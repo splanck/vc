@@ -25,9 +25,9 @@ preprocessor directive is handled immediately:
 - Conditional directives (`#if`, `#ifdef`, `#ifndef`, `#elif`, `#else` and
   `#endif`) manipulate a stack of state objects so nested conditions may be
   evaluated correctly.
-- `#pragma` lines are passed through verbatim when active. `#pragma pack(push,n)`
-  updates the current struct packing alignment and `#pragma pack(pop)` restores
-  the previous value.
+- `#pragma` directives are ignored unless recognised. Supported forms are
+  `#pragma pack(push,n)` which updates the current struct packing alignment and
+  `#pragma pack(pop)` which restores the previous value.
 - `#pragma once` marks the current file so subsequent includes of the same
   path are ignored.
 - Any other line has macros expanded and is appended to the output buffer.

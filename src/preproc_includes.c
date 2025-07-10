@@ -123,6 +123,8 @@ int handle_pragma_directive(char *line, const char *dir, vector_t *macros,
             if (!pragma_once_add(ctx, cur))
                 return 0;
         }
+        (void)conds; /* unused when returning early */
+        return 1; /* do not emit pragma line */
     } else if (strncmp(p, "pack", 4) == 0) {
         p += 4;
         p = skip_ws(p);
@@ -157,6 +159,8 @@ int handle_pragma_directive(char *line, const char *dir, vector_t *macros,
         return 1; /* do not emit pragma line */
     }
     (void)stack;
-    return handle_pragma(line, conds, out);
+    (void)conds;
+    (void)out;
+    return 1; /* ignore unrecognised pragmas */
 }
 
