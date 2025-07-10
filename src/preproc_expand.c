@@ -463,6 +463,40 @@ static int expand_user_macro(macro_t *m, const char *line, size_t *pos,
     return 1;
 }
 
+/* Scan an identifier starting at POS and return the index after it.
+ * "out_len" receives the identifier length when non-NULL.  Returns POS
+ * when no identifier is present. */
+static size_t read_macro_ident(const char *line, size_t pos, size_t *out_len)
+{
+    size_t len = parse_ident(line + pos);
+    if (!len)
+        return pos;
+    if (out_len)
+        *out_len = len;
+    return pos + len;
+}
+
+/* Dispatch the identifier between builtin and user-defined macros. */
+static int dispatch_macro(const char *line, size_t start, size_t end,
+                          size_t len, vector_t *macros, strbuf_t *out,
+                          size_t column, int depth, size_t *pos)
+{
+    int r = handle_builtin_macro(line + start, len, end, column, out, pos);
+    if (r)
+        return r;
+
+    macro_t *m = find_macro(macros, line + start, len);
+    if (!m)
+        return 0;
+
+    preproc_set_location(NULL, builtin_line, column);
+    size_t p = end;
+    r = expand_user_macro(m, line, &p, macros, out, depth);
+    if (r > 0)
+        *pos = p;
+    return r;
+}
+
 static int parse_macro_invocation(const char *line, size_t *pos,
                                   vector_t *macros, strbuf_t *out,
                                   size_t column, int depth)
@@ -471,33 +505,15 @@ static int parse_macro_invocation(const char *line, size_t *pos,
         fprintf(stderr, "Macro expansion limit exceeded\n");
         return -1;
     }
-    size_t i = *pos;
 
-    if (!isalpha((unsigned char)line[i]) && line[i] != '_')
+    size_t start = *pos;
+    size_t len;
+    size_t end = read_macro_ident(line, start, &len);
+    if (end == start)
         return 0;
 
-    size_t j = i + 1;
-    while (isalnum((unsigned char)line[j]) || line[j] == '_')
-        j++;
-
-    size_t len = j - i;
-
-    int r = handle_builtin_macro(line + i, len, j, column, out, pos);
-    if (r)
-        return r;
-    macro_t *m = find_macro(macros, line + i, len);
-    if (m) {
-        preproc_set_location(NULL, builtin_line, column);
-        size_t pos2 = j;
-        r = expand_user_macro(m, line, &pos2, macros, out, depth);
-        if (r) {
-            if (r > 0)
-                *pos = pos2;
-            return r;
-        }
-    }
-
-    return 0;
+    return dispatch_macro(line, start, end, len, macros, out, column, depth,
+                          pos);
 }
 
 /*
@@ -505,7 +521,19 @@ static int parse_macro_invocation(const char *line, size_t *pos,
  * Performs recursive expansion so macro bodies may contain other
  * macros.  Results are appended to the provided output buffer.
  */
-int expand_line(const char *line, vector_t *macros, strbuf_t *out, size_t column, int depth)
+static int expand_token(const char *line, size_t *pos, vector_t *macros,
+                        strbuf_t *out, size_t column, int depth)
+{
+    int r = parse_macro_invocation(line, pos, macros, out, column, depth);
+    if (r < 0)
+        return 0;
+    if (!r)
+        emit_plain_char(line, pos, out);
+    return 1;
+}
+
+int expand_line(const char *line, vector_t *macros, strbuf_t *out,
+                size_t column, int depth)
 {
     if (depth >= MAX_MACRO_DEPTH) {
         fprintf(stderr, "Macro expansion limit exceeded\n");
@@ -513,11 +541,8 @@ int expand_line(const char *line, vector_t *macros, strbuf_t *out, size_t column
     }
     for (size_t i = 0; line[i];) {
         size_t col = column ? column : i + 1;
-        int r = parse_macro_invocation(line, &i, macros, out, col, depth);
-        if (r < 0)
+        if (!expand_token(line, &i, macros, out, col, depth))
             return 0;
-        if (!r)
-            emit_plain_char(line, &i, out);
     }
     return 1;
 }
