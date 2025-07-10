@@ -1,8 +1,8 @@
 /*
- * Emitters for load and store IR instructions.
+ * Emitters for IR store instructions.
  *
- * These helpers move values between memory and registers after register
- * allocation.  The `x64` flag toggles between 32- and 64-bit encodings.
+ * These helpers move register values into memory after register
+ * allocation. The `x64` flag selects between 32- and 64-bit encodings.
  *
  * Part of vc under the BSD 2-Clause license.
  * See LICENSE for details.
@@ -64,20 +64,6 @@ static const char *loc_str(char buf[32], regalloc_t *ra, int id, int x64,
     return buf;
 }
 
-void emit_load(strbuf_t *sb, ir_instr_t *ins,
-               regalloc_t *ra, int x64,
-               asm_syntax_t syntax)
-{
-    char destb[32];
-    char mem[32];
-    const char *sfx = x64 ? "q" : "l";
-    int spill = (ra && ins->dest > 0 && ra->loc[ins->dest] < 0);
-    const char *dest = spill ? reg_str(SCRATCH_REG, syntax)
-                             : loc_str(destb, ra, ins->dest, x64, syntax);
-    const char *slot = loc_str(mem, ra, ins->dest, x64, syntax);
-    emit_move_with_spill(sb, sfx, ins->name, dest, slot, spill, syntax);
-}
-
 void emit_store(strbuf_t *sb, ir_instr_t *ins,
                 regalloc_t *ra, int x64,
                 asm_syntax_t syntax)
@@ -90,28 +76,6 @@ void emit_store(strbuf_t *sb, ir_instr_t *ins,
     else
         strbuf_appendf(sb, "    mov%s %s, %s\n", sfx,
                        loc_str(b1, ra, ins->src1, x64, syntax), ins->name);
-}
-
-void emit_load_ptr(strbuf_t *sb, ir_instr_t *ins,
-                   regalloc_t *ra, int x64,
-                   asm_syntax_t syntax)
-{
-    char b1[32];
-    char destb[32];
-    char mem[32];
-    const char *sfx = x64 ? "q" : "l";
-    int spill = (ra && ins->dest > 0 && ra->loc[ins->dest] < 0);
-    const char *dest = spill ? reg_str(SCRATCH_REG, syntax)
-                             : loc_str(destb, ra, ins->dest, x64, syntax);
-    const char *slot = loc_str(mem, ra, ins->dest, x64, syntax);
-    char srcbuf[32];
-    if (syntax == ASM_INTEL)
-        snprintf(srcbuf, sizeof(srcbuf), "[%s]",
-                 loc_str(b1, ra, ins->src1, x64, syntax));
-    else
-        snprintf(srcbuf, sizeof(srcbuf), "(%s)",
-                 loc_str(b1, ra, ins->src1, x64, syntax));
-    emit_move_with_spill(sb, sfx, srcbuf, dest, slot, spill, syntax);
 }
 
 void emit_store_ptr(strbuf_t *sb, ir_instr_t *ins,
@@ -129,24 +93,6 @@ void emit_store_ptr(strbuf_t *sb, ir_instr_t *ins,
         strbuf_appendf(sb, "    mov%s %s, (%s)\n", sfx,
                        loc_str(b1, ra, ins->src2, x64, syntax),
                        loc_str(b2, ra, ins->src1, x64, syntax));
-}
-
-void emit_load_idx(strbuf_t *sb, ir_instr_t *ins,
-                   regalloc_t *ra, int x64,
-                   asm_syntax_t syntax)
-{
-    char b1[32];
-    char destb[32];
-    char mem[32];
-    const char *sfx = x64 ? "q" : "l";
-    int spill = (ra && ins->dest > 0 && ra->loc[ins->dest] < 0);
-    const char *dest = spill ? reg_str(SCRATCH_REG, syntax)
-                             : loc_str(destb, ra, ins->dest, x64, syntax);
-    const char *slot = loc_str(mem, ra, ins->dest, x64, syntax);
-    char srcbuf[64];
-    snprintf(srcbuf, sizeof(srcbuf), "%s(,%s,4)",
-             ins->name, loc_str(b1, ra, ins->src1, x64, syntax));
-    emit_move_with_spill(sb, sfx, srcbuf, dest, slot, spill, syntax);
 }
 
 void emit_store_idx(strbuf_t *sb, ir_instr_t *ins,
