@@ -20,6 +20,7 @@
 #include <stdint.h>
 #include "opt.h"
 #include "error.h"
+#include "util.h"
 
 typedef struct {
     const char *name;
@@ -34,7 +35,54 @@ typedef struct {
  * small parser that scans for a line defining the function and then
  * tokenizes the portion preceding the function name.
  */
-static int is_inline_def(const char *file, const char *name)
+static void strip_comments(char *s, int *in_comment)
+{
+    if (*in_comment) {
+        char *end = strstr(s, "*/");
+        if (!end) {
+            *s = '\0';
+            return;
+        }
+        memmove(s, end + 2, strlen(end + 2) + 1);
+        *in_comment = 0;
+    }
+    while (!*in_comment) {
+        char *start = strstr(s, "/*");
+        if (!start)
+            break;
+        char *end = strstr(start + 2, "*/");
+        if (end) {
+            memmove(start, end + 2, strlen(end + 2) + 1);
+        } else {
+            *start = '\0';
+            *in_comment = 1;
+            break;
+        }
+    }
+    char *slash = strstr(s, "//");
+    if (slash)
+        *slash = '\0';
+}
+
+static int tokens_have_inline(const char *prefix)
+{
+    char *buf = vc_strdup(prefix);
+    if (!buf)
+        return -1;
+    int result = 0;
+    char *tok = strtok(buf, " \t\r\n*");
+    while (tok) {
+        if (strcmp(tok, "inline") == 0) {
+            result = 1;
+            break;
+        }
+        tok = strtok(NULL, " \t\r\n*");
+    }
+    free(buf);
+    return result;
+}
+
+static int parse_inline_hint(const char *file, const char *name)
 {
     char *line = NULL;
     FILE *f = fopen(file, "r");
@@ -49,42 +97,13 @@ static int is_inline_def(const char *file, const char *name)
     int result = 0;
 
     while ((nread = getline(&line, &len, f)) != -1) {
-        char *s = line;
-
-        /* handle multi-line comments */
-        if (in_comment) {
-            char *end = strstr(s, "*/");
-            if (!end)
-                continue;
-            s = end + 2;
-            in_comment = 0;
-        }
-        while (!in_comment) {
-            char *start = strstr(s, "/*");
-            if (!start)
-                break;
-            char *end = strstr(start + 2, "*/");
-            if (end) {
-                memmove(start, end + 2, strlen(end + 2) + 1);
-            } else {
-                *start = '\0';
-                in_comment = 1;
-                break;
-            }
-        }
+        strip_comments(line, &in_comment);
         if (in_comment)
             continue;
-
-        /* strip line comments */
-        char *slashslash = strstr(s, "//");
-        if (slashslash)
-            *slashslash = '\0';
-
-        /* search for "name(" followed by ')' and '{' on the same line */
-        char *pos = strstr(s, name);
+        char *pos = strstr(line, name);
         if (!pos)
             continue;
-        if (pos > s && (isalnum((unsigned char)pos[-1]) || pos[-1] == '_'))
+        if (pos > line && (isalnum((unsigned char)pos[-1]) || pos[-1] == '_'))
             continue;
         char *after = pos + strlen(name);
         while (isspace((unsigned char)*after))
@@ -92,41 +111,26 @@ static int is_inline_def(const char *file, const char *name)
         if (*after != '(')
             continue;
         char *close = strchr(after, ')');
-        if (!close)
+        if (!close || !strchr(close, '{'))
             continue;
-        char *brace = strchr(close, '{');
-        if (!brace)
-            continue;
-
-        /* tokenize the prefix before the function name */
-        size_t pre_len = (size_t)(pos - s);
-        char *prefix = malloc(pre_len + 1);
+        size_t pre_len = (size_t)(pos - line);
+        char *prefix = vc_strndup(line, pre_len);
         if (!prefix) {
-            error_set(0, 0, file, name);
-            error_print("out of memory");
             free(line);
             fclose(f);
             errno = ENOMEM;
             return -1;
         }
-        memcpy(prefix, s, pre_len);
-        prefix[pre_len] = '\0';
-
-        char *tokens[64];
-        size_t ntok = 0;
-        char *tok = strtok(prefix, " \t\r\n*");
-        while (tok && ntok < 64) {
-            tokens[ntok++] = tok;
-            tok = strtok(NULL, " \t\r\n*");
-        }
-        for (size_t i = 0; i + 1 < ntok; i++) {
-            if (strcmp(tokens[i], "inline") == 0) {
-                result = 1;
-                break;
-            }
-        }
+        int r = tokens_have_inline(prefix);
         free(prefix);
-        break; /* processed definition line */
+        if (r < 0) {
+            free(line);
+            fclose(f);
+            errno = ENOMEM;
+            return -1;
+        }
+        result = r;
+        break;
     }
 
     if (ferror(f)) {
@@ -161,7 +165,7 @@ static int is_simple_op(ir_op_t op)
  * IR_LOAD_PARAM, IR_CONST, IR_RETURN and IR_RETURN_AGG are permitted.  The total number
  * of arithmetic operations must not exceed four.
  */
-static int clone_func_body(ir_instr_t *begin, ir_instr_t **out, size_t *count)
+static int clone_inline_body(ir_instr_t *begin, ir_instr_t **out, size_t *count)
 {
     *out = NULL;
     *count = 0;
@@ -209,7 +213,7 @@ static int clone_func_body(ir_instr_t *begin, ir_instr_t **out, size_t *count)
 
 /* Identify eligible functions and store their name/op pairs */
 /*
- * Identify inline functions with bodies accepted by clone_func_body.
+ * Identify inline functions with bodies accepted by clone_inline_body.
  * For each candidate, store a copy of the instructions (excluding
  * FUNC_BEGIN/END) and the number of parameters used.
  */
@@ -223,7 +227,7 @@ static int collect_funcs(ir_builder_t *ir, inline_func_t **out, size_t *count)
             continue;
         ir_instr_t *body = NULL;
         size_t body_count = 0;
-        if (!clone_func_body(ins, &body, &body_count))
+        if (!clone_inline_body(ins, &body, &body_count))
             continue;
 
         int param_count = 0;
@@ -235,7 +239,7 @@ static int collect_funcs(ir_builder_t *ir, inline_func_t **out, size_t *count)
         int is_inline = 0;
         const char *src_file = ins->next ? ins->next->file : NULL;
         if (src_file) {
-            int r = is_inline_def(src_file, ins->name);
+            int r = parse_inline_hint(src_file, ins->name);
             if (r > 0) {
                 is_inline = 1;
             } else if (r < 0) {
@@ -323,12 +327,82 @@ typedef struct {
     ir_instr_t *ins;
 } map_entry_t;
 
+static int gather_call_args(ir_instr_t **list, int idx, int argc, int *args)
+{
+    for (int a = 0; a < argc; a++) {
+        ir_instr_t *arg = list[idx - argc + a];
+        if (!arg || arg->op != IR_ARG)
+            return 0;
+        args[a] = arg->src1;
+    }
+    return 1;
+}
+
+static void replace_value_uses(ir_instr_t **list, int start, int count,
+                              int old, int new)
+{
+    for (int u = start; u < count; u++) {
+        if (list[u]->src1 == old)
+            list[u]->src1 = new;
+        if (list[u]->src2 == old)
+            list[u]->src2 = new;
+    }
+}
+
 static int map_lookup(map_entry_t *map, size_t count, int old)
 {
     for (size_t i = 0; i < count; i++)
         if (map[i].old_id == old)
             return map[i].new_id;
     return old;
+}
+
+static int insert_inline_body(ir_builder_t *ir, ir_instr_t *call,
+                              inline_func_t *fn, int argc, int *args,
+                              int *ret_val)
+{
+    map_entry_t map[32];
+    size_t mcount = 0;
+    ir_instr_t *pos = call;
+    *ret_val = call->dest;
+
+    for (size_t k = 0; k < fn->count; k++) {
+        ir_instr_t *orig = &fn->body[k];
+        if (orig->op == IR_LOAD_PARAM) {
+            if (orig->imm >= argc)
+                return 0;
+            map[mcount++] = (map_entry_t){orig->dest, args[orig->imm], NULL};
+            continue;
+        }
+        if (orig->op == IR_RETURN || orig->op == IR_RETURN_AGG) {
+            *ret_val = map_lookup(map, mcount, orig->src1);
+            for (size_t m = 0; m < mcount; m++) {
+                if (map[m].old_id == orig->src1 && map[m].ins) {
+                    map[m].ins->dest = call->dest;
+                    map[m].new_id = call->dest;
+                    *ret_val = call->dest;
+                    break;
+                }
+            }
+            continue;
+        }
+
+        ir_instr_t *ni = ir_insert_after(ir, pos);
+        if (!ni)
+            return 0;
+        ni->op = orig->op;
+        ni->imm = orig->imm;
+        ni->src1 = map_lookup(map, mcount, orig->src1);
+        ni->src2 = map_lookup(map, mcount, orig->src2);
+        ni->name = NULL;
+        ni->data = NULL;
+        ni->is_volatile = 0;
+        ni->dest = (int)ir->next_value_id++;
+        map[mcount++] = (map_entry_t){orig->dest, ni->dest, ni};
+        pos = ni;
+    }
+
+    return 1;
 }
 
 /* Build an array containing all IR instructions in order */
@@ -354,8 +428,8 @@ static ir_instr_t **gather_call_list(ir_builder_t *ir, int *count)
 }
 
 /* Inline a single call instruction if it matches an eligible function */
-static int apply_inline(ir_builder_t *ir, ir_instr_t **list, int *count, int i,
-                        inline_func_t *funcs, size_t func_count)
+static int inline_call(ir_builder_t *ir, ir_instr_t **list, int *count, int i,
+                       inline_func_t *funcs, size_t func_count)
 {
     ir_instr_t *ins = list[i];
     if (ins->op != IR_CALL)
@@ -376,68 +450,19 @@ static int apply_inline(ir_builder_t *ir, ir_instr_t **list, int *count, int i,
         return 0; /* limit to small functions */
 
     int args[8];
-    for (int a = 0; a < argc; a++) {
-        ir_instr_t *arg = list[i - argc + a];
-        if (!arg || arg->op != IR_ARG)
-            return 0;
-        args[a] = arg->src1;
-    }
+    if (!gather_call_args(list, i, argc, args))
+        return 0;
 
     for (int a = 0; a < argc; a++) {
         remove_instr(ir, list, count, i - 1);
         i--;
     }
 
-    map_entry_t map[32];
-    size_t mcount = 0;
-    int (*lookup)(map_entry_t *, size_t, int) = map_lookup;
+    int ret_val;
+    if (!insert_inline_body(ir, ins, fn, argc, args, &ret_val))
+        return 0;
 
-    ir_instr_t *pos = ins;
-    int ret_val = ins->dest;
-
-    for (size_t k = 0; k < fn->count; k++) {
-        ir_instr_t *orig = &fn->body[k];
-        if (orig->op == IR_LOAD_PARAM) {
-            if (orig->imm >= argc)
-                return 0;
-            map[mcount++] = (map_entry_t){orig->dest, args[orig->imm], NULL};
-            continue;
-        }
-        if (orig->op == IR_RETURN || orig->op == IR_RETURN_AGG) {
-            ret_val = lookup(map, mcount, orig->src1);
-            for (size_t m = 0; m < mcount; m++) {
-                if (map[m].old_id == orig->src1 && map[m].ins) {
-                    map[m].ins->dest = ins->dest;
-                    map[m].new_id = ins->dest;
-                    ret_val = ins->dest;
-                    break;
-                }
-            }
-            continue;
-        }
-
-        ir_instr_t *ni = ir_insert_after(ir, pos);
-        if (!ni)
-            return 0;
-        ni->op = orig->op;
-        ni->imm = orig->imm;
-        ni->src1 = lookup(map, mcount, orig->src1);
-        ni->src2 = lookup(map, mcount, orig->src2);
-        ni->name = NULL;
-        ni->data = NULL;
-        ni->is_volatile = 0;
-        ni->dest = (int)ir->next_value_id++;
-        map[mcount++] = (map_entry_t){orig->dest, ni->dest, ni};
-        pos = ni;
-    }
-
-    for (int u = i + 1; u < *count; u++) {
-        ir_instr_t *uins = list[u];
-        if (uins->src1 == ins->dest)
-            uins->src1 = ret_val;
-        if (uins->src2 == ins->dest)
-            uins->src2 = ret_val;
-    }
+    replace_value_uses(list, i + 1, *count, ins->dest, ret_val);
 
     free(ins->name);
     ins->name = NULL;
@@ -465,7 +490,7 @@ void inline_small_funcs(ir_builder_t *ir)
     }
 
     for (int i = 0; i < count; i++) {
-        if (apply_inline(ir, list, &count, i, funcs, func_count))
+        if (inline_call(ir, list, &count, i, funcs, func_count))
             i--; /* restart from previous position after modification */
     }
 
