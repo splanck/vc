@@ -13,10 +13,10 @@
 #include <stdio.h>
 #include "codegen_branch.h"
 #include "regalloc_x86.h"
+#include "codegen_args.h"
 
 
 extern int export_syms;
-extern size_t arg_stack_bytes;
 extern int dwarf_enabled;
 
 /* Forward declarations for small helpers. */
