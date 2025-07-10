@@ -13,7 +13,7 @@
 #include "ast_stmt.h"
 #include "ir_core.h"
 #include "symtable.h"
-#include "semantic_switch.h"
+#include "semantic_control.h"
 
 /* Check a while loop and emit IR */
 int check_while_stmt(stmt_t *stmt, symtable_t *vars, symtable_t *funcs,

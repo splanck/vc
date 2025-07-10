@@ -12,7 +12,7 @@
 #include <stdio.h>
 #include "semantic_stmt.h"
 #include "semantic_loops.h"
-#include "semantic_switch.h"
+#include "semantic_control.h"
 #include "consteval.h"
 #include "semantic_expr.h"
 #include "semantic_init.h"
@@ -236,35 +236,6 @@ static int check_var_decl_stmt(stmt_t *stmt, symtable_t *vars,
  * then or else part.  Both branches are validated and finally control
  * converges at a common end label.
  */
-static int check_if_stmt(stmt_t *stmt, symtable_t *vars, symtable_t *funcs,
-                         label_table_t *labels, ir_builder_t *ir,
-                         type_kind_t func_ret_type,
-                         const char *break_label, const char *continue_label)
-{
-    ir_value_t cond_val;
-    if (check_expr(stmt->if_stmt.cond, vars, funcs, ir, &cond_val) == TYPE_UNKNOWN)
-        return 0;
-    char else_label[32];
-    char end_label[32];
-    int id = label_next_id();
-    if (!label_format_suffix("L", id, "_else", else_label) ||
-        !label_format_suffix("L", id, "_end", end_label))
-        return 0;
-    const char *target = stmt->if_stmt.else_branch ? else_label : end_label;
-    ir_build_bcond(ir, cond_val, target);
-    if (!check_stmt(stmt->if_stmt.then_branch, vars, funcs, labels, ir,
-                    func_ret_type, break_label, continue_label))
-        return 0;
-    if (stmt->if_stmt.else_branch) {
-        ir_build_br(ir, end_label);
-        ir_build_label(ir, else_label);
-        if (!check_stmt(stmt->if_stmt.else_branch, vars, funcs, labels, ir,
-                        func_ret_type, break_label, continue_label))
-            return 0;
-    }
-    ir_build_label(ir, end_label);
-    return 1;
-}
 
 
 /*
