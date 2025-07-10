@@ -8,6 +8,7 @@ See the [documentation index](README.md) for a list of all available pages.
 - [Build options](#build-options)
 - [Additional build steps](#additional-build-steps)
 - [Running the test suite](#running-the-test-suite)
+- [Builtin preprocessor macros](#builtin-preprocessor-macros)
 
 `vc` targets POSIX systems with a focus on NetBSD. Building on other BSD
 variants such as FreeBSD or OpenBSD should work with little or no
@@ -74,6 +75,19 @@ tests/run.sh
 This script builds the compiler, compiles the unit test harness for the lexer
 and parser, and then runs both the unit tests and the integration tests found
 under `tests/`. It returns a non-zero status if any test fails.
+
+## Builtin preprocessor macros
+
+Several macros commonly provided by GCC are defined automatically during
+compilation. Their values are taken from the output of `$(CC) -dM -E` so the
+preprocessor sees the same definitions as system headers. This includes:
+
+- `__GNUC__`, `__GNUC_MINOR__`, `__GNUC_PATCHLEVEL__`
+- `__SIZE_TYPE__`, `__PTRDIFF_TYPE__`, `__WCHAR_TYPE__`, `__WINT_TYPE__`
+- `__INTMAX_TYPE__`, `__UINTMAX_TYPE__`, `__INTPTR_TYPE__`, `__UINTPTR_TYPE__`
+
+These defaults prevent runaway expansions when processing standard library
+headers.
 
 ## Improved diagnostics
 
