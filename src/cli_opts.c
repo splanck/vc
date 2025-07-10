@@ -12,38 +12,47 @@
 /* usage message shared by multiple handlers */
 void print_usage(const char *prog)
 {
-    printf("Usage: %s [options] <source...>\n", prog);
-    printf("Options:\n");
-    printf("  -o, --output <file>  Output path\n");
-    printf("  -O<N>               Optimization level (0-3)\n");
-    printf("  -I, --include <dir> Add directory to include search path\n");
-    printf("  -L<dir>             Add library search path\n");
-    printf("  -l<name>            Link against library\n");
-    printf("  -Dname[=val]       Define a macro\n");
-    printf("  -Uname             Undefine a macro\n");
-    printf("      --std=<std>      Language standard (c99 or gnu99)\n");
-    printf("  -h, --help           Display this help and exit\n");
-    printf("  -v, --version        Print version information and exit\n");
-    printf("  -c, --compile        Assemble to an object file\n");
-    printf("      --link           Compile and link to an executable\n");
-    printf("      --obj-dir <dir>  Directory for temporary object files\n");
-    printf("      --no-fold        Disable constant folding\n");
-    printf("      --no-dce         Disable dead code elimination\n");
-    printf("      --no-cprop       Disable constant propagation\n");
-    printf("      --no-inline      Disable inline expansion\n");
-    printf("      --debug          Emit .file/.loc directives\n");
-    printf("      --no-color       Disable colored diagnostics\n");
-    printf("      --no-warn-unreachable  Disable unreachable code warnings\n");
-    printf("      --x86-64         Generate 64-bit x86 assembly\n");
-    printf("      --intel-syntax    Use Intel assembly syntax\n");
-    printf("      --emit-dwarf      Include DWARF information\n");
-    printf("  -S, --dump-asm       Print assembly to stdout and exit\n");
-    printf("      --dump-ir        Print IR to stdout and exit\n");
-    printf("      --dump-tokens    Print tokens to stdout and exit\n");
-    printf("  -M                   Generate dependency file and exit\n");
-    printf("  -MD                  Generate dependency file during compilation\n");
-    printf("  -E, --preprocess     Run only the preprocessor and print the result\n");
-    printf("  Provide '-' as a source file to read from standard input.\n");
+    static const char *usage_lines[] = {
+        "Usage: %s [options] <source...>\n",
+        "Options:\n",
+        "  -o, --output <file>  Output path\n",
+        "  -O<N>               Optimization level (0-3)\n",
+        "  -I, --include <dir> Add directory to include search path\n",
+        "  -L<dir>             Add library search path\n",
+        "  -l<name>            Link against library\n",
+        "  -Dname[=val]       Define a macro\n",
+        "  -Uname             Undefine a macro\n",
+        "      --std=<std>      Language standard (c99 or gnu99)\n",
+        "  -h, --help           Display this help and exit\n",
+        "  -v, --version        Print version information and exit\n",
+        "  -c, --compile        Assemble to an object file\n",
+        "      --link           Compile and link to an executable\n",
+        "      --obj-dir <dir>  Directory for temporary object files\n",
+        "      --no-fold        Disable constant folding\n",
+        "      --no-dce         Disable dead code elimination\n",
+        "      --no-cprop       Disable constant propagation\n",
+        "      --no-inline      Disable inline expansion\n",
+        "      --debug          Emit .file/.loc directives\n",
+        "      --no-color       Disable colored diagnostics\n",
+        "      --no-warn-unreachable  Disable unreachable code warnings\n",
+        "      --x86-64         Generate 64-bit x86 assembly\n",
+        "      --intel-syntax    Use Intel assembly syntax\n",
+        "      --emit-dwarf      Include DWARF information\n",
+        "  -S, --dump-asm       Print assembly to stdout and exit\n",
+        "      --dump-ir        Print IR to stdout and exit\n",
+        "      --dump-tokens    Print tokens to stdout and exit\n",
+        "  -M                   Generate dependency file and exit\n",
+        "  -MD                  Generate dependency file during compilation\n",
+        "  -E, --preprocess     Run only the preprocessor and print the result\n",
+        "  Provide '-' as a source file to read from standard input.\n",
+    };
+
+    for (size_t i = 0; i < sizeof(usage_lines) / sizeof(usage_lines[0]); i++) {
+        if (i == 0)
+            printf(usage_lines[i], prog);
+        else
+            printf("%s", usage_lines[i]);
+    }
 }
 
 static int push_source(cli_options_t *opts, const char *src)
