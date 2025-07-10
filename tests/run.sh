@@ -133,13 +133,14 @@ cc -Iinclude -Wall -Wextra -std=c99 -c src/vector.c -o vector_addmacro.o
 cc -o "$DIR/add_macro_fail_tests" "$DIR/test_add_macro_fail.o" vector_addmacro.o
 rm -f "$DIR/test_add_macro_fail.o" vector_addmacro.o
 # build variadic macro tests
-cc -Iinclude -Wall -Wextra -std=c99 -c src/preproc_macros.c -o preproc_variadic.o
+cc -Iinclude -Wall -Wextra -std=c99 -c src/preproc_expand.c -o preproc_expand.o
+cc -Iinclude -Wall -Wextra -std=c99 -c src/preproc_table.c -o preproc_table.o
 cc -Iinclude -Wall -Wextra -std=c99 -c src/strbuf.c -o strbuf_variadic.o
 cc -Iinclude -Wall -Wextra -std=c99 -c src/vector.c -o vector_variadic.o
 cc -Iinclude -Wall -Wextra -std=c99 -c src/util.c -o util_variadic.o
 cc -Iinclude -Wall -Wextra -std=c99 -c "$DIR/unit/test_variadic_macro.c" -o "$DIR/test_variadic_macro.o"
-cc -o "$DIR/variadic_macro_tests" preproc_variadic.o strbuf_variadic.o vector_variadic.o util_variadic.o "$DIR/test_variadic_macro.o"
-rm -f preproc_variadic.o strbuf_variadic.o vector_variadic.o util_variadic.o "$DIR/test_variadic_macro.o"
+cc -o "$DIR/variadic_macro_tests" preproc_expand.o preproc_table.o strbuf_variadic.o vector_variadic.o util_variadic.o "$DIR/test_variadic_macro.o"
+rm -f preproc_expand.o preproc_table.o strbuf_variadic.o vector_variadic.o util_variadic.o "$DIR/test_variadic_macro.o"
 # build pack pragma layout tests
 cc -Iinclude -Wall -Wextra -std=c99 \
     -o "$DIR/pack_pragma_tests" "$DIR/unit/test_pack_pragma.c"
