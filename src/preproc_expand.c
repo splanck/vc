@@ -23,7 +23,7 @@
 #include "preproc_args.h"
 #include "preproc_builtin.h"
 
-#define MAX_MACRO_DEPTH 100
+#define MAX_MACRO_DEPTH 4096
 
 /*
  * Remove trailing spaces or tabs from a string buffer.
