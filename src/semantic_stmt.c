@@ -8,6 +8,7 @@
 #include "semantic_stmt.h"
 #include "semantic_loops.h"
 #include "semantic_control.h"
+#include "semantic_decl_stmt.h"
 #include "label.h"
 #include "error.h"
 #include <string.h>
@@ -25,11 +26,6 @@ extern int stmt_return_handler(stmt_t *stmt, symtable_t *vars, symtable_t *funcs
                                type_kind_t func_ret_type,
                                const char *break_label,
                                const char *continue_label);
-extern int stmt_var_decl_handler(stmt_t *stmt, symtable_t *vars,
-                                 symtable_t *funcs, label_table_t *labels,
-                                 ir_builder_t *ir, type_kind_t func_ret_type,
-                                 const char *break_label,
-                                 const char *continue_label);
 extern int stmt_if_handler(stmt_t *stmt, symtable_t *vars, symtable_t *funcs,
                            label_table_t *labels, ir_builder_t *ir,
                            type_kind_t func_ret_type,
@@ -86,21 +82,6 @@ extern int stmt_typedef_handler(stmt_t *stmt, symtable_t *vars, symtable_t *func
                                 type_kind_t func_ret_type,
                                 const char *break_label,
                                 const char *continue_label);
-extern int stmt_enum_decl_handler(stmt_t *stmt, symtable_t *vars, symtable_t *funcs,
-                                  label_table_t *labels, ir_builder_t *ir,
-                                  type_kind_t func_ret_type,
-                                  const char *break_label,
-                                  const char *continue_label);
-extern int stmt_struct_decl_handler(stmt_t *stmt, symtable_t *vars, symtable_t *funcs,
-                                    label_table_t *labels, ir_builder_t *ir,
-                                    type_kind_t func_ret_type,
-                                    const char *break_label,
-                                    const char *continue_label);
-extern int stmt_union_decl_handler(stmt_t *stmt, symtable_t *vars, symtable_t *funcs,
-                                   label_table_t *labels, ir_builder_t *ir,
-                                   type_kind_t func_ret_type,
-                                   const char *break_label,
-                                   const char *continue_label);
 extern int stmt_block_handler(stmt_t *stmt, symtable_t *vars, symtable_t *funcs,
                               label_table_t *labels, ir_builder_t *ir,
                               type_kind_t func_ret_type,

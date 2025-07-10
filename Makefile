@@ -10,7 +10,7 @@ CORE_SRC = src/main.c src/compile.c src/compile_stage.c src/compile_link.c src/c
            src/semantic_expr.c src/semantic_expr_const.c src/semantic_expr_cast.c \
            src/semantic_arith.c src/semantic_mem.c src/semantic_call.c \
            src/semantic_loops.c src/semantic_control.c src/semantic_init.c src/semantic_var.c src/semantic_stmt.c \
-           src/semantic_block.c src/semantic_decl.c src/semantic_expr_stmt.c src/semantic_label.c src/semantic_return.c src/semantic_static_assert.c \
+           src/semantic_block.c src/semantic_decl.c src/semantic_decl_stmt.c src/semantic_expr_stmt.c src/semantic_label.c src/semantic_return.c src/semantic_static_assert.c \
            src/semantic_layout.c src/semantic_inline.c src/semantic_global.c src/consteval.c src/error.c src/ir_core.c src/ir_const.c src/ir_memory.c src/ir_control.c src/ir_global.c \
            src/codegen.c src/codegen_mem.c src/codegen_load.c src/codegen_store.c src/codegen_arith_int.c src/codegen_arith_float.c src/codegen_branch.c \
            src/codegen_float.c src/codegen_complex.c src/codegen_x86.c \
@@ -25,7 +25,7 @@ EXTRA_SRC ?=
 # Final source list
 SRC = $(CORE_SRC) $(OPT_SRC) $(EXTRA_SRC)
 OBJ := $(SRC:.c=.o)
-HDR = include/token.h include/ast.h include/ast_clone.h include/ast_expr.h include/ast_stmt.h include/parser.h include/symtable.h include/semantic.h     include/consteval.h include/semantic_expr.h include/semantic_arith.h include/semantic_mem.h include/semantic_call.h include/semantic_loops.h include/semantic_control.h include/semantic_stmt.h include/semantic_inline.h include/semantic_var.h include/semantic_layout.h include/semantic_init.h include/semantic_global.h \
+HDR = include/token.h include/ast.h include/ast_clone.h include/ast_expr.h include/ast_stmt.h include/parser.h include/symtable.h include/semantic.h     include/consteval.h include/semantic_expr.h include/semantic_arith.h include/semantic_mem.h include/semantic_call.h include/semantic_loops.h include/semantic_control.h include/semantic_stmt.h include/semantic_decl_stmt.h include/semantic_inline.h include/semantic_var.h include/semantic_layout.h include/semantic_init.h include/semantic_global.h \
     include/ir_core.h include/ir_const.h include/ir_memory.h include/ir_control.h include/ir_builder.h include/ir_global.h include/ir_dump.h include/ast_dump.h include/opt.h include/codegen.h include/codegen_mem.h include/codegen_loadstore.h include/codegen_arith.h include/codegen_arith_int.h include/codegen_arith_float.h include/codegen_branch.h include/strbuf.h \
     include/util.h include/command.h include/cli.h include/vector.h include/regalloc_x86.h include/label.h include/error.h include/lexer_internal.h \
     include/preproc.h include/preproc_file.h include/preproc_macros.h include/preproc_includes.h include/preproc_expr.h include/preproc_cond.h include/preproc_path.h include/parser_types.h include/parser_core.h include/startup.h include/compile_stage.h
@@ -197,10 +197,12 @@ src/semantic_block.o: src/semantic_block.c $(HDR)
 	$(CC) $(CFLAGS) $(OPTFLAGS) -Iinclude -c src/semantic_block.c -o src/semantic_block.o
 src/semantic_decl.o: src/semantic_decl.c $(HDR)
 	$(CC) $(CFLAGS) $(OPTFLAGS) -Iinclude -c src/semantic_decl.c -o src/semantic_decl.o
+src/semantic_decl_stmt.o: src/semantic_decl_stmt.c $(HDR)
+	$(CC) $(CFLAGS) $(OPTFLAGS) -Iinclude -c src/semantic_decl_stmt.c -o src/semantic_decl_stmt.o
 src/semantic_expr_stmt.o: src/semantic_expr_stmt.c $(HDR)
 	$(CC) $(CFLAGS) $(OPTFLAGS) -Iinclude -c src/semantic_expr_stmt.c -o src/semantic_expr_stmt.o
 src/semantic_label.o: src/semantic_label.c $(HDR)
-	$(CC) $(CFLAGS) $(OPTFLAGS) -Iinclude -c src/semantic_label.c -o src/semantic_label.o
+		$(CC) $(CFLAGS) $(OPTFLAGS) -Iinclude -c src/semantic_label.c -o src/semantic_label.o
 src/semantic_return.o: src/semantic_return.c $(HDR)
 	$(CC) $(CFLAGS) $(OPTFLAGS) -Iinclude -c src/semantic_return.c -o src/semantic_return.o
 src/semantic_static_assert.o: src/semantic_static_assert.c $(HDR)

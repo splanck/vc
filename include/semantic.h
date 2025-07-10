@@ -11,6 +11,7 @@
 #include "consteval.h"
 #include "semantic_expr.h"
 #include "semantic_stmt.h"
+#include "semantic_decl_stmt.h"
 #include "semantic_loops.h"
 #include "semantic_control.h"
 #include "semantic_global.h"
