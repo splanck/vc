@@ -365,6 +365,85 @@ static int dispatch_macro(const char *line, size_t start, size_t end,
     return r;
 }
 
+/* Decode escape sequences in a string literal and return a malloc'd copy. */
+static char *decode_string_literal(const char *s, size_t len)
+{
+    strbuf_t sb;
+    strbuf_init(&sb);
+    for (size_t i = 0; i < len; i++) {
+        if (s[i] == '\\' && i + 1 < len) {
+            i++;
+            switch (s[i]) {
+            case 'n':
+                strbuf_append(&sb, "\n");
+                break;
+            case 't':
+                strbuf_append(&sb, "\t");
+                break;
+            default:
+                strbuf_appendf(&sb, "%c", s[i]);
+                break;
+            }
+        } else {
+            strbuf_appendf(&sb, "%c", s[i]);
+        }
+    }
+    char *res = vc_strdup(sb.data ? sb.data : "");
+    strbuf_free(&sb);
+    return res;
+}
+
+/* Recognize and expand the _Pragma operator. */
+static int handle_pragma_operator(const char *line, size_t *pos,
+                                 strbuf_t *out)
+{
+    size_t start = *pos;
+    size_t len = parse_ident(line + start);
+    if (len != 7 || strncmp(line + start, "_Pragma", 7) != 0)
+        return 0;
+    size_t p = start + len;
+    while (line[p] == ' ' || line[p] == '\t')
+        p++;
+    if (line[p] != '(')
+        return 0;
+    p++;
+    while (line[p] == ' ' || line[p] == '\t')
+        p++;
+    if (line[p] != '"')
+        return 0;
+    p++;
+    size_t str_start = p;
+    while (line[p]) {
+        if (line[p] == '\\' && line[p + 1]) {
+            p += 2;
+            continue;
+        }
+        if (line[p] == '"')
+            break;
+        p++;
+    }
+    if (line[p] != '"')
+        return -1;
+    size_t str_len = p - str_start;
+    char *pragma = decode_string_literal(line + str_start, str_len);
+    if (!pragma)
+        return -1;
+    p++;
+    while (line[p] == ' ' || line[p] == '\t')
+        p++;
+    if (line[p] != ')') {
+        free(pragma);
+        return -1;
+    }
+    p++;
+    int r = strbuf_appendf(out, "\n#pragma %s\n", pragma);
+    free(pragma);
+    if (r != 0)
+        return -1;
+    *pos = p;
+    return 1;
+}
+
 static int parse_macro_invocation(const char *line, size_t *pos,
                                   vector_t *macros, strbuf_t *out,
                                   size_t column, int depth)
@@ -375,6 +454,10 @@ static int parse_macro_invocation(const char *line, size_t *pos,
     }
 
     size_t start = *pos;
+    int r = handle_pragma_operator(line, pos, out);
+    if (r)
+        return r;
+
     size_t len;
     size_t end = read_macro_ident(line, start, &len);
     if (end == start)
