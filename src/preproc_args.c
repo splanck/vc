@@ -113,8 +113,8 @@ int gather_varargs(vector_t *args, size_t fixed,
     return 1;
 }
 
-int parse_macro_arguments(const char *line, size_t *pos, vector_t *out,
-                          size_t param_count, int variadic)
+int parse_macro_arg_vector(const char *line, size_t *pos, vector_t *out,
+                           size_t param_count, int variadic)
 {
     if (!parse_macro_args(line, pos, out))
         return 0;
