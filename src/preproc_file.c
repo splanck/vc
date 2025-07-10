@@ -94,16 +94,86 @@ static int define_simple_macro(vector_t *macros, const char *name,
 /* Add some common builtin macros based on the host compiler */
 static void define_default_macros(vector_t *macros)
 {
+#define STR2(x) #x
+#define STR(x) STR2(x)
+
 #ifdef __linux__
     define_simple_macro(macros, "__linux__", "1");
     define_simple_macro(macros, "__unix__", "1");
 #endif
+
 #if defined(__x86_64__) || defined(__amd64__)
     define_simple_macro(macros, "__x86_64__", "1");
 # ifdef __LP64__
     define_simple_macro(macros, "__LP64__", "1");
 # endif
 #endif
+
+#ifdef __GNUC__
+    define_simple_macro(macros, "__GNUC__", STR(__GNUC__));
+    define_simple_macro(macros, "__GNUC_MINOR__", STR(__GNUC_MINOR__));
+    define_simple_macro(macros, "__GNUC_PATCHLEVEL__", STR(__GNUC_PATCHLEVEL__));
+#endif
+
+#ifdef __SIZE_TYPE__
+    define_simple_macro(macros, "__SIZE_TYPE__", STR(__SIZE_TYPE__));
+#endif
+#ifdef __PTRDIFF_TYPE__
+    define_simple_macro(macros, "__PTRDIFF_TYPE__", STR(__PTRDIFF_TYPE__));
+#endif
+#ifdef __WCHAR_TYPE__
+    define_simple_macro(macros, "__WCHAR_TYPE__", STR(__WCHAR_TYPE__));
+#endif
+#ifdef __WINT_TYPE__
+    define_simple_macro(macros, "__WINT_TYPE__", STR(__WINT_TYPE__));
+#endif
+#ifdef __INTMAX_TYPE__
+    define_simple_macro(macros, "__INTMAX_TYPE__", STR(__INTMAX_TYPE__));
+#endif
+#ifdef __UINTMAX_TYPE__
+    define_simple_macro(macros, "__UINTMAX_TYPE__", STR(__UINTMAX_TYPE__));
+#endif
+#ifdef __INTPTR_TYPE__
+    define_simple_macro(macros, "__INTPTR_TYPE__", STR(__INTPTR_TYPE__));
+#endif
+#ifdef __UINTPTR_TYPE__
+    define_simple_macro(macros, "__UINTPTR_TYPE__", STR(__UINTPTR_TYPE__));
+#endif
+#ifdef __CHAR_BIT__
+    define_simple_macro(macros, "__CHAR_BIT__", STR(__CHAR_BIT__));
+#endif
+#ifdef __SIZEOF_SHORT__
+    define_simple_macro(macros, "__SIZEOF_SHORT__", STR(__SIZEOF_SHORT__));
+#endif
+#ifdef __SIZEOF_INT__
+    define_simple_macro(macros, "__SIZEOF_INT__", STR(__SIZEOF_INT__));
+#endif
+#ifdef __SIZEOF_LONG__
+    define_simple_macro(macros, "__SIZEOF_LONG__", STR(__SIZEOF_LONG__));
+#endif
+#ifdef __SIZEOF_LONG_LONG__
+    define_simple_macro(macros, "__SIZEOF_LONG_LONG__", STR(__SIZEOF_LONG_LONG__));
+#endif
+#ifdef __SIZEOF_POINTER__
+    define_simple_macro(macros, "__SIZEOF_POINTER__", STR(__SIZEOF_POINTER__));
+#endif
+#ifdef __SIZEOF_WCHAR_T__
+    define_simple_macro(macros, "__SIZEOF_WCHAR_T__", STR(__SIZEOF_WCHAR_T__));
+#endif
+#ifdef __BYTE_ORDER__
+    define_simple_macro(macros, "__BYTE_ORDER__", STR(__BYTE_ORDER__));
+#endif
+#ifdef __ORDER_LITTLE_ENDIAN__
+    define_simple_macro(macros, "__ORDER_LITTLE_ENDIAN__", STR(__ORDER_LITTLE_ENDIAN__));
+#endif
+#ifdef __ORDER_BIG_ENDIAN__
+    define_simple_macro(macros, "__ORDER_BIG_ENDIAN__", STR(__ORDER_BIG_ENDIAN__));
+#endif
+#ifdef __FLOAT_WORD_ORDER__
+    define_simple_macro(macros, "__FLOAT_WORD_ORDER__", STR(__FLOAT_WORD_ORDER__));
+#endif
+#undef STR
+#undef STR2
 }
 
 /* Release vectors and buffers used during preprocessing */
