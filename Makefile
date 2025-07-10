@@ -15,7 +15,7 @@ CORE_SRC = src/main.c src/compile.c src/compile_stage.c src/compile_link.c src/c
            src/codegen.c src/codegen_mem.c src/codegen_loadstore.c src/codegen_arith_int.c src/codegen_arith_float.c src/codegen_branch.c \
            src/codegen_float.c src/codegen_complex.c src/codegen_x86.c \
            src/regalloc.c src/regalloc_x86.c src/strbuf.c src/util.c src/vector.c src/ir_dump.c src/ir_builder.c src/ast_dump.c src/label.c \
-           src/preproc_expand.c src/preproc_table.c src/preproc_expr.c src/preproc_cond.c src/preproc_file.c \
+           src/preproc_expand.c src/preproc_builtin.c src/preproc_args.c src/preproc_table.c src/preproc_expr.c src/preproc_cond.c src/preproc_file.c \
            src/preproc_directives.c src/preproc_file_io.c src/preproc_include.c src/preproc_includes.c src/preproc_path.c
 
 # Optional optimization sources
@@ -292,6 +292,12 @@ src/label.o: src/label.c $(HDR)
 
 src/preproc_expand.o: src/preproc_expand.c $(HDR)
 	$(CC) $(CFLAGS) $(OPTFLAGS) -Iinclude -c src/preproc_expand.c -o src/preproc_expand.o
+src/preproc_builtin.o: src/preproc_builtin.c $(HDR)
+	$(CC) $(CFLAGS) $(OPTFLAGS) -Iinclude -c src/preproc_builtin.c -o src/preproc_builtin.o
+
+src/preproc_args.o: src/preproc_args.c $(HDR)
+	$(CC) $(CFLAGS) $(OPTFLAGS) -Iinclude -c src/preproc_args.c -o src/preproc_args.o
+
 
 src/preproc_table.o: src/preproc_table.c $(HDR)
 	$(CC) $(CFLAGS) $(OPTFLAGS) -Iinclude -c src/preproc_table.c -o src/preproc_table.o
