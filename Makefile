@@ -4,8 +4,7 @@ OPTFLAGS ?=
 BIN = vc
 # The resulting binary accepts -c/--compile to assemble objects using cc
 # Core compiler sources
-
-CORE_SRC = src/main.c src/compile.c src/compile_stage.c src/compile_link.c src/compile_tokenize.c src/compile_parse.c src/compile_output.c src/startup.c src/command.c src/cli.c src/cli_env.c src/cli_opts.c src/lexer.c src/lexer_ident.c src/lexer_scan_numeric.c src/ast_expr.c src/ast_stmt.c src/ast_clone.c src/parser_core.c src/parser_toplevel.c src/symtable_core.c src/symtable_globals.c src/symtable_struct.c src/parser_expr.c src/parser_expr_primary.c src/parser_expr_binary.c src/parser_expr_ops.c src/parser_expr_literal.c src/parser_init.c \
+CORE_SRC = src/main.c src/compile.c src/compile_stage.c src/compile_link.c src/compile_tokenize.c src/compile_parse.c src/compile_output.c src/startup.c src/command.c src/cli.c src/cli_env.c src/cli_opts.c src/lexer.c src/lexer_ident.c src/lexer_scan_numeric.c src/ast_expr.c src/ast_stmt.c src/ast_clone.c src/parser_core.c src/parser_toplevel.c src/parser_toplevel_func.c src/parser_toplevel_var.c src/symtable_core.c src/symtable_globals.c src/symtable_struct.c src/parser_expr.c src/parser_expr_primary.c src/parser_expr_binary.c src/parser_expr_ops.c src/parser_expr_literal.c src/parser_init.c \
            src/parser_decl_var.c src/parser_decl_struct.c src/parser_decl_enum.c \
            src/parser_flow.c src/parser_stmt.c src/parser_types.c \
            src/semantic_expr.c src/semantic_arith.c src/semantic_mem.c src/semantic_call.c \
@@ -102,6 +101,11 @@ src/parser_core.o: src/parser_core.c $(HDR)
 
 src/parser_toplevel.o: src/parser_toplevel.c $(HDR)
 	$(CC) $(CFLAGS) $(OPTFLAGS) -Iinclude -c src/parser_toplevel.c -o src/parser_toplevel.o
+src/parser_toplevel_func.o: src/parser_toplevel_func.c $(HDR)
+	$(CC) $(CFLAGS) $(OPTFLAGS) -Iinclude -c src/parser_toplevel_func.c -o src/parser_toplevel_func.o
+
+src/parser_toplevel_var.o: src/parser_toplevel_var.c $(HDR)
+	$(CC) $(CFLAGS) $(OPTFLAGS) -Iinclude -c src/parser_toplevel_var.c -o src/parser_toplevel_var.o
 
 src/symtable_core.o: src/symtable_core.c $(HDR)
 	$(CC) $(CFLAGS) $(OPTFLAGS) -Iinclude -c src/symtable_core.c -o src/symtable_core.o
