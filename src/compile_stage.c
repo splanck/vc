@@ -186,6 +186,7 @@ static void compile_ctx_cleanup(compile_context_t *ctx)
 }
 
 /* --- Stage wrappers ---------------------------------------------------- */
+/* Tokenize source and run the preprocessor */
 static int compile_tokenize_stage(compile_context_t *ctx, const char *source,
                                   const cli_options_t *cli,
                                   const vector_t *incdirs,
@@ -198,6 +199,7 @@ static int compile_tokenize_stage(compile_context_t *ctx, const char *source,
                                  &ctx->stdin_tmp, &ctx->deps);
 }
 
+/* Parse tokens into an AST */
 static int compile_parse_stage(compile_context_t *ctx)
 {
     int ok = compile_parse_impl(ctx->tokens, ctx->tok_count,
@@ -211,6 +213,7 @@ static int compile_parse_stage(compile_context_t *ctx)
     return ok;
 }
 
+/* Perform semantic analysis and IR generation */
 static int compile_semantic_stage(compile_context_t *ctx)
 {
     return compile_semantic_impl((func_t **)ctx->func_list_v.data,
@@ -221,12 +224,14 @@ static int compile_semantic_stage(compile_context_t *ctx)
                                  &ctx->ir);
 }
 
+/* Run optimizer passes on the IR */
 static int compile_optimize_stage(compile_context_t *ctx,
                                   const opt_config_t *cfg)
 {
     return compile_optimize_impl(&ctx->ir, cfg);
 }
 
+/* Emit object code or assembly */
 static int compile_output_stage(compile_context_t *ctx, const char *output,
                                 int dump_ir, int dump_asm, int use_x86_64,
                                 int compile_obj, const cli_options_t *cli)
@@ -319,6 +324,11 @@ static int run_output(compile_context_t *ctx, const char *output,
 }
 
 /* --- Public API ------------------------------------------------------- */
+/*
+ * compile_pipeline orchestrates the full compilation process:
+ * tokenization, parsing, semantic analysis, optimization and
+ * final output generation.
+ */
 int compile_pipeline(const char *source, const cli_options_t *cli,
                      const char *output, int compile_obj)
 {
