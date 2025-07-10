@@ -16,6 +16,17 @@
 #include "util.h"
 #include <string.h>
 
+static expr_t *new_expr(expr_kind_t kind, size_t line, size_t column)
+{
+    expr_t *expr = malloc(sizeof(*expr));
+    if (!expr)
+        return NULL;
+    expr->kind = kind;
+    expr->line = line;
+    expr->column = column;
+    return expr;
+}
+
 static char *strip_suffix(const char *tok, int *is_unsigned, int *long_count)
 {
     *is_unsigned = 0;
@@ -48,14 +59,11 @@ expr_t *ast_make_number(const char *value, size_t line, size_t column)
     char *val = strip_suffix(value ? value : "", &is_unsigned, &long_count);
     if (!val)
         return NULL;
-    expr_t *expr = malloc(sizeof(*expr));
+    expr_t *expr = new_expr(EXPR_NUMBER, line, column);
     if (!expr) {
         free(val);
         return NULL;
     }
-    expr->kind = EXPR_NUMBER;
-    expr->line = line;
-    expr->column = column;
     expr->number.value = val;
     expr->number.is_unsigned = is_unsigned;
     expr->number.long_count = long_count;
@@ -65,12 +73,9 @@ expr_t *ast_make_number(const char *value, size_t line, size_t column)
 /* Create an identifier expression node. */
 expr_t *ast_make_ident(const char *name, size_t line, size_t column)
 {
-    expr_t *expr = malloc(sizeof(*expr));
+    expr_t *expr = new_expr(EXPR_IDENT, line, column);
     if (!expr)
         return NULL;
-    expr->kind = EXPR_IDENT;
-    expr->line = line;
-    expr->column = column;
     expr->ident.name = vc_strdup(name ? name : "");
     if (!expr->ident.name) {
         free(expr);
@@ -82,12 +87,9 @@ expr_t *ast_make_ident(const char *name, size_t line, size_t column)
 /* Create a string literal expression node. */
 static expr_t *make_string(const char *value, size_t line, size_t column, int is_wide)
 {
-    expr_t *expr = malloc(sizeof(*expr));
+    expr_t *expr = new_expr(EXPR_STRING, line, column);
     if (!expr)
         return NULL;
-    expr->kind = EXPR_STRING;
-    expr->line = line;
-    expr->column = column;
     expr->string.value = vc_strdup(value ? value : "");
     if (!expr->string.value) {
         free(expr);
@@ -110,12 +112,9 @@ expr_t *ast_make_wstring(const char *value, size_t line, size_t column)
 /* Create a character literal expression node. */
 static expr_t *make_char(char value, size_t line, size_t column, int is_wide)
 {
-    expr_t *expr = malloc(sizeof(*expr));
+    expr_t *expr = new_expr(EXPR_CHAR, line, column);
     if (!expr)
         return NULL;
-    expr->kind = EXPR_CHAR;
-    expr->line = line;
-    expr->column = column;
     expr->ch.value = value;
     expr->ch.is_wide = is_wide;
     return expr;
@@ -135,12 +134,9 @@ expr_t *ast_make_wchar(char value, size_t line, size_t column)
 expr_t *ast_make_complex_literal(double real, double imag,
                                  size_t line, size_t column)
 {
-    expr_t *expr = malloc(sizeof(*expr));
+    expr_t *expr = new_expr(EXPR_COMPLEX_LITERAL, line, column);
     if (!expr)
         return NULL;
-    expr->kind = EXPR_COMPLEX_LITERAL;
-    expr->line = line;
-    expr->column = column;
     expr->complex_lit.real = real;
     expr->complex_lit.imag = imag;
     return expr;
@@ -150,12 +146,9 @@ expr_t *ast_make_complex_literal(double real, double imag,
 expr_t *ast_make_binary(binop_t op, expr_t *left, expr_t *right,
                         size_t line, size_t column)
 {
-    expr_t *expr = malloc(sizeof(*expr));
+    expr_t *expr = new_expr(EXPR_BINARY, line, column);
     if (!expr)
         return NULL;
-    expr->kind = EXPR_BINARY;
-    expr->line = line;
-    expr->column = column;
     expr->binary.op = op;
     expr->binary.left = left;
     expr->binary.right = right;
@@ -166,12 +159,9 @@ expr_t *ast_make_binary(binop_t op, expr_t *left, expr_t *right,
 expr_t *ast_make_unary(unop_t op, expr_t *operand,
                        size_t line, size_t column)
 {
-    expr_t *expr = malloc(sizeof(*expr));
+    expr_t *expr = new_expr(EXPR_UNARY, line, column);
     if (!expr)
         return NULL;
-    expr->kind = EXPR_UNARY;
-    expr->line = line;
-    expr->column = column;
     expr->unary.op = op;
     expr->unary.operand = operand;
     return expr;
@@ -181,12 +171,9 @@ expr_t *ast_make_unary(unop_t op, expr_t *operand,
 expr_t *ast_make_cond(expr_t *cond, expr_t *then_expr, expr_t *else_expr,
                       size_t line, size_t column)
 {
-    expr_t *expr = malloc(sizeof(*expr));
+    expr_t *expr = new_expr(EXPR_COND, line, column);
     if (!expr)
         return NULL;
-    expr->kind = EXPR_COND;
-    expr->line = line;
-    expr->column = column;
     expr->cond.cond = cond;
     expr->cond.then_expr = then_expr;
     expr->cond.else_expr = else_expr;
@@ -197,12 +184,9 @@ expr_t *ast_make_cond(expr_t *cond, expr_t *then_expr, expr_t *else_expr,
 expr_t *ast_make_assign(const char *name, expr_t *value,
                         size_t line, size_t column)
 {
-    expr_t *expr = malloc(sizeof(*expr));
+    expr_t *expr = new_expr(EXPR_ASSIGN, line, column);
     if (!expr)
         return NULL;
-    expr->kind = EXPR_ASSIGN;
-    expr->line = line;
-    expr->column = column;
     expr->assign.name = vc_strdup(name ? name : "");
     if (!expr->assign.name) {
         free(expr);
@@ -216,12 +200,9 @@ expr_t *ast_make_assign(const char *name, expr_t *value,
 expr_t *ast_make_index(expr_t *array, expr_t *index,
                        size_t line, size_t column)
 {
-    expr_t *expr = malloc(sizeof(*expr));
+    expr_t *expr = new_expr(EXPR_INDEX, line, column);
     if (!expr)
         return NULL;
-    expr->kind = EXPR_INDEX;
-    expr->line = line;
-    expr->column = column;
     expr->index.array = array;
     expr->index.index = index;
     return expr;
@@ -231,12 +212,9 @@ expr_t *ast_make_index(expr_t *array, expr_t *index,
 expr_t *ast_make_assign_index(expr_t *array, expr_t *index, expr_t *value,
                               size_t line, size_t column)
 {
-    expr_t *expr = malloc(sizeof(*expr));
+    expr_t *expr = new_expr(EXPR_ASSIGN_INDEX, line, column);
     if (!expr)
         return NULL;
-    expr->kind = EXPR_ASSIGN_INDEX;
-    expr->line = line;
-    expr->column = column;
     expr->assign_index.array = array;
     expr->assign_index.index = index;
     expr->assign_index.value = value;
@@ -247,12 +225,9 @@ expr_t *ast_make_assign_index(expr_t *array, expr_t *index, expr_t *value,
 expr_t *ast_make_assign_member(expr_t *object, const char *member, expr_t *value,
                                int via_ptr, size_t line, size_t column)
 {
-    expr_t *expr = malloc(sizeof(*expr));
+    expr_t *expr = new_expr(EXPR_ASSIGN_MEMBER, line, column);
     if (!expr)
         return NULL;
-    expr->kind = EXPR_ASSIGN_MEMBER;
-    expr->line = line;
-    expr->column = column;
     expr->assign_member.object = object;
     expr->assign_member.member = vc_strdup(member ? member : "");
     if (!expr->assign_member.member) {
@@ -268,12 +243,9 @@ expr_t *ast_make_assign_member(expr_t *object, const char *member, expr_t *value
 expr_t *ast_make_member(expr_t *object, const char *member, int via_ptr,
                         size_t line, size_t column)
 {
-    expr_t *expr = malloc(sizeof(*expr));
+    expr_t *expr = new_expr(EXPR_MEMBER, line, column);
     if (!expr)
         return NULL;
-    expr->kind = EXPR_MEMBER;
-    expr->line = line;
-    expr->column = column;
     expr->member.object = object;
     expr->member.member = vc_strdup(member ? member : "");
     if (!expr->member.member) {
@@ -288,12 +260,9 @@ expr_t *ast_make_member(expr_t *object, const char *member, int via_ptr,
 expr_t *ast_make_sizeof_type(type_kind_t type, size_t array_size,
                              size_t elem_size, size_t line, size_t column)
 {
-    expr_t *expr = malloc(sizeof(*expr));
+    expr_t *expr = new_expr(EXPR_SIZEOF, line, column);
     if (!expr)
         return NULL;
-    expr->kind = EXPR_SIZEOF;
-    expr->line = line;
-    expr->column = column;
     expr->sizeof_expr.is_type = 1;
     expr->sizeof_expr.type = type;
     expr->sizeof_expr.array_size = array_size;
@@ -305,12 +274,9 @@ expr_t *ast_make_sizeof_type(type_kind_t type, size_t array_size,
 /* Create a sizeof expression for another expression. */
 expr_t *ast_make_sizeof_expr(expr_t *e, size_t line, size_t column)
 {
-    expr_t *expr = malloc(sizeof(*expr));
+    expr_t *expr = new_expr(EXPR_SIZEOF, line, column);
     if (!expr)
         return NULL;
-    expr->kind = EXPR_SIZEOF;
-    expr->line = line;
-    expr->column = column;
     expr->sizeof_expr.is_type = 0;
     expr->sizeof_expr.type = TYPE_UNKNOWN;
     expr->sizeof_expr.array_size = 0;
@@ -324,12 +290,9 @@ expr_t *ast_make_offsetof(type_kind_t type, const char *tag,
                           char **members, size_t member_count,
                           size_t line, size_t column)
 {
-    expr_t *expr = malloc(sizeof(*expr));
+    expr_t *expr = new_expr(EXPR_OFFSETOF, line, column);
     if (!expr)
         return NULL;
-    expr->kind = EXPR_OFFSETOF;
-    expr->line = line;
-    expr->column = column;
     expr->offsetof_expr.type = type;
     expr->offsetof_expr.tag = vc_strdup(tag ? tag : "");
     if (!expr->offsetof_expr.tag) {
@@ -345,12 +308,9 @@ expr_t *ast_make_offsetof(type_kind_t type, const char *tag,
 expr_t *ast_make_alignof_type(type_kind_t type, size_t array_size,
                               size_t elem_size, size_t line, size_t column)
 {
-    expr_t *expr = malloc(sizeof(*expr));
+    expr_t *expr = new_expr(EXPR_ALIGNOF, line, column);
     if (!expr)
         return NULL;
-    expr->kind = EXPR_ALIGNOF;
-    expr->line = line;
-    expr->column = column;
     expr->alignof_expr.is_type = 1;
     expr->alignof_expr.type = type;
     expr->alignof_expr.array_size = array_size;
@@ -362,12 +322,9 @@ expr_t *ast_make_alignof_type(type_kind_t type, size_t array_size,
 /* Create an alignof expression for another expression. */
 expr_t *ast_make_alignof_expr(expr_t *e, size_t line, size_t column)
 {
-    expr_t *expr = malloc(sizeof(*expr));
+    expr_t *expr = new_expr(EXPR_ALIGNOF, line, column);
     if (!expr)
         return NULL;
-    expr->kind = EXPR_ALIGNOF;
-    expr->line = line;
-    expr->column = column;
     expr->alignof_expr.is_type = 0;
     expr->alignof_expr.type = TYPE_UNKNOWN;
     expr->alignof_expr.array_size = 0;
@@ -380,12 +337,9 @@ expr_t *ast_make_alignof_expr(expr_t *e, size_t line, size_t column)
 expr_t *ast_make_cast(type_kind_t type, size_t array_size, size_t elem_size,
                       expr_t *e, size_t line, size_t column)
 {
-    expr_t *expr = malloc(sizeof(*expr));
+    expr_t *expr = new_expr(EXPR_CAST, line, column);
     if (!expr)
         return NULL;
-    expr->kind = EXPR_CAST;
-    expr->line = line;
-    expr->column = column;
     expr->cast.type = type;
     expr->cast.array_size = array_size;
     expr->cast.elem_size = elem_size;
@@ -397,12 +351,9 @@ expr_t *ast_make_cast(type_kind_t type, size_t array_size, size_t elem_size,
 expr_t *ast_make_call(const char *name, expr_t **args, size_t arg_count,
                       size_t line, size_t column)
 {
-    expr_t *expr = malloc(sizeof(*expr));
+    expr_t *expr = new_expr(EXPR_CALL, line, column);
     if (!expr)
         return NULL;
-    expr->kind = EXPR_CALL;
-    expr->line = line;
-    expr->column = column;
     expr->call.name = vc_strdup(name ? name : "");
     if (!expr->call.name) {
         free(expr);
@@ -419,12 +370,9 @@ expr_t *ast_make_compound(type_kind_t type, size_t array_size,
                           init_entry_t *init_list, size_t init_count,
                           size_t line, size_t column)
 {
-    expr_t *expr = malloc(sizeof(*expr));
+    expr_t *expr = new_expr(EXPR_COMPLIT, line, column);
     if (!expr)
         return NULL;
-    expr->kind = EXPR_COMPLIT;
-    expr->line = line;
-    expr->column = column;
     expr->compound.type = type;
     expr->compound.array_size = array_size;
     expr->compound.elem_size = elem_size;
