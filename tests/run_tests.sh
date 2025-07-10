@@ -477,6 +477,20 @@ if ! diff -u "$DIR/fixtures/include_once.expected" "${pp_once}"; then
 fi
 rm -f "${pp_once}"
 
+# verify _Pragma handling in glibc headers does not hit expansion limit
+tmp_pragma=$(mktemp)
+echo '#include <sys/cdefs.h>' > "${tmp_pragma}"
+err=$(mktemp)
+set +e
+"$BINARY" -E "${tmp_pragma}" > /dev/null 2> "${err}"
+ret=$?
+set -e
+if [ $ret -ne 0 ] || grep -q "Macro expansion limit exceeded" "${err}"; then
+    echo "Test pragma_glibc failed"
+    fail=1
+fi
+rm -f "${tmp_pragma}" "${err}"
+
 # simulate write failure with a full pipe
 err=$(mktemp)
 tmp_big=$(mktemp)
