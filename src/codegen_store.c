@@ -64,6 +64,14 @@ static const char *loc_str(char buf[32], regalloc_t *ra, int id, int x64,
     return buf;
 }
 
+/*
+ * Store a value to a named location (IR_STORE).
+ *
+ * Register allocation expectations:
+ *   - `src1` contains the value to store and may live in a register or on
+ *     the stack according to `ra`.
+ *   - `name` designates the memory destination.
+ */
 void emit_store(strbuf_t *sb, ir_instr_t *ins,
                 regalloc_t *ra, int x64,
                 asm_syntax_t syntax)
@@ -78,6 +86,13 @@ void emit_store(strbuf_t *sb, ir_instr_t *ins,
                        loc_str(b1, ra, ins->src1, x64, syntax), ins->name);
 }
 
+/*
+ * Store a value via a pointer operand (IR_STORE_PTR).
+ *
+ * Register allocation expectations:
+ *   - `src1` holds the destination address.
+ *   - `src2` contains the value to store.
+ */
 void emit_store_ptr(strbuf_t *sb, ir_instr_t *ins,
                     regalloc_t *ra, int x64,
                     asm_syntax_t syntax)
@@ -95,6 +110,13 @@ void emit_store_ptr(strbuf_t *sb, ir_instr_t *ins,
                        loc_str(b2, ra, ins->src1, x64, syntax));
 }
 
+/*
+ * Store a value to an indexed location (IR_STORE_IDX).
+ *
+ * Register allocation expectations:
+ *   - `src1` provides the index.
+ *   - `src2` is the value to store.
+ */
 void emit_store_idx(strbuf_t *sb, ir_instr_t *ins,
                     regalloc_t *ra, int x64,
                     asm_syntax_t syntax)

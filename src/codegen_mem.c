@@ -22,6 +22,8 @@ size_t arg_stack_bytes = 0;
 
 #define SCRATCH_REG 0
 
+/* The table `mem_emitters` maps IR opcodes to the helpers below. */
+
 /*
  * Emit a move from `src` to `dest` and optionally spill the result.
  *
@@ -144,10 +146,15 @@ static void write_back_value(strbuf_t *sb, const char *sfx,
         strbuf_appendf(sb, "    mov%s %s, %s\n", sfx, scratch, name);
 }
 
-/* Load an immediate constant (IR_CONST).
+/* ----------------------------------------------------------------------
+ * Load and store emitters
+ * ---------------------------------------------------------------------- */
+
+/*
+ * Load an immediate constant (IR_CONST).
  *
- *  dest - value receiving the constant
- *  imm  - value to load
+ * Register allocation expectations:
+ *   - `dest` follows the usual load semantics and may be spilled.
  */
 static void emit_const(strbuf_t *sb, ir_instr_t *ins,
                        regalloc_t *ra, int x64,
@@ -182,10 +189,12 @@ static void emit_const(strbuf_t *sb, ir_instr_t *ins,
  */
 
 
-/* Load a function parameter (IR_LOAD_PARAM).
+/*
+ * Load a function parameter (IR_LOAD_PARAM).
  *
- *  dest  - receives parameter value
- *  imm   - parameter index
+ * Register allocation expectations:
+ *   - `dest` behaves like a normal load destination and may be spilled.
+ *   - The parameter value is loaded from the stack based on `imm`.
  */
 static void emit_load_param(strbuf_t *sb, ir_instr_t *ins,
                             regalloc_t *ra, int x64,
@@ -210,10 +219,13 @@ static void emit_load_param(strbuf_t *sb, ir_instr_t *ins,
     emit_move_with_spill(sb, sfx, srcbuf, dest, slot, spill, syntax);
 }
 
-/* Store a value to a parameter slot (IR_STORE_PARAM).
+/*
+ * Store a value to a parameter slot (IR_STORE_PARAM).
  *
- *  src1 - value to store
- *  imm  - parameter index
+ * Register allocation expectations:
+ *   - `src1` provides the value to store.
+ *   - The destination slot is addressed relative to the frame pointer using
+ *     `imm`.
  */
 static void emit_store_param(strbuf_t *sb, ir_instr_t *ins,
                              regalloc_t *ra, int x64,
@@ -233,10 +245,11 @@ static void emit_store_param(strbuf_t *sb, ir_instr_t *ins,
                        loc_str(b1, ra, ins->src1, x64, syntax), off, bp);
 }
 
-/* Take the address of a symbol (IR_ADDR).
+/*
+ * Take the address of a symbol (IR_ADDR).
  *
- *  dest - result register
- *  name - symbol whose address is taken
+ * Register allocation expectations:
+ *   - `dest` follows normal load semantics and may spill.
  */
 static void emit_addr(strbuf_t *sb, ir_instr_t *ins,
                       regalloc_t *ra, int x64,
@@ -272,7 +285,17 @@ static void emit_addr(strbuf_t *sb, ir_instr_t *ins,
  */
 
 
-/* Load a bit-field value (IR_BFLOAD). */
+/* ----------------------------------------------------------------------
+ * Bit-field emitters
+ * ---------------------------------------------------------------------- */
+
+/*
+ * Load a bit-field value (IR_BFLOAD).
+ *
+ * Register allocation expectations:
+ *   - `dest` may be spilled; SCRATCH_REG is used when necessary.
+ *   - %ecx/%rcx is used as a temporary when masking and shifting.
+ */
 static void emit_bfload(strbuf_t *sb, ir_instr_t *ins,
                         regalloc_t *ra, int x64,
                         asm_syntax_t syntax)
@@ -303,7 +326,13 @@ static void emit_bfload(strbuf_t *sb, ir_instr_t *ins,
         strbuf_appendf(sb, "    mov%s %s, %s\n", sfx, dest, slot);
 }
 
-/* Store a value into a bit-field (IR_BFSTORE). */
+/*
+ * Store a value into a bit-field (IR_BFSTORE).
+ *
+ * Register allocation expectations:
+ *   - `src1` is the value to insert into the field.
+ *   - Uses SCRATCH_REG and %ecx/%rcx as temporaries when updating the field.
+ */
 static void emit_bfstore(strbuf_t *sb, ir_instr_t *ins,
                          regalloc_t *ra, int x64,
                          asm_syntax_t syntax)
@@ -322,7 +351,12 @@ static void emit_bfstore(strbuf_t *sb, ir_instr_t *ins,
     write_back_value(sb, sfx, ins->name, x64, syntax);
 }
 
-/* Push an argument (IR_ARG). */
+/*
+ * Push an argument (IR_ARG).
+ *
+ * Register allocation expectations:
+ *   - `src1` provides the argument value to push on the stack.
+ */
 static void emit_arg(strbuf_t *sb, ir_instr_t *ins,
                      regalloc_t *ra, int x64,
                      asm_syntax_t syntax)
@@ -370,7 +404,16 @@ static void emit_arg(strbuf_t *sb, ir_instr_t *ins,
     arg_stack_bytes += sz;
 }
 
-/* Load address of a string literal (IR_GLOB_STRING). */
+/* ----------------------------------------------------------------------
+ * Global data emitters
+ * ---------------------------------------------------------------------- */
+
+/*
+ * Load address of a string literal (IR_GLOB_STRING).
+ *
+ * Register allocation expectations:
+ *   - `dest` may be spilled in which case SCRATCH_REG is used.
+ */
 static void emit_glob_string(strbuf_t *sb, ir_instr_t *ins,
                              regalloc_t *ra, int x64,
                              asm_syntax_t syntax)
@@ -390,6 +433,28 @@ static void emit_glob_string(strbuf_t *sb, ir_instr_t *ins,
     emit_move_with_spill(sb, sfx, srcbuf, dest, slot, spill, syntax);
 }
 
+/* Mapping of IR opcodes to emitter helpers */
+typedef void (*mem_emit_fn)(strbuf_t *, ir_instr_t *, regalloc_t *, int,
+                            asm_syntax_t);
+
+static mem_emit_fn mem_emitters[IR_LABEL + 1] = {
+    [IR_CONST] = emit_const,
+    [IR_LOAD] = emit_load,
+    [IR_STORE] = emit_store,
+    [IR_LOAD_PARAM] = emit_load_param,
+    [IR_STORE_PARAM] = emit_store_param,
+    [IR_ADDR] = emit_addr,
+    [IR_LOAD_PTR] = emit_load_ptr,
+    [IR_STORE_PTR] = emit_store_ptr,
+    [IR_LOAD_IDX] = emit_load_idx,
+    [IR_STORE_IDX] = emit_store_idx,
+    [IR_BFLOAD] = emit_bfload,
+    [IR_BFSTORE] = emit_bfstore,
+    [IR_ARG] = emit_arg,
+    [IR_GLOB_STRING] = emit_glob_string,
+    [IR_GLOB_WSTRING] = emit_glob_string
+};
+
 /*
  * Emit x86 for load/store and other memory instructions.
  *
@@ -402,62 +467,10 @@ void emit_memory_instr(strbuf_t *sb, ir_instr_t *ins,
                        regalloc_t *ra, int x64,
                        asm_syntax_t syntax)
 {
-    switch (ins->op) {
-    case IR_CONST:
-        emit_const(sb, ins, ra, x64, syntax);
-        break;
-    case IR_LOAD:
-        emit_load(sb, ins, ra, x64, syntax);
-        break;
-    case IR_STORE:
-        emit_store(sb, ins, ra, x64, syntax);
-        break;
-    case IR_LOAD_PARAM:
-        emit_load_param(sb, ins, ra, x64, syntax);
-        break;
-    case IR_STORE_PARAM:
-        emit_store_param(sb, ins, ra, x64, syntax);
-        break;
-    case IR_ADDR:
-        emit_addr(sb, ins, ra, x64, syntax);
-        break;
-    case IR_LOAD_PTR:
-        emit_load_ptr(sb, ins, ra, x64, syntax);
-        break;
-    case IR_STORE_PTR:
-        emit_store_ptr(sb, ins, ra, x64, syntax);
-        break;
-    case IR_LOAD_IDX:
-        emit_load_idx(sb, ins, ra, x64, syntax);
-        break;
-    case IR_STORE_IDX:
-        emit_store_idx(sb, ins, ra, x64, syntax);
-        break;
-    case IR_BFLOAD:
-        emit_bfload(sb, ins, ra, x64, syntax);
-        break;
-    case IR_BFSTORE:
-        emit_bfstore(sb, ins, ra, x64, syntax);
-        break;
-    case IR_ARG:
-        emit_arg(sb, ins, ra, x64, syntax);
-        break;
-    case IR_GLOB_STRING:
-    case IR_GLOB_WSTRING:
-        emit_glob_string(sb, ins, ra, x64, syntax);
-        break;
-    case IR_GLOB_VAR:
-        break;
-    case IR_GLOB_ARRAY:
-        break;
-    case IR_GLOB_UNION:
-        break;
-    case IR_GLOB_STRUCT:
-        break;
-    case IR_GLOB_ADDR:
-        break;
-    default:
-        break;
-    }
+    if (!ins || ins->op < 0 || ins->op > IR_LABEL)
+        return;
+    mem_emit_fn fn = mem_emitters[ins->op];
+    if (fn)
+        fn(sb, ins, ra, x64, syntax);
 }
 
