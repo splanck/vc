@@ -14,11 +14,9 @@
 #include <stdio.h>
 #include "codegen_mem.h"
 #include "codegen_loadstore.h"
+#include "codegen_args.h"
 #include "regalloc_x86.h"
 #include "ast.h"
-
-/* total bytes pushed for the current function call */
-size_t arg_stack_bytes = 0;
 
 #define SCRATCH_REG 0
 
@@ -300,53 +298,6 @@ static void emit_bfstore(strbuf_t *sb, ir_instr_t *ins,
         strbuf_appendf(sb, "    mov%s %s, %s\n", sfx, scratch, ins->name);
 }
 
-/* Push an argument (IR_ARG). */
-static void emit_arg(strbuf_t *sb, ir_instr_t *ins,
-                     regalloc_t *ra, int x64,
-                     asm_syntax_t syntax)
-{
-    char b1[32];
-    const char *sp = (syntax == ASM_INTEL)
-                     ? (x64 ? "rsp" : "esp")
-                     : (x64 ? "%rsp" : "%esp");
-    type_kind_t t = (type_kind_t)ins->imm;
-    size_t sz = x64 ? 8 : 4;
-    if (t == TYPE_FLOAT)
-        sz = 4;
-    else if (t == TYPE_DOUBLE)
-        sz = 8;
-    else if (t == TYPE_LDOUBLE)
-        sz = 10;
-    if (t == TYPE_FLOAT) {
-        if (syntax == ASM_INTEL)
-            strbuf_appendf(sb, "    sub %s, 4\n", sp);
-        else
-            strbuf_appendf(sb, "    sub $4, %s\n", sp);
-        strbuf_appendf(sb, "    movd %s, %%xmm0\n",
-                       loc_str(b1, ra, ins->src1, x64, syntax));
-        strbuf_appendf(sb, "    movss %%xmm0, (%s)\n", sp);
-    } else if (t == TYPE_DOUBLE) {
-        if (syntax == ASM_INTEL)
-            strbuf_appendf(sb, "    sub %s, 8\n", sp);
-        else
-            strbuf_appendf(sb, "    sub $8, %s\n", sp);
-        strbuf_appendf(sb, "    movq %s, %%xmm0\n",
-                       loc_str(b1, ra, ins->src1, x64, syntax));
-        strbuf_appendf(sb, "    movsd %%xmm0, (%s)\n", sp);
-    } else if (t == TYPE_LDOUBLE) {
-        if (syntax == ASM_INTEL)
-            strbuf_appendf(sb, "    sub %s, 10\n", sp);
-        else
-            strbuf_appendf(sb, "    sub $10, %s\n", sp);
-        strbuf_appendf(sb, "    fldt %s\n", loc_str(b1, ra, ins->src1, x64, syntax));
-        strbuf_appendf(sb, "    fstpt (%s)\n", sp);
-    } else {
-        const char *sfx = x64 ? "q" : "l";
-        strbuf_appendf(sb, "    push%s %s\n", sfx,
-                       loc_str(b1, ra, ins->src1, x64, syntax));
-    }
-    arg_stack_bytes += sz;
-}
 
 /* Load address of a string literal (IR_GLOB_STRING). */
 static void emit_glob_string(strbuf_t *sb, ir_instr_t *ins,
