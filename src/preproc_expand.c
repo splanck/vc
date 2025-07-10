@@ -147,7 +147,16 @@ static char *expand_params(const char *value, const vector_t *params, char **arg
 {
     strbuf_t sb;
     strbuf_init(&sb);
+    /*
+     * Walk the macro body one character at a time performing the
+     * appropriate substitution or copying each literal character.
+     */
     for (size_t i = 0; value[i];) {
+        /*
+         * Detect the `#` stringizing operator.  When a single `#` is
+         * found, convert the following macro parameter to a quoted
+         * string.
+         */
         if (value[i] == '#' && value[i + 1] != '#') {
             i = append_stringized_param(value, i, params, args, variadic, &sb);
             continue;
@@ -155,16 +164,25 @@ static char *expand_params(const char *value, const vector_t *params, char **arg
 
         size_t len = parse_ident(value + i);
         if (len) {
+            /* Look up the identifier as a macro parameter. */
             const char *rep = lookup_param(value + i, len, params, args);
             if (!rep && variadic && len == 11 &&
                 strncmp(value + i, "__VA_ARGS__", 11) == 0)
                 rep = args[params->count];
             size_t next;
+            /*
+             * Check for the `##` token pasting operator starting at this
+             * identifier and handle concatenation when present.
+             */
             if (append_pasted_tokens(value, i, len, rep, params, args, variadic, &sb, &next)) {
                 i = next;
                 continue;
             }
 
+            /*
+             * If the name matched a parameter copy the replacement
+             * text, otherwise copy the identifier verbatim.
+             */
             if (rep)
                 strbuf_append(&sb, rep);
             else
@@ -173,6 +191,7 @@ static char *expand_params(const char *value, const vector_t *params, char **arg
             continue;
         }
 
+        /* No identifier or operator - emit the character as plain text */
         strbuf_appendf(&sb, "%c", value[i]);
         i++;
     }
