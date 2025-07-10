@@ -1,6 +1,7 @@
 CC ?= gcc
 CFLAGS ?= -Wall -Wextra -std=c99
 OPTFLAGS ?=
+MULTIARCH := $(shell $(CC) -print-multiarch 2>/dev/null || echo x86_64-linux-gnu)
 BIN = vc
 # The resulting binary accepts -c/--compile to assemble objects using cc
 # Core compiler sources
@@ -332,7 +333,7 @@ src/preproc_include.o: src/preproc_include.c $(HDR)
 src/preproc_includes.o: src/preproc_includes.c $(HDR)
 	$(CC) $(CFLAGS) $(OPTFLAGS) -Iinclude -c src/preproc_includes.c -o src/preproc_includes.o
 src/preproc_path.o: src/preproc_path.c $(HDR)
-	$(CC) $(CFLAGS) $(OPTFLAGS) -Iinclude -c src/preproc_path.c -o src/preproc_path.o
+	$(CC) $(CFLAGS) $(OPTFLAGS) -DMULTIARCH=\"$(MULTIARCH)\" -Iinclude -c src/preproc_path.c -o src/preproc_path.o
 
 src/opt.o: src/opt.c $(HDR)
 	$(CC) $(CFLAGS) $(OPTFLAGS) -Iinclude -c src/opt.c -o src/opt.o
