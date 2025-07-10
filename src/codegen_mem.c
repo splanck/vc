@@ -86,6 +86,64 @@ static const char *loc_str(char buf[32], regalloc_t *ra, int id, int x64,
     return buf;
 }
 
+/* Load the destination value into the scratch register and clear
+ * the bit-field position using `clear` as mask. */
+static void load_dest_scratch(strbuf_t *sb, const char *sfx,
+                              const char *name,
+                              unsigned long long clear,
+                              asm_syntax_t syntax)
+{
+    const char *scratch = regalloc_reg_name(SCRATCH_REG);
+    if (syntax == ASM_INTEL)
+        strbuf_appendf(sb, "    mov%s %s, %s\n", sfx, scratch, name);
+    else
+        strbuf_appendf(sb, "    mov%s %s, %s\n", sfx, name, scratch);
+    if (syntax == ASM_INTEL)
+        strbuf_appendf(sb, "    and%s %s, %llu\n", sfx, scratch, clear);
+    else
+        strbuf_appendf(sb, "    and%s $%llu, %s\n", sfx, clear, scratch);
+}
+
+/* Load the input value, mask it with `mask` and shift by `shift`.  The
+ * temporary register %ecx/%rcx is used to hold the intermediate result. */
+static void mask_shift_input(strbuf_t *sb, const char *sfx, const char *val,
+                             unsigned long long mask, unsigned shift,
+                             int x64, asm_syntax_t syntax)
+{
+    const char *reg = x64 ? fmt_reg("%rcx", syntax)
+                          : fmt_reg("%ecx", syntax);
+    if (syntax == ASM_INTEL)
+        strbuf_appendf(sb, "    mov%s %s, %s\n", sfx, reg, val);
+    else
+        strbuf_appendf(sb, "    mov%s %s, %s\n", sfx, val, reg);
+    if (syntax == ASM_INTEL)
+        strbuf_appendf(sb, "    and%s %s, %llu\n", sfx, reg, mask);
+    else
+        strbuf_appendf(sb, "    and%s $%llu, %s\n", sfx, mask, reg);
+    if (shift) {
+        if (syntax == ASM_INTEL)
+            strbuf_appendf(sb, "    shl%s %s, %u\n", sfx, reg, shift);
+        else
+            strbuf_appendf(sb, "    shl%s $%u, %s\n", sfx, shift, reg);
+    }
+}
+
+/* OR the prepared value in %ecx/%rcx into the scratch register and
+ * store the result back to `name`. */
+static void write_back_value(strbuf_t *sb, const char *sfx,
+                             const char *name, int x64,
+                             asm_syntax_t syntax)
+{
+    const char *scratch = regalloc_reg_name(SCRATCH_REG);
+    const char *reg = x64 ? fmt_reg("%rcx", syntax)
+                          : fmt_reg("%ecx", syntax);
+    strbuf_appendf(sb, "    or%s %s, %s\n", sfx, reg, scratch);
+    if (syntax == ASM_INTEL)
+        strbuf_appendf(sb, "    mov%s %s, %s\n", sfx, name, scratch);
+    else
+        strbuf_appendf(sb, "    mov%s %s, %s\n", sfx, scratch, name);
+}
+
 /* Load an immediate constant (IR_CONST).
  *
  *  dest - value receiving the constant
@@ -257,47 +315,11 @@ static void emit_bfstore(strbuf_t *sb, ir_instr_t *ins,
     unsigned long long mask = (width == 64) ? 0xffffffffffffffffULL
                                             : ((1ULL << width) - 1ULL);
     unsigned long long clear = ~((unsigned long long)mask << shift);
-    const char *scratch = regalloc_reg_name(SCRATCH_REG);
-
-    if (syntax == ASM_INTEL)
-        strbuf_appendf(sb, "    mov%s %s, %s\n", sfx, scratch, ins->name);
-    else
-        strbuf_appendf(sb, "    mov%s %s, %s\n", sfx, ins->name, scratch);
-    if (syntax == ASM_INTEL)
-        strbuf_appendf(sb, "    and%s %s, %llu\n", sfx, scratch, clear);
-    else
-        strbuf_appendf(sb, "    and%s $%llu, %s\n", sfx, clear, scratch);
-    if (syntax == ASM_INTEL)
-        strbuf_appendf(sb, "    mov%s %s, %s\n", sfx,
-                       x64 ? fmt_reg("%rcx", syntax) : fmt_reg("%ecx", syntax),
-                       loc_str(bval, ra, ins->src1, x64, syntax));
-    else
-        strbuf_appendf(sb, "    mov%s %s, %s\n", sfx,
-                       loc_str(bval, ra, ins->src1, x64, syntax),
-                       x64 ? fmt_reg("%rcx", syntax) : fmt_reg("%ecx", syntax));
-    if (syntax == ASM_INTEL)
-        strbuf_appendf(sb, "    and%s %s, %llu\n", sfx,
-                       x64 ? fmt_reg("%rcx", syntax) : fmt_reg("%ecx", syntax),
-                       mask);
-    else
-        strbuf_appendf(sb, "    and%s $%llu, %s\n", sfx, mask,
-                       x64 ? fmt_reg("%rcx", syntax) : fmt_reg("%ecx", syntax));
-    if (shift) {
-        if (syntax == ASM_INTEL)
-            strbuf_appendf(sb, "    shl%s %s, %u\n", sfx,
-                           x64 ? fmt_reg("%rcx", syntax) : fmt_reg("%ecx", syntax),
-                           shift);
-        else
-            strbuf_appendf(sb, "    shl%s $%u, %s\n", sfx, shift,
-                           x64 ? fmt_reg("%rcx", syntax) : fmt_reg("%ecx", syntax));
-    }
-    strbuf_appendf(sb, "    or%s %s, %s\n", sfx,
-                   x64 ? fmt_reg("%rcx", syntax) : fmt_reg("%ecx", syntax),
-                   scratch);
-    if (syntax == ASM_INTEL)
-        strbuf_appendf(sb, "    mov%s %s, %s\n", sfx, ins->name, scratch);
-    else
-        strbuf_appendf(sb, "    mov%s %s, %s\n", sfx, scratch, ins->name);
+    load_dest_scratch(sb, sfx, ins->name, clear, syntax);
+    mask_shift_input(sb, sfx,
+                     loc_str(bval, ra, ins->src1, x64, syntax),
+                     mask, shift, x64, syntax);
+    write_back_value(sb, sfx, ins->name, x64, syntax);
 }
 
 /* Push an argument (IR_ARG). */
