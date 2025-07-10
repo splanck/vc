@@ -254,6 +254,7 @@ static void free_macro_args(char **ap, char *va, int variadic)
  * On success the resulting text is appended to "out" and *pos is
  * updated to the index following the macro call.  Returns non-zero
  * when a macro expansion occurred.
+ */
 
 /* Expand a user-defined macro.  "pos" should point to the index right
  * after the macro name.  When expansion succeeds *pos is updated to the
@@ -265,28 +266,25 @@ static int expand_user_macro(macro_t *m, const char *line, size_t *pos,
     size_t p = *pos;
     if (m->params.count || m->variadic) {
         vector_t args;
-        if (parse_macro_args(line, &p, &args) &&
-            ((m->variadic && args.count >= m->params.count) ||
-             (!m->variadic && args.count == m->params.count))) {
-            char **ap = (char **)args.data;
-            char *va = NULL;
-            if (m->variadic &&
-                !gather_varargs(&args, m->params.count, &ap, &va)) {
-                free_arg_vector(&args);
-                return -1;
-            }
-            if (!expand_macro_call(m, ap, macros, out, depth + 1)) {
-                free_arg_vector(&args);
-                free_macro_args(ap, va, m->variadic);
-                return -1;
-            }
+        if (!parse_macro_arguments(line, &p, &args, m->params.count,
+                                   m->variadic))
+            return 0;
+        char **ap;
+        char *va;
+        if (!handle_varargs(&args, m->params.count, m->variadic,
+                            &ap, &va)) {
             free_arg_vector(&args);
-            free_macro_args(ap, va, m->variadic);
-            *pos = p;
-            return 1;
+            return -1;
         }
+        if (!expand_macro_call(m, ap, macros, out, depth + 1)) {
+            free_macro_args(ap, va, m->variadic);
+            free_arg_vector(&args);
+            return -1;
+        }
+        free_macro_args(ap, va, m->variadic);
         free_arg_vector(&args);
-        return 0;
+        *pos = p;
+        return 1;
     }
     if (!expand_macro_call(m, NULL, macros, out, depth + 1))
         return -1;
