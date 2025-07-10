@@ -114,6 +114,30 @@ static void define_default_macros(vector_t *macros)
     define_simple_macro(macros, "__GNUC_MINOR__", STR(__GNUC_MINOR__));
     define_simple_macro(macros, "__GNUC_PATCHLEVEL__", STR(__GNUC_PATCHLEVEL__));
 #endif
+#ifdef __STDC_HOSTED__
+    define_simple_macro(macros, "__STDC_HOSTED__", STR(__STDC_HOSTED__));
+#endif
+#ifdef __STDC_UTF_16__
+    define_simple_macro(macros, "__STDC_UTF_16__", STR(__STDC_UTF_16__));
+#endif
+#ifdef __STDC_UTF_32__
+    define_simple_macro(macros, "__STDC_UTF_32__", STR(__STDC_UTF_32__));
+#endif
+#ifdef __STDC_ISO_10646__
+    define_simple_macro(macros, "__STDC_ISO_10646__", STR(__STDC_ISO_10646__));
+#endif
+#ifdef __STDC_IEC_559__
+    define_simple_macro(macros, "__STDC_IEC_559__", STR(__STDC_IEC_559__));
+#endif
+#ifdef __STDC_IEC_559_COMPLEX__
+    define_simple_macro(macros, "__STDC_IEC_559_COMPLEX__", STR(__STDC_IEC_559_COMPLEX__));
+#endif
+#ifdef __STDC_IEC_60559_BFP__
+    define_simple_macro(macros, "__STDC_IEC_60559_BFP__", STR(__STDC_IEC_60559_BFP__));
+#endif
+#ifdef __STDC_IEC_60559_COMPLEX__
+    define_simple_macro(macros, "__STDC_IEC_60559_COMPLEX__", STR(__STDC_IEC_60559_COMPLEX__));
+#endif
 
 #ifdef __SIZE_TYPE__
     define_simple_macro(macros, "__SIZE_TYPE__", STR(__SIZE_TYPE__));
