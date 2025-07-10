@@ -84,10 +84,10 @@ static size_t lookup_aggr_size(symtable_t *symtab, type_kind_t t,
     return (t == TYPE_STRUCT) ? sym->struct_total_size : sym->total_size;
 }
 
-/* Lookup table mapping token_type_t values to textual names used in
- * diagnostics.  The array indices correspond to the enumeration
- * constants defined in ``token.h''.  Keep this table in sync with the
- * token_type_t enum when adding new tokens. */
+/* Table mapping token_type_t values to the textual names used in diagnostics.
+ * The index of each entry corresponds directly to its token_type_t value.
+ * When adding new tokens, update both the token_type_t enum in token.h and
+ * this table to keep them in sync. */
 static const char *token_names[] = {
     [TOK_EOF] = "end of file",
     [TOK_IDENT] = "identifier",
