@@ -5,6 +5,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <assert.h>
 
 #include "util.h"
 #include "preproc_path.h"
@@ -196,6 +197,7 @@ int append_env_paths(const char *env, vector_t *search_dirs)
 int collect_include_dirs(vector_t *search_dirs,
                          const vector_t *include_dirs)
 {
+    assert(strcspn(GCC_INCLUDE_DIR, " \t\n") == strlen(GCC_INCLUDE_DIR));
     vector_init(search_dirs, sizeof(char *));
     for (size_t i = 0; i < include_dirs->count; i++) {
         const char *s = ((const char **)include_dirs->data)[i];
