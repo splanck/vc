@@ -31,6 +31,7 @@ typedef struct {
     vector_t params;  /* vector of malloc'd char* parameter names */
     int variadic;     /* non-zero when macro accepts variable arguments */
     char *value;      /* malloc'd macro body */
+    int expanding;    /* recursion guard flag */
 } macro_t;
 
 /* Free memory used by a macro */

@@ -301,6 +301,11 @@ static int invoke_macro_body(macro_t *m, char **ap, vector_t *macros,
 static int expand_user_macro(macro_t *m, const char *line, size_t *pos,
                              vector_t *macros, strbuf_t *out, int depth)
 {
+    if (m->expanding) {
+        strbuf_append(out, m->name);
+        return 1;
+    }
+
     size_t p = *pos;        /* position just after the macro name */
 
     /* Parse the invocation arguments when the macro expects them. */
@@ -314,12 +319,15 @@ static int expand_user_macro(macro_t *m, const char *line, size_t *pos,
             return r;
     }
 
+    m->expanding = 1;
+
     /* Invoke the macro body once arguments have been collected. */
     if (invoke_macro_body(m, ap, macros, out, depth) < 0) {
         if (m->params.count || m->variadic) {
             free_macro_args(ap, va, m->variadic);
             free_arg_vector(&args);
         }
+        m->expanding = 0;
         return -1;
     }
 
@@ -328,6 +336,7 @@ static int expand_user_macro(macro_t *m, const char *line, size_t *pos,
         free_arg_vector(&args);
     }
     *pos = p;
+    m->expanding = 0;
     return 1;
 }
 

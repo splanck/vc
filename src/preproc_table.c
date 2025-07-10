@@ -200,6 +200,7 @@ int add_macro(const char *name, const char *value, vector_t *params,
     vector_free(params);
     m.variadic = variadic;
     m.value = vc_strdup(value);
+    m.expanding = 0;
     if (!vector_push(macros, &m)) {
         for (size_t i = 0; i < m.params.count; i++)
             free(((char **)m.params.data)[i]);
