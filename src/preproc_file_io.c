@@ -12,14 +12,19 @@
 #include "preproc_path.h"
 #include "preproc_file.h"
 
-int include_stack_contains(vector_t *stack, const char *path)
+static char *canonical_path(const char *path)
 {
     char *canon = realpath(path, NULL);
-    if (!canon) {
-        if (errno != ENOENT)
-            perror(path);
+    if (!canon)
+        canon = vc_strdup(path);
+    return canon;
+}
+
+int include_stack_contains(vector_t *stack, const char *path)
+{
+    char *canon = canonical_path(path);
+    if (!canon)
         return 0;
-    }
     for (size_t i = 0; i < stack->count; i++) {
         const include_entry_t *e = &((include_entry_t *)stack->data)[i];
         if (strcmp(e->path, canon) == 0) {
@@ -33,13 +38,10 @@ int include_stack_contains(vector_t *stack, const char *path)
 
 int include_stack_push(vector_t *stack, const char *path, size_t idx)
 {
-    char *canon = realpath(path, NULL);
+    char *canon = canonical_path(path);
     if (!canon) {
-        canon = vc_strdup(path);
-        if (!canon) {
-            vc_oom();
-            return 0;
-        }
+        vc_oom();
+        return 0;
     }
     include_entry_t ent = { canon, idx };
     if (!vector_push(stack, &ent)) {
