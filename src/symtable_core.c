@@ -221,3 +221,15 @@ int symtable_add_typedef_global(symtable_t *table, const char *name,
     return 1;
 }
 
+/* Remove all symbols added after old_head from the table */
+void symtable_pop_scope(symtable_t *table, symbol_t *old_head)
+{
+    while (table->head != old_head) {
+        symbol_t *sym = table->head;
+        table->head = sym->next;
+        free(sym->name);
+        free(sym->param_types);
+        free(sym);
+    }
+}
+

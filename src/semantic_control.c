@@ -228,6 +228,24 @@ int check_switch_stmt(stmt_t *stmt, symtable_t *vars, symtable_t *funcs,
     return ok;
 }
 
+int stmt_if_handler(stmt_t *stmt, symtable_t *vars, symtable_t *funcs,
+                    label_table_t *labels, ir_builder_t *ir,
+                    type_kind_t func_ret_type,
+                    const char *break_label, const char *continue_label)
+{
+    return check_if_stmt(stmt, vars, funcs, labels, ir, func_ret_type,
+                         break_label, continue_label);
+}
+
+int stmt_switch_handler(stmt_t *stmt, symtable_t *vars, symtable_t *funcs,
+                        label_table_t *labels, ir_builder_t *ir,
+                        type_kind_t func_ret_type,
+                        const char *break_label, const char *continue_label)
+{
+    (void)break_label; (void)continue_label;
+    return check_switch_stmt(stmt, vars, funcs, labels, ir, func_ret_type);
+}
+
 /*
  * Validate an if/else statement and emit the corresponding IR.
  * The condition is evaluated once to decide which branch executes and

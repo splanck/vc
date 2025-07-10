@@ -16,7 +16,6 @@
 extern int check_stmt(stmt_t *stmt, symtable_t *vars, symtable_t *funcs,
                       void *labels, ir_builder_t *ir, type_kind_t func_ret_type,
                       const char *break_label, const char *continue_label);
-extern void symtable_pop_scope(symtable_t *table, symbol_t *old_head);
 
 /*
  * Perform semantic checks for a while loop.  The condition is
@@ -162,5 +161,57 @@ int check_continue_stmt(stmt_t *stmt, const char *continue_label,
                         ir_builder_t *ir)
 {
     return handle_loop_stmt(stmt, continue_label, ir);
+}
+
+int stmt_while_handler(stmt_t *stmt, symtable_t *vars, symtable_t *funcs,
+                       label_table_t *labels, ir_builder_t *ir,
+                       type_kind_t func_ret_type,
+                       const char *break_label,
+                       const char *continue_label)
+{
+    (void)break_label; (void)continue_label;
+    return check_while_stmt(stmt, vars, funcs, labels, ir, func_ret_type);
+}
+
+int stmt_do_while_handler(stmt_t *stmt, symtable_t *vars, symtable_t *funcs,
+                          label_table_t *labels, ir_builder_t *ir,
+                          type_kind_t func_ret_type,
+                          const char *break_label,
+                          const char *continue_label)
+{
+    (void)break_label; (void)continue_label;
+    return check_do_while_stmt(stmt, vars, funcs, labels, ir, func_ret_type);
+}
+
+int stmt_for_handler(stmt_t *stmt, symtable_t *vars, symtable_t *funcs,
+                     label_table_t *labels, ir_builder_t *ir,
+                     type_kind_t func_ret_type,
+                     const char *break_label,
+                     const char *continue_label)
+{
+    (void)break_label; (void)continue_label;
+    return check_for_stmt(stmt, vars, funcs, labels, ir, func_ret_type);
+}
+
+int stmt_break_handler(stmt_t *stmt, symtable_t *vars, symtable_t *funcs,
+                       label_table_t *labels, ir_builder_t *ir,
+                       type_kind_t func_ret_type,
+                       const char *break_label,
+                       const char *continue_label)
+{
+    (void)vars; (void)funcs; (void)labels; (void)ir; (void)func_ret_type;
+    (void)continue_label;
+    return check_break_stmt(stmt, break_label, ir);
+}
+
+int stmt_continue_handler(stmt_t *stmt, symtable_t *vars, symtable_t *funcs,
+                          label_table_t *labels, ir_builder_t *ir,
+                          type_kind_t func_ret_type,
+                          const char *break_label,
+                          const char *continue_label)
+{
+    (void)vars; (void)funcs; (void)labels; (void)ir; (void)func_ret_type;
+    (void)break_label;
+    return check_continue_stmt(stmt, continue_label, ir);
 }
 
