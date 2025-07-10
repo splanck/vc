@@ -6,7 +6,9 @@
 #include "preproc_expr.h"
 #include "util.h"
 #include "vector.h"
+#include "strbuf.h"
 #include <string.h>
+#include <stdlib.h>
 
 /* Advance P past spaces and tabs and return the updated pointer */
 static char *skip_ws(char *p)
@@ -31,6 +33,22 @@ static int stack_active(vector_t *conds)
 static int is_active(vector_t *conds)
 {
     return stack_active(conds);
+}
+
+/* Expand EXPR using the macro table and return a newly allocated string. */
+static char *expand_expression(const char *expr, vector_t *macros)
+{
+    if (strstr(expr, "defined"))
+        return vc_strdup(expr);
+    strbuf_t sb;
+    strbuf_init(&sb);
+    if (!expand_line(expr, macros, &sb, 0, 0)) {
+        strbuf_free(&sb);
+        return NULL;
+    }
+    char *out = vc_strdup(sb.data ? sb.data : "");
+    strbuf_free(&sb);
+    return out;
 }
 
 /* Push a new state for #ifdef/#ifndef directives.  When "neg" is non-zero
@@ -77,15 +95,17 @@ int cond_push_ifndef(char *line, vector_t *macros, vector_t *conds)
 int cond_push_ifexpr(char *line, vector_t *macros, vector_t *conds)
 {
     char *expr = line + 3;
+    char *expanded = expand_expression(expr, macros);
     cond_state_t st;
     st.parent_active = is_active(conds);
     st.taken = 0;
-    if (st.parent_active && eval_expr(expr, macros)) {
+    if (st.parent_active && expanded && eval_expr(expanded, macros)) {
         st.taking = 1;
         st.taken = 1;
     } else {
         st.taking = 0;
     }
+    free(expanded);
     if (!vector_push(conds, &st)) {
         vc_oom();
         return 0;
@@ -105,7 +125,9 @@ void cond_handle_elif(char *line, vector_t *macros, vector_t *conds)
             st->taking = 0;
         } else {
             char *expr = line + 5;
-            st->taking = eval_expr(expr, macros);
+            char *expanded = expand_expression(expr, macros);
+            st->taking = expanded && eval_expr(expanded, macros);
+            free(expanded);
             if (st->taking)
                 st->taken = 1;
         }
