@@ -111,45 +111,44 @@ void preproc_context_free(preproc_context_t *ctx)
     vector_free(&ctx->pack_stack);
 }
 
-/* Apply macro definitions specified on the command line */
-static int apply_cli_defines(vector_t *macros, const vector_t *defines)
+/*
+ * Update the macro table with command line definitions and undefinitions.
+ *
+ * Returns 1 on success, 0 on failure when adding a definition.
+ */
+static int update_macros_from_cli(vector_t *macros, const vector_t *defines,
+                                  const vector_t *undefines)
 {
-    if (!defines)
-        return 1;
-
-    for (size_t i = 0; i < defines->count; i++) {
-        const char *def = ((const char **)defines->data)[i];
-        const char *eq = strchr(def, '=');
-        const char *val = "1";
-        char *name;
-        if (eq) {
-            name = vc_strndup(def, (size_t)(eq - def));
-            val = eq + 1;
-        } else {
-            name = vc_strdup(def);
-        }
-        vector_t params;
-        vector_init(&params, sizeof(char *));
-        if (!add_macro(name, val, &params, 0, macros)) {
+    if (defines) {
+        for (size_t i = 0; i < defines->count; i++) {
+            const char *def = ((const char **)defines->data)[i];
+            const char *eq = strchr(def, '=');
+            const char *val = "1";
+            char *name;
+            if (eq) {
+                name = vc_strndup(def, (size_t)(eq - def));
+                val = eq + 1;
+            } else {
+                name = vc_strdup(def);
+            }
+            vector_t params;
+            vector_init(&params, sizeof(char *));
+            if (!add_macro(name, val, &params, 0, macros)) {
+                free(name);
+                return 0;
+            }
             free(name);
-            return 0;
         }
-        free(name);
+    }
+
+    if (undefines) {
+        for (size_t i = 0; i < undefines->count; i++) {
+            const char *name = ((const char **)undefines->data)[i];
+            remove_macro(macros, name);
+        }
     }
 
     return 1;
-}
-
-/* Remove macros listed via the command line */
-static void apply_cli_undefines(vector_t *macros, const vector_t *undefines)
-{
-    if (!undefines)
-        return;
-
-    for (size_t i = 0; i < undefines->count; i++) {
-        const char *name = ((const char **)undefines->data)[i];
-        remove_macro(macros, name);
-    }
 }
 
 /* Wrapper around process_file used by the entry point */
@@ -184,14 +183,11 @@ char *preproc_run(preproc_context_t *ctx, const char *path,
         return NULL;
     }
 
-    /* Import any -D command line definitions */
-    if (!apply_cli_defines(&macros, defines)) {
+    /* Apply -D and -U options from the command line */
+    if (!update_macros_from_cli(&macros, defines, undefines)) {
         cleanup_preproc_vectors(ctx, &macros, &conds, &stack, &search_dirs, &out);
         return NULL;
     }
-
-    /* Remove macros listed with -U */
-    apply_cli_undefines(&macros, undefines);
 
     /* Process the initial source file */
     int ok = process_input_file(path, &macros, &conds, &out,
