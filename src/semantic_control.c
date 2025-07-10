@@ -1,7 +1,7 @@
 /*
- * Switch statement checking and label management helpers.
- * Validates switch constructs and manages label mapping while
- * generating the branch IR for cases.
+ * Control flow statement helpers.
+ * Validates if/else and switch constructs and manages label mapping while
+ * generating the branch IR needed for control flow.
  *
  * Part of vc under the BSD 2-Clause license.
  * See LICENSE for details.
@@ -10,7 +10,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
-#include "semantic_switch.h"
+#include "semantic_control.h"
 #include "consteval.h"
 #include "semantic_expr.h"
 #include "util.h"
@@ -226,5 +226,40 @@ int check_switch_stmt(stmt_t *stmt, symtable_t *vars, symtable_t *funcs,
         free(case_labels[j]);
     free(case_labels);
     return ok;
+}
+
+/*
+ * Validate an if/else statement and emit the corresponding IR.
+ * The condition is evaluated once to decide which branch executes and
+ * both branches are checked before control joins at the common end label.
+ */
+int check_if_stmt(stmt_t *stmt, symtable_t *vars, symtable_t *funcs,
+                  label_table_t *labels, ir_builder_t *ir,
+                  type_kind_t func_ret_type,
+                  const char *break_label, const char *continue_label)
+{
+    ir_value_t cond_val;
+    if (check_expr(stmt->if_stmt.cond, vars, funcs, ir, &cond_val) == TYPE_UNKNOWN)
+        return 0;
+    char else_label[32];
+    char end_label[32];
+    int id = label_next_id();
+    if (!label_format_suffix("L", id, "_else", else_label) ||
+        !label_format_suffix("L", id, "_end", end_label))
+        return 0;
+    const char *target = stmt->if_stmt.else_branch ? else_label : end_label;
+    ir_build_bcond(ir, cond_val, target);
+    if (!check_stmt(stmt->if_stmt.then_branch, vars, funcs, labels, ir,
+                    func_ret_type, break_label, continue_label))
+        return 0;
+    if (stmt->if_stmt.else_branch) {
+        ir_build_br(ir, end_label);
+        ir_build_label(ir, else_label);
+        if (!check_stmt(stmt->if_stmt.else_branch, vars, funcs, labels, ir,
+                        func_ret_type, break_label, continue_label))
+            return 0;
+    }
+    ir_build_label(ir, end_label);
+    return 1;
 }
 
