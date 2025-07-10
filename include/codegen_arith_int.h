@@ -12,6 +12,9 @@ void emit_ptr_add(strbuf_t *sb, ir_instr_t *ins,
 void emit_ptr_diff(strbuf_t *sb, ir_instr_t *ins,
                    regalloc_t *ra, int x64,
                    asm_syntax_t syntax);
+void emit_ptr_arith(strbuf_t *sb, ir_instr_t *ins,
+                    regalloc_t *ra, int x64,
+                    asm_syntax_t syntax);
 void emit_int_arith(strbuf_t *sb, ir_instr_t *ins,
                     regalloc_t *ra, int x64, const char *op,
                     asm_syntax_t syntax);

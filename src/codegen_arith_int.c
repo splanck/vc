@@ -61,6 +61,22 @@ void emit_ptr_diff(strbuf_t *sb, ir_instr_t *ins,
                        x86_loc_str(b2, ra, ins->dest, x64, syntax));
 }
 
+void emit_ptr_arith(strbuf_t *sb, ir_instr_t *ins,
+                    regalloc_t *ra, int x64,
+                    asm_syntax_t syntax)
+{
+    switch (ins->op) {
+    case IR_PTR_ADD:
+        emit_ptr_add(sb, ins, ra, x64, syntax);
+        break;
+    case IR_PTR_DIFF:
+        emit_ptr_diff(sb, ins, ra, x64, syntax);
+        break;
+    default:
+        break;
+    }
+}
+
 void emit_int_arith(strbuf_t *sb, ir_instr_t *ins,
                     regalloc_t *ra, int x64, const char *op,
                     asm_syntax_t syntax)
@@ -291,11 +307,8 @@ void emit_arith_instr(strbuf_t *sb, ir_instr_t *ins,
                       asm_syntax_t syntax)
 {
     switch (ins->op) {
-    case IR_PTR_ADD:
-        emit_ptr_add(sb, ins, ra, x64, syntax);
-        break;
-    case IR_PTR_DIFF:
-        emit_ptr_diff(sb, ins, ra, x64, syntax);
+    case IR_PTR_ADD: case IR_PTR_DIFF:
+        emit_ptr_arith(sb, ins, ra, x64, syntax);
         break;
     case IR_FADD:
         emit_float_binop(sb, ins, ra, x64, "addss", syntax);
