@@ -331,6 +331,120 @@ static int map_lookup(map_entry_t *map, size_t count, int old)
     return old;
 }
 
+/* Build an array containing all IR instructions in order */
+static ir_instr_t **gather_call_list(ir_builder_t *ir, int *count)
+{
+    *count = 0;
+    for (ir_instr_t *it = ir->head; it; it = it->next)
+        (*count)++;
+    if (*count == 0)
+        return NULL;
+
+    ir_instr_t **list = malloc((size_t)(*count) * sizeof(*list));
+    if (!list) {
+        opt_error("out of memory");
+        return NULL;
+    }
+
+    int idx = 0;
+    for (ir_instr_t *it = ir->head; it; it = it->next)
+        list[idx++] = it;
+
+    return list;
+}
+
+/* Inline a single call instruction if it matches an eligible function */
+static int apply_inline(ir_builder_t *ir, ir_instr_t **list, int *count, int i,
+                        inline_func_t *funcs, size_t func_count)
+{
+    ir_instr_t *ins = list[i];
+    if (ins->op != IR_CALL)
+        return 0;
+
+    inline_func_t *fn = NULL;
+    for (size_t j = 0; j < func_count; j++) {
+        if (strcmp(funcs[j].name, ins->name) == 0) {
+            fn = &funcs[j];
+            break;
+        }
+    }
+    if (!fn || ins->imm != fn->param_count || i < (int)fn->param_count)
+        return 0;
+
+    int argc = (int)fn->param_count;
+    if (argc > 8)
+        return 0; /* limit to small functions */
+
+    int args[8];
+    for (int a = 0; a < argc; a++) {
+        ir_instr_t *arg = list[i - argc + a];
+        if (!arg || arg->op != IR_ARG)
+            return 0;
+        args[a] = arg->src1;
+    }
+
+    for (int a = 0; a < argc; a++) {
+        remove_instr(ir, list, count, i - 1);
+        i--;
+    }
+
+    map_entry_t map[32];
+    size_t mcount = 0;
+    int (*lookup)(map_entry_t *, size_t, int) = map_lookup;
+
+    ir_instr_t *pos = ins;
+    int ret_val = ins->dest;
+
+    for (size_t k = 0; k < fn->count; k++) {
+        ir_instr_t *orig = &fn->body[k];
+        if (orig->op == IR_LOAD_PARAM) {
+            if (orig->imm >= argc)
+                return 0;
+            map[mcount++] = (map_entry_t){orig->dest, args[orig->imm], NULL};
+            continue;
+        }
+        if (orig->op == IR_RETURN || orig->op == IR_RETURN_AGG) {
+            ret_val = lookup(map, mcount, orig->src1);
+            for (size_t m = 0; m < mcount; m++) {
+                if (map[m].old_id == orig->src1 && map[m].ins) {
+                    map[m].ins->dest = ins->dest;
+                    map[m].new_id = ins->dest;
+                    ret_val = ins->dest;
+                    break;
+                }
+            }
+            continue;
+        }
+
+        ir_instr_t *ni = ir_insert_after(ir, pos);
+        if (!ni)
+            return 0;
+        ni->op = orig->op;
+        ni->imm = orig->imm;
+        ni->src1 = lookup(map, mcount, orig->src1);
+        ni->src2 = lookup(map, mcount, orig->src2);
+        ni->name = NULL;
+        ni->data = NULL;
+        ni->is_volatile = 0;
+        ni->dest = (int)ir->next_value_id++;
+        map[mcount++] = (map_entry_t){orig->dest, ni->dest, ni};
+        pos = ni;
+    }
+
+    for (int u = i + 1; u < *count; u++) {
+        ir_instr_t *uins = list[u];
+        if (uins->src1 == ins->dest)
+            uins->src1 = ret_val;
+        if (uins->src2 == ins->dest)
+            uins->src2 = ret_val;
+    }
+
+    free(ins->name);
+    ins->name = NULL;
+    remove_instr(ir, list, count, i);
+    return 1;
+}
+
 void inline_small_funcs(ir_builder_t *ir)
 {
     if (!ir)
@@ -342,111 +456,17 @@ void inline_small_funcs(ir_builder_t *ir)
         return;
 
     int count = 0;
-    for (ir_instr_t *it = ir->head; it; it = it->next)
-        count++;
-    if (count == 0) { free(funcs); return; }
-    ir_instr_t **list = malloc((size_t)count * sizeof(*list));
+    ir_instr_t **list = gather_call_list(ir, &count);
     if (!list) {
-        opt_error("out of memory");
+        for (size_t j = 0; j < func_count; j++)
+            free(funcs[j].body);
         free(funcs);
         return;
     }
-    int idx = 0;
-    for (ir_instr_t *it = ir->head; it; it = it->next)
-        list[idx++] = it;
 
     for (int i = 0; i < count; i++) {
-        ir_instr_t *ins = list[i];
-        if (ins->op != IR_CALL)
-            continue;
-
-        inline_func_t *fn = NULL;
-        for (size_t j = 0; j < func_count; j++) {
-            if (strcmp(funcs[j].name, ins->name) == 0) {
-                fn = &funcs[j];
-                break;
-            }
-        }
-        if (!fn || ins->imm != fn->param_count ||
-            i < (int)fn->param_count)
-            continue;
-
-        int argc = (int)fn->param_count;
-        int args[8];
-        if (argc > 8)
-            continue; /* limit to small functions */
-
-        int ok = 1;
-        for (int a = 0; a < argc; a++) {
-            ir_instr_t *arg = list[i - argc + a];
-            if (!arg || arg->op != IR_ARG) { ok = 0; break; }
-            args[a] = arg->src1;
-        }
-        if (!ok)
-            continue;
-
-        for (int a = 0; a < argc; a++) {
-            remove_instr(ir, list, &count, i-1);
-            i--;
-        }
-
-        map_entry_t map[32];
-        size_t mcount = 0;
-
-        /* helper to resolve old value ids to newly created ones */
-        int (*lookup)(map_entry_t *, size_t, int) = map_lookup;
-
-        ir_instr_t *pos = ins;
-        int ret_val = ins->dest;
-
-        for (size_t k = 0; k < fn->count; k++) {
-            ir_instr_t *orig = &fn->body[k];
-            if (orig->op == IR_LOAD_PARAM) {
-                if (orig->imm >= argc) { ok = 0; break; }
-                map[mcount++] = (map_entry_t){orig->dest, args[orig->imm], NULL};
-                continue;
-            }
-            if (orig->op == IR_RETURN || orig->op == IR_RETURN_AGG) {
-                ret_val = lookup(map, mcount, orig->src1);
-                for (size_t m = 0; m < mcount; m++) {
-                    if (map[m].old_id == orig->src1 && map[m].ins) {
-                        map[m].ins->dest = ins->dest;
-                        map[m].new_id = ins->dest;
-                        ret_val = ins->dest;
-                        break;
-                    }
-                }
-                continue;
-            }
-
-            ir_instr_t *ni = ir_insert_after(ir, pos);
-            if (!ni) { ok = 0; break; }
-            ni->op = orig->op;
-            ni->imm = orig->imm;
-            ni->src1 = lookup(map, mcount, orig->src1);
-            ni->src2 = lookup(map, mcount, orig->src2);
-            ni->name = NULL;
-            ni->data = NULL;
-            ni->is_volatile = 0;
-            ni->dest = (int)ir->next_value_id++;
-            map[mcount++] = (map_entry_t){orig->dest, ni->dest, ni};
-            pos = ni;
-        }
-        if (!ok)
-            continue;
-
-        for (int u = i + 1; u < count; u++) {
-            ir_instr_t *uins = list[u];
-            if (uins->src1 == ins->dest)
-                uins->src1 = ret_val;
-            if (uins->src2 == ins->dest)
-                uins->src2 = ret_val;
-        }
-
-        free(ins->name);
-        ins->name = NULL;
-        remove_instr(ir, list, &count, i);
-        i--;
+        if (apply_inline(ir, list, &count, i, funcs, func_count))
+            i--; /* restart from previous position after modification */
     }
 
     recompute_tail(ir);
