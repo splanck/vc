@@ -40,6 +40,11 @@ int vector_push(vector_t *vec, const void *elem)
     if (!vec || !elem || vec->elem_size == 0)
         return 0;
     if (vec->count >= vec->cap) {
+        /*
+         * Grow the allocation when the current capacity is exhausted.
+         * A fresh vector allocates space for 16 elements and every
+         * subsequent growth doubles the previous capacity.
+         */
         size_t new_cap;
         if (vec->cap) {
             if (vec->cap > SIZE_MAX / 2)
