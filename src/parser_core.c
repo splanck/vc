@@ -19,6 +19,13 @@
 
 
 /* Helper prototypes */
+static void cleanup_param_vectors(vector_t *names_v, vector_t *types_v,
+                                  vector_t *sizes_v, vector_t *restrict_v,
+                                  vector_t *tags_v);
+static int parse_param_decl(parser_t *p, symtable_t *symtab,
+                            vector_t *names_v, vector_t *types_v,
+                            vector_t *sizes_v, vector_t *tags_v,
+                            vector_t *restrict_v);
 static int parse_param_list(parser_t *p, symtable_t *symtab,
                             char ***names, type_kind_t **types,
                             size_t **sizes, char ***tags,
@@ -214,6 +221,74 @@ void parser_print_error(parser_t *p, const token_type_t *expected,
     error_print(msg);
 }
 
+/* Free parameter vectors along with allocated tags */
+static void cleanup_param_vectors(vector_t *names_v, vector_t *types_v,
+                                  vector_t *sizes_v, vector_t *restrict_v,
+                                  vector_t *tags_v)
+{
+    (void)names_v; /* names are borrowed from tokens */
+    vector_free(names_v);
+    vector_free(types_v);
+    vector_free(sizes_v);
+    vector_free(restrict_v);
+    for (size_t i = 0; i < tags_v->count; i++)
+        free(((char **)tags_v->data)[i]);
+    vector_free(tags_v);
+}
+
+/* Parse a single parameter declaration and append info to vectors */
+static int parse_param_decl(parser_t *p, symtable_t *symtab,
+                            vector_t *names_v, vector_t *types_v,
+                            vector_t *sizes_v, vector_t *tags_v,
+                            vector_t *restrict_v)
+{
+    type_kind_t pt;
+    char *tag = NULL;
+
+    if (match(p, TOK_KW_STRUCT) || match(p, TOK_KW_UNION)) {
+        token_type_t kw = p->tokens[p->pos - 1].type;
+        token_t *id = peek(p);
+        if (!id || id->type != TOK_IDENT)
+            return 0;
+        p->pos++;
+        tag = vc_strdup(id->lexeme);
+        if (!tag)
+            return 0;
+        pt = (kw == TOK_KW_STRUCT) ? TYPE_STRUCT : TYPE_UNION;
+    } else if (!parse_basic_type(p, &pt)) {
+        return 0;
+    }
+
+    size_t ps = (pt == TYPE_STRUCT || pt == TYPE_UNION)
+                    ? lookup_aggr_size(symtab, pt, tag)
+                    : basic_type_size(pt);
+
+    int is_restrict = 0;
+    if (match(p, TOK_STAR)) {
+        pt = TYPE_PTR;
+        is_restrict = match(p, TOK_KW_RESTRICT);
+    }
+
+    token_t *ptok = peek(p);
+    if (!ptok || ptok->type != TOK_IDENT) {
+        free(tag);
+        return 0;
+    }
+    p->pos++;
+    char *tmp_name = ptok->lexeme;
+
+    if (!vector_push(names_v, &tmp_name) ||
+        !vector_push(types_v, &pt) ||
+        !vector_push(sizes_v, &ps) ||
+        !vector_push(tags_v, &tag) ||
+        !vector_push(restrict_v, &is_restrict)) {
+        free(tag);
+        return 0;
+    }
+
+    return 1;
+}
+
 /* Parse parameter list for a function definition. */
 static int parse_param_list(parser_t *p, symtable_t *symtab,
                             char ***names, type_kind_t **types,
@@ -235,88 +310,16 @@ static int parse_param_list(parser_t *p, symtable_t *symtab,
                 *is_variadic = 1;
                 break;
             }
-            type_kind_t pt;
-            char *tag = NULL;
-            if (match(p, TOK_KW_STRUCT) || match(p, TOK_KW_UNION)) {
-                token_type_t kw = p->tokens[p->pos - 1].type;
-                token_t *id = peek(p);
-                if (!id || id->type != TOK_IDENT) {
-                    vector_free(&names_v);
-                    vector_free(&types_v);
-                    vector_free(&sizes_v);
-                    vector_free(&restrict_v);
-                    vector_free(&tags_v);
-                    return 0;
-                }
-                p->pos++;
-                tag = vc_strdup(id->lexeme);
-                if (!tag) {
-                    vector_free(&names_v);
-                    vector_free(&types_v);
-                    vector_free(&sizes_v);
-                    vector_free(&restrict_v);
-                    vector_free(&tags_v);
-                    return 0;
-                }
-                pt = (kw == TOK_KW_STRUCT) ? TYPE_STRUCT : TYPE_UNION;
-            } else if (!parse_basic_type(p, &pt)) {
-                vector_free(&names_v);
-                vector_free(&types_v);
-                vector_free(&sizes_v);
-                vector_free(&restrict_v);
-                vector_free(&tags_v);
-                return 0;
-            }
-            size_t ps;
-            if (pt == TYPE_STRUCT || pt == TYPE_UNION)
-                ps = lookup_aggr_size(symtab, pt, tag);
-            else
-                ps = basic_type_size(pt);
-            int is_restrict = 0;
-            if (match(p, TOK_STAR)) {
-                pt = TYPE_PTR;
-                is_restrict = match(p, TOK_KW_RESTRICT);
-            }
-            token_t *ptok = peek(p);
-            if (!ptok || ptok->type != TOK_IDENT) {
-                vector_free(&names_v);
-                vector_free(&types_v);
-                vector_free(&sizes_v);
-                vector_free(&restrict_v);
-                for (size_t i = 0; i < tags_v.count; i++)
-                    free(((char **)tags_v.data)[i]);
-                vector_free(&tags_v);
-                free(tag);
-                return 0;
-            }
-            p->pos++;
-            char *tmp_name = ptok->lexeme;
-            if (!vector_push(&names_v, &tmp_name) ||
-                !vector_push(&types_v, &pt) ||
-                !vector_push(&sizes_v, &ps) ||
-                !vector_push(&tags_v, &tag) ||
-                !vector_push(&restrict_v, &is_restrict)) {
-                for (size_t i = 0; i < names_v.count; i++)
-                    free(((char **)names_v.data)[i]);
-                vector_free(&names_v);
-                vector_free(&types_v);
-                vector_free(&sizes_v);
-                vector_free(&restrict_v);
-                for (size_t i = 0; i < tags_v.count; i++)
-                    free(((char **)tags_v.data)[i]);
-                vector_free(&tags_v);
-                free(tag);
+            if (!parse_param_decl(p, symtab, &names_v, &types_v,
+                                  &sizes_v, &tags_v, &restrict_v)) {
+                cleanup_param_vectors(&names_v, &types_v,
+                                     &sizes_v, &restrict_v, &tags_v);
                 return 0;
             }
         } while (match(p, TOK_COMMA));
         if (!match(p, TOK_RPAREN)) {
-            vector_free(&names_v);
-            vector_free(&types_v);
-            vector_free(&sizes_v);
-            vector_free(&restrict_v);
-            for (size_t i = 0; i < tags_v.count; i++)
-                free(((char **)tags_v.data)[i]);
-            vector_free(&tags_v);
+            cleanup_param_vectors(&names_v, &types_v,
+                                 &sizes_v, &restrict_v, &tags_v);
             return 0;
         }
     }
