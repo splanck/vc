@@ -200,6 +200,45 @@ static int scan_punct_table(const char *src, size_t *i, size_t *col,
     return 0;
 }
 
+/* wrapper to scan numeric literals */
+static int scan_number_token(const char *src, size_t *i, size_t *col,
+                             vector_t *tokens, size_t line)
+{
+    return scan_number(src, i, col, tokens, line);
+}
+
+/* wrapper to scan string literals including wide strings */
+static int scan_string_tokens(const char *src, size_t *i, size_t *col,
+                              vector_t *tokens, size_t line)
+{
+    int res = scan_wstring(src, i, col, tokens, line);
+    if (res)
+        return res;
+    return scan_string(src, i, col, tokens, line);
+}
+
+/* wrapper to scan character literals including wide chars */
+static int scan_char_tokens(const char *src, size_t *i, size_t *col,
+                            vector_t *tokens, size_t line)
+{
+    int res = scan_wchar(src, i, col, tokens, line);
+    if (res)
+        return res;
+    return scan_char(src, i, col, tokens, line);
+}
+
+/* handle punctuation tokens */
+static int scan_punctuation(const char *src, size_t *i, size_t *col,
+                            vector_t *tokens, size_t line)
+{
+    if (scan_punct_table(src, i, col, tokens, line))
+        return 1;
+    char c = src[*i];
+    read_punct(c, tokens, line, *col);
+    (*i)++; (*col)++;
+    return 1;
+}
+
 /* Scan and append the next token from the source. Returns 1 on success,
  * 0 when end of input is reached and -1 on error. */
 static int scan_next_token(const char *src, size_t *i, size_t *line,
@@ -211,11 +250,11 @@ static int scan_next_token(const char *src, size_t *i, size_t *line,
 
     int res;
 
-    res = scan_wstring(src, i, col, tokens, *line);
+    res = scan_string_tokens(src, i, col, tokens, *line);
     if (res)
         return res;
 
-    res = scan_wchar(src, i, col, tokens, *line);
+    res = scan_char_tokens(src, i, col, tokens, *line);
     if (res)
         return res;
 
@@ -223,25 +262,11 @@ static int scan_next_token(const char *src, size_t *i, size_t *line,
     if (res)
         return 1;
 
-    res = scan_number(src, i, col, tokens, *line);
-    if (res)
-        return 1;
-
-    res = scan_string(src, i, col, tokens, *line);
+    res = scan_number_token(src, i, col, tokens, *line);
     if (res)
         return res;
 
-    res = scan_char(src, i, col, tokens, *line);
-    if (res)
-        return 1;
-
-    if (scan_punct_table(src, i, col, tokens, *line))
-        return 1;
-
-    char c = src[*i];
-    read_punct(c, tokens, *line, *col);
-    (*i)++; (*col)++;
-    return 1;
+    return scan_punctuation(src, i, col, tokens, *line);
 }
 
 /* Public API */
