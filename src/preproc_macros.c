@@ -336,6 +336,52 @@ static void emit_plain_char(const char *line, size_t *pos, strbuf_t *out)
     (*pos)++;
 }
 
+/* Build an argv array for variadic parameters */
+static int gather_varargs(vector_t *args, size_t fixed,
+                          char ***out_ap, char **out_va)
+{
+    strbuf_t sb;
+    strbuf_init(&sb);
+    for (size_t i = fixed; i < args->count; i++) {
+        if (i > fixed)
+            strbuf_append(&sb, ",");
+        strbuf_append(&sb, ((char **)args->data)[i]);
+    }
+    char *va = vc_strdup(sb.data ? sb.data : "");
+    strbuf_free(&sb);
+    char **ap = malloc((fixed + 1) * sizeof(char *));
+    if (!ap) {
+        vc_oom();
+        free(va);
+        return 0;
+    }
+    for (size_t i = 0; i < fixed; i++)
+        ap[i] = ((char **)args->data)[i];
+    ap[fixed] = va;
+    *out_ap = ap;
+    *out_va = va;
+    return 1;
+}
+
+/* Free a vector of argument strings */
+static void free_arg_vector(vector_t *v)
+{
+    for (size_t i = 0; i < v->count; i++)
+        free(((char **)v->data)[i]);
+    vector_free(v);
+}
+
+/* Return the macro whose name matches "name" (len bytes) */
+static macro_t *find_macro(vector_t *macros, const char *name, size_t len)
+{
+    for (size_t i = 0; i < macros->count; i++) {
+        macro_t *m = &((macro_t *)macros->data)[i];
+        if (strlen(m->name) == len && strncmp(m->name, name, len) == 0)
+            return m;
+    }
+    return NULL;
+}
+
 /*
  * Attempt to parse and expand a macro invocation starting at *pos.
  * On success the resulting text is appended to "out" and *pos is
@@ -407,43 +453,20 @@ static int expand_user_macro(macro_t *m, const char *line, size_t *pos,
              (!m->variadic && args.count == m->params.count))) {
             char **ap = (char **)args.data;
             char *va = NULL;
-            if (m->variadic) {
-                size_t fixed = m->params.count;
-                strbuf_t sb;
-                strbuf_init(&sb);
-                for (size_t a = fixed; a < args.count; a++) {
-                    if (a > fixed)
-                        strbuf_append(&sb, ",");
-                    strbuf_append(&sb, ((char **)args.data)[a]);
-                }
-                va = vc_strdup(sb.data ? sb.data : "");
-                strbuf_free(&sb);
-                ap = malloc((fixed + 1) * sizeof(char *));
-                if (!ap) {
-                    vc_oom();
-                    for (size_t t = 0; t < args.count; t++)
-                        free(((char **)args.data)[t]);
-                    vector_free(&args);
-                    free(va);
-                    return -1;
-                }
-                for (size_t a = 0; a < fixed; a++)
-                    ap[a] = ((char **)args.data)[a];
-                ap[fixed] = va;
+            if (m->variadic &&
+                !gather_varargs(&args, m->params.count, &ap, &va)) {
+                free_arg_vector(&args);
+                return -1;
             }
             if (!expand_macro_call(m, ap, macros, out, depth + 1)) {
-                for (size_t t = 0; t < args.count; t++)
-                    free(((char **)args.data)[t]);
-                vector_free(&args);
+                free_arg_vector(&args);
                 if (m->variadic) {
                     free(va);
                     free(ap);
                 }
                 return -1;
             }
-            for (size_t t = 0; t < args.count; t++)
-                free(((char **)args.data)[t]);
-            vector_free(&args);
+            free_arg_vector(&args);
             if (m->variadic) {
                 free(va);
                 free(ap);
@@ -451,16 +474,13 @@ static int expand_user_macro(macro_t *m, const char *line, size_t *pos,
             *pos = p;
             return 1;
         }
-        for (size_t t = 0; t < args.count; t++)
-            free(((char **)args.data)[t]);
-        vector_free(&args);
+        free_arg_vector(&args);
         return 0;
-    } else {
-        if (!expand_macro_call(m, NULL, macros, out, depth + 1))
-            return -1;
-        *pos = p;
-        return 1;
     }
+    if (!expand_macro_call(m, NULL, macros, out, depth + 1))
+        return -1;
+    *pos = p;
+    return 1;
 }
 
 static int parse_macro_invocation(const char *line, size_t *pos,
@@ -485,18 +505,15 @@ static int parse_macro_invocation(const char *line, size_t *pos,
     int r = handle_builtin_macro(line + i, len, j, column, out, pos);
     if (r)
         return r;
-    for (size_t k = 0; k < macros->count; k++) {
-        macro_t *m = &((macro_t *)macros->data)[k];
-        if (strlen(m->name) == len && strncmp(m->name, line + i, len) == 0) {
-            preproc_set_location(NULL, builtin_line, column);
-            size_t pos2 = j;
-            r = expand_user_macro(m, line, &pos2, macros, out, depth);
-            if (r) {
-                if (r > 0)
-                    *pos = pos2;
-                return r;
-            }
-            break;
+    macro_t *m = find_macro(macros, line + i, len);
+    if (m) {
+        preproc_set_location(NULL, builtin_line, column);
+        size_t pos2 = j;
+        r = expand_user_macro(m, line, &pos2, macros, out, depth);
+        if (r) {
+            if (r > 0)
+                *pos = pos2;
+            return r;
         }
     }
 
