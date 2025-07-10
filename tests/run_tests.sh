@@ -491,6 +491,15 @@ if [ $ret -ne 0 ] || grep -q "Macro expansion limit exceeded" "${err}"; then
 fi
 rm -f "${tmp_pragma}" "${err}"
 
+# verify macros inside #if are expanded
+pp_gnu=$(mktemp)
+"$BINARY" -E "$DIR/fixtures/ifexpr_header.h" > "$pp_gnu"
+if grep -q "__BEGIN_DECLS" "$pp_gnu"; then
+    echo "Test ifexpr_macro_expand failed"
+    fail=1
+fi
+rm -f "$pp_gnu"
+
 # simulate write failure with a full pipe
 err=$(mktemp)
 tmp_big=$(mktemp)
