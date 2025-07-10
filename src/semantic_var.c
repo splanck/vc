@@ -13,6 +13,7 @@
 #include "semantic_init.h"
 #include "semantic_expr.h"
 #include "semantic_global.h"
+#include "semantic_layout.h"
 #include "consteval.h"
 #include "symtable.h"
 #include "ir_core.h"
@@ -156,61 +157,6 @@ int compute_var_layout(stmt_t *stmt, symtable_t *vars)
 }
 
 /*
- * Copy union member metadata from the parsed declaration to the symbol.
- * Allocates new member arrays and duplicates names. Returns non-zero on
- * success.
- */
-static int copy_union_metadata(symbol_t *sym, union_member_t *members,
-                               size_t count, size_t total)
-{
-    sym->total_size = total;
-    if (!count)
-        return 1;
-    sym->members = malloc(count * sizeof(*sym->members));
-    if (!sym->members)
-        return 0;
-    sym->member_count = count;
-    for (size_t i = 0; i < count; i++) {
-        union_member_t *m = &members[i];
-        sym->members[i].name = vc_strdup(m->name);
-        sym->members[i].type = m->type;
-        sym->members[i].elem_size = m->elem_size;
-        sym->members[i].offset = m->offset;
-        sym->members[i].bit_width = m->bit_width;
-        sym->members[i].bit_offset = m->bit_offset;
-    }
-    return 1;
-}
-
-/*
- * Copy struct member metadata from the parsed declaration to the symbol.
- * Allocates new member arrays and duplicates names. Returns non-zero on
- * success.
- */
-static int copy_struct_metadata(symbol_t *sym, struct_member_t *members,
-                                size_t count, size_t total)
-{
-    sym->struct_total_size = total;
-    if (!count)
-        return 1;
-    sym->struct_members = malloc(count * sizeof(*sym->struct_members));
-    if (!sym->struct_members)
-        return 0;
-    sym->struct_member_count = count;
-    for (size_t i = 0; i < count; i++) {
-        struct_member_t *m = &members[i];
-        sym->struct_members[i].name = vc_strdup(m->name);
-        sym->struct_members[i].type = m->type;
-        sym->struct_members[i].elem_size = m->elem_size;
-        sym->struct_members[i].offset = m->offset;
-        sym->struct_members[i].bit_width = m->bit_width;
-        sym->struct_members[i].bit_offset = m->bit_offset;
-        sym->struct_members[i].is_flexible = m->is_flexible;
-    }
-    return 1;
-}
-
-/*
  * Emit IR for a static initializer using a constant expression.
  * Handles scalars and aggregates placed in the global data section.
  */
@@ -219,7 +165,8 @@ static int emit_static_initializer(stmt_t *stmt, symbol_t *sym,
 {
     long long cval;
     if (!eval_const_expr(stmt->var_decl.init, vars, 0, &cval)) {
-        error_set(stmt->var_decl.init->line, stmt->var_decl.init->column, error_current_file, error_current_function);
+        error_set(stmt->var_decl.init->line, stmt->var_decl.init->column,
+                  error_current_file, error_current_function);
         return 0;
     }
     if (stmt->var_decl.type == TYPE_UNION)
@@ -247,7 +194,8 @@ static int emit_dynamic_initializer(stmt_t *stmt, symbol_t *sym,
            (is_floatlike(stmt->var_decl.type) &&
             (is_floatlike(vt) || is_intlike(vt)))) ||
           vt == stmt->var_decl.type)) {
-        error_set(stmt->var_decl.init->line, stmt->var_decl.init->column, error_current_file, error_current_function);
+        error_set(stmt->var_decl.init->line, stmt->var_decl.init->column,
+                  error_current_file, error_current_function);
         return 0;
     }
     if (stmt->var_decl.is_volatile)
@@ -271,37 +219,6 @@ static int emit_aggregate_initializer(stmt_t *stmt, symbol_t *sym,
     error_set(stmt->line, stmt->column, error_current_file, error_current_function);
     return 0;
 }
-
-/*
- * Copy metadata describing aggregate members from the declaration to the
- * symbol table entry.  Dispatches to the struct or union helper based on the
- * variable's type.  Returns non-zero on success.
- */
-static int copy_aggregate_metadata(stmt_t *stmt, symbol_t *sym, symtable_t *vars)
-{
-    if (stmt->var_decl.type == TYPE_UNION)
-        return copy_union_metadata(sym, stmt->var_decl.members,
-                                   stmt->var_decl.member_count,
-                                   stmt->var_decl.elem_size);
-
-    if (stmt->var_decl.type == TYPE_STRUCT) {
-        if (stmt->var_decl.member_count == 0 && stmt->var_decl.tag) {
-            symbol_t *stype = symtable_lookup_struct(vars, stmt->var_decl.tag);
-            if (!stype)
-                return 0;
-            return copy_struct_metadata(sym, stype->struct_members,
-                                        stype->struct_member_count,
-                                        stype->struct_total_size);
-        }
-        return copy_struct_metadata(sym,
-                                    (struct_member_t *)stmt->var_decl.members,
-                                    stmt->var_decl.member_count,
-                                    stmt->var_decl.elem_size);
-    }
-
-    return 1;
-}
-
 /*
  * Evaluate the element count of a variable-length array and allocate
  * the required storage on the stack.  The resulting base pointer and
