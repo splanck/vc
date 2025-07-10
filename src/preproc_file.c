@@ -82,6 +82,30 @@ static void init_preproc_vectors(preproc_context_t *ctx, vector_t *macros,
     strbuf_init(out);
 }
 
+/* Define a simple object-like macro with value VAL */
+static int define_simple_macro(vector_t *macros, const char *name,
+                               const char *val)
+{
+    vector_t params;
+    vector_init(&params, sizeof(char *));
+    return add_macro(name, val, &params, 0, macros);
+}
+
+/* Add some common builtin macros based on the host compiler */
+static void define_default_macros(vector_t *macros)
+{
+#ifdef __linux__
+    define_simple_macro(macros, "__linux__", "1");
+    define_simple_macro(macros, "__unix__", "1");
+#endif
+#if defined(__x86_64__) || defined(__amd64__)
+    define_simple_macro(macros, "__x86_64__", "1");
+# ifdef __LP64__
+    define_simple_macro(macros, "__LP64__", "1");
+# endif
+#endif
+}
+
 /* Release vectors and buffers used during preprocessing */
 static void cleanup_preproc_vectors(preproc_context_t *ctx, vector_t *macros,
                                     vector_t *conds, vector_t *stack,
@@ -178,6 +202,7 @@ char *preproc_run(preproc_context_t *ctx, const char *path,
 
     /* Prepare all vectors used during preprocessing */
     init_preproc_vectors(ctx, &macros, &conds, &stack, &out);
+    define_default_macros(&macros);
     if (!record_dependency(ctx, path)) {
         cleanup_preproc_vectors(ctx, &macros, &conds, &stack, &search_dirs, &out);
         return NULL;
