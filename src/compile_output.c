@@ -57,73 +57,105 @@ static const char nasm_macros[] =
     "%macro popl 1\n    pop %1\n%endmacro\n"
     "%macro popq 1\n    pop %1\n%endmacro\n";
 
-static int emit_output_file(ir_builder_t *ir, const char *output,
-                            int use_x86_64, int compile_obj,
-                            const cli_options_t *cli)
+/*
+ * Write the generated assembly to a temporary file.  The caller must
+ * unlink and free the returned path on success.  Errors are reported to
+ * stderr and the temporary file is cleaned up before returning 0.
+ */
+static int write_assembly_file(ir_builder_t *ir, int use_x86_64,
+                               const cli_options_t *cli, char **out_path)
 {
-    if (compile_obj) {
-        char *tmpname = NULL;
-        int fd = create_temp_file(cli, "vc", &tmpname);
-        if (fd < 0) {
-            return 0;
-        }
-        FILE *tmpf = fdopen(fd, TEMP_FOPEN_MODE);
-        if (!tmpf) {
-            perror("fdopen");
-            close(fd);
-            unlink(tmpname);
-            free(tmpname);
-            return 0;
-        }
-        if (cli->asm_syntax == ASM_INTEL) {
-            int rc = fputs(nasm_macros, tmpf);
-            if (rc == EOF) {
-                perror("fputs");
-                fclose(tmpf);
-                unlink(tmpname);
-                free(tmpname);
-                return 0;
-            }
-        }
-        codegen_emit_x86(tmpf, ir, use_x86_64,
-                        cli->asm_syntax);
-        if (fflush(tmpf) == EOF) {
-            perror("fflush");
+    char *tmpname = NULL;
+    int fd = create_temp_file(cli, "vc", &tmpname);
+    if (fd < 0)
+        return 0;
+
+    FILE *tmpf = fdopen(fd, TEMP_FOPEN_MODE);
+    if (!tmpf) {
+        perror("fdopen");
+        close(fd);
+        unlink(tmpname);
+        free(tmpname);
+        return 0;
+    }
+
+    if (cli->asm_syntax == ASM_INTEL) {
+        if (fputs(nasm_macros, tmpf) == EOF) {
+            perror("fputs");
             fclose(tmpf);
             unlink(tmpname);
             free(tmpname);
             return 0;
         }
-        if (fclose(tmpf) == EOF) {
-            perror("fclose");
-            unlink(tmpname);
-            free(tmpname);
-            return 0;
-        }
+    }
 
-        int rc;
-        if (cli->asm_syntax == ASM_INTEL) {
-            const char *fmt = use_x86_64 ? "elf64" : "elf32";
-            char *argv[] = {(char *)get_as(1), "-f", (char *)fmt, tmpname,
-                            "-o", (char *)output, NULL};
-            rc = command_run(argv);
-        } else {
-            const char *arch_flag = use_x86_64 ? "-m64" : "-m32";
-            char *argv[] = {(char *)get_as(0), "-x", "assembler",
-                            (char *)arch_flag, "-c", tmpname, "-o",
-                            (char *)output, NULL};
-            rc = command_run(argv);
-        }
+    codegen_emit_x86(tmpf, ir, use_x86_64, cli->asm_syntax);
+
+    if (fflush(tmpf) == EOF) {
+        perror("fflush");
+        fclose(tmpf);
         unlink(tmpname);
         free(tmpname);
-        if (rc != 1) {
-            if (rc == 0)
-                fprintf(stderr, "assembly failed\n");
-            else if (rc == -1)
-                fprintf(stderr, "assembler terminated by signal\n");
-            return 0;
+        return 0;
+    }
+    if (fclose(tmpf) == EOF) {
+        perror("fclose");
+        unlink(tmpname);
+        free(tmpname);
+        return 0;
+    }
+
+    *out_path = tmpname;
+    return 1;
+}
+
+/*
+ * Assemble ASMFILE into OUTPUT using the selected assembler.  Any
+ * command execution failures are reported to stderr and 0 is returned.
+ */
+static int invoke_assembler(const char *asmfile, const char *output,
+                            int use_x86_64, const cli_options_t *cli)
+{
+    int rc;
+    if (cli->asm_syntax == ASM_INTEL) {
+        const char *fmt = use_x86_64 ? "elf64" : "elf32";
+        char *argv[] = {(char *)get_as(1), "-f", (char *)fmt, (char *)asmfile,
+                        "-o", (char *)output, NULL};
+        rc = command_run(argv);
+    } else {
+        const char *arch_flag = use_x86_64 ? "-m64" : "-m32";
+        char *argv[] = {(char *)get_as(0), "-x", "assembler", (char *)arch_flag,
+                        "-c", (char *)asmfile, "-o", (char *)output, NULL};
+        rc = command_run(argv);
+    }
+    if (rc != 1) {
+        if (rc == 0)
+            fprintf(stderr, "assembly failed\n");
+        else if (rc == -1)
+            fprintf(stderr, "assembler terminated by signal\n");
+        return 0;
+    }
+    return 1;
+}
+
+static int emit_output_file(ir_builder_t *ir, const char *output,
+                            int use_x86_64, int compile_obj,
+                            const cli_options_t *cli)
+{
+    if (compile_obj) {
+        /*
+         * Write assembly to a temporary file and run the assembler.
+         * The temporary file is removed regardless of success.  Any
+         * errors are reported by the helper routines.
+         */
+        char *asmfile = NULL;
+        int ok = write_assembly_file(ir, use_x86_64, cli, &asmfile);
+        if (ok) {
+            ok = invoke_assembler(asmfile, output, use_x86_64, cli);
+            unlink(asmfile);
+            free(asmfile);
         }
-        return 1;
+        return ok;
     }
 
     FILE *outf = fopen(output, "wb");
