@@ -11,7 +11,7 @@ CORE_SRC = src/main.c src/compile.c src/compile_stage.c src/compile_link.c src/c
            src/semantic_arith.c src/semantic_mem.c src/semantic_call.c \
            src/semantic_loops.c src/semantic_control.c src/semantic_init.c src/semantic_var.c src/semantic_stmt.c src/semantic_layout.c src/semantic_inline.c src/semantic_global.c src/consteval.c src/error.c src/ir_core.c src/ir_const.c src/ir_memory.c src/ir_control.c src/ir_global.c \
            src/codegen.c src/codegen_mem.c src/codegen_loadstore.c src/codegen_arith_int.c src/codegen_arith_float.c src/codegen_branch.c \
-           src/codegen_float.c src/codegen_complex.c \
+           src/codegen_float.c src/codegen_complex.c src/codegen_x86.c \
            src/regalloc.c src/regalloc_x86.c src/strbuf.c src/util.c src/vector.c src/ir_dump.c src/ir_builder.c src/ast_dump.c src/label.c \
            src/preproc_expand.c src/preproc_table.c src/preproc_expr.c src/preproc_cond.c src/preproc_file.c \
            src/preproc_directives.c src/preproc_file_io.c src/preproc_include.c src/preproc_includes.c src/preproc_path.c
@@ -240,6 +240,9 @@ src/codegen_arith_float.o: src/codegen_arith_float.c $(HDR)
 
 src/codegen_complex.o: src/codegen_complex.c $(HDR)
 	$(CC) $(CFLAGS) $(OPTFLAGS) -Iinclude -c src/codegen_complex.c -o src/codegen_complex.o
+
+src/codegen_x86.o: src/codegen_x86.c $(HDR)
+	$(CC) $(CFLAGS) $(OPTFLAGS) -Iinclude -c src/codegen_x86.c -o src/codegen_x86.o
 
 
 src/codegen_branch.o: src/codegen_branch.c $(HDR)
