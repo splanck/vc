@@ -52,6 +52,7 @@ static char *parse_ident(expr_ctx_t *ctx)
 }
 
 static int parse_expr(expr_ctx_t *ctx);
+static int parse_conditional(expr_ctx_t *ctx);
 
 /*
  * Parse a primary expression: literals, parentheses or defined().
@@ -298,16 +299,33 @@ static int parse_or(expr_ctx_t *ctx)
     return val;
 }
 
+/* Conditional operator */
+static int parse_conditional(expr_ctx_t *ctx)
+{
+    int val = parse_or(ctx);
+    skip_ws(ctx);
+    if (*ctx->s == '?') {
+        ctx->s++;
+        int then_val = parse_conditional(ctx);
+        skip_ws(ctx);
+        if (*ctx->s == ':')
+            ctx->s++;
+        int else_val = parse_conditional(ctx);
+        val = val ? then_val : else_val;
+    }
+    return val;
+}
+
 /* Entry point of the recursive descent parser */
 static int parse_expr(expr_ctx_t *ctx)
 {
-    return parse_or(ctx) != 0;
+    return parse_conditional(ctx);
 }
 
 /* Public wrapper used by the preprocessor to evaluate expressions */
 int eval_expr(const char *s, vector_t *macros)
 {
     expr_ctx_t ctx = { s, macros };
-    return parse_expr(&ctx);
+    return parse_expr(&ctx) != 0;
 }
 

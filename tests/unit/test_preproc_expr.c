@@ -37,6 +37,8 @@ static void test_features_expr(void)
     ASSERT(eval_expr("defined FOO", &macros) == 0);
     ASSERT(eval_expr("(11 << 16) + 1 >= (10 << 16) + 1", &macros));
     ASSERT(eval_expr("199309L >= 2 || 0", &macros));
+    ASSERT(eval_expr("1 ? 2 : 3", &macros));
+    ASSERT(eval_expr("0 ? 2 : 3", &macros));
 
     vector_free(&macros);
 }
