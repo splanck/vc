@@ -83,14 +83,21 @@ static void allocate_location(ir_instr_t *ins, int *free_regs, int *free_count,
 /*
  * Populate `ra` with locations for every value defined in `ir`.
  *
- * The allocator performs a linear pass over the IR instructions.
- * When a new value is defined a register is taken from the free
- * pool if available; otherwise a new stack slot is allocated.  As
- * soon as the current instruction index matches the pre-computed
- * last-use index of a value its register is returned to the pool
- * for reuse by later instructions.  This strategy ensures that
- * register pressure remains low while avoiding complex live range
- * analysis.
+ * Lifetimes are determined by `compute_last_use` which walks the IR once and
+ * records the index of the final instruction that touches each value.  During
+ * allocation this table is consulted so that when the scan reaches a value's
+ * last use its register can immediately be freed.
+ *
+ * The free register pool is maintained as a simple stack.  All allocatable
+ * registers are pushed in descending order and popped whenever a new value is
+ * defined.  When a value dies its register is pushed back for reuse.  The
+ * optional return register is skipped when necessary so the scratch register is
+ * always available.
+ *
+ * If the stack runs out, new values are spilled to sequential stack slots.
+ * Each slot increments `ra->stack_slots` and is encoded as a negative number in
+ * `ra->loc` (-(slot + 1)).  Stack slots persist for the duration of the scan
+ * but their contents may be reloaded by later passes.
  */
 void regalloc_run(ir_builder_t *ir, regalloc_t *ra)
 {
