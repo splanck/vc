@@ -19,9 +19,13 @@
 
 
 /* Helper prototypes */
+static void init_param_vectors(vector_t *names_v, vector_t *types_v,
+                               vector_t *sizes_v, vector_t *restrict_v,
+                               vector_t *tags_v);
 static void cleanup_param_vectors(vector_t *names_v, vector_t *types_v,
                                   vector_t *sizes_v, vector_t *restrict_v,
                                   vector_t *tags_v);
+static int validate_param_info(size_t count, int is_variadic);
 static int parse_param_decl(parser_t *p, symtable_t *symtab,
                             vector_t *names_v, vector_t *types_v,
                             vector_t *sizes_v, vector_t *tags_v,
@@ -221,6 +225,26 @@ void parser_print_error(parser_t *p, const token_type_t *expected,
     error_print(msg);
 }
 
+/* Initialize parameter vectors */
+static void init_param_vectors(vector_t *names_v, vector_t *types_v,
+                               vector_t *sizes_v, vector_t *restrict_v,
+                               vector_t *tags_v)
+{
+    vector_init(names_v, sizeof(char *));
+    vector_init(types_v, sizeof(type_kind_t));
+    vector_init(sizes_v, sizeof(size_t));
+    vector_init(restrict_v, sizeof(int));
+    vector_init(tags_v, sizeof(char *));
+}
+
+/* Validate parameter count and variadic usage */
+static int validate_param_info(size_t count, int is_variadic)
+{
+    if (is_variadic && count == 0)
+        return 0;
+    return 1;
+}
+
 /* Free parameter vectors along with allocated tags */
 static void cleanup_param_vectors(vector_t *names_v, vector_t *types_v,
                                   vector_t *sizes_v, vector_t *restrict_v,
@@ -296,12 +320,11 @@ static int parse_param_list(parser_t *p, symtable_t *symtab,
                             int **restrict_flags,
                             size_t *count, int *is_variadic)
 {
+    if (!match(p, TOK_LPAREN))
+        return 0;
+
     vector_t names_v, types_v, sizes_v, restrict_v, tags_v;
-    vector_init(&names_v, sizeof(char *));
-    vector_init(&types_v, sizeof(type_kind_t));
-    vector_init(&sizes_v, sizeof(size_t));
-    vector_init(&restrict_v, sizeof(int));
-    vector_init(&tags_v, sizeof(char *));
+    init_param_vectors(&names_v, &types_v, &sizes_v, &restrict_v, &tags_v);
     *is_variadic = 0;
 
     if (!match(p, TOK_RPAREN)) {
@@ -322,6 +345,12 @@ static int parse_param_list(parser_t *p, symtable_t *symtab,
                                  &sizes_v, &restrict_v, &tags_v);
             return 0;
         }
+    }
+
+    if (!validate_param_info(names_v.count, *is_variadic)) {
+        cleanup_param_vectors(&names_v, &types_v,
+                             &sizes_v, &restrict_v, &tags_v);
+        return 0;
     }
 
     *names = (char **)names_v.data;
@@ -390,9 +419,6 @@ func_t *parser_parse_func(parser_t *p, symtable_t *symtab,
         return NULL;
     p->pos++;
     char *name = tok->lexeme;
-
-    if (!match(p, TOK_LPAREN))
-        return NULL;
 
     char **param_names = NULL;
     type_kind_t *param_types = NULL;
