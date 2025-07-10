@@ -7,7 +7,8 @@ BIN = vc
 CORE_SRC = src/main.c src/compile.c src/compile_stage.c src/compile_link.c src/compile_tokenize.c src/compile_parse.c src/compile_output.c src/startup.c src/command.c src/cli.c src/cli_env.c src/cli_opts.c src/lexer.c src/lexer_ident.c src/lexer_scan_numeric.c src/ast_expr.c src/ast_stmt.c src/ast_clone.c src/parser_core.c src/parser_toplevel.c src/parser_toplevel_func.c src/parser_toplevel_var.c src/symtable_core.c src/symtable_globals.c src/symtable_struct.c src/parser_expr.c src/parser_expr_primary.c src/parser_expr_binary.c src/parser_expr_ops.c src/parser_expr_literal.c src/parser_init.c \
            src/parser_decl_var.c src/parser_decl_struct.c src/parser_decl_enum.c \
            src/parser_flow.c src/parser_stmt.c src/parser_types.c \
-           src/semantic_expr.c src/semantic_arith.c src/semantic_mem.c src/semantic_call.c \
+           src/semantic_expr.c src/semantic_expr_const.c src/semantic_expr_cast.c \
+           src/semantic_arith.c src/semantic_mem.c src/semantic_call.c \
            src/semantic_loops.c src/semantic_control.c src/semantic_init.c src/semantic_var.c src/semantic_stmt.c src/semantic_inline.c src/semantic_global.c src/consteval.c src/error.c src/ir_core.c src/ir_const.c src/ir_memory.c src/ir_control.c src/ir_global.c \
            src/codegen.c src/codegen_mem.c src/codegen_loadstore.c src/codegen_arith_int.c src/codegen_arith_float.c src/codegen_branch.c \
            src/codegen_float.c src/codegen_complex.c \
@@ -156,6 +157,12 @@ src/parser_types.o: src/parser_types.c $(HDR)
 
 src/semantic_expr.o: src/semantic_expr.c $(HDR)
 	$(CC) $(CFLAGS) $(OPTFLAGS) -Iinclude -c src/semantic_expr.c -o src/semantic_expr.o
+
+src/semantic_expr_const.o: src/semantic_expr_const.c $(HDR)
+	$(CC) $(CFLAGS) $(OPTFLAGS) -Iinclude -c src/semantic_expr_const.c -o src/semantic_expr_const.o
+	
+src/semantic_expr_cast.o: src/semantic_expr_cast.c $(HDR)
+	$(CC) $(CFLAGS) $(OPTFLAGS) -Iinclude -c src/semantic_expr_cast.c -o src/semantic_expr_cast.o
 
 src/semantic_arith.o: src/semantic_arith.c $(HDR)
 	$(CC) $(CFLAGS) $(OPTFLAGS) -Iinclude -c src/semantic_arith.c -o src/semantic_arith.o

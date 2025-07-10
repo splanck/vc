@@ -22,84 +22,22 @@
 #include <limits.h>
 #include <errno.h>
 
-/*
- * Validate a numeric literal and emit a constant IR value.  The returned
- * type depends on the literal's size.
- */
-static type_kind_t check_number_expr(expr_t *expr, symtable_t *vars,
-                                     symtable_t *funcs, ir_builder_t *ir,
-                                     ir_value_t *out)
-{
-    (void)vars; (void)funcs;
-    errno = 0;
-    long long val = strtoll(expr->number.value, NULL, 0);
-    if (errno != 0) {
-        error_set(expr->line, expr->column, error_current_file,
-                  error_current_function);
-        if (out)
-            *out = (ir_value_t){0};
-        return TYPE_UNKNOWN;
-    }
-    if (out)
-        *out = ir_build_const(ir, val);
-    if (expr->number.long_count == 2)
-        return expr->number.is_unsigned ? TYPE_ULLONG : TYPE_LLONG;
-    if (expr->number.long_count == 1)
-        return expr->number.is_unsigned ? TYPE_ULONG : TYPE_LONG;
-    if (expr->number.is_unsigned)
-        return TYPE_UINT;
-    if (val > INT_MAX || val < INT_MIN)
-        return TYPE_LLONG;
-    return TYPE_INT;
-}
+type_kind_t check_number_expr(expr_t *expr, symtable_t *vars,
+                              symtable_t *funcs, ir_builder_t *ir,
+                              ir_value_t *out);
+type_kind_t check_string_expr(expr_t *expr, symtable_t *vars,
+                              symtable_t *funcs, ir_builder_t *ir,
+                              ir_value_t *out);
+type_kind_t check_char_expr(expr_t *expr, symtable_t *vars,
+                            symtable_t *funcs, ir_builder_t *ir,
+                            ir_value_t *out);
+type_kind_t check_complex_literal(expr_t *expr, symtable_t *vars,
+                                  symtable_t *funcs, ir_builder_t *ir,
+                                  ir_value_t *out);
+type_kind_t check_cast_expr(expr_t *expr, symtable_t *vars,
+                            symtable_t *funcs, ir_builder_t *ir,
+                            ir_value_t *out);
 
-/*
- * Validate a string literal and build its constant representation in the IR.
- * The resulting value has pointer type.
- */
-static type_kind_t check_string_expr(expr_t *expr, symtable_t *vars,
-                                     symtable_t *funcs, ir_builder_t *ir,
-                                     ir_value_t *out)
-{
-    (void)vars; (void)funcs;
-    /* Adjacent string tokens are merged during parsing so a single
-     * constant can be emitted here. */
-    const char *text = expr->string.value;
-    if (out) {
-        if (expr->string.is_wide)
-            *out = ir_build_wstring(ir, text);
-        else
-            *out = ir_build_string(ir, text);
-    }
-    return TYPE_PTR;
-}
-
-/*
- * Validate a character literal and emit a constant integer IR value.
- */
-static type_kind_t check_char_expr(expr_t *expr, symtable_t *vars,
-                                   symtable_t *funcs, ir_builder_t *ir,
-                                   ir_value_t *out)
-{
-    (void)vars; (void)funcs;
-    if (out)
-        *out = ir_build_const(ir, (int)expr->ch.value);
-    return expr->ch.is_wide ? TYPE_INT : TYPE_CHAR;
-}
-
-/*
- * Validate a complex literal and emit a constant IR value.
- */
-static type_kind_t check_complex_literal(expr_t *expr, symtable_t *vars,
-                                         symtable_t *funcs, ir_builder_t *ir,
-                                         ir_value_t *out)
-{
-    (void)vars; (void)funcs;
-    if (out)
-        *out = ir_build_cplx_const(ir, expr->complex_lit.real,
-                                   expr->complex_lit.imag);
-    return TYPE_DOUBLE_COMPLEX;
-}
 
 /*
  * Resolve an identifier, ensuring it exists and loading its value or address
@@ -287,34 +225,6 @@ type_kind_t vt = check_expr(expr->assign.value, vars, funcs, ir, &val);
  * emitted for the conversion itself as primitive types share the same
  * representation.
  */
-static type_kind_t check_cast_expr(expr_t *expr, symtable_t *vars,
-                                   symtable_t *funcs, ir_builder_t *ir,
-                                   ir_value_t *out)
-{
-    ir_value_t val;
-    type_kind_t src = check_expr(expr->cast.expr, vars, funcs, ir, &val);
-    type_kind_t dst = expr->cast.type;
-
-    if (src == TYPE_UNKNOWN)
-        return TYPE_UNKNOWN;
-
-    if (src == dst ||
-        ((is_intlike(src) || src == TYPE_PTR) &&
-         (is_intlike(dst) || dst == TYPE_PTR)) ||
-        (is_floatlike(src) && (is_floatlike(dst) || is_intlike(dst))) ||
-        (is_floatlike(dst) && is_intlike(src)) ||
-        (is_complexlike(src) && src == dst)) {
-        if (out)
-            *out = val;
-        return dst;
-    }
-
-    error_set(expr->line, expr->column, error_current_file,
-              error_current_function);
-    if (out)
-        *out = (ir_value_t){0};
-    return TYPE_UNKNOWN;
-}
 
 /*
  * Determine the byte size of a type operand of sizeof().
