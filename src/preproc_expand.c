@@ -20,30 +20,11 @@
 #include "util.h"
 #include "vector.h"
 #include "strbuf.h"
+#include "preproc_args.h"
+#include "preproc_builtin.h"
 
 #define MAX_MACRO_DEPTH 100
 
-/* current expansion location for builtin macros */
-static const char *builtin_file = "";
-static size_t builtin_line = 0;
-static size_t builtin_column = 1;
-static const char *builtin_func = NULL;
-
-static const char build_date[] = __DATE__;
-static const char build_time[] = __TIME__;
-
-void preproc_set_location(const char *file, size_t line, size_t column)
-{
-    if (file)
-        builtin_file = file;
-    builtin_line = line;
-    builtin_column = column;
-}
-
-void preproc_set_function(const char *name)
-{
-    builtin_func = name;
-}
 /*
  * Remove trailing spaces or tabs from a string buffer.
  * Used when concatenating macro tokens with the ## operator.
@@ -200,94 +181,6 @@ static char *expand_params(const char *value, const vector_t *params, char **arg
     return out;
 }
 
-/* Duplicate an argument substring trimming surrounding whitespace. */
-static char *dup_arg_segment(const char *line, size_t start, size_t end)
-{
-    while (start < end && (line[start] == ' ' || line[start] == '\t'))
-        start++;
-    while (end > start && (line[end - 1] == ' ' || line[end - 1] == '\t'))
-        end--;
-    return vc_strndup(line + start, end - start);
-}
-
-/* Scan for the next argument delimiter updating nesting level.
- * On success sets *out_end to the delimiter index and returns the
- * delimiter character ',' or ')'.  Returns 0 on unmatched parentheses. */
-static char find_arg_delim(const char *line, size_t *p, int *nest,
-                           size_t *out_end)
-{
-    for (;; (*p)++) {
-        char c = line[*p];
-        if (c == '\0')
-            return 0;
-        if (c == '(') {
-            (*nest)++;
-            continue;
-        }
-        if (c == ')') {
-            if (*nest > 0) {
-                (*nest)--;
-                continue;
-            }
-            *out_end = *p;
-            return ')';
-        }
-        if (c == ',' && *nest == 0) {
-            *out_end = *p;
-            return ',';
-        }
-    }
-}
-
-/* Parse the argument list for a parameterized macro call.
- *
- * "pos" should point to the character immediately following the macro
- * name.  On success the parsed arguments are stored in "out" and the
- * index after the closing ')' is written to *pos.  Returns non-zero when
- * a well formed argument list was found. */
-static int parse_macro_args(const char *line, size_t *pos, vector_t *out)
-{
-    size_t p = *pos;
-    vector_init(out, sizeof(char *));
-    while (line[p] == ' ' || line[p] == '\t')
-        p++;
-    if (line[p] != '(')
-        return 0;
-    p++; /* skip '(' */
-    while (line[p] == ' ' || line[p] == '\t')
-        p++;
-    if (line[p] == ')') {
-        *pos = p + 1;
-        return 1; /* no arguments */
-    }
-
-    size_t arg_start = p;
-    int nest = 0;
-    for (;;) {
-        size_t end;
-        char delim = find_arg_delim(line, &p, &nest, &end);
-        if (!delim)
-            break;
-        char *dup = dup_arg_segment(line, arg_start, end);
-        if (!dup || !vector_push(out, &dup)) {
-            free(dup);
-            goto fail;
-        }
-        if (delim == ')') {
-            *pos = end + 1;
-            return 1;
-        }
-        p++; /* skip ',' */
-        while (line[p] == ' ' || line[p] == '\t')
-            p++;
-        arg_start = p;
-    }
-fail:
-    for (size_t i = 0; i < out->count; i++)
-        free(((char **)out->data)[i]);
-    vector_free(out);
-    return 0;
-}
 
 /* Expand a macro invocation and append the result to "out". */
 static int expand_macro_call(macro_t *m, char **args, vector_t *macros,
@@ -298,10 +191,10 @@ static int expand_macro_call(macro_t *m, char **args, vector_t *macros,
     int ok;
     if (m->params.count || m->variadic) {
         char *body = expand_params(m->value, &m->params, args, m->variadic);
-        ok = expand_line(body, macros, &tmp, builtin_column, depth);
+        ok = expand_line(body, macros, &tmp, preproc_get_column(), depth);
         free(body);
     } else {
-        ok = expand_line(m->value, macros, &tmp, builtin_column, depth);
+        ok = expand_line(m->value, macros, &tmp, preproc_get_column(), depth);
     }
     if (ok)
         strbuf_append(out, tmp.data ? tmp.data : "");
@@ -316,40 +209,6 @@ static void emit_plain_char(const char *line, size_t *pos, strbuf_t *out)
     (*pos)++;
 }
 
-/* Build an argv array for variadic parameters */
-static int gather_varargs(vector_t *args, size_t fixed,
-                          char ***out_ap, char **out_va)
-{
-    strbuf_t sb;
-    strbuf_init(&sb);
-    for (size_t i = fixed; i < args->count; i++) {
-        if (i > fixed)
-            strbuf_append(&sb, ",");
-        strbuf_append(&sb, ((char **)args->data)[i]);
-    }
-    char *va = vc_strdup(sb.data ? sb.data : "");
-    strbuf_free(&sb);
-    char **ap = malloc((fixed + 1) * sizeof(char *));
-    if (!ap) {
-        vc_oom();
-        free(va);
-        return 0;
-    }
-    for (size_t i = 0; i < fixed; i++)
-        ap[i] = ((char **)args->data)[i];
-    ap[fixed] = va;
-    *out_ap = ap;
-    *out_va = va;
-    return 1;
-}
-
-/* Free a vector of argument strings */
-static void free_arg_vector(vector_t *v)
-{
-    for (size_t i = 0; i < v->count; i++)
-        free(((char **)v->data)[i]);
-    vector_free(v);
-}
 
 /* Return the macro whose name matches "name" (len bytes) */
 static macro_t *find_macro(vector_t *macros, const char *name, size_t len)
@@ -367,56 +226,6 @@ static macro_t *find_macro(vector_t *macros, const char *name, size_t len)
  * On success the resulting text is appended to "out" and *pos is
  * updated to the index following the macro call.  Returns non-zero
  * when a macro expansion occurred.
- */
-/* Expand builtin macros such as __FILE__ and __LINE__.  "name" is the
- * identifier text starting at line[*pos] with length "len" and "end"
- * is the index after the identifier.  On success *pos is updated to
- * "end" and non-zero is returned. */
-static int handle_builtin_macro(const char *name, size_t len, size_t end,
-                                size_t column, strbuf_t *out, size_t *pos)
-{
-    if (len == 8) {
-        if (strncmp(name, "__FILE__", 8) == 0) {
-            preproc_set_location(NULL, builtin_line, column);
-            strbuf_appendf(out, "\"%s\"", builtin_file);
-            *pos = end;
-            return 1;
-        } else if (strncmp(name, "__LINE__", 8) == 0) {
-            preproc_set_location(NULL, builtin_line, column);
-            strbuf_appendf(out, "%zu", builtin_line);
-            *pos = end;
-            return 1;
-        } else if (strncmp(name, "__DATE__", 8) == 0) {
-            preproc_set_location(NULL, builtin_line, column);
-            strbuf_appendf(out, "\"%s\"", build_date);
-            *pos = end;
-            return 1;
-        } else if (strncmp(name, "__TIME__", 8) == 0) {
-            preproc_set_location(NULL, builtin_line, column);
-            strbuf_appendf(out, "\"%s\"", build_time);
-            *pos = end;
-            return 1;
-        } else if (strncmp(name, "__STDC__", 8) == 0) {
-            preproc_set_location(NULL, builtin_line, column);
-            strbuf_append(out, "1");
-            *pos = end;
-            return 1;
-        } else if (strncmp(name, "__func__", 8) == 0) {
-            if (builtin_func) {
-                preproc_set_location(NULL, builtin_line, column);
-                strbuf_appendf(out, "\"%s\"", builtin_func);
-                *pos = end;
-                return 1;
-            }
-        }
-    } else if (len == 16 && strncmp(name, "__STDC_VERSION__", 16) == 0) {
-        preproc_set_location(NULL, builtin_line, column);
-        strbuf_append(out, "199901L");
-        *pos = end;
-        return 1;
-    }
-    return 0;
-}
 
 /* Expand a user-defined macro.  "pos" should point to the index right
  * after the macro name.  When expansion succeeds *pos is updated to the
@@ -489,7 +298,7 @@ static int dispatch_macro(const char *line, size_t start, size_t end,
     if (!m)
         return 0;
 
-    preproc_set_location(NULL, builtin_line, column);
+    preproc_set_location(NULL, preproc_get_line(), column);
     size_t p = end;
     r = expand_user_macro(m, line, &p, macros, out, depth);
     if (r > 0)
