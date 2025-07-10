@@ -64,6 +64,15 @@ static const char *loc_str(char buf[32], regalloc_t *ra, int id, int x64,
     return buf;
 }
 
+/*
+ * Load a value from memory into the destination location (IR_LOAD).
+ *
+ * Register allocation expectations:
+ *   - `dest` may reside in a register or a stack slot as determined by `ra`.
+ *     When spilled, SCRATCH_REG is used and the result is written back.
+ *   - `name` is the memory operand to load from and does not require a
+ *     register.
+ */
 void emit_load(strbuf_t *sb, ir_instr_t *ins,
                regalloc_t *ra, int x64,
                asm_syntax_t syntax)
@@ -78,6 +87,14 @@ void emit_load(strbuf_t *sb, ir_instr_t *ins,
     emit_move_with_spill(sb, sfx, ins->name, dest, slot, spill, syntax);
 }
 
+/*
+ * Load a value via a pointer operand (IR_LOAD_PTR).
+ *
+ * Register allocation expectations:
+ *   - `src1` holds the address to load from; the allocator may place it in
+ *     a register or stack slot.
+ *   - `dest` follows the same rules as for emit_load.
+ */
 void emit_load_ptr(strbuf_t *sb, ir_instr_t *ins,
                    regalloc_t *ra, int x64,
                    asm_syntax_t syntax)
@@ -100,6 +117,13 @@ void emit_load_ptr(strbuf_t *sb, ir_instr_t *ins,
     emit_move_with_spill(sb, sfx, srcbuf, dest, slot, spill, syntax);
 }
 
+/*
+ * Load from an indexed location (IR_LOAD_IDX).
+ *
+ * Register allocation expectations:
+ *   - `src1` provides the index value.
+ *   - `dest` is handled as in emit_load.
+ */
 void emit_load_idx(strbuf_t *sb, ir_instr_t *ins,
                    regalloc_t *ra, int x64,
                    asm_syntax_t syntax)
