@@ -61,8 +61,9 @@ static int *compute_last_use(ir_builder_t *ir, size_t max_id)
  * destination value of `ins` only receives a location if it has a valid id
  * and none was previously assigned.
  */
-static void allocate_location(ir_instr_t *ins, int *free_regs, int *free_count,
-                              regalloc_t *ra, int ret_reg_active)
+static void assign_destination_location(ir_instr_t *ins, int *free_regs,
+                                        int *free_count, regalloc_t *ra,
+                                        int ret_reg_active)
 {
     int id = ins->dest;
     if (id <= 0 || ra->loc[id] != -1)
@@ -78,6 +79,41 @@ static void allocate_location(ir_instr_t *ins, int *free_regs, int *free_count,
     } else {
         ra->loc[id] = -(++ra->stack_slots);
     }
+}
+
+/*
+ * Initialize the stack of available registers.
+ */
+static void setup_free_registers(int *free_regs, int *free_count,
+                                 int ret_reg_active)
+{
+    *free_count = 0;
+    for (int i = 0; i < NUM_ALLOC_REGS; i++) {
+        int r = NUM_ALLOC_REGS - 1 - i; /* allocate from high to low */
+        if (ret_reg_active && r == REGALLOC_RET_REG)
+            continue;
+        free_regs[(*free_count)++] = r;
+    }
+}
+
+/*
+ * Release registers whose value will not be needed again.
+ */
+static void release_unused_regs(ir_instr_t *ins, int idx, int *last,
+                                size_t max_id, regalloc_t *ra,
+                                int *free_regs, int *free_count)
+{
+    if (ins->src1 > 0 && (size_t)ins->src1 < max_id &&
+        ra->loc[ins->src1] >= 0 && last[ins->src1] == idx)
+        free_regs[(*free_count)++] = ra->loc[ins->src1];
+
+    if (ins->src2 > 0 && (size_t)ins->src2 < max_id &&
+        ra->loc[ins->src2] >= 0 && last[ins->src2] == idx)
+        free_regs[(*free_count)++] = ra->loc[ins->src2];
+
+    if (ins->dest > 0 && (size_t)ins->dest < max_id &&
+        ra->loc[ins->dest] >= 0 && last[ins->dest] == idx)
+        free_regs[(*free_count)++] = ra->loc[ins->dest];
 }
 
 /*
@@ -133,30 +169,17 @@ void regalloc_run(ir_builder_t *ir, regalloc_t *ra)
 
     int free_regs[NUM_ALLOC_REGS];
     int free_count = 0;
-    for (int i = 0; i < NUM_ALLOC_REGS; i++) {
-        int r = NUM_ALLOC_REGS - 1 - i; /* allocate from high to low */
-        if (ret_reg_active && r == REGALLOC_RET_REG)
-            continue;
-        free_regs[free_count++] = r;
-    }
+    setup_free_registers(free_regs, &free_count, ret_reg_active);
 
     int idx = 0;
     for (ir_instr_t *ins = ir->head; ins; ins = ins->next, idx++) {
         /* assign the destination a register or stack slot */
-        allocate_location(ins, free_regs, &free_count, ra, ret_reg_active);
+        assign_destination_location(ins, free_regs, &free_count, ra,
+                                    ret_reg_active);
 
         /* release registers whose value will not be needed again */
-        if (ins->src1 > 0 && (size_t)ins->src1 < max_id &&
-            ra->loc[ins->src1] >= 0 && last[ins->src1] == idx)
-            free_regs[free_count++] = ra->loc[ins->src1];
-
-        if (ins->src2 > 0 && (size_t)ins->src2 < max_id &&
-            ra->loc[ins->src2] >= 0 && last[ins->src2] == idx)
-            free_regs[free_count++] = ra->loc[ins->src2];
-
-        if (ins->dest > 0 && (size_t)ins->dest < max_id &&
-            ra->loc[ins->dest] >= 0 && last[ins->dest] == idx)
-            free_regs[free_count++] = ra->loc[ins->dest];
+        release_unused_regs(ins, idx, last, max_id, ra, free_regs,
+                           &free_count);
     }
     free(last);
 }
