@@ -250,6 +250,44 @@ static void free_macro_args(char **ap, char *va, int variadic)
 }
 
 /*
+ * Parse the arguments for macro M starting at *pos in LINE.
+ *
+ * When successful the argument array and optional variadic string are
+ * returned via *out_ap and *out_va and the argument vector is stored
+ * in *out_args for later cleanup.  *pos is updated to the index after
+ * the closing parenthesis.  Returns 1 on success, 0 when the call is
+ * malformed and -1 on failure.
+ */
+static int parse_macro_arguments(macro_t *m, const char *line, size_t *pos,
+                                 char ***out_ap, char **out_va,
+                                 vector_t *out_args)
+{
+    if (!parse_macro_arg_vector(line, pos, out_args, m->params.count,
+                                m->variadic))
+        return 0;
+
+    if (!handle_varargs(out_args, m->params.count, m->variadic,
+                        out_ap, out_va)) {
+        free_arg_vector(out_args);
+        return -1;
+    }
+    return 1;
+}
+
+/*
+ * Expand the body of macro M using the provided argument array.
+ * The result is appended to OUT.  Returns 1 on success or -1 on
+ * expansion failure.
+ */
+static int invoke_macro_body(macro_t *m, char **ap, vector_t *macros,
+                             strbuf_t *out, int depth)
+{
+    if (!expand_macro_call(m, ap, macros, out, depth + 1))
+        return -1;
+    return 1;
+}
+
+/*
  * Attempt to parse and expand a macro invocation starting at *pos.
  * On success the resulting text is appended to "out" and *pos is
  * updated to the index following the macro call.  Returns non-zero
@@ -263,31 +301,32 @@ static void free_macro_args(char **ap, char *va, int variadic)
 static int expand_user_macro(macro_t *m, const char *line, size_t *pos,
                              vector_t *macros, strbuf_t *out, int depth)
 {
-    size_t p = *pos;
+    size_t p = *pos;        /* position just after the macro name */
+
+    /* Parse the invocation arguments when the macro expects them. */
+    vector_t args;
+    char **ap = NULL;
+    char *va = NULL;
+    int r = 1;
     if (m->params.count || m->variadic) {
-        vector_t args;
-        if (!parse_macro_arguments(line, &p, &args, m->params.count,
-                                   m->variadic))
-            return 0;
-        char **ap;
-        char *va;
-        if (!handle_varargs(&args, m->params.count, m->variadic,
-                            &ap, &va)) {
-            free_arg_vector(&args);
-            return -1;
-        }
-        if (!expand_macro_call(m, ap, macros, out, depth + 1)) {
+        r = parse_macro_arguments(m, line, &p, &ap, &va, &args);
+        if (r <= 0)
+            return r;
+    }
+
+    /* Invoke the macro body once arguments have been collected. */
+    if (invoke_macro_body(m, ap, macros, out, depth) < 0) {
+        if (m->params.count || m->variadic) {
             free_macro_args(ap, va, m->variadic);
             free_arg_vector(&args);
-            return -1;
         }
+        return -1;
+    }
+
+    if (m->params.count || m->variadic) {
         free_macro_args(ap, va, m->variadic);
         free_arg_vector(&args);
-        *pos = p;
-        return 1;
     }
-    if (!expand_macro_call(m, NULL, macros, out, depth + 1))
-        return -1;
     *pos = p;
     return 1;
 }
