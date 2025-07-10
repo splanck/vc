@@ -149,6 +149,16 @@ static type_kind_t result_cond_type(type_kind_t tt, type_kind_t ft)
     return TYPE_INT;
 }
 
+/* Check basic type compatibility for assignments. */
+static int types_compatible(type_kind_t lhs_type, type_kind_t rhs_type)
+{
+    return ((is_intlike(lhs_type) && is_intlike(rhs_type)) ||
+            (is_floatlike(lhs_type) &&
+             (is_floatlike(rhs_type) || is_intlike(rhs_type))) ||
+            (is_complexlike(lhs_type) && rhs_type == lhs_type) ||
+            lhs_type == rhs_type);
+}
+
 /*
  * Validate a ternary conditional expression.  Both branches are checked and
  * IR is emitted to select the appropriate value based on the condition.
@@ -176,7 +186,12 @@ static type_kind_t check_cond_expr(expr_t *expr, symtable_t *vars,
 
 /*
  * Validate an assignment to a variable and generate the store operation in
- * the IR.  Type compatibility between the target and value is enforced.
+ * the IR.  Assignments are permitted when:
+ *   - both types are integral;
+ *   - the destination is floating point and the source is either floating
+ *     point or integral;
+ *   - both types are the same complex type;
+ *   - or the types match exactly (used for pointers and aggregates).
  */
 static type_kind_t check_assign_expr(expr_t *expr, symtable_t *vars,
                                      symtable_t *funcs, ir_builder_t *ir,
@@ -198,11 +213,8 @@ static type_kind_t check_assign_expr(expr_t *expr, symtable_t *vars,
         return TYPE_UNKNOWN;
     }
 
-type_kind_t vt = check_expr(expr->assign.value, vars, funcs, ir, &val);
-    if (((is_intlike(sym->type) && is_intlike(vt)) ||
-         (is_floatlike(sym->type) && (is_floatlike(vt) || is_intlike(vt))) ||
-         (is_complexlike(sym->type) && vt == sym->type)) ||
-        vt == sym->type) {
+    type_kind_t vt = check_expr(expr->assign.value, vars, funcs, ir, &val);
+    if (types_compatible(sym->type, vt)) {
         if (sym->param_index >= 0)
             ir_build_store_param(ir, sym->param_index, val);
         else if (sym->is_volatile)
