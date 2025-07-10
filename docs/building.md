@@ -35,7 +35,9 @@ On Linux the compiler also searches `/usr/include/<multiarch>` for headers.
 The multiarch directory is determined at build time using `cc -print-multiarch`
 and defaults to `x86_64-linux-gnu` when detection fails. The GCC internal
 include directory reported by `cc -print-file-name=include` is also added so
-headers like `stddef.h` resolve correctly.
+headers like `stddef.h` resolve correctly. The Makefile removes the trailing
+newline from this path using `tr -d '\n'` to ensure `src/preproc_path.c`
+receives a clean directory string without whitespace.
 
 `vc` can generate either 32-bit or 64-bit x86 assembly. Use the
 `--x86-64` flag when invoking the compiler to enable 64-bit output. The
