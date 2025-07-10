@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include "codegen_float.h"
 #include "regalloc_x86.h"
+#include "codegen_x86.h"
 
 /* Helper functions duplicated from codegen_arith.c */
 static const char *reg_str(int reg, asm_syntax_t syntax)
@@ -34,6 +35,20 @@ static const char *loc_str_off(char buf[32], regalloc_t *ra, int id,
     else
         snprintf(buf, 32, "-%d(%s)", disp, x64 ? "%rbp" : "%ebp");
     return buf;
+}
+
+/* Emit an SSE2 move or operation with automatic syntax selection. */
+static void emit_movsd(strbuf_t *sb, const char *src, const char *dest,
+                       asm_syntax_t syntax)
+{
+    x86_emit_mov(sb, "sd", src, dest, syntax);
+}
+
+static void emit_op_sd(strbuf_t *sb, const char *op,
+                       const char *src, const char *dest,
+                       asm_syntax_t syntax)
+{
+    x86_emit_op(sb, op, "sd", src, dest, syntax);
 }
 
 /* Complex add/sub helper using SSE2. */
@@ -99,55 +114,23 @@ void emit_cplx_mul(strbuf_t *sb, ir_instr_t *ins, regalloc_t *ra,
     const char *x2 = fmt_reg(regalloc_xmm_name(r2), syntax);
     const char *x3 = fmt_reg(regalloc_xmm_name(r3), syntax);
 
-    if (syntax == ASM_INTEL) {
-        /* real part: (a*c - b*d) */
-        strbuf_appendf(sb, "    movsd %s, %s\n", x0,
-                       loc_str_off(a, ra, ins->src1, 0, x64, syntax));
-        strbuf_appendf(sb, "    movsd %s, %s\n", x1,
-                       loc_str_off(a, ra, ins->src1, 8, x64, syntax));
-        strbuf_appendf(sb, "    movsd %s, %s\n", x2,
-                       loc_str_off(c, ra, ins->src2, 0, x64, syntax));
-        strbuf_appendf(sb, "    movsd %s, %s\n", x3,
-                       loc_str_off(d, ra, ins->src2, 8, x64, syntax));
-        strbuf_appendf(sb, "    mulsd %s, %s\n", x2, x0);
-        strbuf_appendf(sb, "    mulsd %s, %s\n", x3, x1);
-        strbuf_appendf(sb, "    subsd %s, %s\n", x1, x0);
-        strbuf_appendf(sb, "    movsd %s, %s\n",
-                       loc_str_off(out, ra, ins->dest, 0, x64, syntax), x0);
-        /* imag part: (a*d + b*c) */
-        strbuf_appendf(sb, "    movsd %s, %s\n", x0,
-                       loc_str_off(a, ra, ins->src1, 0, x64, syntax));
-        strbuf_appendf(sb, "    mulsd %s, %s\n", x3, x0);
-        strbuf_appendf(sb, "    movsd %s, %s\n", x1,
-                       loc_str_off(a, ra, ins->src1, 8, x64, syntax));
-        strbuf_appendf(sb, "    mulsd %s, %s\n", x2, x1);
-        strbuf_appendf(sb, "    addsd %s, %s\n", x1, x0);
-        strbuf_appendf(sb, "    movsd %s, %s\n",
-                       loc_str_off(out, ra, ins->dest, 8, x64, syntax), x0);
-    } else {
-        strbuf_appendf(sb, "    movsd %s, %s\n",
-                       loc_str_off(a, ra, ins->src1, 0, x64, syntax), x0);
-        strbuf_appendf(sb, "    movsd %s, %s\n",
-                       loc_str_off(a, ra, ins->src1, 8, x64, syntax), x1);
-        strbuf_appendf(sb, "    movsd %s, %s\n",
-                       loc_str_off(c, ra, ins->src2, 0, x64, syntax), x2);
-        strbuf_appendf(sb, "    movsd %s, %s\n",
-                       loc_str_off(d, ra, ins->src2, 8, x64, syntax), x3);
-        strbuf_appendf(sb, "    mulsd %s, %s\n", x2, x0);
-        strbuf_appendf(sb, "    mulsd %s, %s\n", x3, x1);
-        strbuf_appendf(sb, "    subsd %s, %s\n", x1, x0);
-        strbuf_appendf(sb, "    movsd %s, %s\n", x0,
-                       loc_str_off(out, ra, ins->dest, 0, x64, syntax));
-        strbuf_appendf(sb, "    movsd %s, %s\n",
-                       loc_str_off(a, ra, ins->src1, 0, x64, syntax), x0);
-        strbuf_appendf(sb, "    mulsd %s, %s\n", x3, x0);
-        strbuf_appendf(sb, "    movsd %s, %s\n",
-                       loc_str_off(a, ra, ins->src1, 8, x64, syntax), x1);
-        strbuf_appendf(sb, "    mulsd %s, %s\n", x2, x1);
-        strbuf_appendf(sb, "    addsd %s, %s\n", x1, x0);
-        strbuf_appendf(sb, "    movsd %s, %s\n", x0,
-                       loc_str_off(out, ra, ins->dest, 8, x64, syntax));
-    }
+    /* real part: (a*c - b*d) */
+    emit_movsd(sb, loc_str_off(a, ra, ins->src1, 0, x64, syntax), x0, syntax);
+    emit_movsd(sb, loc_str_off(a, ra, ins->src1, 8, x64, syntax), x1, syntax);
+    emit_movsd(sb, loc_str_off(c, ra, ins->src2, 0, x64, syntax), x2, syntax);
+    emit_movsd(sb, loc_str_off(d, ra, ins->src2, 8, x64, syntax), x3, syntax);
+    emit_op_sd(sb, "mul", x2, x0, syntax);
+    emit_op_sd(sb, "mul", x3, x1, syntax);
+    emit_op_sd(sb, "sub", x1, x0, syntax);
+    emit_movsd(sb, x0, loc_str_off(out, ra, ins->dest, 0, x64, syntax), syntax);
+
+    /* imag part: (a*d + b*c) */
+    emit_movsd(sb, loc_str_off(a, ra, ins->src1, 0, x64, syntax), x0, syntax);
+    emit_op_sd(sb, "mul", x3, x0, syntax);
+    emit_movsd(sb, loc_str_off(a, ra, ins->src1, 8, x64, syntax), x1, syntax);
+    emit_op_sd(sb, "mul", x2, x1, syntax);
+    emit_op_sd(sb, "add", x1, x0, syntax);
+    emit_movsd(sb, x0, loc_str_off(out, ra, ins->dest, 8, x64, syntax), syntax);
     regalloc_xmm_release(r3);
     regalloc_xmm_release(r2);
     regalloc_xmm_release(r1);
@@ -170,80 +153,33 @@ void emit_cplx_div(strbuf_t *sb, ir_instr_t *ins, regalloc_t *ra,
     const char *x3 = fmt_reg(regalloc_xmm_name(r3), syntax);
     const char *x4 = fmt_reg(regalloc_xmm_name(r4), syntax);
 
-    if (syntax == ASM_INTEL) {
-        /* denominator c*c + d*d */
-        strbuf_appendf(sb, "    movsd %s, %s\n", x2,
-                       loc_str_off(c, ra, ins->src2, 0, x64, syntax));
-        strbuf_appendf(sb, "    movsd %s, %s\n", x3,
-                       loc_str_off(d, ra, ins->src2, 8, x64, syntax));
-        strbuf_appendf(sb, "    movsd %s, %s\n", x4, x2);
-        strbuf_appendf(sb, "    mulsd %s, %s\n", x2, x2);
-        strbuf_appendf(sb, "    mulsd %s, %s\n", x3, x3);
-        strbuf_appendf(sb, "    addsd %s, %s\n", x3, x2);
+    /* denominator c*c + d*d */
+    emit_movsd(sb, loc_str_off(c, ra, ins->src2, 0, x64, syntax), x2, syntax);
+    emit_movsd(sb, loc_str_off(d, ra, ins->src2, 8, x64, syntax), x3, syntax);
+    emit_movsd(sb, x2, x4, syntax);
+    emit_op_sd(sb, "mul", x2, x2, syntax);
+    emit_op_sd(sb, "mul", x3, x3, syntax);
+    emit_op_sd(sb, "add", x3, x2, syntax);
 
-        /* real part */
-        strbuf_appendf(sb, "    movsd %s, %s\n", x0,
-                       loc_str_off(a, ra, ins->src1, 0, x64, syntax));
-        strbuf_appendf(sb, "    mulsd %s, %s\n", x4, x0);
-        strbuf_appendf(sb, "    movsd %s, %s\n", x1,
-                       loc_str_off(a, ra, ins->src1, 8, x64, syntax));
-        strbuf_appendf(sb, "    movsd %s, %s\n", x3,
-                       loc_str_off(d, ra, ins->src2, 8, x64, syntax));
-        strbuf_appendf(sb, "    mulsd %s, %s\n", x3, x1);
-        strbuf_appendf(sb, "    addsd %s, %s\n", x1, x0);
-        strbuf_appendf(sb, "    divsd %s, %s\n", x2, x0);
-        strbuf_appendf(sb, "    movsd %s, %s\n",
-                       loc_str_off(out, ra, ins->dest, 0, x64, syntax), x0);
+    /* real part */
+    emit_movsd(sb, loc_str_off(a, ra, ins->src1, 0, x64, syntax), x0, syntax);
+    emit_op_sd(sb, "mul", x4, x0, syntax);
+    emit_movsd(sb, loc_str_off(a, ra, ins->src1, 8, x64, syntax), x1, syntax);
+    emit_movsd(sb, loc_str_off(d, ra, ins->src2, 8, x64, syntax), x3, syntax);
+    emit_op_sd(sb, "mul", x3, x1, syntax);
+    emit_op_sd(sb, "add", x1, x0, syntax);
+    emit_op_sd(sb, "div", x2, x0, syntax);
+    emit_movsd(sb, x0, loc_str_off(out, ra, ins->dest, 0, x64, syntax), syntax);
 
-        /* imag part */
-        strbuf_appendf(sb, "    movsd %s, %s\n", x0,
-                       loc_str_off(a, ra, ins->src1, 8, x64, syntax));
-        strbuf_appendf(sb, "    mulsd %s, %s\n", x4, x0);
-        strbuf_appendf(sb, "    movsd %s, %s\n", x1,
-                       loc_str_off(a, ra, ins->src1, 0, x64, syntax));
-        strbuf_appendf(sb, "    movsd %s, %s\n", x3,
-                       loc_str_off(d, ra, ins->src2, 8, x64, syntax));
-        strbuf_appendf(sb, "    mulsd %s, %s\n", x3, x1);
-        strbuf_appendf(sb, "    subsd %s, %s\n", x1, x0);
-        strbuf_appendf(sb, "    divsd %s, %s\n", x2, x0);
-        strbuf_appendf(sb, "    movsd %s, %s\n",
-                       loc_str_off(out, ra, ins->dest, 8, x64, syntax), x0);
-    } else {
-        strbuf_appendf(sb, "    movsd %s, %s\n",
-                       loc_str_off(c, ra, ins->src2, 0, x64, syntax), x2);
-        strbuf_appendf(sb, "    movsd %s, %s\n",
-                       loc_str_off(d, ra, ins->src2, 8, x64, syntax), x3);
-        strbuf_appendf(sb, "    movsd %s, %s\n", x2, x4);
-        strbuf_appendf(sb, "    mulsd %s, %s\n", x2, x2);
-        strbuf_appendf(sb, "    mulsd %s, %s\n", x3, x3);
-        strbuf_appendf(sb, "    addsd %s, %s\n", x3, x2);
-
-        strbuf_appendf(sb, "    movsd %s, %s\n",
-                       loc_str_off(a, ra, ins->src1, 0, x64, syntax), x0);
-        strbuf_appendf(sb, "    mulsd %s, %s\n", x4, x0);
-        strbuf_appendf(sb, "    movsd %s, %s\n",
-                       loc_str_off(a, ra, ins->src1, 8, x64, syntax), x1);
-        strbuf_appendf(sb, "    movsd %s, %s\n",
-                       loc_str_off(d, ra, ins->src2, 8, x64, syntax), x3);
-        strbuf_appendf(sb, "    mulsd %s, %s\n", x3, x1);
-        strbuf_appendf(sb, "    addsd %s, %s\n", x1, x0);
-        strbuf_appendf(sb, "    divsd %s, %s\n", x2, x0);
-        strbuf_appendf(sb, "    movsd %s, %s\n", x0,
-                       loc_str_off(out, ra, ins->dest, 0, x64, syntax));
-
-        strbuf_appendf(sb, "    movsd %s, %s\n",
-                       loc_str_off(a, ra, ins->src1, 8, x64, syntax), x0);
-        strbuf_appendf(sb, "    mulsd %s, %s\n", x4, x0);
-        strbuf_appendf(sb, "    movsd %s, %s\n",
-                       loc_str_off(a, ra, ins->src1, 0, x64, syntax), x1);
-        strbuf_appendf(sb, "    movsd %s, %s\n",
-                       loc_str_off(d, ra, ins->src2, 8, x64, syntax), x3);
-        strbuf_appendf(sb, "    mulsd %s, %s\n", x3, x1);
-        strbuf_appendf(sb, "    subsd %s, %s\n", x1, x0);
-        strbuf_appendf(sb, "    divsd %s, %s\n", x2, x0);
-        strbuf_appendf(sb, "    movsd %s, %s\n", x0,
-                       loc_str_off(out, ra, ins->dest, 8, x64, syntax));
-    }
+    /* imag part */
+    emit_movsd(sb, loc_str_off(a, ra, ins->src1, 8, x64, syntax), x0, syntax);
+    emit_op_sd(sb, "mul", x4, x0, syntax);
+    emit_movsd(sb, loc_str_off(a, ra, ins->src1, 0, x64, syntax), x1, syntax);
+    emit_movsd(sb, loc_str_off(d, ra, ins->src2, 8, x64, syntax), x3, syntax);
+    emit_op_sd(sb, "mul", x3, x1, syntax);
+    emit_op_sd(sb, "sub", x1, x0, syntax);
+    emit_op_sd(sb, "div", x2, x0, syntax);
+    emit_movsd(sb, x0, loc_str_off(out, ra, ins->dest, 8, x64, syntax), syntax);
 
     regalloc_xmm_release(r4);
     regalloc_xmm_release(r3);
