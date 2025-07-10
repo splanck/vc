@@ -36,6 +36,29 @@ static int needs_quotes(const char *arg)
     return 0;
 }
 
+/* Append a single argument, quoting/escaping if necessary. */
+static int append_quoted(strbuf_t *sb, const char *arg)
+{
+    if (!needs_quotes(arg))
+        return strbuf_append(sb, arg);
+
+    if (strbuf_append(sb, "'") < 0)
+        return -1;
+    for (const char *p = arg; *p; p++) {
+        if (*p == '\'') {
+            if (strbuf_append(sb, "'\\''") < 0)
+                return -1;
+        } else {
+            char tmp[2] = {*p, '\0'};
+            if (strbuf_append(sb, tmp) < 0)
+                return -1;
+        }
+    }
+    if (strbuf_append(sb, "'") < 0)
+        return -1;
+    return 0;
+}
+
 /* Build a printable string representation of an argv array. */
 char *command_to_string(char *const argv[])
 {
@@ -45,25 +68,8 @@ char *command_to_string(char *const argv[])
         if (i > 0 && strbuf_append(&sb, " ") < 0)
             goto overflow;
         const char *arg = argv[i];
-        if (!needs_quotes(arg)) {
-            if (strbuf_append(&sb, arg) < 0)
-                goto overflow;
-        } else {
-            if (strbuf_append(&sb, "'") < 0)
-                goto overflow;
-            for (const char *p = arg; *p; p++) {
-                if (*p == '\'') {
-                    if (strbuf_append(&sb, "'\\''") < 0)
-                        goto overflow;
-                } else {
-                    char tmp[2] = {*p, '\0'};
-                    if (strbuf_append(&sb, tmp) < 0)
-                        goto overflow;
-                }
-            }
-            if (strbuf_append(&sb, "'") < 0)
-                goto overflow;
-        }
+        if (append_quoted(&sb, arg) < 0)
+            goto overflow;
     }
     return sb.data;
 
