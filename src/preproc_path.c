@@ -10,7 +10,16 @@
 #include "preproc_path.h"
 
 /* Default system include search paths */
+#ifdef __linux__
+#ifndef MULTIARCH
+#define MULTIARCH "x86_64-linux-gnu"
+#endif
+#endif
+
 static const char *std_include_dirs[] = {
+#ifdef __linux__
+    "/usr/include/" MULTIARCH,
+#endif
     "/usr/local/include",
     "/usr/include",
     NULL
