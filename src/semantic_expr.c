@@ -199,36 +199,47 @@ static type_kind_t check_assign_expr(expr_t *expr, symtable_t *vars,
 {
     (void)funcs;
     ir_value_t val;
+
+    /* Step 1: symbol lookup */
     symbol_t *sym = symtable_lookup(vars, expr->assign.name);
     if (!sym) {
         error_set(expr->line, expr->column, error_current_file, error_current_function);
-        if (out)
-            *out = (ir_value_t){0};
-        return TYPE_UNKNOWN;
-    }
-    if (sym->is_const) {
-        error_set(expr->line, expr->column, error_current_file, error_current_function);
+        error_print("unknown identifier");
         if (out)
             *out = (ir_value_t){0};
         return TYPE_UNKNOWN;
     }
 
-    type_kind_t vt = check_expr(expr->assign.value, vars, funcs, ir, &val);
-    if (types_compatible(sym->type, vt)) {
-        if (sym->param_index >= 0)
-            ir_build_store_param(ir, sym->param_index, val);
-        else if (sym->is_volatile)
-            ir_build_store_vol(ir, expr->assign.name, val);
-        else
-            ir_build_store(ir, expr->assign.name, val);
+    /* Step 2: const protection */
+    if (sym->is_const) {
+        error_set(expr->line, expr->column, error_current_file, error_current_function);
+        error_print("assignment to const");
         if (out)
-            *out = val;
-        return sym->type;
+            *out = (ir_value_t){0};
+        return TYPE_UNKNOWN;
     }
-    error_set(expr->line, expr->column, error_current_file, error_current_function);
+
+    /* Step 3: type compatibility */
+    type_kind_t vt = check_expr(expr->assign.value, vars, funcs, ir, &val);
+    if (!types_compatible(sym->type, vt)) {
+        error_set(expr->line, expr->column, error_current_file, error_current_function);
+        error_print("incompatible types in assignment");
+        if (out)
+            *out = (ir_value_t){0};
+        return TYPE_UNKNOWN;
+    }
+
+    /* Step 4: IR emission */
+    if (sym->param_index >= 0)
+        ir_build_store_param(ir, sym->param_index, val);
+    else if (sym->is_volatile)
+        ir_build_store_vol(ir, expr->assign.name, val);
+    else
+        ir_build_store(ir, expr->assign.name, val);
+
     if (out)
-        *out = (ir_value_t){0};
-    return TYPE_UNKNOWN;
+        *out = val;
+    return sym->type;
 }
 
 /*
