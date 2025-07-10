@@ -15,7 +15,7 @@ cc -Iinclude -Wall -Wextra -std=c99 \
     src/parser_expr_primary.c src/parser_expr_binary.c \
     src/parser_stmt.c src/parser_types.c src/symtable_core.c \
     src/symtable_globals.c src/symtable_struct.c src/ast_clone.c \
-    src/ast_expr.c src/ast_stmt.c src/lexer.c src/util.c \
+    src/ast_expr.c src/ast_stmt_create.c src/ast_stmt_free.c src/lexer.c src/util.c \
     src/vector.c src/error.c
 # build cli unit test binary with vector_push wrapper
 cc -Iinclude -Wall -Wextra -std=c99 -Dvector_push=test_vector_push -c src/cli.c -o cli_test.o
@@ -44,14 +44,15 @@ cc -Iinclude -Wall -Wextra -std=c99 -c src/symtable_globals.c -o symtable_global
 cc -Iinclude -Wall -Wextra -std=c99 -c src/symtable_struct.c -o symtable_struct_fail.o
 cc -Iinclude -Wall -Wextra -std=c99 -c src/ast_clone.c -o ast_clone_fail.o
 cc -Iinclude -Wall -Wextra -std=c99 -c src/ast_expr.c -o ast_expr_fail.o
-cc -Iinclude -Wall -Wextra -std=c99 -c src/ast_stmt.c -o ast_stmt_fail.o
+cc -Iinclude -Wall -Wextra -std=c99 -c src/ast_stmt_create.c -o ast_stmt_create_fail.o
+cc -Iinclude -Wall -Wextra -std=c99 -c src/ast_stmt_free.c -o ast_stmt_free_fail.o
 cc -Iinclude -Wall -Wextra -std=c99 -c src/lexer.c -o lexer_alloc.o
 cc -Iinclude -Wall -Wextra -std=c99 -c src/vector.c -o vector_alloc.o
 cc -Iinclude -Wall -Wextra -std=c99 -c src/util.c -o util_alloc.o
 cc -Iinclude -Wall -Wextra -std=c99 -c src/error.c -o error_alloc.o
 cc -Iinclude -Wall -Wextra -std=c99 -c "$DIR/unit/test_parser_alloc_fail.c" -o "$DIR/test_parser_alloc_fail.o"
-cc -o "$DIR/parser_alloc_tests" parser_core_fail.o parser_init_fail.o parser_decl_var_fail.o parser_decl_struct_fail.o parser_decl_enum_fail.o parser_flow_fail.o parser_toplevel_fail.o parser_expr_fail.o parser_expr_primary_fail.o parser_expr_binary_fail.o parser_stmt_fail.o parser_types_fail.o symtable_core_fail.o symtable_globals_fail.o symtable_struct_fail.o ast_clone_fail.o ast_expr_fail.o ast_stmt_fail.o lexer_alloc.o vector_alloc.o util_alloc.o error_alloc.o "$DIR/test_parser_alloc_fail.o"
-rm -f parser_core_fail.o parser_init_fail.o parser_decl_var_fail.o parser_decl_struct_fail.o parser_decl_enum_fail.o parser_flow_fail.o parser_toplevel_fail.o parser_expr_fail.o parser_expr_primary_fail.o parser_expr_binary_fail.o parser_stmt_fail.o parser_types_fail.o symtable_core_fail.o symtable_globals_fail.o symtable_struct_fail.o ast_clone_fail.o ast_expr_fail.o ast_stmt_fail.o lexer_alloc.o vector_alloc.o util_alloc.o error_alloc.o "$DIR/test_parser_alloc_fail.o"
+cc -o "$DIR/parser_alloc_tests" parser_core_fail.o parser_init_fail.o parser_decl_var_fail.o parser_decl_struct_fail.o parser_decl_enum_fail.o parser_flow_fail.o parser_toplevel_fail.o parser_expr_fail.o parser_expr_primary_fail.o parser_expr_binary_fail.o parser_stmt_fail.o parser_types_fail.o symtable_core_fail.o symtable_globals_fail.o symtable_struct_fail.o ast_clone_fail.o ast_expr_fail.o ast_stmt_create_fail.o ast_stmt_free_fail.o lexer_alloc.o vector_alloc.o util_alloc.o error_alloc.o "$DIR/test_parser_alloc_fail.o"
+rm -f parser_core_fail.o parser_init_fail.o parser_decl_var_fail.o parser_decl_struct_fail.o parser_decl_enum_fail.o parser_flow_fail.o parser_toplevel_fail.o parser_expr_fail.o parser_expr_primary_fail.o parser_expr_binary_fail.o parser_stmt_fail.o parser_types_fail.o symtable_core_fail.o symtable_globals_fail.o symtable_struct_fail.o ast_clone_fail.o ast_expr_fail.o ast_stmt_create_fail.o ast_stmt_free_fail.o lexer_alloc.o vector_alloc.o util_alloc.o error_alloc.o "$DIR/test_parser_alloc_fail.o"
 # build ir_core unit test binary with malloc wrapper
 cc -Iinclude -Wall -Wextra -std=c99 -Dmalloc=test_malloc -Dcalloc=test_calloc -c src/ir_core.c -o ir_core_test.o
 cc -Iinclude -Wall -Wextra -std=c99 -Dmalloc=test_malloc -Dcalloc=test_calloc -c src/util.c -o util_ircore.o
