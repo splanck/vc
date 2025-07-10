@@ -221,44 +221,12 @@ static macro_t *find_macro(vector_t *macros, const char *name, size_t len)
     return NULL;
 }
 
-typedef struct {
-    vector_t vec;  /* raw argument vector */
-    char **ap;     /* array passed to expand_macro_call */
-    char *va;      /* joined __VA_ARGS__ string */
-} prepared_args_t;
 
-/*
- * Parse a macro argument list and prepare the array used for expansion.
- * Returns 1 on success, 0 when the invocation does not match the
- * parameter list and -1 on allocation failure.
- */
-static int parse_and_prepare_args(macro_t *m, const char *line, size_t *pos,
-                                  prepared_args_t *out)
+static void free_macro_args(char **ap, char *va, int variadic)
 {
-    if (!parse_macro_args(line, pos, &out->vec))
-        return 0;
-    if ((m->variadic && out->vec.count < m->params.count) ||
-        (!m->variadic && out->vec.count != m->params.count)) {
-        free_arg_vector(&out->vec);
-        return 0;
-    }
-    out->ap = (char **)out->vec.data;
-    out->va = NULL;
-    if (m->variadic &&
-        !gather_varargs(&out->vec, m->params.count, &out->ap, &out->va)) {
-        free_arg_vector(&out->vec);
-        return -1;
-    }
-    return 1;
-}
-
-/* Free resources allocated by parse_and_prepare_args(). */
-static void free_prepared_args(prepared_args_t *a, int variadic)
-{
-    free_arg_vector(&a->vec);
     if (variadic) {
-        free(a->va);
-        free(a->ap);
+        free(va);
+        free(ap);
     }
 }
 
@@ -277,20 +245,29 @@ static int expand_user_macro(macro_t *m, const char *line, size_t *pos,
 {
     size_t p = *pos;
     if (m->params.count || m->variadic) {
-        prepared_args_t a;
-        int r = parse_and_prepare_args(m, line, &p, &a);
-        if (r <= 0) {
-            if (r < 0)
+        vector_t args;
+        if (parse_macro_args(line, &p, &args) &&
+            ((m->variadic && args.count >= m->params.count) ||
+             (!m->variadic && args.count == m->params.count))) {
+            char **ap = (char **)args.data;
+            char *va = NULL;
+            if (m->variadic &&
+                !gather_varargs(&args, m->params.count, &ap, &va)) {
+                free_arg_vector(&args);
                 return -1;
-            return 0;
+            }
+            if (!expand_macro_call(m, ap, macros, out, depth + 1)) {
+                free_arg_vector(&args);
+                free_macro_args(ap, va, m->variadic);
+                return -1;
+            }
+            free_arg_vector(&args);
+            free_macro_args(ap, va, m->variadic);
+            *pos = p;
+            return 1;
         }
-        if (!expand_macro_call(m, a.ap, macros, out, depth + 1)) {
-            free_prepared_args(&a, m->variadic);
-            return -1;
-        }
-        free_prepared_args(&a, m->variadic);
-        *pos = p;
-        return 1;
+        free_arg_vector(&args);
+        return 0;
     }
     if (!expand_macro_call(m, NULL, macros, out, depth + 1))
         return -1;
