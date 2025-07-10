@@ -129,4 +129,7 @@ symbol_t *symtable_lookup(symtable_t *table, const char *name);
 /* Search only the `globals` list. */
 symbol_t *symtable_lookup_global(symtable_t *table, const char *name);
 
+/* Remove all symbols added after old_head from the table */
+void symtable_pop_scope(symtable_t *table, symbol_t *old_head);
+
 #endif /* VC_SYMTABLE_H */

@@ -9,7 +9,9 @@ CORE_SRC = src/main.c src/compile.c src/compile_stage.c src/compile_link.c src/c
            src/parser_flow.c src/parser_stmt.c src/parser_types.c \
            src/semantic_expr.c src/semantic_expr_const.c src/semantic_expr_cast.c \
            src/semantic_arith.c src/semantic_mem.c src/semantic_call.c \
-           src/semantic_loops.c src/semantic_control.c src/semantic_init.c src/semantic_var.c src/semantic_stmt.c src/semantic_layout.c src/semantic_inline.c src/semantic_global.c src/consteval.c src/error.c src/ir_core.c src/ir_const.c src/ir_memory.c src/ir_control.c src/ir_global.c \
+           src/semantic_loops.c src/semantic_control.c src/semantic_init.c src/semantic_var.c src/semantic_stmt.c \
+           src/semantic_block.c src/semantic_decl.c src/semantic_expr_stmt.c src/semantic_label.c src/semantic_return.c src/semantic_static_assert.c \
+           src/semantic_layout.c src/semantic_inline.c src/semantic_global.c src/consteval.c src/error.c src/ir_core.c src/ir_const.c src/ir_memory.c src/ir_control.c src/ir_global.c \
            src/codegen.c src/codegen_mem.c src/codegen_loadstore.c src/codegen_arith_int.c src/codegen_arith_float.c src/codegen_branch.c \
            src/codegen_float.c src/codegen_complex.c src/codegen_x86.c \
            src/regalloc.c src/regalloc_x86.c src/strbuf.c src/util.c src/vector.c src/ir_dump.c src/ir_builder.c src/ast_dump.c src/label.c \
@@ -187,10 +189,22 @@ src/semantic_var.o: src/semantic_var.c $(HDR)
 
 src/semantic_stmt.o: src/semantic_stmt.c $(HDR)
 	$(CC) $(CFLAGS) $(OPTFLAGS) -Iinclude -c src/semantic_stmt.c -o src/semantic_stmt.o
+src/semantic_block.o: src/semantic_block.c $(HDR)
+	$(CC) $(CFLAGS) $(OPTFLAGS) -Iinclude -c src/semantic_block.c -o src/semantic_block.o
+src/semantic_decl.o: src/semantic_decl.c $(HDR)
+	$(CC) $(CFLAGS) $(OPTFLAGS) -Iinclude -c src/semantic_decl.c -o src/semantic_decl.o
+src/semantic_expr_stmt.o: src/semantic_expr_stmt.c $(HDR)
+	$(CC) $(CFLAGS) $(OPTFLAGS) -Iinclude -c src/semantic_expr_stmt.c -o src/semantic_expr_stmt.o
+src/semantic_label.o: src/semantic_label.c $(HDR)
+	$(CC) $(CFLAGS) $(OPTFLAGS) -Iinclude -c src/semantic_label.c -o src/semantic_label.o
+src/semantic_return.o: src/semantic_return.c $(HDR)
+	$(CC) $(CFLAGS) $(OPTFLAGS) -Iinclude -c src/semantic_return.c -o src/semantic_return.o
+src/semantic_static_assert.o: src/semantic_static_assert.c $(HDR)
+	$(CC) $(CFLAGS) $(OPTFLAGS) -Iinclude -c src/semantic_static_assert.c -o src/semantic_static_assert.o
 src/semantic_layout.o: src/semantic_layout.c $(HDR)
-	$(CC) $(CFLAGS) $(OPTFLAGS) -Iinclude -c src/semantic_layout.c -o src/semantic_layout.o
+	        $(CC) $(CFLAGS) $(OPTFLAGS) -Iinclude -c src/semantic_layout.c -o src/semantic_layout.o
 src/semantic_inline.o: src/semantic_inline.c $(HDR)
-	$(CC) $(CFLAGS) $(OPTFLAGS) -Iinclude -c src/semantic_inline.c -o src/semantic_inline.o
+		$(CC) $(CFLAGS) $(OPTFLAGS) -Iinclude -c src/semantic_inline.c -o src/semantic_inline.o
 
 
 src/semantic_global.o: src/semantic_global.c $(HDR)
