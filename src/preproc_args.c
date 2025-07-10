@@ -113,6 +113,38 @@ int gather_varargs(vector_t *args, size_t fixed,
     return 1;
 }
 
+int parse_macro_arguments(const char *line, size_t *pos, vector_t *out,
+                          size_t param_count, int variadic)
+{
+    if (!parse_macro_args(line, pos, out))
+        return 0;
+    if (variadic) {
+        if (out->count < param_count) {
+            free_arg_vector(out);
+            return 0;
+        }
+    } else {
+        if (out->count != param_count) {
+            free_arg_vector(out);
+            return 0;
+        }
+    }
+    return 1;
+}
+
+int handle_varargs(vector_t *args, size_t fixed, int variadic,
+                   char ***out_ap, char **out_va)
+{
+    char **ap = (char **)args->data;
+    char *va = NULL;
+    if (variadic &&
+        !gather_varargs(args, fixed, &ap, &va))
+        return 0;
+    *out_ap = ap;
+    *out_va = va;
+    return 1;
+}
+
 void free_arg_vector(vector_t *v)
 {
     for (size_t i = 0; i < v->count; i++)
