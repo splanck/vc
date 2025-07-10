@@ -55,7 +55,7 @@ a macro is invoked `__VA_ARGS__` within its body is replaced by the remaining
 arguments.
 The macro table is cleaned up with [`free_macro_vector`](memory_helpers.md) once preprocessing is complete.
 Macro expansion is recursive so macro bodies may reference other macros. To
-avoid infinite loops a hard limit of 100 nested expansions is enforced.  When
+avoid infinite loops a hard limit of 4096 nested expansions is enforced.  When
 this limit is hit `expand_line` returns zero and the compiler aborts
 preprocessing after printing "Macro expansion limit exceeded".
 
