@@ -13,6 +13,7 @@
 #include "preproc_cond.h"
 #include "preproc_include.h"
 #include "preproc_includes.h"
+#include "preproc_builtin.h"
 #include "util.h"
 #include "vector.h"
 #include "strbuf.h"
@@ -184,7 +185,7 @@ static int handle_error_directive(char *line, const char *dir,
                                   vector_t *stack,
                                   preproc_context_t *ctx)
 {
-    (void)dir; (void)incdirs; (void)stack; (void)ctx; (void)out;
+    (void)dir; (void)incdirs; (void)stack; (void)out;
     char *msg = line + 6; /* skip '#error' */
     msg = skip_ws(msg);
     if (is_active(conds)) {
@@ -198,7 +199,8 @@ static int handle_error_directive(char *line, const char *dir,
         } else {
             strbuf_append(&tmp, "preprocessor error");
         }
-        fprintf(stderr, "%s\n", tmp.data);
+        const char *file = ctx->current_file ? ctx->current_file : "";
+        fprintf(stderr, "%s:%zu: %s\n", file, preproc_get_line(), tmp.data);
         strbuf_free(&tmp);
         return 0;
     }
@@ -213,11 +215,14 @@ static int handle_warning_directive(char *line, const char *dir,
                                     vector_t *stack,
                                     preproc_context_t *ctx)
 {
-    (void)dir; (void)macros; (void)out; (void)incdirs; (void)stack; (void)ctx;
+    (void)dir; (void)macros; (void)out; (void)incdirs; (void)stack;
     char *msg = line + 8; /* skip '#warning' */
     msg = skip_ws(msg);
-    if (is_active(conds))
-        fprintf(stderr, "%s\n", *msg ? msg : "preprocessor warning");
+    if (is_active(conds)) {
+        const char *file = ctx->current_file ? ctx->current_file : "";
+        fprintf(stderr, "%s:%zu: %s\n", file, preproc_get_line(),
+                *msg ? msg : "preprocessor warning");
+    }
     return 1;
 }
 
