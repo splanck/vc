@@ -115,9 +115,10 @@ int main() { return 0; }
 #endif
 ```
 
-Macro expansion is purely textual; macros inside strings or comments are not
-recognized. Conditional directives are honored and support the `defined`
-operator along with numeric constants and the `!`, `&&` and `||` operators.
+The preprocessor strips comments and detects string or character literals so
+macros within them are not expanded. Conditional directives are honored and
+support the `defined` operator along with numeric constants and the `!`, `&&`
+and `||` operators.
 
 The directive `#line <num> ["file"]` may be used to reset the reported line
 number (and optionally source file) for subsequent tokens. The preprocessor

@@ -96,6 +96,7 @@ vector_t pragma_once_files; /* headers marked with #pragma once */
 vector_t deps;              /* all processed files */
 vector_t pack_stack;        /* active #pragma pack values */
 size_t pack_alignment;      /* current packing alignment */
+int in_comment;             /* multi-line comment state */
 ```
 
 `pragma_once_files` tracks headers that issued `#pragma once` so they are not

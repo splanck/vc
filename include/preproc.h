@@ -2,8 +2,9 @@
  * Minimal source preprocessor.
  *
  * Supports '#include "file"' and '#include <file>', object-like '#define NAME value' and simple
- * single-parameter macros of the form '#define NAME(arg) expr'. Expansion is
- * purely textual and does not recognize strings or comments.  Basic
+ * single-parameter macros of the form '#define NAME(arg) expr'. Comments are
+ * stripped and string/character literals are detected so macros inside them are
+ * not expanded.  Basic
  * conditional directives ('#if', '#ifdef', '#ifndef', '#elif', '#else',
  * '#endif') are supported with simple expression evaluation.
  *
