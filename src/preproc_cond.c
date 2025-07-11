@@ -76,19 +76,97 @@ int cond_push_ifndef(char *line, vector_t *macros, vector_t *conds)
     return cond_push_ifdef_common(line, macros, conds, 1);
 }
 
+/* Expand macros in a conditional expression except within defined() */
+static int expand_cond_expr(const char *expr, vector_t *macros, strbuf_t *out)
+{
+    strbuf_init(out);
+    const char *p = expr;
+    while (*p) {
+        if (strncmp(p, "defined", 7) == 0 &&
+            (p == expr || !(isalnum((unsigned char)p[-1]) || p[-1] == '_')) &&
+            (p[7] == '(' || p[7] == ' ' || p[7] == '\t')) {
+            if (strbuf_append(out, "defined") < 0)
+                return 0;
+            p += 7;
+            while (*p == ' ' || *p == '\t') {
+                if (strbuf_appendf(out, "%c", *p) < 0)
+                    return 0;
+                p++;
+            }
+            if (*p == '(') {
+                if (strbuf_append(out, "(") < 0)
+                    return 0;
+                p++;
+                while (*p == ' ' || *p == '\t') {
+                    if (strbuf_appendf(out, "%c", *p) < 0)
+                        return 0;
+                    p++;
+                }
+                const char *id = p;
+                while (isalnum((unsigned char)*p) || *p == '_')
+                    p++;
+                if (strbuf_appendf(out, "%.*s", (int)(p - id), id) < 0)
+                    return 0;
+                while (*p == ' ' || *p == '\t') {
+                    if (strbuf_appendf(out, "%c", *p) < 0)
+                        return 0;
+                    p++;
+                }
+                if (*p == ')') {
+                    if (strbuf_append(out, ")") < 0)
+                        return 0;
+                    p++;
+                }
+            } else {
+                while (*p == ' ' || *p == '\t') {
+                    if (strbuf_appendf(out, "%c", *p) < 0)
+                        return 0;
+                    p++;
+                }
+                const char *id = p;
+                while (isalnum((unsigned char)*p) || *p == '_')
+                    p++;
+                if (strbuf_appendf(out, "%.*s", (int)(p - id), id) < 0)
+                    return 0;
+            }
+            continue;
+        }
+        const char *start = p;
+        while (*p && !(strncmp(p, "defined", 7) == 0 &&
+                       (p == expr || !(isalnum((unsigned char)p[-1]) || p[-1] == '_')) &&
+                       (p[7] == '(' || p[7] == ' ' || p[7] == '\t')))
+            p++;
+        if (p > start) {
+            char *seg = vc_strndup(start, (size_t)(p - start));
+            if (!seg)
+                return 0;
+            strbuf_t tmp;
+            strbuf_init(&tmp);
+            if (!expand_line(seg, macros, &tmp, 0, 0)) {
+                free(seg);
+                strbuf_free(&tmp);
+                return 0;
+            }
+            if (strbuf_append(out, tmp.data ? tmp.data : "") < 0) {
+                free(seg);
+                strbuf_free(&tmp);
+                return 0;
+            }
+            free(seg);
+            strbuf_free(&tmp);
+        }
+    }
+    return 1;
+}
+
 /* Push a new state for a generic #if expression */
 int cond_push_ifexpr(char *line, vector_t *macros, vector_t *conds)
 {
     char *expr = line + 3;
     strbuf_t tmp;
-    strbuf_init(&tmp);
-    if (!strstr(expr, "defined")) {
-        if (!expand_line(expr, macros, &tmp, 0, 0)) {
-            strbuf_free(&tmp);
-            return 0;
-        }
-        expr = tmp.data ? tmp.data : "";
-    }
+    if (!expand_cond_expr(expr, macros, &tmp))
+        return 0;
+    expr = tmp.data ? tmp.data : "";
     cond_state_t st;
     st.parent_active = is_active(conds);
     st.taken = 0;
@@ -119,15 +197,11 @@ void cond_handle_elif(char *line, vector_t *macros, vector_t *conds)
         } else {
             char *expr = line + 5;
             strbuf_t tmp;
-            strbuf_init(&tmp);
-            if (!strstr(expr, "defined")) {
-                if (!expand_line(expr, macros, &tmp, 0, 0)) {
-                    strbuf_free(&tmp);
-                    st->taking = 0;
-                    return;
-                }
-                expr = tmp.data ? tmp.data : "";
+            if (!expand_cond_expr(expr, macros, &tmp)) {
+                st->taking = 0;
+                return;
             }
+            expr = tmp.data ? tmp.data : "";
             st->taking = eval_expr(expr, macros);
             strbuf_free(&tmp);
             if (st->taking)
