@@ -252,6 +252,11 @@ void fold_constants(ir_builder_t *ir)
         case IR_LFADD: case IR_LFSUB: case IR_LFMUL: case IR_LFDIV:
             fold_long_float_instr(ins, max_id, is_const, values);
             break;
+        case IR_CPLX_CONST:
+        case IR_CPLX_ADD: case IR_CPLX_SUB:
+        case IR_CPLX_MUL: case IR_CPLX_DIV:
+            update_const(ins, 0, 0, max_id, is_const, values);
+            break;
         case IR_LOAD:
         case IR_LOAD_IDX:
         case IR_BFLOAD:
