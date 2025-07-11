@@ -35,21 +35,6 @@ static int is_active(vector_t *conds)
     return stack_active(conds);
 }
 
-/* Expand EXPR using the macro table and return a newly allocated string. */
-static char *expand_expression(const char *expr, vector_t *macros)
-{
-    if (strstr(expr, "defined"))
-        return vc_strdup(expr);
-    strbuf_t sb;
-    strbuf_init(&sb);
-    if (!expand_line(expr, macros, &sb, 0, 0)) {
-        strbuf_free(&sb);
-        return NULL;
-    }
-    char *out = vc_strdup(sb.data ? sb.data : "");
-    strbuf_free(&sb);
-    return out;
-}
 
 /* Push a new state for #ifdef/#ifndef directives.  When "neg" is non-zero
  * the condition is inverted as for #ifndef. */
@@ -95,17 +80,25 @@ int cond_push_ifndef(char *line, vector_t *macros, vector_t *conds)
 int cond_push_ifexpr(char *line, vector_t *macros, vector_t *conds)
 {
     char *expr = line + 3;
-    char *expanded = expand_expression(expr, macros);
+    strbuf_t tmp;
+    strbuf_init(&tmp);
+    if (!strstr(expr, "defined")) {
+        if (!expand_line(expr, macros, &tmp, 0, 0)) {
+            strbuf_free(&tmp);
+            return 0;
+        }
+        expr = tmp.data ? tmp.data : "";
+    }
     cond_state_t st;
     st.parent_active = is_active(conds);
     st.taken = 0;
-    if (st.parent_active && expanded && eval_expr(expanded, macros)) {
+    if (st.parent_active && eval_expr(expr, macros)) {
         st.taking = 1;
         st.taken = 1;
     } else {
         st.taking = 0;
     }
-    free(expanded);
+    strbuf_free(&tmp);
     if (!vector_push(conds, &st)) {
         vc_oom();
         return 0;
@@ -125,9 +118,18 @@ void cond_handle_elif(char *line, vector_t *macros, vector_t *conds)
             st->taking = 0;
         } else {
             char *expr = line + 5;
-            char *expanded = expand_expression(expr, macros);
-            st->taking = expanded && eval_expr(expanded, macros);
-            free(expanded);
+            strbuf_t tmp;
+            strbuf_init(&tmp);
+            if (!strstr(expr, "defined")) {
+                if (!expand_line(expr, macros, &tmp, 0, 0)) {
+                    strbuf_free(&tmp);
+                    st->taking = 0;
+                    return;
+                }
+                expr = tmp.data ? tmp.data : "";
+            }
+            st->taking = eval_expr(expr, macros);
+            strbuf_free(&tmp);
             if (st->taking)
                 st->taken = 1;
         }
