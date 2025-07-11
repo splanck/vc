@@ -65,6 +65,11 @@ int process_file(const char *path, vector_t *macros,
     int ok = process_all_lines(lines, path, dir, macros, conds, out, incdirs,
                                stack, ctx);
 
+    if (ok && conds->count) {
+        fprintf(stderr, "Mismatched #if/#endif directives in %s\n", path);
+        ok = 0;
+    }
+
     line_state_pop(prev_file, prev_delta);
 
     include_stack_pop(stack);
