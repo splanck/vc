@@ -18,4 +18,9 @@
 /* Evaluate a conditional expression */
 long long eval_expr(const char *s, vector_t *macros);
 
+/* Evaluate an expression with include lookup support */
+long long eval_expr_full(const char *s, vector_t *macros,
+                         const char *dir, const vector_t *incdirs,
+                         vector_t *stack);
+
 #endif /* VC_PREPROC_EXPR_H */

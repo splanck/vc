@@ -25,14 +25,18 @@ int cond_push_ifdef(char *line, vector_t *macros, vector_t *conds);
 int cond_push_ifndef(char *line, vector_t *macros, vector_t *conds);
 
 /* Push a new state for a generic #if expression */
-int cond_push_ifexpr(char *line, vector_t *macros, vector_t *conds);
+int cond_push_ifexpr(char *line, const char *dir, vector_t *macros,
+                     vector_t *conds, const vector_t *incdirs, vector_t *stack);
 
 /* Handle conditional branches */
-void cond_handle_elif(char *line, vector_t *macros, vector_t *conds);
+void cond_handle_elif(char *line, const char *dir, vector_t *macros,
+                      vector_t *conds, const vector_t *incdirs, vector_t *stack);
 void cond_handle_else(vector_t *conds);
 void cond_handle_endif(vector_t *conds);
 
 /* Dispatch a conditional directive */
-int handle_conditional(char *line, vector_t *macros, vector_t *conds);
+int handle_conditional(char *line, const char *dir, vector_t *macros,
+                       vector_t *conds, const vector_t *incdirs,
+                       vector_t *stack);
 
 #endif /* VC_PREPROC_COND_H */

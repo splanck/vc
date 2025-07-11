@@ -22,11 +22,16 @@
 #include <string.h>
 #include "util.h"
 #include <limits.h>
+#include "preproc_path.h"
+#include "preproc_file_io.h"
 
 /* Parser context */
 typedef struct {
     const char *s;
     vector_t *macros;
+    const char *dir;
+    const vector_t *incdirs;
+    vector_t *stack;
     int error;
 } expr_ctx_t;
 
@@ -56,6 +61,78 @@ static char *parse_ident(expr_ctx_t *ctx)
 static long long parse_expr(expr_ctx_t *ctx);
 static long long parse_conditional(expr_ctx_t *ctx);
 
+/* Parse a header name argument used by __has_include */
+static char *parse_header_name(expr_ctx_t *ctx, char *endc)
+{
+    skip_ws(ctx);
+    if (*ctx->s == '"') {
+        *endc = '"';
+        ctx->s++;
+        const char *start = ctx->s;
+        while (*ctx->s && *ctx->s != '"')
+            ctx->s++;
+        if (*ctx->s != '"') {
+            ctx->error = 1;
+            return NULL;
+        }
+        char *name = vc_strndup(start, (size_t)(ctx->s - start));
+        ctx->s++;
+        return name;
+    } else if (*ctx->s == '<') {
+        *endc = '>';
+        ctx->s++;
+        const char *start = ctx->s;
+        while (*ctx->s && *ctx->s != '>')
+            ctx->s++;
+        if (*ctx->s != '>') {
+            ctx->error = 1;
+            return NULL;
+        }
+        char *name = vc_strndup(start, (size_t)(ctx->s - start));
+        ctx->s++;
+        return name;
+    }
+    ctx->error = 1;
+    return NULL;
+}
+
+static long long parse_has_include(expr_ctx_t *ctx, int is_next)
+{
+    ctx->s += is_next ? 18 : 13; /* skip directive name */
+    skip_ws(ctx);
+    if (*ctx->s != '(') {
+        ctx->error = 1;
+        return 0;
+    }
+    ctx->s++;
+    char endc = '"';
+    char *fname = parse_header_name(ctx, &endc);
+    skip_ws(ctx);
+    if (*ctx->s == ')')
+        ctx->s++;
+    else
+        ctx->error = 1;
+    int found = 0;
+    if (fname && ctx->incdirs) {
+        size_t cur = (size_t)-1;
+        if (is_next && ctx->stack && ctx->stack->count) {
+            const include_entry_t *e =
+                &((include_entry_t *)ctx->stack->data)[ctx->stack->count - 1];
+            cur = e->dir_index;
+        }
+        size_t start_idx = is_next ? ((cur == (size_t)-1) ? 0 : cur + 1) : 0;
+        size_t idx;
+        char *inc = find_include_path(fname, endc,
+                                      is_next ? NULL : ctx->dir,
+                                      ctx->incdirs, start_idx, &idx);
+        if (inc) {
+            found = 1;
+            free(inc);
+        }
+    }
+    free(fname);
+    return found;
+}
 /* Parse escape sequences in character literals */
 static int parse_char_escape(const char **s)
 {
@@ -99,6 +176,10 @@ static int parse_char_escape(const char **s)
 static long long parse_primary(expr_ctx_t *ctx)
 {
     skip_ws(ctx);
+    if (strncmp(ctx->s, "__has_include_next", 18) == 0 && ctx->s[18] == '(')
+        return parse_has_include(ctx, 1);
+    if (strncmp(ctx->s, "__has_include", 13) == 0 && ctx->s[13] == '(')
+        return parse_has_include(ctx, 0);
     if (strncmp(ctx->s, "defined", 7) == 0 &&
         (ctx->s[7] == '(' || ctx->s[7] == ' ' || ctx->s[7] == '\t')) {
         ctx->s += 7;
@@ -389,9 +470,11 @@ static long long parse_expr(expr_ctx_t *ctx)
 }
 
 /* Public wrapper used by the preprocessor to evaluate expressions */
-long long eval_expr(const char *s, vector_t *macros)
+static long long eval_internal(const char *s, vector_t *macros,
+                               const char *dir, const vector_t *incdirs,
+                               vector_t *stack)
 {
-    expr_ctx_t ctx = { s, macros, 0 };
+    expr_ctx_t ctx = { s, macros, dir, incdirs, stack, 0 };
     long long val = parse_expr(&ctx);
     skip_ws(&ctx);
     if (*ctx.s != '\0')
@@ -401,5 +484,17 @@ long long eval_expr(const char *s, vector_t *macros)
         return 0;
     }
     return val;
+}
+
+long long eval_expr_full(const char *s, vector_t *macros,
+                         const char *dir, const vector_t *incdirs,
+                         vector_t *stack)
+{
+    return eval_internal(s, macros, dir, incdirs, stack);
+}
+
+long long eval_expr(const char *s, vector_t *macros)
+{
+    return eval_internal(s, macros, NULL, NULL, NULL);
 }
 
