@@ -13,6 +13,7 @@
 #include "preproc_file_io.h"
 #include "preproc_path.h"
 #include "preproc_file.h"
+#include "preproc_macros.h"
 
 /* Return 1 if all conditional states on the stack are active */
 static int stack_active(vector_t *conds)
@@ -86,8 +87,15 @@ int handle_include(char *line, const char *dir, vector_t *macros,
                    const vector_t *incdirs, vector_t *stack,
                    preproc_context_t *ctx)
 {
+    strbuf_t expanded;
+    strbuf_init(&expanded);
+    if (!expand_line(line, macros, &expanded, 0, 0)) {
+        strbuf_free(&expanded);
+        return 0;
+    }
+
     char endc;
-    char *fname = parse_include_name(line, &endc);
+    char *fname = parse_include_name(expanded.data ? expanded.data : line, &endc);
     int result = 1;
     if (fname) {
         size_t idx = SIZE_MAX;
@@ -98,6 +106,7 @@ int handle_include(char *line, const char *dir, vector_t *macros,
         free(incpath);
     }
     free(fname);
+    strbuf_free(&expanded);
     return result;
 }
 
@@ -107,8 +116,15 @@ int handle_include_next(char *line, const char *dir, vector_t *macros,
                         preproc_context_t *ctx)
 {
     (void)dir;
+    strbuf_t expanded;
+    strbuf_init(&expanded);
+    if (!expand_line(line, macros, &expanded, 0, 0)) {
+        strbuf_free(&expanded);
+        return 0;
+    }
+
     char endc;
-    char *fname = parse_include_name(line, &endc);
+    char *fname = parse_include_name(expanded.data ? expanded.data : line, &endc);
     int result = 1;
     if (fname) {
         size_t cur = SIZE_MAX;
@@ -127,6 +143,7 @@ int handle_include_next(char *line, const char *dir, vector_t *macros,
         free(incpath);
     }
     free(fname);
+    strbuf_free(&expanded);
     return result;
 }
 
