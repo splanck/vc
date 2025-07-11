@@ -415,24 +415,61 @@ static char *decode_string_literal(const char *s, size_t len)
 {
     strbuf_t sb;
     strbuf_init(&sb);
-    for (size_t i = 0; i < len; i++) {
-        if (s[i] == '\\' && i + 1 < len) {
+
+    for (size_t i = 0; i < len;) {
+        char c = s[i];
+
+        if (c == '\\' && i + 1 < len) {
             i++;
-            switch (s[i]) {
-            case 'n':
-                strbuf_append(&sb, "\n");
+            c = s[i++];
+            switch (c) {
+            case 'n': strbuf_append(&sb, "\n"); break;
+            case 't': strbuf_append(&sb, "\t"); break;
+            case 'r': strbuf_append(&sb, "\r"); break;
+            case 'b': strbuf_append(&sb, "\b"); break;
+            case 'f': strbuf_append(&sb, "\f"); break;
+            case 'v': strbuf_append(&sb, "\v"); break;
+            case 'a': strbuf_append(&sb, "\a"); break;
+            case '\\':
+            case '\'':
+            case '"':
+            case '?':
+                strbuf_appendf(&sb, "%c", c);
                 break;
-            case 't':
-                strbuf_append(&sb, "\t");
+            case 'x': {
+                unsigned value = 0;
+                int digits = 0;
+                while (i < len && isxdigit((unsigned char)s[i])) {
+                    char d = s[i];
+                    int hex = (d >= '0' && d <= '9') ? d - '0' :
+                               (d >= 'a' && d <= 'f') ? d - 'a' + 10 :
+                               (d >= 'A' && d <= 'F') ? d - 'A' + 10 : 0;
+                    value = value * 16 + hex;
+                    i++; digits++;
+                }
+                strbuf_appendf(&sb, "%c", (char)value);
                 break;
+            }
             default:
-                strbuf_appendf(&sb, "%c", s[i]);
+                if (c >= '0' && c <= '7') {
+                    unsigned value = c - '0';
+                    int digits = 1;
+                    while (digits < 3 && i < len && s[i] >= '0' && s[i] <= '7') {
+                        value = value * 8 + (s[i] - '0');
+                        i++; digits++;
+                    }
+                    strbuf_appendf(&sb, "%c", (char)value);
+                } else {
+                    strbuf_appendf(&sb, "%c", c);
+                }
                 break;
             }
         } else {
-            strbuf_appendf(&sb, "%c", s[i]);
+            strbuf_appendf(&sb, "%c", c);
+            i++;
         }
     }
+
     char *res = vc_strdup(sb.data ? sb.data : "");
     strbuf_free(&sb);
     return res;
