@@ -30,10 +30,10 @@ typedef struct {
     int error;
 } expr_ctx_t;
 
-/* Advance the parser position past any spaces or tabs */
+/* Advance the parser position past any whitespace */
 static void skip_ws(expr_ctx_t *ctx)
 {
-    while (*ctx->s == ' ' || *ctx->s == '\t')
+    while (isspace((unsigned char)*ctx->s))
         ctx->s++;
 }
 

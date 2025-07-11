@@ -64,10 +64,10 @@ static void strip_comments(char *s, int *in_comment)
     *out = '\0';
 }
 
-/* Advance P past spaces and tabs and return the updated pointer */
+/* Advance P past whitespace and return the updated pointer */
 static char *skip_ws(char *p)
 {
-    while (*p == ' ' || *p == '\t')
+    while (isspace((unsigned char)*p))
         p++;
     return p;
 }

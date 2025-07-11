@@ -81,10 +81,10 @@ void remove_macro(vector_t *macros, const char *name)
     }
 }
 
-/* Advance P past spaces and tabs and return the updated pointer */
+/* Advance P past whitespace and return the updated pointer */
 static char *skip_ws(char *p)
 {
-    while (*p == ' ' || *p == '\t')
+    while (isspace((unsigned char)*p))
         p++;
     return p;
 }
