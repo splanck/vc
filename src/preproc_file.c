@@ -109,8 +109,9 @@ static int define_simple_macro(vector_t *macros, const char *name,
     return add_macro(name, val, &params, 0, macros);
 }
 
-/* Add some common builtin macros based on the host compiler */
-static void define_default_macros(vector_t *macros)
+/* Add some common builtin macros based on the host compiler. The path to the
+ * main source file is used to initialise __BASE_FILE__. */
+static void define_default_macros(vector_t *macros, const char *base_file)
 {
 #define STR2(x) #x
 #define STR(x) STR2(x)
@@ -216,6 +217,20 @@ static void define_default_macros(vector_t *macros)
 #endif
 #undef STR
 #undef STR2
+
+    /* Predefined macros for internal bookkeeping */
+    define_simple_macro(macros, "__COUNTER__", "0");
+    if (base_file) {
+        char *canon = realpath(base_file, NULL);
+        if (!canon)
+            canon = vc_strdup(base_file);
+        char quoted[PATH_MAX + 2];
+        snprintf(quoted, sizeof(quoted), "\"%s\"", canon);
+        define_simple_macro(macros, "__BASE_FILE__", quoted);
+        free(canon);
+    } else {
+        define_simple_macro(macros, "__BASE_FILE__", "\"\"");
+    }
 }
 
 /* Release vectors and buffers used during preprocessing */
@@ -315,7 +330,7 @@ char *preproc_run(preproc_context_t *ctx, const char *path,
 
     /* Prepare all vectors used during preprocessing */
     init_preproc_vectors(ctx, &macros, &conds, &stack, &out);
-    define_default_macros(&macros);
+    define_default_macros(&macros, path);
     if (!record_dependency(ctx, path)) {
         cleanup_preproc_vectors(ctx, &macros, &conds, &stack, &search_dirs, &out);
         return NULL;

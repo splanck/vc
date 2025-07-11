@@ -79,6 +79,9 @@ an explicit `#define`:
 - `__STDC__` evaluates to `1` to indicate standard compliance.
 - `__STDC_VERSION__` expands to `199901L` for C99 support.
 - `__func__` yields the enclosing function name as a string literal.
+- `__BASE_FILE__` holds the name of the initial source file being
+  processed.
+- `__COUNTER__` expands to an incrementing integer starting at `0`.
 
 These macros are always available and cannot be undefined. They are useful for
 diagnostics and logging as they convey file names, line numbers and build
