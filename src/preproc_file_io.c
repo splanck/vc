@@ -108,10 +108,18 @@ static char *read_file_lines_internal(const char *path, char ***out_lines)
 
     size_t w = 0;
     for (size_t r = 0; r < len; r++) {
-        if (text[r] == '\\' && r + 1 < len && text[r + 1] == '\n') {
-            r++;
-            continue;
+        if (text[r] == '\\' && r + 1 < len) {
+            if (text[r + 1] == '\n') {
+                r++;
+                continue;
+            }
+            if (text[r + 1] == '\r' && r + 2 < len && text[r + 2] == '\n') {
+                r += 2;
+                continue;
+            }
         }
+        if (text[r] == '\r')
+            continue;
         text[w++] = text[r];
     }
     text[w] = '\0';
