@@ -119,7 +119,7 @@ int handle_include_next(char *line, const char *dir, vector_t *macros,
         }
         size_t idx = SIZE_MAX;
         size_t start_idx = (cur == (size_t)-1) ? 0 : cur + 1;
-        char *incpath = find_include_path(fname, '>', NULL, incdirs,
+        char *incpath = find_include_path(fname, endc, NULL, incdirs,
                                           start_idx, &idx);
         if (!process_include_file(fname, incpath, idx, macros, conds, out,
                                   incdirs, stack, ctx))
