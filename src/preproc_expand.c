@@ -302,8 +302,8 @@ static int expand_user_macro(macro_t *m, const char *line, size_t *pos,
                              vector_t *macros, strbuf_t *out, int depth)
 {
     if (m->expanding) {
-        strbuf_append(out, m->name);
-        return 1;
+        fprintf(stderr, "Macro expansion limit exceeded\n");
+        return -1;
     }
 
     size_t p = *pos;        /* position just after the macro name */
