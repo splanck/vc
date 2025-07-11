@@ -9,6 +9,7 @@
 #include "codegen_arith_float.h"
 #include "codegen_float.h"
 #include "codegen_x86.h"
+#include "regalloc_x86.h"
 #include "label.h"
 
 #define SCRATCH_REG 0
