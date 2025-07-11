@@ -100,13 +100,16 @@ vector_t deps;              /* all processed files */
 vector_t pack_stack;        /* active #pragma pack values */
 size_t pack_alignment;      /* current packing alignment */
 int in_comment;             /* multi-line comment state */
+char *current_file;         /* file name for __FILE__ */
+long line_delta;            /* adjustment for __LINE__ */
 ```
 
 `pragma_once_files` tracks headers that issued `#pragma once` so they are not
-processed again. `deps` records every file read during preprocessing, enabling
-dependency generation. Because the entire context is provided by the caller
-rather than stored globally, multiple preprocessing operations can run
-independently. Each call initializes and cleans up the vectors, allowing the
-preprocessor to be used reentrantly by supplying a separate
-`preproc_context_t` instance.
+processed again. `deps` records every file read during preprocessing for
+dependency generation. `current_file` and `line_delta` hold the values used by
+the `__FILE__` and `__LINE__` macros along with `#line` directives. Because the
+entire context is provided by the caller rather than stored globally, multiple
+preprocessing operations can run independently. Each call initializes and
+cleans up the vectors, allowing the preprocessor to be used reentrantly by
+supplying a separate `preproc_context_t` instance.
 

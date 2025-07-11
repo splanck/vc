@@ -30,6 +30,8 @@ typedef struct {
     vector_t pack_stack;        /* vector of size_t pack values */
     size_t pack_alignment;      /* current #pragma pack value */
     int in_comment;             /* tracks multi-line comment state */
+    char *current_file;         /* file name for __FILE__ macro */
+    long line_delta;            /* offset applied to __LINE__ */
 } preproc_context_t;
 
 /* Free the dependency lists stored in the context */
