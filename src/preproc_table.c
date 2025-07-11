@@ -231,6 +231,7 @@ int handle_define(char *line, vector_t *macros, vector_t *conds)
     char *val = *n ? n : "";
     int ok = 1;
     if (is_active(conds)) {
+        remove_macro(macros, name);
         ok = add_macro(name, val, &params, variadic, macros);
     } else {
         free_param_vector(&params);
