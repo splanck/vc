@@ -79,6 +79,9 @@ int include_stack_push(vector_t *stack, const char *path, size_t idx)
         vc_oom();
         return 0;
     }
+    if (stack->count == 1)
+        preproc_set_base_file(canon);
+    preproc_set_include_level(stack->count - 1);
     return 1;
 }
 
@@ -89,6 +92,10 @@ void include_stack_pop(vector_t *stack)
         free(e->path);
         stack->count--;
     }
+    if (stack->count)
+        preproc_set_include_level(stack->count - 1);
+    else
+        preproc_set_include_level(0);
 }
 
 static char *read_file_lines_internal(const char *path, char ***out_lines)

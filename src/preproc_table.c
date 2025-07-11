@@ -47,7 +47,9 @@ int is_macro_defined(vector_t *macros, const char *name)
     if (strcmp(name, "__FILE__") == 0 || strcmp(name, "__LINE__") == 0 ||
         strcmp(name, "__DATE__") == 0 || strcmp(name, "__TIME__") == 0 ||
         strcmp(name, "__STDC__") == 0 || strcmp(name, "__STDC_VERSION__") == 0 ||
-        strcmp(name, "__func__") == 0 || strcmp(name, "offsetof") == 0)
+        strcmp(name, "__func__") == 0 || strcmp(name, "__COUNTER__") == 0 ||
+        strcmp(name, "__BASE_FILE__") == 0 ||
+        strcmp(name, "__INCLUDE_LEVEL__") == 0 || strcmp(name, "offsetof") == 0)
         return 1;
 
     for (size_t i = 0; i < macros->count; i++) {

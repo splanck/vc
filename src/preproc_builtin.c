@@ -7,6 +7,9 @@ static const char *builtin_file = "";
 static size_t builtin_line = 0;
 static size_t builtin_column = 1;
 static const char *builtin_func = NULL;
+static const char *builtin_base_file = "";
+static size_t builtin_include_level = 0;
+static unsigned long builtin_counter = 0;
 
 static const char build_date[] = __DATE__;
 static const char build_time[] = __TIME__;
@@ -22,6 +25,16 @@ void preproc_set_location(const char *file, size_t line, size_t column)
 void preproc_set_function(const char *name)
 {
     builtin_func = name;
+}
+
+void preproc_set_base_file(const char *file)
+{
+    builtin_base_file = file ? file : "";
+}
+
+void preproc_set_include_level(size_t level)
+{
+    builtin_include_level = level;
 }
 
 size_t preproc_get_line(void)
@@ -71,6 +84,21 @@ int handle_builtin_macro(const char *name, size_t len, size_t end,
                 return 1;
             }
         }
+    } else if (len == 13 && strncmp(name, "__BASE_FILE__", 13) == 0) {
+        preproc_set_location(NULL, builtin_line, column);
+        strbuf_appendf(out, "\"%s\"", builtin_base_file);
+        *pos = end;
+        return 1;
+    } else if (len == 11 && strncmp(name, "__COUNTER__", 11) == 0) {
+        preproc_set_location(NULL, builtin_line, column);
+        strbuf_appendf(out, "%lu", builtin_counter++);
+        *pos = end;
+        return 1;
+    } else if (len == 17 && strncmp(name, "__INCLUDE_LEVEL__", 17) == 0) {
+        preproc_set_location(NULL, builtin_line, column);
+        strbuf_appendf(out, "%zu", builtin_include_level);
+        *pos = end;
+        return 1;
     } else if (len == 16 && strncmp(name, "__STDC_VERSION__", 16) == 0) {
         preproc_set_location(NULL, builtin_line, column);
         strbuf_append(out, "199901L");
