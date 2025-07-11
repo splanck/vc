@@ -16,6 +16,6 @@
 #include "preproc_macros.h"
 
 /* Evaluate a conditional expression */
-int eval_expr(const char *s, vector_t *macros);
+long long eval_expr(const char *s, vector_t *macros);
 
 #endif /* VC_PREPROC_EXPR_H */

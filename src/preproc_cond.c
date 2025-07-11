@@ -170,7 +170,7 @@ int cond_push_ifexpr(char *line, vector_t *macros, vector_t *conds)
     cond_state_t st;
     st.parent_active = is_active(conds);
     st.taken = 0;
-    if (st.parent_active && eval_expr(expr, macros)) {
+    if (st.parent_active && eval_expr(expr, macros) != 0) {
         st.taking = 1;
         st.taken = 1;
     } else {
@@ -202,7 +202,7 @@ void cond_handle_elif(char *line, vector_t *macros, vector_t *conds)
                 return;
             }
             expr = tmp.data ? tmp.data : "";
-            st->taking = eval_expr(expr, macros);
+            st->taking = eval_expr(expr, macros) != 0;
             strbuf_free(&tmp);
             if (st->taking)
                 st->taken = 1;
