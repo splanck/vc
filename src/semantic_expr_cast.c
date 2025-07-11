@@ -10,6 +10,7 @@
 #include <string.h>
 #include <stdio.h>
 #include "semantic_expr.h"
+#include "consteval.h"
 #include "error.h"
 
 /*
