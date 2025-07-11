@@ -17,6 +17,7 @@
 #include <ctype.h>
 #include <stdlib.h>
 #include <errno.h>
+#include <stdio.h>
 #include "preproc_expr.h"
 #include <string.h>
 #include "util.h"
@@ -26,6 +27,7 @@
 typedef struct {
     const char *s;
     vector_t *macros;
+    int error;
 } expr_ctx_t;
 
 /* Advance the parser position past any spaces or tabs */
@@ -71,6 +73,8 @@ static int parse_primary(expr_ctx_t *ctx)
             skip_ws(ctx);
             if (*ctx->s == ')')
                 ctx->s++;
+            else
+                ctx->error = 1;
             int val = id ? is_macro_defined(ctx->macros, id) : 0;
             free(id);
             return val;
@@ -86,6 +90,8 @@ static int parse_primary(expr_ctx_t *ctx)
         skip_ws(ctx);
         if (*ctx->s == ')')
             ctx->s++;
+        else
+            ctx->error = 1;
         return val;
     } else if (isdigit((unsigned char)*ctx->s)) {
         errno = 0;
@@ -337,7 +343,15 @@ static int parse_expr(expr_ctx_t *ctx)
 /* Public wrapper used by the preprocessor to evaluate expressions */
 int eval_expr(const char *s, vector_t *macros)
 {
-    expr_ctx_t ctx = { s, macros };
-    return parse_expr(&ctx) != 0;
+    expr_ctx_t ctx = { s, macros, 0 };
+    int val = parse_expr(&ctx);
+    skip_ws(&ctx);
+    if (*ctx.s != '\0')
+        ctx.error = 1;
+    if (ctx.error) {
+        fprintf(stderr, "Invalid preprocessor expression\n");
+        return 0;
+    }
+    return val != 0;
 }
 
