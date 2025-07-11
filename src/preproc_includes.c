@@ -12,6 +12,7 @@
 #include "preproc_path.h"
 #include "preproc_builtin.h"
 #include "preproc_macros.h"
+#include "preproc_file.h"
 #include "semantic_global.h"
 #include "util.h"
 #include "vector.h"
@@ -122,6 +123,18 @@ int handle_pragma_directive(char *line, const char *dir, vector_t *macros,
     if (!expand_line(arg, macros, &exp, 0, 0)) {
         strbuf_free(&exp);
         return 0;
+    }
+    /* If macro expansion changed the directive body, reparse the result */
+    if (strcmp(arg, exp.data ? exp.data : "") != 0) {
+        strbuf_t tmp;
+        strbuf_init(&tmp);
+        strbuf_appendf(&tmp, "#pragma %s", exp.data ? exp.data : "");
+        char *dup = vc_strdup(tmp.data ? tmp.data : "");
+        strbuf_free(&tmp);
+        strbuf_free(&exp);
+        int r = process_line(dup, dir, macros, conds, out, incdirs, stack, ctx);
+        free(dup);
+        return r;
     }
     char *p = exp.data;
     p = skip_ws(p);
