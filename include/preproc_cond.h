@@ -15,6 +15,7 @@ typedef struct {
     int parent_active;
     int taking;
     int taken;
+    size_t line;          /* line where the conditional began */
 } cond_state_t;
 
 /* Push a new state for #ifdef/#ifndef directives */
