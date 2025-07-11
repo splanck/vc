@@ -24,6 +24,10 @@ static const char *std_include_dirs[] = {
 #ifdef __linux__
     "/usr/include/" MULTIARCH,
     GCC_INCLUDE_DIR,
+#elif defined(__NetBSD__)
+    GCC_INCLUDE_DIR,
+#elif defined(__FreeBSD__)
+    GCC_INCLUDE_DIR,
 #endif
     "/usr/local/include",
     "/usr/include",
