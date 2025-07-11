@@ -56,6 +56,42 @@ static char *parse_ident(expr_ctx_t *ctx)
 static long long parse_expr(expr_ctx_t *ctx);
 static long long parse_conditional(expr_ctx_t *ctx);
 
+/* Parse escape sequences in character literals */
+static int parse_char_escape(const char **s)
+{
+    char c = **s;
+    if (c == 'n') { (*s)++; return '\n'; }
+    if (c == 't') { (*s)++; return '\t'; }
+    if (c == 'r') { (*s)++; return '\r'; }
+    if (c == 'b') { (*s)++; return '\b'; }
+    if (c == 'f') { (*s)++; return '\f'; }
+    if (c == 'v') { (*s)++; return '\v'; }
+    if (c == '\\') { (*s)++; return '\\'; }
+    if (c == '\'') { (*s)++; return '\''; }
+    if (c == '"') { (*s)++; return '"'; }
+    if (c == 'x') {
+        (*s)++; int val = 0, digits = 0;
+        while (isxdigit((unsigned char)**s) && digits < 2) {
+            char d = **s;
+            int hex = (d >= '0' && d <= '9') ? d - '0' :
+                       (d >= 'a' && d <= 'f') ? d - 'a' + 10 :
+                       (d >= 'A' && d <= 'F') ? d - 'A' + 10 : 0;
+            val = val * 16 + hex;
+            (*s)++; digits++;
+        }
+        return val;
+    }
+    if (c >= '0' && c <= '7') {
+        int val = 0, digits = 0;
+        while (digits < 3 && **s >= '0' && **s <= '7') {
+            val = val * 8 + (**s - '0');
+            (*s)++; digits++;
+        }
+        return val;
+    }
+    (*s)++; return (unsigned char)c;
+}
+
 /*
  * Parse a primary expression: literals, parentheses or defined().
  * Returns the integer value of the parsed expression.
@@ -93,6 +129,22 @@ static long long parse_primary(expr_ctx_t *ctx)
         else
             ctx->error = 1;
         return val;
+    } else if (*ctx->s == '\'') {
+        ctx->s++;
+        int value = 0;
+        if (*ctx->s == '\\') {
+            ctx->s++;
+            value = parse_char_escape(&ctx->s);
+        } else if (*ctx->s) {
+            value = (unsigned char)*ctx->s++;
+        } else {
+            ctx->error = 1;
+        }
+        if (*ctx->s == '\'')
+            ctx->s++;
+        else
+            ctx->error = 1;
+        return value;
     } else if (isdigit((unsigned char)*ctx->s)) {
         errno = 0;
         char *end;
