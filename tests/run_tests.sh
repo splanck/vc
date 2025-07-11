@@ -349,6 +349,32 @@ if [ $ret -eq 0 ] || ! grep -q "foo.h: No such file or directory" "${err}"; then
 fi
 rm -f "${out}" "${err}"
 
+# negative test for malformed include line
+err=$(mktemp)
+out=$(mktemp)
+set +e
+"$BINARY" -o "${out}" "$DIR/invalid/include_malformed.c" 2> "${err}"
+ret=$?
+set -e
+if [ $ret -eq 0 ] || ! grep -q "Malformed include directive" "${err}"; then
+    echo "Test include_malformed failed"
+    fail=1
+fi
+rm -f "${out}" "${err}"
+
+# negative test for malformed include_next line
+err=$(mktemp)
+out=$(mktemp)
+set +e
+"$BINARY" -o "${out}" "$DIR/invalid/include_next_malformed.c" 2> "${err}"
+ret=$?
+set -e
+if [ $ret -eq 0 ] || ! grep -q "Malformed include directive" "${err}"; then
+    echo "Test include_next_malformed failed"
+    fail=1
+fi
+rm -f "${out}" "${err}"
+
 # macro recursion should fail without expansion limit error
 err=$(mktemp)
 out=$(mktemp)
