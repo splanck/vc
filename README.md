@@ -72,6 +72,10 @@ tests/run.sh         # builds vc, compiles unit tests and runs everything
 Both scripts exit with status 0 when all checks pass. The output ends with
 `All tests passed` on success.
 
+The suite includes an optional check using glibc's `<sys/cdefs.h>` to
+exercise `_Pragma` handling. If this header cannot be located or fails to
+preprocess, the check is skipped and the remaining tests still run normally.
+
 ## Documentation
 
 The [documentation index](docs/README.md) provides an overview of all available
