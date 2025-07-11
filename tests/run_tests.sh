@@ -10,7 +10,7 @@ for cfile in "$DIR"/fixtures/*.c; do
     base=$(basename "$cfile" .c)
 
     case "$base" in
-        *_x86-64|struct_*|bitfield_rw|include_search|include_angle|include_env|macro_bad_define|preproc_blank|macro_cli|include_once|include_next|libm_program|union_example|varargs_double)
+        *_x86-64|struct_*|bitfield_rw|include_search|include_angle|include_env|macro_bad_define|preproc_blank|macro_cli|include_once|include_next|include_next_quote|libm_program|union_example|varargs_double)
             continue;;
     esac
     expect="$DIR/fixtures/$base.s"
@@ -152,6 +152,15 @@ if ! diff -u "$DIR/fixtures/include_next.s" "${next_out}"; then
     fail=1
 fi
 rm -f "${next_out}"
+
+# verify quoted #include_next directive
+next_quote_out=$(mktemp)
+"$BINARY" -I "$DIR/include_next_quote/dir1" -I "$DIR/include_next_quote/dir2" -I "$DIR/include_next_quote/dir3" -o "${next_quote_out}" "$DIR/fixtures/include_next_quote.c"
+if ! diff -u "$DIR/fixtures/include_next_quote.s" "${next_quote_out}"; then
+    echo "Test include_next_quote failed"
+    fail=1
+fi
+rm -f "${next_quote_out}"
 
 # verify command-line macro definitions
 macro_out=$(mktemp)
@@ -323,6 +332,19 @@ ret=$?
 set -e
 if [ $ret -eq 0 ] || ! grep -q "foo.h: No such file or directory" "${err}"; then
     echo "Test include_next_missing failed"
+    fail=1
+fi
+rm -f "${out}" "${err}"
+
+# negative test for quoted include_next missing file
+err=$(mktemp)
+out=$(mktemp)
+set +e
+"$BINARY" -I "$DIR/include_next_quote/miss1" -I "$DIR/include_next_quote/miss2" -o "${out}" "$DIR/invalid/include_next_quote_missing.c" 2> "${err}"
+ret=$?
+set -e
+if [ $ret -eq 0 ] || ! grep -q "foo.h: No such file or directory" "${err}"; then
+    echo "Test include_next_quote_missing failed"
     fail=1
 fi
 rm -f "${out}" "${err}"
