@@ -30,4 +30,7 @@ int generate_dependencies(const cli_options_t *cli);
 /* Compile multiple sources and link them into an executable. */
 int link_sources(const cli_options_t *cli);
 
+/* Write dependency information to a .d file */
+int write_dep_file(const char *target, const vector_t *deps);
+
 #endif /* VC_COMPILE_H */
