@@ -53,14 +53,14 @@ static char *parse_ident(expr_ctx_t *ctx)
     return vc_strndup(start, len);
 }
 
-static int parse_expr(expr_ctx_t *ctx);
-static int parse_conditional(expr_ctx_t *ctx);
+static long long parse_expr(expr_ctx_t *ctx);
+static long long parse_conditional(expr_ctx_t *ctx);
 
 /*
  * Parse a primary expression: literals, parentheses or defined().
  * Returns the integer value of the parsed expression.
  */
-static int parse_primary(expr_ctx_t *ctx)
+static long long parse_primary(expr_ctx_t *ctx)
 {
     skip_ws(ctx);
     if (strncmp(ctx->s, "defined", 7) == 0 &&
@@ -75,18 +75,18 @@ static int parse_primary(expr_ctx_t *ctx)
                 ctx->s++;
             else
                 ctx->error = 1;
-            int val = id ? is_macro_defined(ctx->macros, id) : 0;
+            long long val = id ? is_macro_defined(ctx->macros, id) : 0;
             free(id);
             return val;
         } else {
             char *id = parse_ident(ctx);
-            int val = id ? is_macro_defined(ctx->macros, id) : 0;
+            long long val = id ? is_macro_defined(ctx->macros, id) : 0;
             free(id);
             return val;
         }
     } else if (*ctx->s == '(') {
         ctx->s++;
-        int val = parse_expr(ctx);
+        long long val = parse_expr(ctx);
         skip_ws(ctx);
         if (*ctx->s == ')')
             ctx->s++;
@@ -104,11 +104,7 @@ static int parse_primary(expr_ctx_t *ctx)
         while (*ctx->s == 'u' || *ctx->s == 'U' ||
                *ctx->s == 'l' || *ctx->s == 'L')
             ctx->s++;
-        if (val > INT_MAX)
-            return INT_MAX;
-        if (val < INT_MIN)
-            return INT_MIN;
-        return (int)val;
+        return val;
     } else {
         char *id = parse_ident(ctx);
         free(id);
@@ -123,7 +119,7 @@ static int parse_primary(expr_ctx_t *ctx)
  * sign are parsed correctly.  Without this a leading '-' would be
  * treated as a binary operator with an implicit left operand of zero.
  */
-static int parse_unary(expr_ctx_t *ctx)
+static long long parse_unary(expr_ctx_t *ctx)
 {
     skip_ws(ctx);
     if (*ctx->s == '!') {
@@ -143,13 +139,13 @@ static int parse_unary(expr_ctx_t *ctx)
 }
 
 /* Multiplicative */
-static int parse_mul(expr_ctx_t *ctx)
+static long long parse_mul(expr_ctx_t *ctx)
 {
-    int val = parse_unary(ctx);
+    long long val = parse_unary(ctx);
     skip_ws(ctx);
     while (*ctx->s == '*' || *ctx->s == '/' || *ctx->s == '%') {
         char op = *ctx->s++;
-        int rhs = parse_unary(ctx);
+        long long rhs = parse_unary(ctx);
         switch (op) {
         case '*': val = val * rhs; break;
         case '/': val = rhs ? val / rhs : 0; break;
@@ -161,13 +157,13 @@ static int parse_mul(expr_ctx_t *ctx)
 }
 
 /* Additive */
-static int parse_add(expr_ctx_t *ctx)
+static long long parse_add(expr_ctx_t *ctx)
 {
-    int val = parse_mul(ctx);
+    long long val = parse_mul(ctx);
     skip_ws(ctx);
     while (*ctx->s == '+' || *ctx->s == '-') {
         char op = *ctx->s++;
-        int rhs = parse_mul(ctx);
+        long long rhs = parse_mul(ctx);
         if (op == '+')
             val += rhs;
         else
@@ -178,14 +174,14 @@ static int parse_add(expr_ctx_t *ctx)
 }
 
 /* Shifts */
-static int parse_shift(expr_ctx_t *ctx)
+static long long parse_shift(expr_ctx_t *ctx)
 {
-    int val = parse_add(ctx);
+    long long val = parse_add(ctx);
     skip_ws(ctx);
     while (strncmp(ctx->s, "<<", 2) == 0 || strncmp(ctx->s, ">>", 2) == 0) {
         int left = (ctx->s[0] == '<');
         ctx->s += 2;
-        int rhs = parse_add(ctx);
+        long long rhs = parse_add(ctx);
         if (left)
             val <<= rhs;
         else
@@ -196,26 +192,26 @@ static int parse_shift(expr_ctx_t *ctx)
 }
 
 /* Relational */
-static int parse_rel(expr_ctx_t *ctx)
+static long long parse_rel(expr_ctx_t *ctx)
 {
-    int val = parse_shift(ctx);
+    long long val = parse_shift(ctx);
     skip_ws(ctx);
     while (1) {
         if (strncmp(ctx->s, "<=", 2) == 0) {
             ctx->s += 2;
-            int rhs = parse_shift(ctx);
+            long long rhs = parse_shift(ctx);
             val = val <= rhs;
         } else if (strncmp(ctx->s, ">=", 2) == 0) {
             ctx->s += 2;
-            int rhs = parse_shift(ctx);
+            long long rhs = parse_shift(ctx);
             val = val >= rhs;
         } else if (*ctx->s == '<' && ctx->s[1] != '<') {
             ctx->s++;
-            int rhs = parse_shift(ctx);
+            long long rhs = parse_shift(ctx);
             val = val < rhs;
         } else if (*ctx->s == '>' && ctx->s[1] != '>') {
             ctx->s++;
-            int rhs = parse_shift(ctx);
+            long long rhs = parse_shift(ctx);
             val = val > rhs;
         } else {
             break;
@@ -226,18 +222,18 @@ static int parse_rel(expr_ctx_t *ctx)
 }
 
 /* Equality */
-static int parse_eq(expr_ctx_t *ctx)
+static long long parse_eq(expr_ctx_t *ctx)
 {
-    int val = parse_rel(ctx);
+    long long val = parse_rel(ctx);
     skip_ws(ctx);
     while (1) {
         if (strncmp(ctx->s, "==", 2) == 0) {
             ctx->s += 2;
-            int rhs = parse_rel(ctx);
+            long long rhs = parse_rel(ctx);
             val = val == rhs;
         } else if (strncmp(ctx->s, "!=", 2) == 0) {
             ctx->s += 2;
-            int rhs = parse_rel(ctx);
+            long long rhs = parse_rel(ctx);
             val = val != rhs;
         } else {
             break;
@@ -248,13 +244,13 @@ static int parse_eq(expr_ctx_t *ctx)
 }
 
 /* Bitwise AND */
-static int parse_band(expr_ctx_t *ctx)
+static long long parse_band(expr_ctx_t *ctx)
 {
-    int val = parse_eq(ctx);
+    long long val = parse_eq(ctx);
     skip_ws(ctx);
     while (*ctx->s == '&' && ctx->s[1] != '&') {
         ctx->s++;
-        int rhs = parse_eq(ctx);
+        long long rhs = parse_eq(ctx);
         val &= rhs;
         skip_ws(ctx);
     }
@@ -262,13 +258,13 @@ static int parse_band(expr_ctx_t *ctx)
 }
 
 /* Bitwise XOR */
-static int parse_xor(expr_ctx_t *ctx)
+static long long parse_xor(expr_ctx_t *ctx)
 {
-    int val = parse_band(ctx);
+    long long val = parse_band(ctx);
     skip_ws(ctx);
     while (*ctx->s == '^') {
         ctx->s++;
-        int rhs = parse_band(ctx);
+        long long rhs = parse_band(ctx);
         val ^= rhs;
         skip_ws(ctx);
     }
@@ -276,13 +272,13 @@ static int parse_xor(expr_ctx_t *ctx)
 }
 
 /* Bitwise OR */
-static int parse_bor(expr_ctx_t *ctx)
+static long long parse_bor(expr_ctx_t *ctx)
 {
-    int val = parse_xor(ctx);
+    long long val = parse_xor(ctx);
     skip_ws(ctx);
     while (*ctx->s == '|' && ctx->s[1] != '|') {
         ctx->s++;
-        int rhs = parse_xor(ctx);
+        long long rhs = parse_xor(ctx);
         val |= rhs;
         skip_ws(ctx);
     }
@@ -290,13 +286,13 @@ static int parse_bor(expr_ctx_t *ctx)
 }
 
 /* Logical AND */
-static int parse_and(expr_ctx_t *ctx)
+static long long parse_and(expr_ctx_t *ctx)
 {
-    int val = parse_bor(ctx);
+    long long val = parse_bor(ctx);
     skip_ws(ctx);
     while (strncmp(ctx->s, "&&", 2) == 0) {
         ctx->s += 2;
-        int rhs = parse_bor(ctx);
+        long long rhs = parse_bor(ctx);
         val = val && rhs;
         skip_ws(ctx);
     }
@@ -304,13 +300,13 @@ static int parse_and(expr_ctx_t *ctx)
 }
 
 /* Logical OR */
-static int parse_or(expr_ctx_t *ctx)
+static long long parse_or(expr_ctx_t *ctx)
 {
-    int val = parse_and(ctx);
+    long long val = parse_and(ctx);
     skip_ws(ctx);
     while (strncmp(ctx->s, "||", 2) == 0) {
         ctx->s += 2;
-        int rhs = parse_and(ctx);
+        long long rhs = parse_and(ctx);
         val = val || rhs;
         skip_ws(ctx);
     }
@@ -318,33 +314,33 @@ static int parse_or(expr_ctx_t *ctx)
 }
 
 /* Conditional operator */
-static int parse_conditional(expr_ctx_t *ctx)
+static long long parse_conditional(expr_ctx_t *ctx)
 {
-    int val = parse_or(ctx);
+    long long val = parse_or(ctx);
     skip_ws(ctx);
     if (*ctx->s == '?') {
         ctx->s++;
-        int then_val = parse_conditional(ctx);
+        long long then_val = parse_conditional(ctx);
         skip_ws(ctx);
         if (*ctx->s == ':')
             ctx->s++;
-        int else_val = parse_conditional(ctx);
+        long long else_val = parse_conditional(ctx);
         val = val ? then_val : else_val;
     }
     return val;
 }
 
 /* Entry point of the recursive descent parser */
-static int parse_expr(expr_ctx_t *ctx)
+static long long parse_expr(expr_ctx_t *ctx)
 {
     return parse_conditional(ctx);
 }
 
 /* Public wrapper used by the preprocessor to evaluate expressions */
-int eval_expr(const char *s, vector_t *macros)
+long long eval_expr(const char *s, vector_t *macros)
 {
     expr_ctx_t ctx = { s, macros, 0 };
-    int val = parse_expr(&ctx);
+    long long val = parse_expr(&ctx);
     skip_ws(&ctx);
     if (*ctx.s != '\0')
         ctx.error = 1;
@@ -352,6 +348,6 @@ int eval_expr(const char *s, vector_t *macros)
         fprintf(stderr, "Invalid preprocessor expression\n");
         return 0;
     }
-    return val != 0;
+    return val;
 }
 

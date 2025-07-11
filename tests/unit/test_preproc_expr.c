@@ -43,9 +43,21 @@ static void test_features_expr(void)
     vector_free(&macros);
 }
 
+static void test_large_constants(void)
+{
+    vector_t macros; vector_init(&macros, sizeof(macro_t));
+
+    ASSERT(eval_expr("4294967296", &macros) == 4294967296LL);
+    ASSERT(eval_expr("9223372036854775807", &macros) == 9223372036854775807LL);
+    ASSERT(eval_expr("-9223372036854775807 - 1", &macros) == (-9223372036854775807LL - 1LL));
+
+    vector_free(&macros);
+}
+
 int main(void)
 {
     test_features_expr();
+    test_large_constants();
     if (failures == 0)
         printf("All preproc_expr tests passed\n");
     else
