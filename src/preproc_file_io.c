@@ -11,6 +11,7 @@
 #include "preproc_macros.h"
 #include "preproc_path.h"
 #include "preproc_file.h"
+#include "preproc_builtin.h"
 
 static char *canonical_path(const char *path)
 {
@@ -18,6 +19,35 @@ static char *canonical_path(const char *path)
     if (!canon)
         canon = vc_strdup(path);
     return canon;
+}
+
+static char *current_file = NULL;
+static long line_delta = 0;
+
+void line_state_push(const char *file, long delta,
+                     char **prev_file, long *prev_delta)
+{
+    *prev_file = current_file;
+    *prev_delta = line_delta;
+    current_file = vc_strdup(file);
+    line_delta = delta;
+}
+
+void line_state_pop(char *prev_file, long prev_delta)
+{
+    free(current_file);
+    current_file = prev_file;
+    line_delta = prev_delta;
+}
+
+void preproc_apply_line_directive(const char *file, int line)
+{
+    if (file) {
+        free(current_file);
+        current_file = vc_strdup(file);
+    }
+    line_delta = line - ((long)preproc_get_line() + 1);
+    preproc_set_location(current_file, (size_t)line - 1, 1);
 }
 
 int include_stack_contains(vector_t *stack, const char *path)
@@ -166,7 +196,8 @@ int process_all_lines(char **lines, const char *path, const char *dir,
 {
     /* defined in preproc_directives.c */
     for (size_t i = 0; lines[i]; i++) {
-        preproc_set_location(path, i + 1, 1);
+        size_t line = (size_t)((long)(i + 1) + line_delta);
+        preproc_set_location(current_file ? current_file : path, line, 1);
         if (!process_line(lines[i], dir, macros, conds, out, incdirs, stack,
                           ctx))
             return 0;

@@ -10,6 +10,7 @@
 #include "preproc_cond.h"
 #include "preproc_file_io.h"
 #include "preproc_path.h"
+#include "preproc_builtin.h"
 #include "semantic_global.h"
 #include "util.h"
 #include "vector.h"
@@ -100,6 +101,7 @@ int handle_line_directive(char *line, const char *dir, vector_t *macros,
             free(fname);
             return 0;
         }
+        preproc_apply_line_directive(fname ? fname : NULL, lineno);
     }
     free(fname);
     return 1;
