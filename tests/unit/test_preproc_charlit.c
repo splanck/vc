@@ -25,6 +25,11 @@ int main(void)
                      "int ok;\n"
                      "#else\n"
                      "int bad;\n"
+                     "#endif\n"
+                     "#if '\\x1234' == 0x1234\n"
+                     "int hex_ok;\n"
+                     "#else\n"
+                     "int hex_bad;\n"
                      "#endif\n";
     if (fd >= 0) {
         ASSERT(write(fd, src, strlen(src)) == (ssize_t)strlen(src));
@@ -38,6 +43,8 @@ int main(void)
     if (res) {
         ASSERT(strstr(res, "int ok;") != NULL);
         ASSERT(strstr(res, "int bad;") == NULL);
+        ASSERT(strstr(res, "int hex_ok;") != NULL);
+        ASSERT(strstr(res, "int hex_bad;") == NULL);
     }
     free(res);
     preproc_context_free(&ctx);

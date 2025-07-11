@@ -70,14 +70,14 @@ static int parse_char_escape(const char **s)
     if (c == '\'') { (*s)++; return '\''; }
     if (c == '"') { (*s)++; return '"'; }
     if (c == 'x') {
-        (*s)++; int val = 0, digits = 0;
-        while (isxdigit((unsigned char)**s) && digits < 2) {
+        (*s)++; int val = 0;
+        while (isxdigit((unsigned char)**s)) {
             char d = **s;
             int hex = (d >= '0' && d <= '9') ? d - '0' :
                        (d >= 'a' && d <= 'f') ? d - 'a' + 10 :
                        (d >= 'A' && d <= 'F') ? d - 'A' + 10 : 0;
             val = val * 16 + hex;
-            (*s)++; digits++;
+            (*s)++;
         }
         return val;
     }
