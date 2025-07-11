@@ -225,10 +225,14 @@ int handle_pragma_directive(char *line, const char *dir, vector_t *macros,
         (void)stack;
         return 1; /* do not emit pragma line */
     }
+    if (is_active(conds)) {
+        if (strbuf_appendf(out, "#pragma %s\n", exp.data ? exp.data : "") < 0) {
+            strbuf_free(&exp);
+            return 0;
+        }
+    }
     strbuf_free(&exp);
     (void)stack;
-    (void)conds;
-    (void)out;
-    return 1; /* ignore unrecognised pragmas */
+    return 1; /* emit unrecognised pragmas verbatim */
 }
 
