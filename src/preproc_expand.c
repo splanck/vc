@@ -229,6 +229,26 @@ static void emit_plain_char(const char *line, size_t *pos, strbuf_t *out)
     (*pos)++;
 }
 
+/* Copy a quoted string or character literal verbatim. */
+static void emit_quoted(const char *line, size_t *pos, char quote,
+                        strbuf_t *out)
+{
+    strbuf_appendf(out, "%c", quote);
+    (*pos)++;
+    while (line[*pos]) {
+        char c = line[*pos];
+        strbuf_appendf(out, "%c", c);
+        (*pos)++;
+        if (c == '\\' && line[*pos]) {
+            strbuf_appendf(out, "%c", line[*pos]);
+            (*pos)++;
+            continue;
+        }
+        if (c == quote)
+            break;
+    }
+}
+
 
 /* Return the macro whose name matches "name" (len bytes) */
 static macro_t *find_macro(vector_t *macros, const char *name, size_t len)
@@ -516,6 +536,11 @@ int expand_line(const char *line, vector_t *macros, strbuf_t *out,
         return 0;
     }
     for (size_t i = 0; line[i];) {
+        char c = line[i];
+        if (c == '"' || c == '\'') {
+            emit_quoted(line, &i, c, out);
+            continue;
+        }
         size_t col = column ? column : i + 1;
         if (!expand_token(line, &i, macros, out, col, depth))
             return 0;

@@ -17,6 +17,53 @@
 #include "vector.h"
 #include "strbuf.h"
 
+/* Remove comments from S, tracking multi-line state in *IN_COMMENT.
+ * Comment markers inside string or character literals are ignored. */
+static void strip_comments(char *s, int *in_comment)
+{
+    char *out = s;
+    size_t i = 0;
+    int in_quote = 0;
+    int escape = 0;
+    char quote = '\0';
+
+    while (s[i]) {
+        if (*in_comment) {
+            if (s[i] == '*' && s[i + 1] == '/') {
+                i += 2;
+                *in_comment = 0;
+                continue;
+            }
+            i++;
+            continue;
+        }
+        char c = s[i];
+        if (!in_quote && c == '/' && s[i + 1] == '/')
+            break;
+        if (!in_quote && c == '/' && s[i + 1] == '*') {
+            *in_comment = 1;
+            i += 2;
+            continue;
+        }
+        out[0] = c;
+        out++;
+        if (in_quote) {
+            if (escape) {
+                escape = 0;
+            } else if (c == '\\') {
+                escape = 1;
+            } else if (c == quote) {
+                in_quote = 0;
+            }
+        } else if (c == '"' || c == '\'') {
+            in_quote = 1;
+            quote = c;
+        }
+        i++;
+    }
+    *out = '\0';
+}
+
 /* Advance P past spaces and tabs and return the updated pointer */
 static char *skip_ws(char *p)
 {
@@ -92,6 +139,9 @@ int process_line(char *line, const char *dir, vector_t *macros,
                         const vector_t *incdirs, vector_t *stack,
                         preproc_context_t *ctx)
 {
+    strip_comments(line, &ctx->in_comment);
+    if (ctx->in_comment && *line == '\0')
+        return 1;
     line = skip_ws(line);
     if (*line == '#') {
         char *p = line + 1;

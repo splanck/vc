@@ -29,6 +29,7 @@ typedef struct {
     vector_t deps;              /* vector of malloc'd char* paths */
     vector_t pack_stack;        /* vector of size_t pack values */
     size_t pack_alignment;      /* current #pragma pack value */
+    int in_comment;             /* tracks multi-line comment state */
 } preproc_context_t;
 
 /* Free the dependency lists stored in the context */

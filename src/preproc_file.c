@@ -90,6 +90,7 @@ static void init_preproc_vectors(preproc_context_t *ctx, vector_t *macros,
     vector_init(&ctx->deps, sizeof(char *));
     vector_init(&ctx->pack_stack, sizeof(size_t));
     ctx->pack_alignment = 0;
+    ctx->in_comment = 0;
     strbuf_init(out);
 }
 
