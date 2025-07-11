@@ -17,6 +17,7 @@
 #include "preproc_macros.h"
 #include "preproc_cond.h"
 #include <stdio.h>
+#include <errno.h>
 #include "util.h"
 #include "vector.h"
 #include "strbuf.h"
@@ -302,8 +303,23 @@ static int expand_user_macro(macro_t *m, const char *line, size_t *pos,
                              vector_t *macros, strbuf_t *out, int depth)
 {
     if (m->expanding) {
-        fprintf(stderr, "Macro expansion limit exceeded\n");
-        return -1;
+        int saved_errno = errno;
+        size_t p = *pos;
+        strbuf_append(out, m->name);
+        if ((m->params.count || m->variadic) && line[p] == '(') {
+            size_t depth = 0;
+            do {
+                strbuf_appendf(out, "%c", line[p]);
+                if (line[p] == '(')
+                    depth++;
+                else if (line[p] == ')')
+                    depth--;
+                p++;
+            } while (line[p - 1] && depth > 0);
+        }
+        *pos = p;
+        errno = saved_errno;
+        return 1;
     }
 
     size_t p = *pos;        /* position just after the macro name */
