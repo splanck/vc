@@ -110,7 +110,13 @@ static int parse_primary(expr_ctx_t *ctx)
     }
 }
 
-/* Unary operators '!' and '~' */
+/*
+ * Unary operators '!', '~', '+', and '-'.
+ *
+ * Supporting '+' and '-' here ensures that literals with a leading
+ * sign are parsed correctly.  Without this a leading '-' would be
+ * treated as a binary operator with an implicit left operand of zero.
+ */
 static int parse_unary(expr_ctx_t *ctx)
 {
     skip_ws(ctx);
@@ -120,6 +126,12 @@ static int parse_unary(expr_ctx_t *ctx)
     } else if (*ctx->s == '~') {
         ctx->s++;
         return ~parse_unary(ctx);
+    } else if (*ctx->s == '+') {
+        ctx->s++;
+        return parse_unary(ctx);
+    } else if (*ctx->s == '-') {
+        ctx->s++;
+        return -parse_unary(ctx);
     }
     return parse_primary(ctx);
 }
