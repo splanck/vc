@@ -352,5 +352,9 @@ static int handle_directive(char *line, const char *dir, vector_t *macros,
     if (d)
         return d->handler(line, dir, macros, conds, out, incdirs, stack, ctx);
 
+    if (line[0] == '#' && isdigit((unsigned char)line[1]))
+        return handle_line_directive(line, dir, macros, conds, out,
+                                     incdirs, stack, ctx);
+
     return handle_text_line(line, dir, macros, conds, out, incdirs, stack, ctx);
 }
