@@ -211,7 +211,7 @@ int collect_funcs(ir_builder_t *ir, inline_func_t **out, size_t *count)
 
         int is_inline = 0;
         const char *src_file = ins->next ? ins->next->file : NULL;
-        if (src_file) {
+        if (src_file && strcmp(src_file, "-") != 0) {
             int r = parse_inline_hint(src_file, ins->name);
             if (r > 0) {
                 is_inline = 1;
