@@ -96,15 +96,18 @@ int handle_include(char *line, const char *dir, vector_t *macros,
 
     char endc;
     char *fname = parse_include_name(expanded.data ? expanded.data : line, &endc);
-    int result = 1;
-    if (fname) {
-        size_t idx = SIZE_MAX;
-        char *incpath = find_include_path(fname, endc, dir, incdirs, 0, &idx);
-        if (!process_include_file(fname, incpath, idx, macros, conds, out,
-                                  incdirs, stack, ctx))
-            result = 0;
-        free(incpath);
+    if (!fname) {
+        fprintf(stderr, "Malformed include directive\n");
+        strbuf_free(&expanded);
+        return 0;
     }
+    int result = 1;
+    size_t idx = SIZE_MAX;
+    char *incpath = find_include_path(fname, endc, dir, incdirs, 0, &idx);
+    if (!process_include_file(fname, incpath, idx, macros, conds, out,
+                              incdirs, stack, ctx))
+        result = 0;
+    free(incpath);
     free(fname);
     strbuf_free(&expanded);
     return result;
@@ -125,23 +128,26 @@ int handle_include_next(char *line, const char *dir, vector_t *macros,
 
     char endc;
     char *fname = parse_include_name(expanded.data ? expanded.data : line, &endc);
-    int result = 1;
-    if (fname) {
-        size_t cur = SIZE_MAX;
-        if (stack->count) {
-            const include_entry_t *e =
-                &((include_entry_t *)stack->data)[stack->count - 1];
-            cur = e->dir_index;
-        }
-        size_t idx = SIZE_MAX;
-        size_t start_idx = (cur == (size_t)-1) ? 0 : cur + 1;
-        char *incpath = find_include_path(fname, endc, NULL, incdirs,
-                                          start_idx, &idx);
-        if (!process_include_file(fname, incpath, idx, macros, conds, out,
-                                  incdirs, stack, ctx))
-            result = 0;
-        free(incpath);
+    if (!fname) {
+        fprintf(stderr, "Malformed include directive\n");
+        strbuf_free(&expanded);
+        return 0;
     }
+    int result = 1;
+    size_t cur = SIZE_MAX;
+    if (stack->count) {
+        const include_entry_t *e =
+            &((include_entry_t *)stack->data)[stack->count - 1];
+        cur = e->dir_index;
+    }
+    size_t idx = SIZE_MAX;
+    size_t start_idx = (cur == (size_t)-1) ? 0 : cur + 1;
+    char *incpath = find_include_path(fname, endc, NULL, incdirs,
+                                      start_idx, &idx);
+    if (!process_include_file(fname, incpath, idx, macros, conds, out,
+                              incdirs, stack, ctx))
+        result = 0;
+    free(incpath);
     free(fname);
     strbuf_free(&expanded);
     return result;
