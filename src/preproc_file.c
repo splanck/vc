@@ -100,6 +100,7 @@ static int define_simple_macro(vector_t *macros, const char *name,
 {
     vector_t params;
     vector_init(&params, sizeof(char *));
+    remove_macro(macros, name);
     return add_macro(name, val, &params, 0, macros);
 }
 
@@ -263,6 +264,7 @@ static int update_macros_from_cli(vector_t *macros, const vector_t *defines,
             }
             vector_t params;
             vector_init(&params, sizeof(char *));
+            remove_macro(macros, name);
             if (!add_macro(name, val, &params, 0, macros)) {
                 free(name);
                 return 0;
