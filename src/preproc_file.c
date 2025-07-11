@@ -71,7 +71,9 @@ int process_file(const char *path, vector_t *macros,
     }
 
     if (ok && conds->count) {
-        fprintf(stderr, "Mismatched #if/#endif directives in %s\n", path);
+        cond_state_t *st = &((cond_state_t *)conds->data)[conds->count - 1];
+        fprintf(stderr, "%s:%zu: unterminated conditional started here\n",
+                path, st->line);
         ok = 0;
     }
 

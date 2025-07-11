@@ -4,6 +4,7 @@
 #include "preproc_cond.h"
 #include "preproc_macros.h"
 #include "preproc_expr.h"
+#include "preproc_builtin.h"
 #include "util.h"
 #include "vector.h"
 #include "strbuf.h"
@@ -50,6 +51,7 @@ int cond_push_ifdef_common(char *line, vector_t *macros,
     cond_state_t st;
     st.parent_active = is_active(conds);
     st.taken = 0;
+    st.line = preproc_get_line();
     int defined = is_macro_defined(macros, id);
     if (st.parent_active && (neg ? !defined : defined)) {
         st.taking = 1;
@@ -170,6 +172,7 @@ int cond_push_ifexpr(char *line, vector_t *macros, vector_t *conds)
     cond_state_t st;
     st.parent_active = is_active(conds);
     st.taken = 0;
+    st.line = preproc_get_line();
     if (st.parent_active && eval_expr(expr, macros) != 0) {
         st.taking = 1;
         st.taken = 1;
