@@ -3,11 +3,12 @@
 set -e
 DIR=$(dirname "$0")
 # track failing regression tests
+CFLAGS="-Iinclude -Wall -Wextra -Wpedantic -Wconversion -std=c99"
 fail=0
 # build the compiler
 make
 # build unit test binary
-cc -Iinclude -Wall -Wextra -std=c99 \
+cc $CFLAGS \
     -o "$DIR/unit_tests" "$DIR/unit/test_lexer_parser.c" \
     src/parser_core.c src/parser_init.c src/parser_decl_var.c \
     src/parser_decl_struct.c src/parser_decl_enum.c \
@@ -18,58 +19,58 @@ cc -Iinclude -Wall -Wextra -std=c99 \
     src/ast_expr.c src/ast_stmt_create.c src/ast_stmt_free.c src/lexer.c src/util.c \
     src/vector.c src/error.c
 # build cli unit test binary with vector_push wrapper
-cc -Iinclude -Wall -Wextra -std=c99 -Dvector_push=test_vector_push -c src/cli.c -o cli_test.o
-cc -Iinclude -Wall -Wextra -std=c99 -c src/cli_env.c -o cli_env_test.o
-cc -Iinclude -Wall -Wextra -std=c99 -Dvector_push=test_vector_push -c src/cli_opts.c -o cli_opts_test.o
-cc -Iinclude -Wall -Wextra -std=c99 -c "$DIR/unit/test_cli.c" -o "$DIR/test_cli.o"
-cc -Iinclude -Wall -Wextra -std=c99 -c src/vector.c -o vector_test.o
-cc -Iinclude -Wall -Wextra -std=c99 -DUNIT_TESTING -DNO_VECTOR_FREE_STUB -c src/util.c -o util_test.o
+cc $CFLAGS -Dvector_push=test_vector_push -c src/cli.c -o cli_test.o
+cc $CFLAGS -c src/cli_env.c -o cli_env_test.o
+cc $CFLAGS -Dvector_push=test_vector_push -c src/cli_opts.c -o cli_opts_test.o
+cc $CFLAGS -c "$DIR/unit/test_cli.c" -o "$DIR/test_cli.o"
+cc $CFLAGS -c src/vector.c -o vector_test.o
+cc $CFLAGS -DUNIT_TESTING -DNO_VECTOR_FREE_STUB -c src/util.c -o util_test.o
 cc -o "$DIR/cli_tests" cli_test.o cli_env_test.o cli_opts_test.o "$DIR/test_cli.o" vector_test.o util_test.o
 rm -f cli_test.o cli_env_test.o cli_opts_test.o "$DIR/test_cli.o" vector_test.o util_test.o
 # build parser alloc failure unit test with vector_push wrapper
-cc -Iinclude -Wall -Wextra -std=c99 -Dvector_push=test_vector_push -c src/parser_core.c -o parser_core_fail.o
-cc -Iinclude -Wall -Wextra -std=c99 -c src/parser_init.c -o parser_init_fail.o
-cc -Iinclude -Wall -Wextra -std=c99 -c src/parser_decl_var.c -o parser_decl_var_fail.o
-cc -Iinclude -Wall -Wextra -std=c99 -c src/parser_decl_struct.c -o parser_decl_struct_fail.o
-cc -Iinclude -Wall -Wextra -std=c99 -c src/parser_decl_enum.c -o parser_decl_enum_fail.o
-cc -Iinclude -Wall -Wextra -std=c99 -c src/parser_flow.c -o parser_flow_fail.o
-cc -Iinclude -Wall -Wextra -std=c99 -c src/parser_toplevel.c -o parser_toplevel_fail.o
-cc -Iinclude -Wall -Wextra -std=c99 -c src/parser_expr.c -o parser_expr_fail.o
-cc -Iinclude -Wall -Wextra -std=c99 -c src/parser_expr_primary.c -o parser_expr_primary_fail.o
-cc -Iinclude -Wall -Wextra -std=c99 -c src/parser_expr_binary.c -o parser_expr_binary_fail.o
-cc -Iinclude -Wall -Wextra -std=c99 -c src/parser_stmt.c -o parser_stmt_fail.o
-cc -Iinclude -Wall -Wextra -std=c99 -c src/parser_types.c -o parser_types_fail.o
-cc -Iinclude -Wall -Wextra -std=c99 -c src/symtable_core.c -o symtable_core_fail.o
-cc -Iinclude -Wall -Wextra -std=c99 -c src/symtable_globals.c -o symtable_globals_fail.o
-cc -Iinclude -Wall -Wextra -std=c99 -c src/symtable_struct.c -o symtable_struct_fail.o
-cc -Iinclude -Wall -Wextra -std=c99 -c src/ast_clone.c -o ast_clone_fail.o
-cc -Iinclude -Wall -Wextra -std=c99 -c src/ast_expr.c -o ast_expr_fail.o
-cc -Iinclude -Wall -Wextra -std=c99 -c src/ast_stmt_create.c -o ast_stmt_create_fail.o
-cc -Iinclude -Wall -Wextra -std=c99 -c src/ast_stmt_free.c -o ast_stmt_free_fail.o
-cc -Iinclude -Wall -Wextra -std=c99 -c src/lexer.c -o lexer_alloc.o
-cc -Iinclude -Wall -Wextra -std=c99 -c src/vector.c -o vector_alloc.o
-cc -Iinclude -Wall -Wextra -std=c99 -c src/util.c -o util_alloc.o
-cc -Iinclude -Wall -Wextra -std=c99 -c src/error.c -o error_alloc.o
-cc -Iinclude -Wall -Wextra -std=c99 -c "$DIR/unit/test_parser_alloc_fail.c" -o "$DIR/test_parser_alloc_fail.o"
+cc $CFLAGS -Dvector_push=test_vector_push -c src/parser_core.c -o parser_core_fail.o
+cc $CFLAGS -c src/parser_init.c -o parser_init_fail.o
+cc $CFLAGS -c src/parser_decl_var.c -o parser_decl_var_fail.o
+cc $CFLAGS -c src/parser_decl_struct.c -o parser_decl_struct_fail.o
+cc $CFLAGS -c src/parser_decl_enum.c -o parser_decl_enum_fail.o
+cc $CFLAGS -c src/parser_flow.c -o parser_flow_fail.o
+cc $CFLAGS -c src/parser_toplevel.c -o parser_toplevel_fail.o
+cc $CFLAGS -c src/parser_expr.c -o parser_expr_fail.o
+cc $CFLAGS -c src/parser_expr_primary.c -o parser_expr_primary_fail.o
+cc $CFLAGS -c src/parser_expr_binary.c -o parser_expr_binary_fail.o
+cc $CFLAGS -c src/parser_stmt.c -o parser_stmt_fail.o
+cc $CFLAGS -c src/parser_types.c -o parser_types_fail.o
+cc $CFLAGS -c src/symtable_core.c -o symtable_core_fail.o
+cc $CFLAGS -c src/symtable_globals.c -o symtable_globals_fail.o
+cc $CFLAGS -c src/symtable_struct.c -o symtable_struct_fail.o
+cc $CFLAGS -c src/ast_clone.c -o ast_clone_fail.o
+cc $CFLAGS -c src/ast_expr.c -o ast_expr_fail.o
+cc $CFLAGS -c src/ast_stmt_create.c -o ast_stmt_create_fail.o
+cc $CFLAGS -c src/ast_stmt_free.c -o ast_stmt_free_fail.o
+cc $CFLAGS -c src/lexer.c -o lexer_alloc.o
+cc $CFLAGS -c src/vector.c -o vector_alloc.o
+cc $CFLAGS -c src/util.c -o util_alloc.o
+cc $CFLAGS -c src/error.c -o error_alloc.o
+cc $CFLAGS -c "$DIR/unit/test_parser_alloc_fail.c" -o "$DIR/test_parser_alloc_fail.o"
 cc -o "$DIR/parser_alloc_tests" parser_core_fail.o parser_init_fail.o parser_decl_var_fail.o parser_decl_struct_fail.o parser_decl_enum_fail.o parser_flow_fail.o parser_toplevel_fail.o parser_expr_fail.o parser_expr_primary_fail.o parser_expr_binary_fail.o parser_stmt_fail.o parser_types_fail.o symtable_core_fail.o symtable_globals_fail.o symtable_struct_fail.o ast_clone_fail.o ast_expr_fail.o ast_stmt_create_fail.o ast_stmt_free_fail.o lexer_alloc.o vector_alloc.o util_alloc.o error_alloc.o "$DIR/test_parser_alloc_fail.o"
 rm -f parser_core_fail.o parser_init_fail.o parser_decl_var_fail.o parser_decl_struct_fail.o parser_decl_enum_fail.o parser_flow_fail.o parser_toplevel_fail.o parser_expr_fail.o parser_expr_primary_fail.o parser_expr_binary_fail.o parser_stmt_fail.o parser_types_fail.o symtable_core_fail.o symtable_globals_fail.o symtable_struct_fail.o ast_clone_fail.o ast_expr_fail.o ast_stmt_create_fail.o ast_stmt_free_fail.o lexer_alloc.o vector_alloc.o util_alloc.o error_alloc.o "$DIR/test_parser_alloc_fail.o"
 # build ir_core unit test binary with malloc wrapper
-cc -Iinclude -Wall -Wextra -std=c99 -Dmalloc=test_malloc -Dcalloc=test_calloc -c src/ir_core.c -o ir_core_test.o
-cc -Iinclude -Wall -Wextra -std=c99 -Dmalloc=test_malloc -Dcalloc=test_calloc -c src/util.c -o util_ircore.o
-cc -Iinclude -Wall -Wextra -std=c99 -c src/label.c -o label_ircore.o
-cc -Iinclude -Wall -Wextra -std=c99 -c src/error.c -o error_ircore.o
-cc -Iinclude -Wall -Wextra -std=c99 -c "$DIR/unit/test_ir_core.c" -o "$DIR/test_ir_core.o"
+cc $CFLAGS -Dmalloc=test_malloc -Dcalloc=test_calloc -c src/ir_core.c -o ir_core_test.o
+cc $CFLAGS -Dmalloc=test_malloc -Dcalloc=test_calloc -c src/util.c -o util_ircore.o
+cc $CFLAGS -c src/label.c -o label_ircore.o
+cc $CFLAGS -c src/error.c -o error_ircore.o
+cc $CFLAGS -c "$DIR/unit/test_ir_core.c" -o "$DIR/test_ir_core.o"
 cc -o "$DIR/ir_core_tests" ir_core_test.o util_ircore.o error_ircore.o label_ircore.o "$DIR/test_ir_core.o"
 rm -f ir_core_test.o util_ircore.o error_ircore.o label_ircore.o "$DIR/test_ir_core.o"
 # build conditional expression regression test
-cc -Iinclude -Wall -Wextra -std=c99 \
+cc $CFLAGS \
     -o "$DIR/cond_expr_tests" "$DIR/unit/test_cond_expr.c" \
     src/semantic_expr.c src/semantic_arith.c src/semantic_mem.c \
     src/semantic_call.c src/consteval.c src/symtable_core.c src/symtable_struct.c \
     src/ast_expr.c src/vector.c src/util.c src/ir_core.c \
     src/error.c src/label.c
 # build complex expression semantic tests
-cc -Iinclude -Wall -Wextra -std=c99 \
+cc $CFLAGS \
     -o "$DIR/complex_expr_tests" "$DIR/unit/test_complex_expr.c" \
     src/semantic_expr.c src/semantic_arith.c src/semantic_mem.c \
     src/semantic_call.c src/consteval.c src/symtable_core.c src/symtable_struct.c \
@@ -77,87 +78,87 @@ cc -Iinclude -Wall -Wextra -std=c99 \
     src/error.c src/label.c
 # build sizeof pointer evaluation test
 # eval sizeof with small helper modules
-cc -Iinclude -Wall -Wextra -std=c99 \
+cc $CFLAGS \
     -o "$DIR/eval_sizeof_tests" "$DIR/unit/test_eval_sizeof.c" \
     src/ast_expr.c src/consteval.c src/symtable_core.c src/symtable_struct.c \
     src/util.c src/error.c
-cc -Iinclude -Wall -Wextra -std=c99 \
+cc $CFLAGS \
     -o "$DIR/eval_offsetof_tests" "$DIR/unit/test_eval_offsetof.c" \
     src/ast_expr.c src/consteval.c src/symtable_core.c src/symtable_struct.c \
     src/util.c src/error.c
 # build numeric constant overflow regression test
-cc -Iinclude -Wall -Wextra -std=c99 \
+cc $CFLAGS \
     -o "$DIR/number_overflow" "$DIR/unit/test_number_overflow.c" \
     src/ast_expr.c src/consteval.c src/symtable_core.c src/symtable_struct.c \
     src/util.c src/error.c
 # build numeric literal suffix tests
-cc -Iinclude -Wall -Wextra -std=c99 \
+cc $CFLAGS \
     -o "$DIR/number_suffix" "$DIR/unit/test_number_suffix.c" \
     src/ast_expr.c src/semantic_expr.c src/semantic_arith.c \
     src/semantic_mem.c src/semantic_call.c src/consteval.c \
     src/symtable_core.c src/symtable_struct.c src/vector.c src/util.c src/ir_core.c \
     src/error.c src/label.c
 # build constant arithmetic overflow regression test
-cc -Iinclude -Wall -Wextra -std=c99 \
+cc $CFLAGS \
     -o "$DIR/consteval_overflow" "$DIR/unit/test_consteval_overflow.c" \
     src/ast_expr.c src/consteval.c src/symtable_core.c src/symtable_struct.c \
     src/util.c src/error.c
 # build strbuf overflow regression test
-cc -Iinclude -Wall -Wextra -std=c99 -c src/strbuf.c -o strbuf_overflow_impl.o
-cc -Iinclude -Wall -Wextra -std=c99 -c src/util.c -o util_strbuf.o
-cc -Iinclude -Wall -Wextra -std=c99 -c "$DIR/unit/test_strbuf_overflow.c" -o "$DIR/test_strbuf_overflow.o"
+cc $CFLAGS -c src/strbuf.c -o strbuf_overflow_impl.o
+cc $CFLAGS -c src/util.c -o util_strbuf.o
+cc $CFLAGS -c "$DIR/unit/test_strbuf_overflow.c" -o "$DIR/test_strbuf_overflow.o"
 cc -o "$DIR/strbuf_overflow" strbuf_overflow_impl.o util_strbuf.o "$DIR/test_strbuf_overflow.o"
 rm -f strbuf_overflow_impl.o util_strbuf.o "$DIR/test_strbuf_overflow.o"
 # build collect_funcs overflow regression test
-cc -Iinclude -Wall -Wextra -std=c99 "$DIR/unit/test_collect_funcs_overflow.c" -o "$DIR/collect_funcs_overflow"
+cc $CFLAGS "$DIR/unit/test_collect_funcs_overflow.c" -o "$DIR/collect_funcs_overflow"
 # build waitpid EINTR regression test
-cc -Iinclude -Wall -Wextra -std=c99 -c src/strbuf.c -o strbuf_eintr_impl.o
-cc -Iinclude -Wall -Wextra -std=c99 -c src/util.c -o util_eintr.o
-cc -Iinclude -Wall -Wextra -std=c99 -c "$DIR/unit/test_waitpid_retry.c" -o "$DIR/test_waitpid_retry.o"
+cc $CFLAGS -c src/strbuf.c -o strbuf_eintr_impl.o
+cc $CFLAGS -c src/util.c -o util_eintr.o
+cc $CFLAGS -c "$DIR/unit/test_waitpid_retry.c" -o "$DIR/test_waitpid_retry.o"
 cc -o "$DIR/waitpid_retry" strbuf_eintr_impl.o util_eintr.o "$DIR/test_waitpid_retry.o"
 rm -f strbuf_eintr_impl.o util_eintr.o "$DIR/test_waitpid_retry.o"
 # build invalid macro parse test
-cc -Iinclude -Wall -Wextra -std=c99 -c "$DIR/unit/test_invalid_macro.c" -o "$DIR/test_invalid_macro.o"
-cc -Iinclude -Wall -Wextra -std=c99 -c src/vector.c -o vector_invalid.o
-cc -Iinclude -Wall -Wextra -std=c99 -c src/util.c -o util_invalid.o
+cc $CFLAGS -c "$DIR/unit/test_invalid_macro.c" -o "$DIR/test_invalid_macro.o"
+cc $CFLAGS -c src/vector.c -o vector_invalid.o
+cc $CFLAGS -c src/util.c -o util_invalid.o
 cc -o "$DIR/invalid_macro_tests" "$DIR/test_invalid_macro.o" vector_invalid.o util_invalid.o
 rm -f "$DIR/test_invalid_macro.o" vector_invalid.o util_invalid.o
 # build preprocessor alloc failure tests
-cc -Iinclude -Wall -Wextra -std=c99 -Dvector_push=test_vector_push \
+cc $CFLAGS -Dvector_push=test_vector_push \
     -c "$DIR/unit/test_preproc_alloc_fail.c" -o "$DIR/test_preproc_alloc_fail.o"
-cc -Iinclude -Wall -Wextra -std=c99 -c src/vector.c -o vector_preproc.o
+cc $CFLAGS -c src/vector.c -o vector_preproc.o
 cc -o "$DIR/preproc_alloc_tests" "$DIR/test_preproc_alloc_fail.o" vector_preproc.o
 rm -f "$DIR/test_preproc_alloc_fail.o" vector_preproc.o
 # build add_macro push failure test
-cc -Iinclude -Wall -Wextra -std=c99 -Dvector_push=test_vector_push -c "$DIR/unit/test_add_macro_fail.c" -o "$DIR/test_add_macro_fail.o"
-cc -Iinclude -Wall -Wextra -std=c99 -c src/vector.c -o vector_addmacro.o
+cc $CFLAGS -Dvector_push=test_vector_push -c "$DIR/unit/test_add_macro_fail.c" -o "$DIR/test_add_macro_fail.o"
+cc $CFLAGS -c src/vector.c -o vector_addmacro.o
 cc -o "$DIR/add_macro_fail_tests" "$DIR/test_add_macro_fail.o" vector_addmacro.o
 rm -f "$DIR/test_add_macro_fail.o" vector_addmacro.o
 # build variadic macro tests
-cc -Iinclude -Wall -Wextra -std=c99 -c src/preproc_expand.c -o preproc_expand.o
-cc -Iinclude -Wall -Wextra -std=c99 -c src/preproc_table.c -o preproc_table.o
-cc -Iinclude -Wall -Wextra -std=c99 -c src/strbuf.c -o strbuf_variadic.o
-cc -Iinclude -Wall -Wextra -std=c99 -c src/vector.c -o vector_variadic.o
-cc -Iinclude -Wall -Wextra -std=c99 -c src/util.c -o util_variadic.o
-cc -Iinclude -Wall -Wextra -std=c99 -c "$DIR/unit/test_variadic_macro.c" -o "$DIR/test_variadic_macro.o"
+cc $CFLAGS -c src/preproc_expand.c -o preproc_expand.o
+cc $CFLAGS -c src/preproc_table.c -o preproc_table.o
+cc $CFLAGS -c src/strbuf.c -o strbuf_variadic.o
+cc $CFLAGS -c src/vector.c -o vector_variadic.o
+cc $CFLAGS -c src/util.c -o util_variadic.o
+cc $CFLAGS -c "$DIR/unit/test_variadic_macro.c" -o "$DIR/test_variadic_macro.o"
 cc -o "$DIR/variadic_macro_tests" preproc_expand.o preproc_table.o strbuf_variadic.o vector_variadic.o util_variadic.o "$DIR/test_variadic_macro.o"
 rm -f preproc_expand.o preproc_table.o strbuf_variadic.o vector_variadic.o util_variadic.o "$DIR/test_variadic_macro.o"
 # build macro stringize escape test
-cc -Iinclude -Wall -Wextra -std=c99 -c src/preproc_expand.c -o preproc_expand.o
-cc -Iinclude -Wall -Wextra -std=c99 -c src/preproc_table.c -o preproc_table.o
-cc -Iinclude -Wall -Wextra -std=c99 -c src/strbuf.c -o strbuf_stringize.o
-cc -Iinclude -Wall -Wextra -std=c99 -c src/vector.c -o vector_stringize.o
-cc -Iinclude -Wall -Wextra -std=c99 -c src/util.c -o util_stringize.o
-cc -Iinclude -Wall -Wextra -std=c99 -c "$DIR/unit/test_macro_stringize_escape.c" -o "$DIR/test_macro_stringize_escape.o"
+cc $CFLAGS -c src/preproc_expand.c -o preproc_expand.o
+cc $CFLAGS -c src/preproc_table.c -o preproc_table.o
+cc $CFLAGS -c src/strbuf.c -o strbuf_stringize.o
+cc $CFLAGS -c src/vector.c -o vector_stringize.o
+cc $CFLAGS -c src/util.c -o util_stringize.o
+cc $CFLAGS -c "$DIR/unit/test_macro_stringize_escape.c" -o "$DIR/test_macro_stringize_escape.o"
 cc -o "$DIR/macro_stringize_escape" preproc_expand.o preproc_table.o strbuf_stringize.o vector_stringize.o util_stringize.o "$DIR/test_macro_stringize_escape.o"
 rm -f preproc_expand.o preproc_table.o strbuf_stringize.o vector_stringize.o util_stringize.o "$DIR/test_macro_stringize_escape.o"
 # build pack pragma layout tests
-cc -Iinclude -Wall -Wextra -std=c99 \
+cc $CFLAGS \
     -o "$DIR/pack_pragma_tests" "$DIR/unit/test_pack_pragma.c"
 # build preprocessing of stdio.h regression test
 MULTIARCH=$(gcc -print-multiarch 2>/dev/null || echo x86_64-linux-gnu)
 GCC_INCLUDE_DIR=$(gcc -print-file-name=include)
-cc -Iinclude -Wall -Wextra -std=c99 \
+cc $CFLAGS \
     -DMULTIARCH="${MULTIARCH}" -DGCC_INCLUDE_DIR="${GCC_INCLUDE_DIR}" \
     -o "$DIR/preproc_stdio" "$DIR/unit/test_preproc_stdio.c" \
     src/preproc_file.c src/preproc_directives.c src/preproc_file_io.c \
@@ -165,84 +166,84 @@ cc -Iinclude -Wall -Wextra -std=c99 \
     src/preproc_args.c src/preproc_cond.c src/preproc_expr.c \
     src/preproc_include.c src/preproc_includes.c src/preproc_path.c \
     src/vector.c src/strbuf.c src/util.c src/error.c
-cc -Iinclude -Wall -Wextra -std=c99 \
+cc $CFLAGS \
     -o "$DIR/preproc_ifmacro" "$DIR/unit/test_preproc_ifmacro.c" \
     src/preproc_file.c src/preproc_directives.c src/preproc_file_io.c \
     src/preproc_expand.c src/preproc_table.c src/preproc_builtin.c \
     src/preproc_args.c src/preproc_cond.c src/preproc_expr.c \
     src/preproc_include.c src/preproc_includes.c src/preproc_path.c \
     src/vector.c src/strbuf.c src/util.c src/error.c
-cc -Iinclude -Wall -Wextra -std=c99 \
+cc $CFLAGS \
     -o "$DIR/preproc_line" "$DIR/unit/test_preproc_line.c" \
     src/preproc_file.c src/preproc_directives.c src/preproc_file_io.c \
     src/preproc_expand.c src/preproc_table.c src/preproc_builtin.c \
     src/preproc_args.c src/preproc_cond.c src/preproc_expr.c \
     src/preproc_include.c src/preproc_includes.c src/preproc_path.c \
     src/vector.c src/strbuf.c src/util.c src/error.c
-cc -Iinclude -Wall -Wextra -std=c99 \
+cc $CFLAGS \
     -o "$DIR/preproc_line_macro" "$DIR/unit/test_preproc_line_macro.c" \
     src/preproc_file.c src/preproc_directives.c src/preproc_file_io.c \
     src/preproc_expand.c src/preproc_table.c src/preproc_builtin.c \
     src/preproc_args.c src/preproc_cond.c src/preproc_expr.c \
     src/preproc_include.c src/preproc_includes.c src/preproc_path.c \
     src/vector.c src/strbuf.c src/util.c src/error.c
-cc -Iinclude -Wall -Wextra -std=c99 \
+cc $CFLAGS \
     -o "$DIR/gcc_line_marker" "$DIR/unit/test_gcc_line_marker.c" \
     src/preproc_file.c src/preproc_directives.c src/preproc_file_io.c \
     src/preproc_expand.c src/preproc_table.c src/preproc_builtin.c \
     src/preproc_args.c src/preproc_cond.c src/preproc_expr.c \
     src/preproc_include.c src/preproc_includes.c src/preproc_path.c \
     src/vector.c src/strbuf.c src/util.c src/error.c
-cc -Iinclude -Wall -Wextra -std=c99 \
+cc $CFLAGS \
     -o "$DIR/preproc_hash_noop" "$DIR/unit/test_preproc_hash_noop.c" \
     src/preproc_file.c src/preproc_directives.c src/preproc_file_io.c \
     src/preproc_expand.c src/preproc_table.c src/preproc_builtin.c \
     src/preproc_args.c src/preproc_cond.c src/preproc_expr.c \
     src/preproc_include.c src/preproc_includes.c src/preproc_path.c \
     src/vector.c src/strbuf.c src/util.c src/error.c
-cc -Iinclude -Wall -Wextra -std=c99 \
+cc $CFLAGS \
     -o "$DIR/preproc_crlf" "$DIR/unit/test_preproc_crlf.c" \
     src/preproc_file.c src/preproc_directives.c src/preproc_file_io.c \
     src/preproc_expand.c src/preproc_table.c src/preproc_builtin.c \
     src/preproc_args.c src/preproc_cond.c src/preproc_expr.c \
     src/preproc_include.c src/preproc_includes.c src/preproc_path.c \
     src/vector.c src/strbuf.c src/util.c src/error.c
-cc -Iinclude -Wall -Wextra -std=c99 \
+cc $CFLAGS \
     -o "$DIR/preproc_pack_macro" "$DIR/unit/test_preproc_pack_macro.c" \
     src/preproc_file.c src/preproc_directives.c src/preproc_file_io.c \
     src/preproc_expand.c src/preproc_table.c src/preproc_builtin.c \
     src/preproc_args.c src/preproc_cond.c src/preproc_expr.c \
     src/preproc_include.c src/preproc_includes.c src/preproc_path.c \
     src/vector.c src/strbuf.c src/util.c src/error.c
-cc -Iinclude -Wall -Wextra -std=c99 \
+cc $CFLAGS \
     -o "$DIR/preproc_pack_push" "$DIR/unit/test_preproc_pack_push.c" \
     src/preproc_file.c src/preproc_directives.c src/preproc_file_io.c \
     src/preproc_expand.c src/preproc_table.c src/preproc_builtin.c \
     src/preproc_args.c src/preproc_cond.c src/preproc_expr.c \
     src/preproc_include.c src/preproc_includes.c src/preproc_path.c \
     src/vector.c src/strbuf.c src/util.c src/error.c
-cc -Iinclude -Wall -Wextra -std=c99 \
+cc $CFLAGS \
     -o "$DIR/preproc_pragma_macro" "$DIR/unit/test_preproc_pragma_macro.c" \
     src/preproc_file.c src/preproc_directives.c src/preproc_file_io.c \
     src/preproc_expand.c src/preproc_table.c src/preproc_builtin.c \
     src/preproc_args.c src/preproc_cond.c src/preproc_expr.c \
     src/preproc_include.c src/preproc_includes.c src/preproc_path.c \
     src/vector.c src/strbuf.c src/util.c src/error.c
-cc -Iinclude -Wall -Wextra -std=c99 \
+cc $CFLAGS \
     -o "$DIR/preproc_defined_macro" "$DIR/unit/test_preproc_defined_macro.c" \
     src/preproc_file.c src/preproc_directives.c src/preproc_file_io.c \
     src/preproc_expand.c src/preproc_table.c src/preproc_builtin.c \
     src/preproc_args.c src/preproc_cond.c src/preproc_expr.c \
     src/preproc_include.c src/preproc_includes.c src/preproc_path.c \
     src/vector.c src/strbuf.c src/util.c src/error.c
-cc -Iinclude -Wall -Wextra -std=c99 \
+cc $CFLAGS \
     -o "$DIR/preproc_unterm_comment" "$DIR/unit/test_preproc_unterm_comment.c" \
     src/preproc_file.c src/preproc_directives.c src/preproc_file_io.c \
     src/preproc_expand.c src/preproc_table.c src/preproc_builtin.c \
     src/preproc_args.c src/preproc_cond.c src/preproc_expr.c \
     src/preproc_include.c src/preproc_includes.c src/preproc_path.c \
     src/vector.c src/strbuf.c src/util.c src/error.c
-cc -Iinclude -Wall -Wextra -std=c99 \
+cc $CFLAGS \
     -DMULTIARCH="${MULTIARCH}" -DGCC_INCLUDE_DIR="${GCC_INCLUDE_DIR}" \
     -o "$DIR/preproc_pragma" "$DIR/unit/test_preproc_pragma.c" \
     src/preproc_file.c src/preproc_directives.c src/preproc_file_io.c \
@@ -250,7 +251,7 @@ cc -Iinclude -Wall -Wextra -std=c99 \
     src/preproc_args.c src/preproc_cond.c src/preproc_expr.c \
     src/preproc_include.c src/preproc_includes.c src/preproc_path.c \
     src/vector.c src/strbuf.c src/util.c src/error.c
-cc -Iinclude -Wall -Wextra -std=c99 \
+cc $CFLAGS \
     -DMULTIARCH="${MULTIARCH}" -DGCC_INCLUDE_DIR="${GCC_INCLUDE_DIR}" \
     -o "$DIR/preproc_builtin_extra" "$DIR/unit/test_builtin_macros.c" \
     src/preproc_file.c src/preproc_directives.c src/preproc_file_io.c \
@@ -258,14 +259,14 @@ cc -Iinclude -Wall -Wextra -std=c99 \
     src/preproc_args.c src/preproc_cond.c src/preproc_expr.c \
     src/preproc_include.c src/preproc_includes.c src/preproc_path.c \
     src/vector.c src/strbuf.c src/util.c src/error.c
-cc -Iinclude -Wall -Wextra -std=c99 \
+cc $CFLAGS \
     -o "$DIR/preproc_charlit" "$DIR/unit/test_preproc_charlit.c" \
     src/preproc_file.c src/preproc_directives.c src/preproc_file_io.c \
     src/preproc_expand.c src/preproc_table.c src/preproc_builtin.c \
     src/preproc_args.c src/preproc_cond.c src/preproc_expr.c \
     src/preproc_include.c src/preproc_includes.c src/preproc_path.c \
     src/vector.c src/strbuf.c src/util.c src/error.c
-cc -Iinclude -Wall -Wextra -std=c99 \
+cc $CFLAGS \
     -DMULTIARCH="${MULTIARCH}" -DGCC_INCLUDE_DIR="${GCC_INCLUDE_DIR}" \
     -o "$DIR/preproc_counter_base" "$DIR/unit/test_predef_counter_base.c" \
     src/preproc_file.c src/preproc_directives.c src/preproc_file_io.c \
@@ -273,7 +274,7 @@ cc -Iinclude -Wall -Wextra -std=c99 \
     src/preproc_args.c src/preproc_cond.c src/preproc_expr.c \
     src/preproc_include.c src/preproc_includes.c src/preproc_path.c \
     src/vector.c src/strbuf.c src/util.c src/error.c
-cc -Iinclude -Wall -Wextra -std=c99 \
+cc $CFLAGS \
     -o "$DIR/preproc_errwarn" "$DIR/unit/test_preproc_errwarn.c" \
     src/preproc_file.c src/preproc_directives.c src/preproc_file_io.c \
     src/preproc_expand.c src/preproc_table.c src/preproc_builtin.c \
@@ -281,59 +282,59 @@ cc -Iinclude -Wall -Wextra -std=c99 \
     src/preproc_include.c src/preproc_includes.c src/preproc_path.c \
     src/vector.c src/strbuf.c src/util.c src/error.c
 # build create_temp_file path length regression test
-cc -Iinclude -Wall -Wextra -std=c99 -DUNIT_TESTING -ffunction-sections -fdata-sections -c src/compile.c -o compile_temp.o
-cc -Iinclude -Wall -Wextra -std=c99 -c "$DIR/unit/test_temp_file.c" -o "$DIR/test_temp_file.o"
+cc $CFLAGS -DUNIT_TESTING -ffunction-sections -fdata-sections -c src/compile.c -o compile_temp.o
+cc $CFLAGS -c "$DIR/unit/test_temp_file.c" -o "$DIR/test_temp_file.o"
 cc -Wl,--gc-sections -o "$DIR/temp_file_tests" compile_temp.o "$DIR/test_temp_file.o"
 rm -f compile_temp.o "$DIR/test_temp_file.o"
 # build compile_source_obj temp file failure test
-cc -Iinclude -Wall -Wextra -std=c99 -DUNIT_TESTING -Dcompile_unit=test_compile_unit -ffunction-sections -fdata-sections -c src/compile.c -o compile_obj_fail.o
-cc -Iinclude -Wall -Wextra -std=c99 -DUNIT_TESTING -Dcompile_unit=test_compile_unit -ffunction-sections -fdata-sections -c src/compile_link.c -o compile_link_obj_fail.o
-cc -Iinclude -Wall -Wextra -std=c99 -c "$DIR/unit/test_compile_obj_fail.c" -o "$DIR/test_compile_obj_fail.o"
+cc $CFLAGS -DUNIT_TESTING -Dcompile_unit=test_compile_unit -ffunction-sections -fdata-sections -c src/compile.c -o compile_obj_fail.o
+cc $CFLAGS -DUNIT_TESTING -Dcompile_unit=test_compile_unit -ffunction-sections -fdata-sections -c src/compile_link.c -o compile_link_obj_fail.o
+cc $CFLAGS -c "$DIR/unit/test_compile_obj_fail.c" -o "$DIR/test_compile_obj_fail.o"
 cc -Wl,--gc-sections -o "$DIR/compile_obj_fail" compile_obj_fail.o compile_link_obj_fail.o "$DIR/test_compile_obj_fail.o"
 rm -f compile_obj_fail.o compile_link_obj_fail.o "$DIR/test_compile_obj_fail.o"
 # build constant folding tests
-cc -Iinclude -Wall -Wextra -std=c99 -Dmalloc=test_malloc -Dcalloc=test_calloc -Dfree=test_free -c src/ir_core.c -o ir_fold.o
-cc -Iinclude -Wall -Wextra -std=c99 -Dmalloc=test_malloc -Dcalloc=test_calloc -Dfree=test_free -c src/util.c -o util_fold.o
-cc -Iinclude -Wall -Wextra -std=c99 -Dcalloc=test_calloc -Dfree=test_free -c src/opt_fold.c -o opt_fold_main.o
-cc -Iinclude -Wall -Wextra -std=c99 -Dfree=test_free -c src/label.c -o label_fold.o
-cc -Iinclude -Wall -Wextra -std=c99 -Dfree=test_free -c src/error.c -o error_fold.o
-cc -Iinclude -Wall -Wextra -std=c99 -c "$DIR/unit/test_opt_fold.c" -o "$DIR/test_opt_fold.o"
+cc $CFLAGS -Dmalloc=test_malloc -Dcalloc=test_calloc -Dfree=test_free -c src/ir_core.c -o ir_fold.o
+cc $CFLAGS -Dmalloc=test_malloc -Dcalloc=test_calloc -Dfree=test_free -c src/util.c -o util_fold.o
+cc $CFLAGS -Dcalloc=test_calloc -Dfree=test_free -c src/opt_fold.c -o opt_fold_main.o
+cc $CFLAGS -Dfree=test_free -c src/label.c -o label_fold.o
+cc $CFLAGS -Dfree=test_free -c src/error.c -o error_fold.o
+cc $CFLAGS -c "$DIR/unit/test_opt_fold.c" -o "$DIR/test_opt_fold.o"
 cc -o "$DIR/opt_fold_tests" ir_fold.o util_fold.o opt_fold_main.o label_fold.o error_fold.o "$DIR/test_opt_fold.o"
 rm -f ir_fold.o util_fold.o opt_fold_main.o label_fold.o error_fold.o "$DIR/test_opt_fold.o"
 # build unreachable block elimination test
-cc -Iinclude -Wall -Wextra -std=c99 -c src/ir_core.c -o ir_unreach.o
-cc -Iinclude -Wall -Wextra -std=c99 -c src/util.c -o util_unreach.o
-cc -Iinclude -Wall -Wextra -std=c99 -c src/label.c -o label_unreach.o
-cc -Iinclude -Wall -Wextra -std=c99 -c src/error.c -o error_unreach.o
-cc -Iinclude -Wall -Wextra -std=c99 -c src/opt.c -o opt_main.o
-cc -Iinclude -Wall -Wextra -std=c99 -c src/opt_constprop.c -o opt_constprop_unreach.o
-cc -Iinclude -Wall -Wextra -std=c99 -c src/opt_cse.c -o opt_cse_unreach.o
-cc -Iinclude -Wall -Wextra -std=c99 -c src/opt_fold.c -o opt_fold_unreach.o
-cc -Iinclude -Wall -Wextra -std=c99 -c src/opt_dce.c -o opt_dce_unreach.o
-cc -Iinclude -Wall -Wextra -std=c99 -c src/opt_inline.c -o opt_inline_unreach.o
-cc -Iinclude -Wall -Wextra -std=c99 -c src/opt_unreachable.c -o opt_unreach.o
-cc -Iinclude -Wall -Wextra -std=c99 -c src/opt_alias.c -o opt_alias_unreach.o
-cc -Iinclude -Wall -Wextra -std=c99 -c "$DIR/unit/test_opt_unreachable.c" -o "$DIR/test_opt_unreachable.o"
+cc $CFLAGS -c src/ir_core.c -o ir_unreach.o
+cc $CFLAGS -c src/util.c -o util_unreach.o
+cc $CFLAGS -c src/label.c -o label_unreach.o
+cc $CFLAGS -c src/error.c -o error_unreach.o
+cc $CFLAGS -c src/opt.c -o opt_main.o
+cc $CFLAGS -c src/opt_constprop.c -o opt_constprop_unreach.o
+cc $CFLAGS -c src/opt_cse.c -o opt_cse_unreach.o
+cc $CFLAGS -c src/opt_fold.c -o opt_fold_unreach.o
+cc $CFLAGS -c src/opt_dce.c -o opt_dce_unreach.o
+cc $CFLAGS -c src/opt_inline.c -o opt_inline_unreach.o
+cc $CFLAGS -c src/opt_unreachable.c -o opt_unreach.o
+cc $CFLAGS -c src/opt_alias.c -o opt_alias_unreach.o
+cc $CFLAGS -c "$DIR/unit/test_opt_unreachable.c" -o "$DIR/test_opt_unreachable.o"
 cc -o "$DIR/opt_unreachable_tests" ir_unreach.o util_unreach.o label_unreach.o error_unreach.o \
     opt_main.o opt_constprop_unreach.o opt_cse_unreach.o opt_fold_unreach.o \
     opt_dce_unreach.o opt_inline_unreach.o opt_unreach.o opt_alias_unreach.o "$DIR/test_opt_unreachable.o"
 rm -f ir_unreach.o util_unreach.o label_unreach.o error_unreach.o opt_main.o \
       opt_constprop_unreach.o opt_cse_unreach.o opt_fold_unreach.o \
       opt_dce_unreach.o opt_inline_unreach.o opt_unreach.o opt_alias_unreach.o "$DIR/test_opt_unreachable.o"
-cc -Iinclude -Wall -Wextra -std=c99 -c src/ir_core.c -o ir_licm.o
-cc -Iinclude -Wall -Wextra -std=c99 -c src/util.c -o util_licm.o
-cc -Iinclude -Wall -Wextra -std=c99 -c src/label.c -o label_licm.o
-cc -Iinclude -Wall -Wextra -std=c99 -c src/error.c -o error_licm.o
-cc -Iinclude -Wall -Wextra -std=c99 -c src/opt.c -o opt_main_licm.o
-cc -Iinclude -Wall -Wextra -std=c99 -c src/opt_constprop.c -o opt_constprop_licm.o
-cc -Iinclude -Wall -Wextra -std=c99 -c src/opt_cse.c -o opt_cse_licm.o
-cc -Iinclude -Wall -Wextra -std=c99 -c src/opt_fold.c -o opt_fold_licm.o
-cc -Iinclude -Wall -Wextra -std=c99 -c src/opt_licm.c -o opt_licm.o
-cc -Iinclude -Wall -Wextra -std=c99 -c src/opt_inline.c -o opt_inline_licm.o
-cc -Iinclude -Wall -Wextra -std=c99 -c src/opt_unreachable.c -o opt_unreach_licm.o
-cc -Iinclude -Wall -Wextra -std=c99 -c src/opt_dce.c -o opt_dce_licm.o
-cc -Iinclude -Wall -Wextra -std=c99 -c src/opt_alias.c -o opt_alias_licm.o
-cc -Iinclude -Wall -Wextra -std=c99 -c "$DIR/unit/test_opt_licm.c" -o "$DIR/test_opt_licm.o"
+cc $CFLAGS -c src/ir_core.c -o ir_licm.o
+cc $CFLAGS -c src/util.c -o util_licm.o
+cc $CFLAGS -c src/label.c -o label_licm.o
+cc $CFLAGS -c src/error.c -o error_licm.o
+cc $CFLAGS -c src/opt.c -o opt_main_licm.o
+cc $CFLAGS -c src/opt_constprop.c -o opt_constprop_licm.o
+cc $CFLAGS -c src/opt_cse.c -o opt_cse_licm.o
+cc $CFLAGS -c src/opt_fold.c -o opt_fold_licm.o
+cc $CFLAGS -c src/opt_licm.c -o opt_licm.o
+cc $CFLAGS -c src/opt_inline.c -o opt_inline_licm.o
+cc $CFLAGS -c src/opt_unreachable.c -o opt_unreach_licm.o
+cc $CFLAGS -c src/opt_dce.c -o opt_dce_licm.o
+cc $CFLAGS -c src/opt_alias.c -o opt_alias_licm.o
+cc $CFLAGS -c "$DIR/unit/test_opt_licm.c" -o "$DIR/test_opt_licm.o"
 cc -o "$DIR/opt_licm_tests" ir_licm.o util_licm.o label_licm.o error_licm.o \
     opt_main_licm.o opt_constprop_licm.o opt_cse_licm.o opt_fold_licm.o opt_licm.o \
     opt_inline_licm.o opt_unreach_licm.o opt_dce_licm.o opt_alias_licm.o "$DIR/test_opt_licm.o"
