@@ -1,5 +1,6 @@
 #define _POSIX_C_SOURCE 200809L
 #include <string.h>
+#include <time.h>
 #include "preproc_builtin.h"
 #include "util.h"
 
@@ -11,8 +12,6 @@ static const char *builtin_base_file = "";
 static size_t builtin_include_level = 0;
 static unsigned long builtin_counter = 0;
 
-static const char build_date[] = __DATE__;
-static const char build_time[] = __TIME__;
 
 void preproc_set_location(const char *file, size_t line, size_t column)
 {
@@ -62,13 +61,23 @@ int handle_builtin_macro(const char *name, size_t len, size_t end,
             *pos = end;
             return 1;
         } else if (strncmp(name, "__DATE__", 8) == 0) {
+            char buf[32];
+            time_t now = time(NULL);
+            struct tm tm;
+            localtime_r(&now, &tm);
+            strftime(buf, sizeof(buf), "%b %e %Y", &tm);
             preproc_set_location(NULL, builtin_line, column);
-            strbuf_appendf(out, "\"%s\"", build_date);
+            strbuf_appendf(out, "\"%s\"", buf);
             *pos = end;
             return 1;
         } else if (strncmp(name, "__TIME__", 8) == 0) {
+            char buf[32];
+            time_t now = time(NULL);
+            struct tm tm;
+            localtime_r(&now, &tm);
+            strftime(buf, sizeof(buf), "%H:%M:%S", &tm);
             preproc_set_location(NULL, builtin_line, column);
-            strbuf_appendf(out, "\"%s\"", build_time);
+            strbuf_appendf(out, "\"%s\"", buf);
             *pos = end;
             return 1;
         } else if (strncmp(name, "__STDC__", 8) == 0) {

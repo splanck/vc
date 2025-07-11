@@ -77,7 +77,8 @@ an explicit `#define`:
 
 - `__FILE__` expands to the current source file name as a string literal.
 - `__LINE__` expands to the current line number.
-- `__DATE__` and `__TIME__` expand to the compilation date and time strings.
+- `__DATE__` and `__TIME__` expand to the current date and time when
+  preprocessing occurs.
 - `__STDC__` evaluates to `1` to indicate standard compliance.
 - `__STDC_VERSION__` expands to `199901L` for C99 support.
 - `__func__` yields the enclosing function name as a string literal.
@@ -86,7 +87,7 @@ an explicit `#define`:
 - `__COUNTER__` expands to an incrementing integer starting at `0`.
 
 These macros are always available and cannot be undefined. They are useful for
-diagnostics and logging as they convey file names, line numbers and build
+diagnostics and logging as they convey file names, line numbers and processing
 timestamps.
 
 Additional macros may be defined on the command line using `-Dname=value` or in
