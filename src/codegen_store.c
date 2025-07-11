@@ -14,24 +14,6 @@
 
 #define SCRATCH_REG 0
 
-/* Move from `src` to `dest` and optionally spill to `slot`. */
-static void emit_move_with_spill(strbuf_t *sb, const char *sfx,
-                                 const char *src, const char *dest,
-                                 const char *slot, int spill,
-                                 asm_syntax_t syntax)
-{
-    if (syntax == ASM_INTEL)
-        strbuf_appendf(sb, "    mov%s %s, %s\n", sfx, dest, src);
-    else
-        strbuf_appendf(sb, "    mov%s %s, %s\n", sfx, src, dest);
-    if (spill) {
-        if (syntax == ASM_INTEL)
-            strbuf_appendf(sb, "    mov%s %s, %s\n", sfx, slot, dest);
-        else
-            strbuf_appendf(sb, "    mov%s %s, %s\n", sfx, dest, slot);
-    }
-}
-
 /* Helper to format a register name. */
 static const char *reg_str(int reg, asm_syntax_t syntax)
 {
