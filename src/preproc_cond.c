@@ -162,7 +162,8 @@ static int expand_cond_expr(const char *expr, vector_t *macros, strbuf_t *out)
 }
 
 /* Push a new state for a generic #if expression */
-int cond_push_ifexpr(char *line, vector_t *macros, vector_t *conds)
+int cond_push_ifexpr(char *line, const char *dir, vector_t *macros,
+                     vector_t *conds, const vector_t *incdirs, vector_t *stack)
 {
     char *expr = line + 3;
     strbuf_t tmp;
@@ -173,7 +174,8 @@ int cond_push_ifexpr(char *line, vector_t *macros, vector_t *conds)
     st.parent_active = is_active(conds);
     st.taken = 0;
     st.line = preproc_get_line();
-    if (st.parent_active && eval_expr(expr, macros) != 0) {
+    if (st.parent_active &&
+        eval_expr_full(expr, macros, dir, incdirs, stack) != 0) {
         st.taking = 1;
         st.taken = 1;
     } else {
@@ -188,7 +190,8 @@ int cond_push_ifexpr(char *line, vector_t *macros, vector_t *conds)
 }
 
 /* Handle an #elif directive */
-void cond_handle_elif(char *line, vector_t *macros, vector_t *conds)
+void cond_handle_elif(char *line, const char *dir, vector_t *macros,
+                      vector_t *conds, const vector_t *incdirs, vector_t *stack)
 {
     if (!conds->count)
         return;
@@ -205,7 +208,7 @@ void cond_handle_elif(char *line, vector_t *macros, vector_t *conds)
                 return;
             }
             expr = tmp.data ? tmp.data : "";
-            st->taking = eval_expr(expr, macros) != 0;
+            st->taking = eval_expr_full(expr, macros, dir, incdirs, stack) != 0;
             strbuf_free(&tmp);
             if (st->taking)
                 st->taken = 1;
@@ -238,7 +241,9 @@ void cond_handle_endif(vector_t *conds)
 }
 
 /* Dispatch conditional directives to the specific helper handlers. */
-int handle_conditional(char *line, vector_t *macros, vector_t *conds)
+int handle_conditional(char *line, const char *dir, vector_t *macros,
+                       vector_t *conds, const vector_t *incdirs,
+                       vector_t *stack)
 {
     if (strncmp(line, "#ifdef", 6) == 0 && isspace((unsigned char)line[6])) {
         return cond_push_ifdef(line, macros, conds);
@@ -246,10 +251,10 @@ int handle_conditional(char *line, vector_t *macros, vector_t *conds)
                isspace((unsigned char)line[7])) {
         return cond_push_ifndef(line, macros, conds);
     } else if (strncmp(line, "#if", 3) == 0 && isspace((unsigned char)line[3])) {
-        return cond_push_ifexpr(line, macros, conds);
+        return cond_push_ifexpr(line, dir, macros, conds, incdirs, stack);
     } else if (strncmp(line, "#elif", 5) == 0 &&
                isspace((unsigned char)line[5])) {
-        cond_handle_elif(line, macros, conds);
+        cond_handle_elif(line, dir, macros, conds, incdirs, stack);
         return 1;
     } else if (strncmp(line, "#else", 5) == 0) {
         cond_handle_else(conds);

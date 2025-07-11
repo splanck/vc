@@ -235,8 +235,8 @@ static int handle_conditional_directive(char *line, const char *dir,
                                         vector_t *stack,
                                         preproc_context_t *ctx)
 {
-    (void)dir; (void)out; (void)incdirs; (void)stack; (void)ctx;
-    return handle_conditional(line, macros, conds);
+    (void)out; (void)ctx;
+    return handle_conditional(line, dir, macros, conds, incdirs, stack);
 }
 
 /*
