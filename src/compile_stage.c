@@ -47,7 +47,6 @@ static int compile_optimize_impl(ir_builder_t *ir, const opt_config_t *cfg);
 int compile_output_impl(ir_builder_t *ir, const char *output,
                         int dump_ir, int dump_asm, int use_x86_64,
                         int compile, const cli_options_t *cli);
-int write_dep_file(const char *target, const vector_t *deps);
 
 /* Compilation context used by the pipeline */
 typedef struct compile_context {
