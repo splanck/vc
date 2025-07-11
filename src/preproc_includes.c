@@ -160,19 +160,25 @@ int handle_pragma_directive(char *line, const char *dir, vector_t *macros,
         p = skip_ws(p);
         if (strncmp(p, "(push", 5) == 0) {
             p += 5; /* after '(push' */
-            if (*p == ',')
-                p++;
             p = skip_ws(p);
-            errno = 0;
-            char *end;
-            long val = strtol(p, &end, 10);
-            if (errno == 0 && end != p) {
-                p = end;
+            if (*p == ')') {
+                /* push current packing without changing it */
+                vector_push(&ctx->pack_stack, &ctx->pack_alignment);
+            } else {
+                if (*p == ',')
+                    p++;
                 p = skip_ws(p);
-                if (*p == ')') {
-                    vector_push(&ctx->pack_stack, &ctx->pack_alignment);
-                    ctx->pack_alignment = (size_t)val;
-                    semantic_set_pack(ctx->pack_alignment);
+                errno = 0;
+                char *end;
+                long val = strtol(p, &end, 10);
+                if (errno == 0 && end != p) {
+                    p = end;
+                    p = skip_ws(p);
+                    if (*p == ')') {
+                        vector_push(&ctx->pack_stack, &ctx->pack_alignment);
+                        ctx->pack_alignment = (size_t)val;
+                        semantic_set_pack(ctx->pack_alignment);
+                    }
                 }
             }
         } else if (strncmp(p, "(pop)", 5) == 0) {
