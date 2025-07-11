@@ -60,7 +60,7 @@ int process_file(const char *path, vector_t *macros,
 
     char *prev_file;
     long prev_delta;
-    line_state_push(path, 0, &prev_file, &prev_delta);
+    line_state_push(ctx, path, 0, &prev_file, &prev_delta);
 
     int ok = process_all_lines(lines, path, dir, macros, conds, out, incdirs,
                                stack, ctx);
@@ -75,7 +75,7 @@ int process_file(const char *path, vector_t *macros,
         ok = 0;
     }
 
-    line_state_pop(prev_file, prev_delta);
+    line_state_pop(ctx, prev_file, prev_delta);
 
     include_stack_pop(stack);
 
@@ -96,6 +96,8 @@ static void init_preproc_vectors(preproc_context_t *ctx, vector_t *macros,
     vector_init(&ctx->pack_stack, sizeof(size_t));
     ctx->pack_alignment = 0;
     ctx->in_comment = 0;
+    ctx->current_file = NULL;
+    ctx->line_delta = 0;
     strbuf_init(out);
 }
 
@@ -259,6 +261,7 @@ void preproc_context_free(preproc_context_t *ctx)
     for (size_t i = 0; i < ctx->deps.count; i++)
         free(((char **)ctx->deps.data)[i]);
     vector_free(&ctx->deps);
+    free(ctx->current_file);
     vector_free(&ctx->pack_stack);
 }
 

@@ -103,7 +103,7 @@ int handle_line_directive(char *line, const char *dir, vector_t *macros,
             strbuf_free(&exp);
             return 0;
         }
-        preproc_apply_line_directive(fname ? fname : NULL, lineno);
+        preproc_apply_line_directive(ctx, fname ? fname : NULL, lineno);
     }
     free(fname);
     strbuf_free(&exp);

@@ -29,13 +29,13 @@ int process_all_lines(char **lines, const char *path, const char *dir,
                       vector_t *macros, vector_t *conds, strbuf_t *out,
                       const vector_t *incdirs, vector_t *stack,
                       preproc_context_t *ctx);
-
-void preproc_apply_line_directive(const char *file, int line);
+void preproc_apply_line_directive(preproc_context_t *ctx,
+                                  const char *file, int line);
 
 void cleanup_file_resources(char *text, char **lines, char *dir);
 
-void line_state_push(const char *file, long delta,
+void line_state_push(preproc_context_t *ctx, const char *file, long delta,
                      char **prev_file, long *prev_delta);
-void line_state_pop(char *prev_file, long prev_delta);
+void line_state_pop(preproc_context_t *ctx, char *prev_file, long prev_delta);
 
 #endif /* VC_PREPROC_FILE_IO_H */

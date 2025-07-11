@@ -21,33 +21,33 @@ static char *canonical_path(const char *path)
     return canon;
 }
 
-static char *current_file = NULL;
-static long line_delta = 0;
+/* per-context line tracking */
 
-void line_state_push(const char *file, long delta,
+void line_state_push(preproc_context_t *ctx, const char *file, long delta,
                      char **prev_file, long *prev_delta)
 {
-    *prev_file = current_file;
-    *prev_delta = line_delta;
-    current_file = vc_strdup(file);
-    line_delta = delta;
+    *prev_file = ctx->current_file;
+    *prev_delta = ctx->line_delta;
+    ctx->current_file = vc_strdup(file);
+    ctx->line_delta = delta;
 }
 
-void line_state_pop(char *prev_file, long prev_delta)
+void line_state_pop(preproc_context_t *ctx, char *prev_file, long prev_delta)
 {
-    free(current_file);
-    current_file = prev_file;
-    line_delta = prev_delta;
+    free(ctx->current_file);
+    ctx->current_file = prev_file;
+    ctx->line_delta = prev_delta;
 }
 
-void preproc_apply_line_directive(const char *file, int line)
+void preproc_apply_line_directive(preproc_context_t *ctx,
+                                  const char *file, int line)
 {
     if (file) {
-        free(current_file);
-        current_file = vc_strdup(file);
+        free(ctx->current_file);
+        ctx->current_file = vc_strdup(file);
     }
-    line_delta = line - ((long)preproc_get_line() + 1);
-    preproc_set_location(current_file, (size_t)line - 1, 1);
+    ctx->line_delta = line - ((long)preproc_get_line() + 1);
+    preproc_set_location(ctx->current_file, (size_t)line - 1, 1);
 }
 
 int include_stack_contains(vector_t *stack, const char *path)
@@ -211,8 +211,9 @@ int process_all_lines(char **lines, const char *path, const char *dir,
 {
     /* defined in preproc_directives.c */
     for (size_t i = 0; lines[i]; i++) {
-        size_t line = (size_t)((long)(i + 1) + line_delta);
-        preproc_set_location(current_file ? current_file : path, line, 1);
+        size_t line = (size_t)((long)(i + 1) + ctx->line_delta);
+        preproc_set_location(ctx->current_file ? ctx->current_file : path,
+                             line, 1);
         if (!process_line(lines[i], dir, macros, conds, out, incdirs, stack,
                           ctx))
             return 0;
