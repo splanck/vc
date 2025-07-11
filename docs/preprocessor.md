@@ -66,7 +66,9 @@ exceeded the build stops with an "Include depth limit exceeded" error.
 
 Conditional expressions in `#if` directives are parsed by the small recursive
 descent parser in `preproc_expr.c`.  The `defined` operator queries the current
-macro table so feature tests work as expected.
+macro table so feature tests work as expected.  Integer constants and `'c'`
+style character literals may be used and evaluate to numeric values with escape
+sequences such as `\n` or `\x41` recognised.
 
 ## Standard macros
 
