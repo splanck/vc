@@ -201,6 +201,13 @@ cc -Iinclude -Wall -Wextra -std=c99 \
     src/preproc_include.c src/preproc_includes.c src/preproc_path.c \
     src/vector.c src/strbuf.c src/util.c src/error.c
 cc -Iinclude -Wall -Wextra -std=c99 \
+    -o "$DIR/preproc_unterm_comment" "$DIR/unit/test_preproc_unterm_comment.c" \
+    src/preproc_file.c src/preproc_directives.c src/preproc_file_io.c \
+    src/preproc_expand.c src/preproc_table.c src/preproc_builtin.c \
+    src/preproc_args.c src/preproc_cond.c src/preproc_expr.c \
+    src/preproc_include.c src/preproc_includes.c src/preproc_path.c \
+    src/vector.c src/strbuf.c src/util.c src/error.c
+cc -Iinclude -Wall -Wextra -std=c99 \
     -DMULTIARCH="${MULTIARCH}" -DGCC_INCLUDE_DIR="${GCC_INCLUDE_DIR}" \
     -o "$DIR/preproc_pragma" "$DIR/unit/test_preproc_pragma.c" \
     src/preproc_file.c src/preproc_directives.c src/preproc_file_io.c \
@@ -305,6 +312,7 @@ rm -f ir_licm.o util_licm.o label_licm.o error_licm.o opt_main_licm.o \
 "$DIR/preproc_line_macro"
 "$DIR/preproc_pack_macro"
 "$DIR/preproc_defined_macro"
+"$DIR/preproc_unterm_comment"
 "$DIR/preproc_pragma"
 "$DIR/preproc_builtin_extra"
 "$DIR/invalid_macro_tests"

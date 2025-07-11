@@ -65,6 +65,11 @@ int process_file(const char *path, vector_t *macros,
     int ok = process_all_lines(lines, path, dir, macros, conds, out, incdirs,
                                stack, ctx);
 
+    if (ok && ctx->in_comment) {
+        fprintf(stderr, "Unterminated comment\n");
+        ok = 0;
+    }
+
     if (ok && conds->count) {
         fprintf(stderr, "Mismatched #if/#endif directives in %s\n", path);
         ok = 0;
