@@ -41,18 +41,6 @@ static int is_active(vector_t *conds)
     return stack_active(conds);
 }
 
-/* Append a #pragma directive to the output when active */
-static int handle_pragma(char *line, vector_t *conds, strbuf_t *out)
-{
-    if (is_active(conds)) {
-        if (strbuf_append(out, line) != 0)
-            return 0;
-        if (strbuf_append(out, "\n") != 0)
-            return 0;
-    }
-    return 1;
-}
-
 int handle_include_directive(char *line, const char *dir, vector_t *macros,
                              vector_t *conds, strbuf_t *out,
                              const vector_t *incdirs, vector_t *stack,
