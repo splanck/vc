@@ -82,7 +82,15 @@ static size_t append_stringized_param(const char *value, size_t i,
             strncmp(value + j, "__VA_ARGS__", 11) == 0)
             rep = args[params->count];
         if (rep) {
-            strbuf_appendf(sb, "\"%s\"", rep);
+            strbuf_append(sb, "\"");
+            for (size_t k = 0; rep[k]; k++) {
+                char c = rep[k];
+                if (c == '\\' || c == '"')
+                    strbuf_appendf(sb, "\\%c", c);
+                else
+                    strbuf_appendf(sb, "%c", c);
+            }
+            strbuf_append(sb, "\"");
             return j + len;
         }
     }
