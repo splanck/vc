@@ -182,11 +182,22 @@ static int handle_error_directive(char *line, const char *dir,
                                   vector_t *stack,
                                   preproc_context_t *ctx)
 {
-    (void)dir; (void)macros; (void)out; (void)incdirs; (void)stack; (void)ctx;
+    (void)dir; (void)incdirs; (void)stack; (void)ctx; (void)out;
     char *msg = line + 6; /* skip '#error' */
     msg = skip_ws(msg);
     if (is_active(conds)) {
-        fprintf(stderr, "%s\n", *msg ? msg : "preprocessor error");
+        strbuf_t tmp;
+        strbuf_init(&tmp);
+        if (*msg) {
+            if (!expand_line(msg, macros, &tmp, 0, 0)) {
+                strbuf_free(&tmp);
+                return 0;
+            }
+        } else {
+            strbuf_append(&tmp, "preprocessor error");
+        }
+        fprintf(stderr, "%s\n", tmp.data);
+        strbuf_free(&tmp);
         return 0;
     }
     return 1;
