@@ -11,6 +11,7 @@
 #include "preproc_file_io.h"
 #include "preproc_path.h"
 #include "preproc_builtin.h"
+#include "preproc_macros.h"
 #include "semantic_global.h"
 #include "util.h"
 #include "vector.h"
@@ -54,14 +55,23 @@ int handle_line_directive(char *line, const char *dir, vector_t *macros,
                           const vector_t *incdirs, vector_t *stack,
                           preproc_context_t *ctx)
 {
-    (void)dir; (void)macros; (void)incdirs; (void)stack; (void)ctx;
-    char *p = line + 5;
+    (void)dir; (void)incdirs; (void)stack; (void)ctx;
+    char *arg = line + 5;
+    arg = skip_ws(arg);
+    strbuf_t exp;
+    strbuf_init(&exp);
+    if (!expand_line(arg, macros, &exp, 0, 0)) {
+        strbuf_free(&exp);
+        return 0;
+    }
+    char *p = exp.data;
     p = skip_ws(p);
     errno = 0;
     char *end;
     long long val = strtoll(p, &end, 10);
     if (p == end || errno != 0 || val > INT_MAX || val <= 0) {
         fprintf(stderr, "Invalid line number in #line directive\n");
+        strbuf_free(&exp);
         return 0;
     }
     p = end;
@@ -79,19 +89,23 @@ int handle_line_directive(char *line, const char *dir, vector_t *macros,
     if (is_active(conds)) {
         if (strbuf_appendf(out, "# %d", lineno) < 0) {
             free(fname);
+            strbuf_free(&exp);
             return 0;
         }
         if (fname && strbuf_appendf(out, " \"%s\"", fname) < 0) {
             free(fname);
+            strbuf_free(&exp);
             return 0;
         }
         if (strbuf_append(out, "\n") < 0) {
             free(fname);
+            strbuf_free(&exp);
             return 0;
         }
         preproc_apply_line_directive(fname ? fname : NULL, lineno);
     }
     free(fname);
+    strbuf_free(&exp);
     return 1;
 }
 
@@ -100,8 +114,16 @@ int handle_pragma_directive(char *line, const char *dir, vector_t *macros,
                             const vector_t *incdirs, vector_t *stack,
                             preproc_context_t *ctx)
 {
-    (void)dir; (void)macros; (void)incdirs;
-    char *p = line + 7; /* skip '#pragma' */
+    (void)dir; (void)incdirs;
+    char *arg = line + 7; /* skip '#pragma' */
+    arg = skip_ws(arg);
+    strbuf_t exp;
+    strbuf_init(&exp);
+    if (!expand_line(arg, macros, &exp, 0, 0)) {
+        strbuf_free(&exp);
+        return 0;
+    }
+    char *p = exp.data;
     p = skip_ws(p);
     if (strncmp(p, "once", 4) == 0) {
         p += 4;
@@ -110,9 +132,12 @@ int handle_pragma_directive(char *line, const char *dir, vector_t *macros,
             const include_entry_t *e =
                 &((include_entry_t *)stack->data)[stack->count - 1];
             const char *cur = e->path;
-            if (!pragma_once_add(ctx, cur))
+            if (!pragma_once_add(ctx, cur)) {
+                strbuf_free(&exp);
                 return 0;
+            }
         }
+        strbuf_free(&exp);
         (void)conds; /* unused when returning early */
         return 1; /* do not emit pragma line */
     } else if (strncmp(p, "pack", 4) == 0) {
@@ -145,9 +170,11 @@ int handle_pragma_directive(char *line, const char *dir, vector_t *macros,
             }
             semantic_set_pack(ctx->pack_alignment);
         }
+        strbuf_free(&exp);
         (void)stack;
         return 1; /* do not emit pragma line */
     }
+    strbuf_free(&exp);
     (void)stack;
     (void)conds;
     (void)out;
