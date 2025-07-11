@@ -142,6 +142,15 @@ cc -Iinclude -Wall -Wextra -std=c99 -c src/util.c -o util_variadic.o
 cc -Iinclude -Wall -Wextra -std=c99 -c "$DIR/unit/test_variadic_macro.c" -o "$DIR/test_variadic_macro.o"
 cc -o "$DIR/variadic_macro_tests" preproc_expand.o preproc_table.o strbuf_variadic.o vector_variadic.o util_variadic.o "$DIR/test_variadic_macro.o"
 rm -f preproc_expand.o preproc_table.o strbuf_variadic.o vector_variadic.o util_variadic.o "$DIR/test_variadic_macro.o"
+# build macro stringize escape test
+cc -Iinclude -Wall -Wextra -std=c99 -c src/preproc_expand.c -o preproc_expand.o
+cc -Iinclude -Wall -Wextra -std=c99 -c src/preproc_table.c -o preproc_table.o
+cc -Iinclude -Wall -Wextra -std=c99 -c src/strbuf.c -o strbuf_stringize.o
+cc -Iinclude -Wall -Wextra -std=c99 -c src/vector.c -o vector_stringize.o
+cc -Iinclude -Wall -Wextra -std=c99 -c src/util.c -o util_stringize.o
+cc -Iinclude -Wall -Wextra -std=c99 -c "$DIR/unit/test_macro_stringize_escape.c" -o "$DIR/test_macro_stringize_escape.o"
+cc -o "$DIR/macro_stringize_escape" preproc_expand.o preproc_table.o strbuf_stringize.o vector_stringize.o util_stringize.o "$DIR/test_macro_stringize_escape.o"
+rm -f preproc_expand.o preproc_table.o strbuf_stringize.o vector_stringize.o util_stringize.o "$DIR/test_macro_stringize_escape.o"
 # build pack pragma layout tests
 cc -Iinclude -Wall -Wextra -std=c99 \
     -o "$DIR/pack_pragma_tests" "$DIR/unit/test_pack_pragma.c"
@@ -274,6 +283,7 @@ rm -f ir_licm.o util_licm.o label_licm.o error_licm.o opt_main_licm.o \
 "$DIR/preproc_alloc_tests"
 "$DIR/add_macro_fail_tests"
 "$DIR/variadic_macro_tests"
+"$DIR/macro_stringize_escape"
 "$DIR/pack_pragma_tests"
 "$DIR/preproc_stdio"
 "$DIR/preproc_ifmacro"
