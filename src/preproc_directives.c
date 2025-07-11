@@ -147,6 +147,8 @@ int process_line(char *line, const char *dir, vector_t *macros,
         char *p = line + 1;
         while (*p == ' ' || *p == '\t')
             p++;
+        if (*p == '\0')
+            return 1;
         if (p != line + 1)
             memmove(line + 1, p, strlen(p) + 1);
     }
