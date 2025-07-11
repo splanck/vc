@@ -58,8 +58,14 @@ int process_file(const char *path, vector_t *macros,
     if (!load_and_register_file(path, stack, idx, &lines, &dir, &text, ctx))
         return 0;
 
+    char *prev_file;
+    long prev_delta;
+    line_state_push(path, 0, &prev_file, &prev_delta);
+
     int ok = process_all_lines(lines, path, dir, macros, conds, out, incdirs,
                                stack, ctx);
+
+    line_state_pop(prev_file, prev_delta);
 
     include_stack_pop(stack);
 
