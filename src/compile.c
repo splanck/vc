@@ -89,6 +89,7 @@ int run_preprocessor(const cli_options_t *cli)
     for (size_t i = 0; i < cli->sources.count; i++) {
         const char *src = ((const char **)cli->sources.data)[i];
         preproc_context_t ctx;
+        ctx.max_include_depth = cli->max_include_depth;
         char *text = preproc_run(&ctx, src, &cli->include_dirs, &cli->defines,
                                 &cli->undefines);
         if (!text) {
@@ -129,6 +130,7 @@ int generate_dependencies(const cli_options_t *cli)
     for (size_t i = 0; i < cli->sources.count; i++) {
         const char *src = ((const char **)cli->sources.data)[i];
         preproc_context_t ctx;
+        ctx.max_include_depth = cli->max_include_depth;
         char *text = preproc_run(&ctx, src, &cli->include_dirs,
                                  &cli->defines, &cli->undefines);
         if (!text) {

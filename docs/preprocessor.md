@@ -61,8 +61,9 @@ preprocessing after printing "Macro expansion limit exceeded".
 
 File inclusion works the same way and may recurse when headers themselves
 contain `#include` directives.  To guard against unbounded recursion the
-preprocessor enforces a maximum include depth of 20 files.  If this limit is
-exceeded the build stops with an "Include depth limit exceeded" error.
+preprocessor enforces a maximum include depth of 20 files.  This limit can be
+changed with the `-fmax-include-depth=` option.  If the depth is exceeded the
+build stops with an "Include depth limit exceeded" error.
 
 Conditional expressions in `#if` directives are parsed by the small recursive
 descent parser in `preproc_expr.c`.  The `defined` operator queries the current
@@ -118,7 +119,7 @@ locations.
 
 Checking for a file does not itself increase the include depth, however when a
 header is subsequently included the normal limit of 20 nested includes still
-applies.
+applies unless a different value was set with `-fmax-include-depth=`.
 ## Preprocessor context
 
 `preproc_context_t` is defined in `include/preproc_file.h` and is passed to `preproc_run`. It contains several fields:

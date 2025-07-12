@@ -34,9 +34,6 @@
 #include "vector.h"
 #include "strbuf.h"
 
-#define MAX_INCLUDE_DEPTH 20
-
-
 /*
  * Core file processing routine.  Reads the file, handles directives
  * and macro expansion line by line, writing the preprocessed result
@@ -47,7 +44,7 @@ int process_file(const char *path, vector_t *macros,
                         const vector_t *incdirs, vector_t *stack,
                         preproc_context_t *ctx, size_t idx)
 {
-    if (stack->count >= MAX_INCLUDE_DEPTH) {
+    if (stack->count >= ctx->max_include_depth) {
         fprintf(stderr, "Include depth limit exceeded\n");
         return 0;
     }
@@ -107,6 +104,8 @@ static void init_preproc_vectors(preproc_context_t *ctx, vector_t *macros,
     ctx->base_file = "";
     ctx->include_level = 0;
     ctx->counter = 0;
+    if (ctx->max_include_depth == 0)
+        ctx->max_include_depth = DEFAULT_INCLUDE_DEPTH;
     strbuf_init(out);
 }
 

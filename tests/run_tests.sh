@@ -427,6 +427,15 @@ if [ $ret -eq 0 ] || ! grep -q "Include depth limit exceeded" "${err}"; then
 fi
 rm -f "${out}" "${err}"
 
+# verify custom include depth option works
+depth_ok=$(mktemp)
+"$BINARY" -fmax-include-depth=22 -o "${depth_ok}" "$DIR/invalid/include_depth.c"
+if ! diff -u "$DIR/fixtures/include_depth_ok.s" "${depth_ok}"; then
+    echo "Test include_depth_override failed"
+    fail=1
+fi
+rm -f "${depth_ok}"
+
 # negative test for duplicate switch cases
 err=$(mktemp)
 out=$(mktemp)
