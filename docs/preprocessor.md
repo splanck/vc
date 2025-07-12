@@ -95,6 +95,30 @@ timestamps.
 Additional macros may be defined on the command line using `-Dname=value` or in
 source files with `#define`. After preprocessing the expanded text is handed to
 the lexer for tokenization.
+
+## Header availability operators
+
+`__has_include()` and `__has_include_next()` may be used inside `#if` or
+`#elif` expressions to test whether a header can be included.  They take a
+quoted or angle-bracket file name and evaluate to `1` when that header would be
+found, or `0` otherwise.  The search order matches the behaviour of
+`#include` and `#include_next` respectively, consulting directories supplied with
+`-I`, the `VCPATH` and `VCINC` environment variables and the builtin system
+locations.
+
+```c
+#if __has_include("config.h")
+#  include "config.h"
+#endif
+
+#if __has_include_next(<bar.h>)
+#  include_next <bar.h>
+#endif
+```
+
+Checking for a file does not itself increase the include depth, however when a
+header is subsequently included the normal limit of 20 nested includes still
+applies.
 ## Preprocessor context
 
 `preproc_context_t` is defined in `include/preproc_file.h` and is passed to `preproc_run`. It contains several fields:
