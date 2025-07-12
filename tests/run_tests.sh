@@ -127,6 +127,24 @@ if ! diff -u "$DIR/fixtures/include_search.s" "${inc_env_out}"; then
 fi
 rm -f "${inc_env_out}"
 
+# verify CPATH include search
+cpath_out=$(mktemp)
+CPATH="$DIR/includes" "$BINARY" -o "${cpath_out}" "$DIR/fixtures/include_search.c"
+if ! diff -u "$DIR/fixtures/include_search.s" "${cpath_out}"; then
+    echo "Test include_cpath failed"
+    fail=1
+fi
+rm -f "${cpath_out}"
+
+# verify C_INCLUDE_PATH include search
+cinc_out=$(mktemp)
+C_INCLUDE_PATH="$DIR/includes" "$BINARY" -o "${cinc_out}" "$DIR/fixtures/include_env.c"
+if ! diff -u "$DIR/fixtures/include_env.s" "${cinc_out}"; then
+    echo "Test include_c_include_path failed"
+    fail=1
+fi
+rm -f "${cinc_out}"
+
 # verify VCFLAGS options are parsed
 vcflags_out=$(mktemp)
 VCFLAGS="--x86-64" "$BINARY" -o "${vcflags_out}" "$DIR/fixtures/simple_add.c"
