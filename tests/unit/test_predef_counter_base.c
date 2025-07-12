@@ -26,6 +26,11 @@ int main(void)
                      "#else\n"
                      "int fail;\n"
                      "#endif\n"
+                     "#if defined(offsetof)\n"
+                     "int offdef;\n"
+                     "#else\n"
+                     "int offundef;\n"
+                     "#endif\n"
                      "int c0 = __COUNTER__;\n"
                      "const char *b = __BASE_FILE__;\n";
     if (fd >= 0) {
@@ -40,6 +45,8 @@ int main(void)
     if (res) {
         ASSERT(strstr(res, "int ok;") != NULL);
         ASSERT(strstr(res, "int fail;") == NULL);
+        ASSERT(strstr(res, "int offdef;") == NULL);
+        ASSERT(strstr(res, "int offundef;") != NULL);
         char cnt0[] = "int c0 = 0;";
         ASSERT(strstr(res, cnt0) != NULL);
         char quoted[512]; snprintf(quoted, sizeof(quoted), "\"%s\"", tmpl);
