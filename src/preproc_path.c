@@ -221,6 +221,14 @@ int collect_include_dirs(vector_t *search_dirs,
         free_string_vector(search_dirs);
         return 0;
     }
+    if (!append_env_paths(getenv("CPATH"), search_dirs)) {
+        free_string_vector(search_dirs);
+        return 0;
+    }
+    if (!append_env_paths(getenv("C_INCLUDE_PATH"), search_dirs)) {
+        free_string_vector(search_dirs);
+        return 0;
+    }
     return 1;
 }
 
