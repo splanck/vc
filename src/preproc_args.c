@@ -20,10 +20,25 @@ static char *dup_arg_segment(const char *line, size_t start, size_t end)
 static char find_arg_delim(const char *line, size_t *p, int *nest,
                            size_t *out_end)
 {
+    int quote = 0;             /* current quote character or 0 */
     for (;; (*p)++) {
         char c = line[*p];
         if (c == '\0')
             return 0;
+        if (quote) {
+            if (c == '\\' && line[*p + 1]) {
+                (*p)++;
+                continue;
+            }
+            if (c == quote) {
+                quote = 0;
+            }
+            continue;
+        }
+        if (c == '"' || c == '\'') {
+            quote = c;
+            continue;
+        }
         if (c == '(') {
             (*nest)++;
             continue;
