@@ -84,7 +84,7 @@ static int consume_line_marker(const char *src, size_t *i,
         return 0;
     size_t num = 0;
     while (isdigit((unsigned char)src[j])) {
-        num = num * 10 + (src[j] - '0');
+        num = num * 10 + (size_t)(src[j] - '0');
         j++;
     }
     while (src[j] == ' ' || src[j] == '\t')
