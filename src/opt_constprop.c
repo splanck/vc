@@ -146,7 +146,7 @@ static void propagate_through_instruction(const_track_t *ct, ir_instr_t *ins)
     case IR_CONST:
         if (ins->dest >= 0 && (size_t)ins->dest < max_id) {
             ct->is_const[ins->dest] = 1;
-            ct->values[ins->dest] = ins->imm;
+            ct->values[ins->dest] = (int)ins->imm;
         }
         break;
     case IR_STORE:

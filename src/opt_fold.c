@@ -113,7 +113,7 @@ static void fold_int_instr(ir_instr_t *ins, size_t max_id,
         int b = values[ins->src2];
         int result = eval_int_op(ins->op, a, b);
         ins->op = IR_CONST;
-        ins->imm = result;
+        ins->imm = (long long)result;
         ins->src1 = ins->src2 = 0;
         update_const(ins, result, 1, max_id, is_const, values);
     } else {
@@ -131,7 +131,7 @@ static void fold_float_instr(ir_instr_t *ins, size_t max_id,
         int b = values[ins->src2];
         int result = eval_float_op(ins->op, a, b);
         ins->op = IR_CONST;
-        ins->imm = result;
+        ins->imm = (long long)result;
         ins->src1 = ins->src2 = 0;
         update_const(ins, result, 1, max_id, is_const, values);
     } else {
@@ -157,7 +157,7 @@ static void fold_long_float_instr(ir_instr_t *ins, size_t max_id,
         memcpy(&b, &ib, sizeof(b));
         uint64_t result = eval_long_float_op(ins->op, a, b);
         ins->op = IR_CONST;
-        ins->imm = result;
+        ins->imm = (long long)result;
         ins->src1 = ins->src2 = 0;
         update_const(ins, (int)result, 1, max_id, is_const, values);
     } else {
