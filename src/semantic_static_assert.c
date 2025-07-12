@@ -7,14 +7,14 @@
 static int check_static_assert_stmt(stmt_t *stmt, symtable_t *vars)
 {
     long long val;
-    if (!eval_const_expr(stmt->static_assert.expr, vars, 0, &val)) {
-        error_set(stmt->static_assert.expr->line, stmt->static_assert.expr->column,
+    if (!eval_const_expr(stmt->data.static_assert.expr, vars, 0, &val)) {
+        error_set(stmt->data.static_assert.expr->line, stmt->data.static_assert.expr->column,
                   error_current_file, error_current_function);
         return 0;
     }
     if (val == 0) {
         error_set(stmt->line, stmt->column, error_current_file, error_current_function);
-        error_print(stmt->static_assert.message);
+        error_print(stmt->data.static_assert.message);
         return 0;
     }
     return 1;

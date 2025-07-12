@@ -36,10 +36,10 @@ int check_while_stmt(stmt_t *stmt, symtable_t *vars, symtable_t *funcs,
         !label_format_suffix("L", id, "_end", end_label))
         return 0;
     ir_build_label(ir, start_label);
-    if (check_expr(stmt->while_stmt.cond, vars, funcs, ir, &cond_val) == TYPE_UNKNOWN)
+    if (check_expr(stmt->data.while_stmt.cond, vars, funcs, ir, &cond_val) == TYPE_UNKNOWN)
         return 0;
     ir_build_bcond(ir, cond_val, end_label);
-    if (!check_stmt(stmt->while_stmt.body, vars, funcs, labels, ir,
+    if (!check_stmt(stmt->data.while_stmt.body, vars, funcs, labels, ir,
                     func_ret_type, end_label, start_label))
         return 0;
     ir_build_br(ir, start_label);
@@ -67,11 +67,11 @@ int check_do_while_stmt(stmt_t *stmt, symtable_t *vars, symtable_t *funcs,
         !label_format_suffix("L", id, "_end", end_label))
         return 0;
     ir_build_label(ir, start_label);
-    if (!check_stmt(stmt->do_while_stmt.body, vars, funcs, labels, ir,
+    if (!check_stmt(stmt->data.do_while_stmt.body, vars, funcs, labels, ir,
                     func_ret_type, end_label, cond_label))
         return 0;
     ir_build_label(ir, cond_label);
-    if (check_expr(stmt->do_while_stmt.cond, vars, funcs, ir, &cond_val) == TYPE_UNKNOWN)
+    if (check_expr(stmt->data.do_while_stmt.cond, vars, funcs, ir, &cond_val) == TYPE_UNKNOWN)
         return 0;
     ir_build_bcond(ir, cond_val, end_label);
     ir_build_br(ir, start_label);
@@ -98,20 +98,20 @@ int check_for_stmt(stmt_t *stmt, symtable_t *vars, symtable_t *funcs,
         !label_format_suffix("L", id, "_end", end_label))
         return 0;
     symbol_t *old_head = vars->head;
-    if (stmt->for_stmt.init_decl) {
-        if (!check_stmt(stmt->for_stmt.init_decl, vars, funcs, labels, ir,
+    if (stmt->data.for_stmt.init_decl) {
+        if (!check_stmt(stmt->data.for_stmt.init_decl, vars, funcs, labels, ir,
                         func_ret_type, NULL, NULL)) {
             symtable_pop_scope(vars, old_head);
             return 0;
         }
     } else {
-        if (check_expr(stmt->for_stmt.init, vars, funcs, ir, &cond_val) == TYPE_UNKNOWN) {
+        if (check_expr(stmt->data.for_stmt.init, vars, funcs, ir, &cond_val) == TYPE_UNKNOWN) {
             symtable_pop_scope(vars, old_head);
             return 0; /* reuse cond_val for init but ignore value */
         }
     }
     ir_build_label(ir, start_label);
-    if (check_expr(stmt->for_stmt.cond, vars, funcs, ir, &cond_val) == TYPE_UNKNOWN) {
+    if (check_expr(stmt->data.for_stmt.cond, vars, funcs, ir, &cond_val) == TYPE_UNKNOWN) {
         symtable_pop_scope(vars, old_head);
         return 0;
     }
@@ -121,13 +121,13 @@ int check_for_stmt(stmt_t *stmt, symtable_t *vars, symtable_t *funcs,
         symtable_pop_scope(vars, old_head);
         return 0;
     }
-    if (!check_stmt(stmt->for_stmt.body, vars, funcs, labels, ir,
+    if (!check_stmt(stmt->data.for_stmt.body, vars, funcs, labels, ir,
                     func_ret_type, end_label, cont_label)) {
         symtable_pop_scope(vars, old_head);
         return 0;
     }
     ir_build_label(ir, cont_label);
-    if (check_expr(stmt->for_stmt.incr, vars, funcs, ir, &cond_val) == TYPE_UNKNOWN) {
+    if (check_expr(stmt->data.for_stmt.incr, vars, funcs, ir, &cond_val) == TYPE_UNKNOWN) {
         symtable_pop_scope(vars, old_head);
         return 0;
     }

@@ -76,11 +76,11 @@ static int handle_array_init(stmt_t *stmt, symbol_t *sym, symtable_t *vars,
                              ir_builder_t *ir)
 {
     long long *vals;
-    if (!expand_array_initializer(stmt->var_decl.init_list, stmt->var_decl.init_count,
+    if (!expand_array_initializer(stmt->data.var_decl.init_list, stmt->data.var_decl.init_count,
                                   sym->array_size, vars, stmt->line, stmt->column,
                                   &vals))
         return 0;
-    if (stmt->var_decl.is_static) {
+    if (stmt->data.var_decl.is_static) {
         if (!init_static_array(ir, sym->ir_name, vals, sym->array_size)) {
             free(vals);
             return 0;
@@ -88,7 +88,7 @@ static int handle_array_init(stmt_t *stmt, symbol_t *sym, symtable_t *vars,
     }
     else
         init_dynamic_array(ir, sym->ir_name, vals, sym->array_size,
-                           stmt->var_decl.is_volatile);
+                           stmt->data.var_decl.is_volatile);
     free(vals);
     return 1;
 }
@@ -103,7 +103,7 @@ static int handle_struct_init(stmt_t *stmt, symbol_t *sym, symtable_t *vars,
                               ir_builder_t *ir)
 {
     long long *vals;
-    if (!expand_struct_initializer(stmt->var_decl.init_list, stmt->var_decl.init_count,
+    if (!expand_struct_initializer(stmt->data.var_decl.init_list, stmt->data.var_decl.init_count,
                                    sym, vars, stmt->line, stmt->column, &vals))
         return 0;
     ir_value_t base = ir_build_addr(ir, sym->ir_name);
@@ -120,36 +120,36 @@ static int handle_struct_init(stmt_t *stmt, symbol_t *sym, symtable_t *vars,
  */
 int compute_var_layout(stmt_t *stmt, symtable_t *vars)
 {
-    if (stmt->var_decl.type == TYPE_UNION) {
-        if (stmt->var_decl.member_count) {
-            size_t max = layout_union_members(stmt->var_decl.members,
-                                              stmt->var_decl.member_count);
-            stmt->var_decl.elem_size = max;
-        } else if (stmt->var_decl.tag) {
-            symbol_t *utype = symtable_lookup_union(vars, stmt->var_decl.tag);
+    if (stmt->data.var_decl.type == TYPE_UNION) {
+        if (stmt->data.var_decl.member_count) {
+            size_t max = layout_union_members(stmt->data.var_decl.members,
+                                              stmt->data.var_decl.member_count);
+            stmt->data.var_decl.elem_size = max;
+        } else if (stmt->data.var_decl.tag) {
+            symbol_t *utype = symtable_lookup_union(vars, stmt->data.var_decl.tag);
             if (!utype) {
                 error_set(stmt->line, stmt->column, error_current_file,
                           error_current_function);
                 return 0;
             }
-            stmt->var_decl.elem_size = utype->total_size;
+            stmt->data.var_decl.elem_size = utype->total_size;
         }
     }
 
-    if (stmt->var_decl.type == TYPE_STRUCT) {
-        if (stmt->var_decl.member_count) {
+    if (stmt->data.var_decl.type == TYPE_STRUCT) {
+        if (stmt->data.var_decl.member_count) {
             size_t total = layout_struct_members(
-                (struct_member_t *)stmt->var_decl.members,
-                stmt->var_decl.member_count);
-            stmt->var_decl.elem_size = total;
-        } else if (stmt->var_decl.tag) {
-            symbol_t *stype = symtable_lookup_struct(vars, stmt->var_decl.tag);
+                (struct_member_t *)stmt->data.var_decl.members,
+                stmt->data.var_decl.member_count);
+            stmt->data.var_decl.elem_size = total;
+        } else if (stmt->data.var_decl.tag) {
+            symbol_t *stype = symtable_lookup_struct(vars, stmt->data.var_decl.tag);
             if (!stype) {
                 error_set(stmt->line, stmt->column, error_current_file,
                           error_current_function);
                 return 0;
             }
-            stmt->var_decl.elem_size = stype->struct_total_size;
+            stmt->data.var_decl.elem_size = stype->struct_total_size;
         }
     }
 
@@ -164,15 +164,15 @@ static int emit_static_initializer(stmt_t *stmt, symbol_t *sym,
                                    symtable_t *vars, ir_builder_t *ir)
 {
     long long cval;
-    if (!eval_const_expr(stmt->var_decl.init, vars, 0, &cval)) {
-        error_set(stmt->var_decl.init->line, stmt->var_decl.init->column,
+    if (!eval_const_expr(stmt->data.var_decl.init, vars, 0, &cval)) {
+        error_set(stmt->data.var_decl.init->line, stmt->data.var_decl.init->column,
                   error_current_file, error_current_function);
         return 0;
     }
-    if (stmt->var_decl.type == TYPE_UNION)
+    if (stmt->data.var_decl.type == TYPE_UNION)
         ir_build_glob_union(ir, sym->ir_name, (int)sym->elem_size, 1,
                            sym->alignment);
-    else if (stmt->var_decl.type == TYPE_STRUCT)
+    else if (stmt->data.var_decl.type == TYPE_STRUCT)
         ir_build_glob_struct(ir, sym->ir_name, (int)sym->struct_total_size, 1,
                             sym->alignment);
     else
@@ -189,16 +189,16 @@ static int emit_dynamic_initializer(stmt_t *stmt, symbol_t *sym,
                                     ir_builder_t *ir)
 {
     ir_value_t val;
-    type_kind_t vt = check_expr(stmt->var_decl.init, vars, funcs, ir, &val);
-    if (!(((is_intlike(stmt->var_decl.type) && is_intlike(vt)) ||
-           (is_floatlike(stmt->var_decl.type) &&
+    type_kind_t vt = check_expr(stmt->data.var_decl.init, vars, funcs, ir, &val);
+    if (!(((is_intlike(stmt->data.var_decl.type) && is_intlike(vt)) ||
+           (is_floatlike(stmt->data.var_decl.type) &&
             (is_floatlike(vt) || is_intlike(vt)))) ||
-          vt == stmt->var_decl.type)) {
-        error_set(stmt->var_decl.init->line, stmt->var_decl.init->column,
+          vt == stmt->data.var_decl.type)) {
+        error_set(stmt->data.var_decl.init->line, stmt->data.var_decl.init->column,
                   error_current_file, error_current_function);
         return 0;
     }
-    if (stmt->var_decl.is_volatile)
+    if (stmt->data.var_decl.is_volatile)
         ir_build_store_vol(ir, sym->ir_name, val);
     else
         ir_build_store(ir, sym->ir_name, val);
@@ -212,9 +212,9 @@ static int emit_dynamic_initializer(stmt_t *stmt, symbol_t *sym,
 static int emit_aggregate_initializer(stmt_t *stmt, symbol_t *sym,
                                       symtable_t *vars, ir_builder_t *ir)
 {
-    if (stmt->var_decl.type == TYPE_ARRAY)
+    if (stmt->data.var_decl.type == TYPE_ARRAY)
         return handle_array_init(stmt, sym, vars, ir);
-    if (stmt->var_decl.type == TYPE_STRUCT)
+    if (stmt->data.var_decl.type == TYPE_STRUCT)
         return handle_struct_init(stmt, sym, vars, ir);
     error_set(stmt->line, stmt->column, error_current_file, error_current_function);
     return 0;
@@ -228,10 +228,10 @@ int handle_vla_size(stmt_t *stmt, symbol_t *sym, symtable_t *vars,
                     symtable_t *funcs, ir_builder_t *ir)
 {
     ir_value_t lenv;
-    if (check_expr(stmt->var_decl.size_expr, vars, funcs, ir, &lenv) ==
+    if (check_expr(stmt->data.var_decl.size_expr, vars, funcs, ir, &lenv) ==
         TYPE_UNKNOWN)
         return 0;
-    ir_value_t eszv = ir_build_const(ir, (int)stmt->var_decl.elem_size);
+    ir_value_t eszv = ir_build_const(ir, (int)stmt->data.var_decl.elem_size);
     ir_value_t total = ir_build_binop(ir, IR_MUL, lenv, eszv);
     sym->vla_addr = ir_build_alloca(ir, total);
     sym->vla_size = lenv;
@@ -288,9 +288,9 @@ int emit_var_initializer(stmt_t *stmt, symbol_t *sym,
     if (!copy_aggregate_metadata(stmt, sym, vars))
         return 0;
 
-    if (stmt->var_decl.init)
-        kind = stmt->var_decl.is_static ? INIT_STATIC : INIT_DYNAMIC;
-    else if (stmt->var_decl.init_list)
+    if (stmt->data.var_decl.init)
+        kind = stmt->data.var_decl.is_static ? INIT_STATIC : INIT_DYNAMIC;
+    else if (stmt->data.var_decl.init_list)
         kind = INIT_AGGREGATE;
 
     switch (kind) {

@@ -154,49 +154,49 @@ static void dump_stmt(strbuf_t *sb, const stmt_t *s, int lvl)
     strbuf_appendf(sb, "%s\n", stmt_name(s->kind));
     switch (s->kind) {
     case STMT_EXPR:
-        dump_expr(sb, s->expr.expr, lvl + 1);
+        dump_expr(sb, s->data.expr.expr, lvl + 1);
         break;
     case STMT_RETURN:
-        dump_expr(sb, s->ret.expr, lvl + 1);
+        dump_expr(sb, s->data.ret.expr, lvl + 1);
         break;
     case STMT_VAR_DECL:
-        if (s->var_decl.init)
-            dump_expr(sb, s->var_decl.init, lvl + 1);
+        if (s->data.var_decl.init)
+            dump_expr(sb, s->data.var_decl.init, lvl + 1);
         break;
     case STMT_IF:
-        dump_expr(sb, s->if_stmt.cond, lvl + 1);
-        dump_stmt(sb, s->if_stmt.then_branch, lvl + 1);
-        dump_stmt(sb, s->if_stmt.else_branch, lvl + 1);
+        dump_expr(sb, s->data.if_stmt.cond, lvl + 1);
+        dump_stmt(sb, s->data.if_stmt.then_branch, lvl + 1);
+        dump_stmt(sb, s->data.if_stmt.else_branch, lvl + 1);
         break;
     case STMT_WHILE:
-        dump_expr(sb, s->while_stmt.cond, lvl + 1);
-        dump_stmt(sb, s->while_stmt.body, lvl + 1);
+        dump_expr(sb, s->data.while_stmt.cond, lvl + 1);
+        dump_stmt(sb, s->data.while_stmt.body, lvl + 1);
         break;
     case STMT_DO_WHILE:
-        dump_stmt(sb, s->do_while_stmt.body, lvl + 1);
-        dump_expr(sb, s->do_while_stmt.cond, lvl + 1);
+        dump_stmt(sb, s->data.do_while_stmt.body, lvl + 1);
+        dump_expr(sb, s->data.do_while_stmt.cond, lvl + 1);
         break;
     case STMT_FOR:
-        if (s->for_stmt.init_decl)
-            dump_stmt(sb, s->for_stmt.init_decl, lvl + 1);
+        if (s->data.for_stmt.init_decl)
+            dump_stmt(sb, s->data.for_stmt.init_decl, lvl + 1);
         else
-            dump_expr(sb, s->for_stmt.init, lvl + 1);
-        dump_expr(sb, s->for_stmt.cond, lvl + 1);
-        dump_expr(sb, s->for_stmt.incr, lvl + 1);
-        dump_stmt(sb, s->for_stmt.body, lvl + 1);
+            dump_expr(sb, s->data.for_stmt.init, lvl + 1);
+        dump_expr(sb, s->data.for_stmt.cond, lvl + 1);
+        dump_expr(sb, s->data.for_stmt.incr, lvl + 1);
+        dump_stmt(sb, s->data.for_stmt.body, lvl + 1);
         break;
     case STMT_SWITCH:
-        dump_expr(sb, s->switch_stmt.expr, lvl + 1);
-        for (size_t i = 0; i < s->switch_stmt.case_count; i++) {
-            dump_expr(sb, s->switch_stmt.cases[i].expr, lvl + 1);
-            dump_stmt(sb, s->switch_stmt.cases[i].body, lvl + 2);
+        dump_expr(sb, s->data.switch_stmt.expr, lvl + 1);
+        for (size_t i = 0; i < s->data.switch_stmt.case_count; i++) {
+            dump_expr(sb, s->data.switch_stmt.cases[i].expr, lvl + 1);
+            dump_stmt(sb, s->data.switch_stmt.cases[i].body, lvl + 2);
         }
-        dump_stmt(sb, s->switch_stmt.default_body, lvl + 1);
+        dump_stmt(sb, s->data.switch_stmt.default_body, lvl + 1);
         break;
     case STMT_LABEL:
         indent(sb, lvl + 1);
-        if (s->label.name)
-            strbuf_appendf(sb, "label: %s\n", s->label.name);
+        if (s->data.label.name)
+            strbuf_appendf(sb, "label: %s\n", s->data.label.name);
         break;
     case STMT_GOTO:
     case STMT_BREAK:
@@ -208,7 +208,7 @@ static void dump_stmt(strbuf_t *sb, const stmt_t *s, int lvl)
     case STMT_UNION_DECL:
         break;
     case STMT_BLOCK:
-        dump_block(sb, s->block.stmts, s->block.count, lvl + 1);
+        dump_block(sb, s->data.block.stmts, s->data.block.count, lvl + 1);
         break;
     }
 }

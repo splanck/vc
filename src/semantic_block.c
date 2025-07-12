@@ -10,8 +10,8 @@ int stmt_block_handler(stmt_t *stmt, symtable_t *vars, symtable_t *funcs,
                        const char *continue_label)
 {
     symbol_t *old_head = vars->head;
-    for (size_t i = 0; i < stmt->block.count; i++) {
-        if (!check_stmt(stmt->block.stmts[i], vars, funcs, labels, ir,
+    for (size_t i = 0; i < stmt->data.block.count; i++) {
+        if (!check_stmt(stmt->data.block.stmts[i], vars, funcs, labels, ir,
                         func_ret_type, break_label, continue_label)) {
             symtable_pop_scope(vars, old_head);
             return 0;

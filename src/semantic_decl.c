@@ -11,10 +11,10 @@
 
 static int check_typedef_stmt(stmt_t *stmt, symtable_t *vars)
 {
-    if (!symtable_add_typedef(vars, stmt->typedef_decl.name,
-                              stmt->typedef_decl.type,
-                              stmt->typedef_decl.array_size,
-                              stmt->typedef_decl.elem_size)) {
+    if (!symtable_add_typedef(vars, stmt->data.typedef_decl.name,
+                              stmt->data.typedef_decl.type,
+                              stmt->data.typedef_decl.array_size,
+                              stmt->data.typedef_decl.elem_size)) {
         error_set(stmt->line, stmt->column, error_current_file, error_current_function);
         return 0;
     }

@@ -136,7 +136,7 @@ static const char *find_end_label(func_t *func)
     for (size_t i = func->body_count; i-- > 0;) {
         stmt_t *s = func->body[i];
         if (s->kind == STMT_LABEL)
-            return s->label.name;
+            return s->data.label.name;
         if (s->kind != STMT_RETURN)
             break;
     }
@@ -154,7 +154,7 @@ void warn_unreachable_function(func_t *func, symtable_t *funcs)
         stmt_t *s = func->body[i];
         if (!reachable) {
             if (!(s->kind == STMT_LABEL && end_label &&
-                  strcmp(s->label.name, end_label) == 0)) {
+                  strcmp(s->data.label.name, end_label) == 0)) {
                 error_set(s->line, s->column, error_current_file,
                           error_current_function);
                 error_print("warning: unreachable statement");
@@ -163,18 +163,18 @@ void warn_unreachable_function(func_t *func, symtable_t *funcs)
         if (s->kind == STMT_RETURN)
             reachable = 0;
         else if (s->kind == STMT_GOTO && end_label &&
-                 strcmp(s->goto_stmt.name, end_label) == 0)
+                 strcmp(s->data.goto_stmt.name, end_label) == 0)
             reachable = 0;
         else if (s->kind == STMT_LABEL && end_label &&
-                 strcmp(s->label.name, end_label) == 0)
+                 strcmp(s->data.label.name, end_label) == 0)
             reachable = 1;
-        else if (s->kind == STMT_EXPR && s->expr.expr &&
-                 s->expr.expr->kind == EXPR_CALL) {
-            symbol_t *fs = symtable_lookup(funcs, s->expr.expr->call.name);
+        else if (s->kind == STMT_EXPR && s->data.expr.expr &&
+                 s->data.expr.expr->kind == EXPR_CALL) {
+            symbol_t *fs = symtable_lookup(funcs, s->data.expr.expr->call.name);
             if (fs && fs->is_noreturn) {
                 if (i + 1 < func->body_count &&
                     !(func->body[i+1]->kind == STMT_LABEL && end_label &&
-                      strcmp(func->body[i+1]->label.name, end_label) == 0)) {
+                      strcmp(func->body[i+1]->data.label.name, end_label) == 0)) {
                     error_set(s->line, s->column, error_current_file,
                               error_current_function);
                     error_print("warning: non-returning call without terminator");

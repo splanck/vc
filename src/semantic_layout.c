@@ -84,18 +84,18 @@ size_t layout_struct_members(struct_member_t *members, size_t count)
 /* Compute layout for a union variable declaration */
 int compute_union_layout(stmt_t *decl, symtable_t *globals)
 {
-    if (decl->var_decl.member_count) {
-        size_t max = layout_union_members(decl->var_decl.members,
-                                          decl->var_decl.member_count);
-        decl->var_decl.elem_size = max;
-    } else if (decl->var_decl.tag) {
-        symbol_t *utype = symtable_lookup_union(globals, decl->var_decl.tag);
+    if (decl->data.var_decl.member_count) {
+        size_t max = layout_union_members(decl->data.var_decl.members,
+                                          decl->data.var_decl.member_count);
+        decl->data.var_decl.elem_size = max;
+    } else if (decl->data.var_decl.tag) {
+        symbol_t *utype = symtable_lookup_union(globals, decl->data.var_decl.tag);
         if (!utype) {
             error_set(decl->line, decl->column, error_current_file,
                       error_current_function);
             return 0;
         }
-        decl->var_decl.elem_size = utype->total_size;
+        decl->data.var_decl.elem_size = utype->total_size;
     }
     return 1;
 }
@@ -103,18 +103,18 @@ int compute_union_layout(stmt_t *decl, symtable_t *globals)
 /* Compute layout for a struct variable declaration */
 int compute_struct_layout(stmt_t *decl, symtable_t *globals)
 {
-    if (decl->var_decl.member_count) {
-        size_t total = layout_struct_members((struct_member_t *)decl->var_decl.members,
-                                             decl->var_decl.member_count);
-        decl->var_decl.elem_size = total;
-    } else if (decl->var_decl.tag) {
-        symbol_t *stype = symtable_lookup_struct(globals, decl->var_decl.tag);
+    if (decl->data.var_decl.member_count) {
+        size_t total = layout_struct_members((struct_member_t *)decl->data.var_decl.members,
+                                             decl->data.var_decl.member_count);
+        decl->data.var_decl.elem_size = total;
+    } else if (decl->data.var_decl.tag) {
+        symbol_t *stype = symtable_lookup_struct(globals, decl->data.var_decl.tag);
         if (!stype) {
             error_set(decl->line, decl->column, error_current_file,
                       error_current_function);
             return 0;
         }
-        decl->var_decl.elem_size = stype->struct_total_size;
+        decl->data.var_decl.elem_size = stype->struct_total_size;
     }
     return 1;
 }
@@ -171,14 +171,14 @@ int copy_struct_metadata(symbol_t *sym, struct_member_t *members,
 int copy_aggregate_metadata(stmt_t *decl, symbol_t *sym,
                             symtable_t *globals)
 {
-    if (decl->var_decl.type == TYPE_UNION)
-        return copy_union_metadata(sym, decl->var_decl.members,
-                                   decl->var_decl.member_count,
-                                   decl->var_decl.elem_size);
+    if (decl->data.var_decl.type == TYPE_UNION)
+        return copy_union_metadata(sym, decl->data.var_decl.members,
+                                   decl->data.var_decl.member_count,
+                                   decl->data.var_decl.elem_size);
 
-    if (decl->var_decl.type == TYPE_STRUCT) {
-        if (decl->var_decl.member_count == 0 && decl->var_decl.tag) {
-            symbol_t *stype = symtable_lookup_struct(globals, decl->var_decl.tag);
+    if (decl->data.var_decl.type == TYPE_STRUCT) {
+        if (decl->data.var_decl.member_count == 0 && decl->data.var_decl.tag) {
+            symbol_t *stype = symtable_lookup_struct(globals, decl->data.var_decl.tag);
             if (!stype)
                 return 0;
             return copy_struct_metadata(sym, stype->struct_members,
@@ -186,9 +186,9 @@ int copy_aggregate_metadata(stmt_t *decl, symbol_t *sym,
                                         stype->struct_total_size);
         }
         return copy_struct_metadata(sym,
-                                    (struct_member_t *)decl->var_decl.members,
-                                    decl->var_decl.member_count,
-                                    decl->var_decl.elem_size);
+                                    (struct_member_t *)decl->data.var_decl.members,
+                                    decl->data.var_decl.member_count,
+                                    decl->data.var_decl.elem_size);
     }
 
     return 1;

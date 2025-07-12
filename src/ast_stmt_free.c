@@ -15,124 +15,124 @@
 /* Helpers for freeing individual statement types */
 static void free_expr_stmt(stmt_t *stmt)
 {
-    ast_free_expr(stmt->expr.expr);
+    ast_free_expr(stmt->data.expr.expr);
 }
 
 static void free_return_stmt(stmt_t *stmt)
 {
-    ast_free_expr(stmt->ret.expr);
+    ast_free_expr(stmt->data.ret.expr);
 }
 
 static void free_var_decl_stmt(stmt_t *stmt)
 {
-    free(stmt->var_decl.name);
-    ast_free_expr(stmt->var_decl.size_expr);
-    ast_free_expr(stmt->var_decl.align_expr);
-    ast_free_expr(stmt->var_decl.init);
-    for (size_t i = 0; i < stmt->var_decl.init_count; i++) {
-        ast_free_expr(stmt->var_decl.init_list[i].index);
-        ast_free_expr(stmt->var_decl.init_list[i].value);
-        free(stmt->var_decl.init_list[i].field);
+    free(stmt->data.var_decl.name);
+    ast_free_expr(stmt->data.var_decl.size_expr);
+    ast_free_expr(stmt->data.var_decl.align_expr);
+    ast_free_expr(stmt->data.var_decl.init);
+    for (size_t i = 0; i < stmt->data.var_decl.init_count; i++) {
+        ast_free_expr(stmt->data.var_decl.init_list[i].index);
+        ast_free_expr(stmt->data.var_decl.init_list[i].value);
+        free(stmt->data.var_decl.init_list[i].field);
     }
-    free(stmt->var_decl.init_list);
-    free(stmt->var_decl.tag);
-    for (size_t i = 0; i < stmt->var_decl.member_count; i++)
-        free(stmt->var_decl.members[i].name);
-    free(stmt->var_decl.members);
-    free(stmt->var_decl.func_param_types);
+    free(stmt->data.var_decl.init_list);
+    free(stmt->data.var_decl.tag);
+    for (size_t i = 0; i < stmt->data.var_decl.member_count; i++)
+        free(stmt->data.var_decl.members[i].name);
+    free(stmt->data.var_decl.members);
+    free(stmt->data.var_decl.func_param_types);
 }
 
 static void free_if_stmt(stmt_t *stmt)
 {
-    ast_free_expr(stmt->if_stmt.cond);
-    ast_free_stmt(stmt->if_stmt.then_branch);
-    ast_free_stmt(stmt->if_stmt.else_branch);
+    ast_free_expr(stmt->data.if_stmt.cond);
+    ast_free_stmt(stmt->data.if_stmt.then_branch);
+    ast_free_stmt(stmt->data.if_stmt.else_branch);
 }
 
 static void free_while_stmt(stmt_t *stmt)
 {
-    ast_free_expr(stmt->while_stmt.cond);
-    ast_free_stmt(stmt->while_stmt.body);
+    ast_free_expr(stmt->data.while_stmt.cond);
+    ast_free_stmt(stmt->data.while_stmt.body);
 }
 
 static void free_do_while_stmt(stmt_t *stmt)
 {
-    ast_free_expr(stmt->do_while_stmt.cond);
-    ast_free_stmt(stmt->do_while_stmt.body);
+    ast_free_expr(stmt->data.do_while_stmt.cond);
+    ast_free_stmt(stmt->data.do_while_stmt.body);
 }
 
 static void free_for_stmt(stmt_t *stmt)
 {
-    ast_free_stmt(stmt->for_stmt.init_decl);
-    ast_free_expr(stmt->for_stmt.init);
-    ast_free_expr(stmt->for_stmt.cond);
-    ast_free_expr(stmt->for_stmt.incr);
-    ast_free_stmt(stmt->for_stmt.body);
+    ast_free_stmt(stmt->data.for_stmt.init_decl);
+    ast_free_expr(stmt->data.for_stmt.init);
+    ast_free_expr(stmt->data.for_stmt.cond);
+    ast_free_expr(stmt->data.for_stmt.incr);
+    ast_free_stmt(stmt->data.for_stmt.body);
 }
 
 static void free_switch_stmt(stmt_t *stmt)
 {
-    ast_free_expr(stmt->switch_stmt.expr);
-    for (size_t i = 0; i < stmt->switch_stmt.case_count; i++) {
-        ast_free_expr(stmt->switch_stmt.cases[i].expr);
-        ast_free_stmt(stmt->switch_stmt.cases[i].body);
+    ast_free_expr(stmt->data.switch_stmt.expr);
+    for (size_t i = 0; i < stmt->data.switch_stmt.case_count; i++) {
+        ast_free_expr(stmt->data.switch_stmt.cases[i].expr);
+        ast_free_stmt(stmt->data.switch_stmt.cases[i].body);
     }
-    free(stmt->switch_stmt.cases);
-    ast_free_stmt(stmt->switch_stmt.default_body);
+    free(stmt->data.switch_stmt.cases);
+    ast_free_stmt(stmt->data.switch_stmt.default_body);
 }
 
 static void free_label_stmt(stmt_t *stmt)
 {
-    free(stmt->label.name);
+    free(stmt->data.label.name);
 }
 
 static void free_goto_stmt(stmt_t *stmt)
 {
-    free(stmt->goto_stmt.name);
+    free(stmt->data.goto_stmt.name);
 }
 
 static void free_static_assert_stmt(stmt_t *stmt)
 {
-    ast_free_expr(stmt->static_assert.expr);
-    free(stmt->static_assert.message);
+    ast_free_expr(stmt->data.static_assert.expr);
+    free(stmt->data.static_assert.message);
 }
 
 static void free_typedef_stmt(stmt_t *stmt)
 {
-    free(stmt->typedef_decl.name);
+    free(stmt->data.typedef_decl.name);
 }
 
 static void free_enum_decl_stmt(stmt_t *stmt)
 {
-    free(stmt->enum_decl.tag);
-    for (size_t i = 0; i < stmt->enum_decl.count; i++) {
-        free(stmt->enum_decl.items[i].name);
-        ast_free_expr(stmt->enum_decl.items[i].value);
+    free(stmt->data.enum_decl.tag);
+    for (size_t i = 0; i < stmt->data.enum_decl.count; i++) {
+        free(stmt->data.enum_decl.items[i].name);
+        ast_free_expr(stmt->data.enum_decl.items[i].value);
     }
-    free(stmt->enum_decl.items);
+    free(stmt->data.enum_decl.items);
 }
 
 static void free_struct_decl_stmt(stmt_t *stmt)
 {
-    free(stmt->struct_decl.tag);
-    for (size_t i = 0; i < stmt->struct_decl.count; i++)
-        free(stmt->struct_decl.members[i].name);
-    free(stmt->struct_decl.members);
+    free(stmt->data.struct_decl.tag);
+    for (size_t i = 0; i < stmt->data.struct_decl.count; i++)
+        free(stmt->data.struct_decl.members[i].name);
+    free(stmt->data.struct_decl.members);
 }
 
 static void free_union_decl_stmt(stmt_t *stmt)
 {
-    free(stmt->union_decl.tag);
-    for (size_t i = 0; i < stmt->union_decl.count; i++)
-        free(stmt->union_decl.members[i].name);
-    free(stmt->union_decl.members);
+    free(stmt->data.union_decl.tag);
+    for (size_t i = 0; i < stmt->data.union_decl.count; i++)
+        free(stmt->data.union_decl.members[i].name);
+    free(stmt->data.union_decl.members);
 }
 
 static void free_block_stmt(stmt_t *stmt)
 {
-    for (size_t i = 0; i < stmt->block.count; i++)
-        ast_free_stmt(stmt->block.stmts[i]);
-    free(stmt->block.stmts);
+    for (size_t i = 0; i < stmt->data.block.count; i++)
+        ast_free_stmt(stmt->data.block.stmts[i]);
+    free(stmt->data.block.stmts);
 }
 
 static void free_break_stmt(stmt_t *stmt)

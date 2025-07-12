@@ -24,7 +24,7 @@ stmt_t *ast_make_expr_stmt(expr_t *expr, size_t line, size_t column)
     stmt->kind = STMT_EXPR;
     stmt->line = line;
     stmt->column = column;
-    stmt->expr.expr = expr;
+    stmt->data.expr.expr = expr;
     return stmt;
 }
 
@@ -37,7 +37,7 @@ stmt_t *ast_make_return(expr_t *expr, size_t line, size_t column)
     stmt->kind = STMT_RETURN;
     stmt->line = line;
     stmt->column = column;
-    stmt->ret.expr = expr;
+    stmt->data.ret.expr = expr;
     return stmt;
 }
 
@@ -56,42 +56,42 @@ stmt_t *ast_make_var_decl(const char *name, type_kind_t type, size_t array_size,
     stmt->kind = STMT_VAR_DECL;
     stmt->line = line;
     stmt->column = column;
-    stmt->var_decl.name = vc_strdup(name ? name : "");
-    if (!stmt->var_decl.name) {
+    stmt->data.var_decl.name = vc_strdup(name ? name : "");
+    if (!stmt->data.var_decl.name) {
         free(stmt);
         return NULL;
     }
-    stmt->var_decl.type = type;
-    stmt->var_decl.array_size = array_size;
-    stmt->var_decl.size_expr = size_expr;
-    stmt->var_decl.align_expr = align_expr;
-    stmt->var_decl.alignment = 0;
-    stmt->var_decl.elem_size = elem_size;
+    stmt->data.var_decl.type = type;
+    stmt->data.var_decl.array_size = array_size;
+    stmt->data.var_decl.size_expr = size_expr;
+    stmt->data.var_decl.align_expr = align_expr;
+    stmt->data.var_decl.alignment = 0;
+    stmt->data.var_decl.elem_size = elem_size;
     if (tag) {
-        stmt->var_decl.tag = vc_strdup(tag);
-        if (!stmt->var_decl.tag) {
-            free(stmt->var_decl.name);
+        stmt->data.var_decl.tag = vc_strdup(tag);
+        if (!stmt->data.var_decl.tag) {
+            free(stmt->data.var_decl.name);
             free(stmt);
             return NULL;
         }
     } else {
-        stmt->var_decl.tag = NULL;
+        stmt->data.var_decl.tag = NULL;
     }
-    stmt->var_decl.is_static = is_static;
-    stmt->var_decl.is_register = is_register;
-    stmt->var_decl.is_extern = is_extern;
-    stmt->var_decl.is_const = is_const;
-    stmt->var_decl.is_volatile = is_volatile;
-    stmt->var_decl.is_restrict = is_restrict;
-    stmt->var_decl.init = init;
-    stmt->var_decl.init_list = init_list;
-    stmt->var_decl.init_count = init_count;
-    stmt->var_decl.members = members;
-    stmt->var_decl.member_count = member_count;
-    stmt->var_decl.func_ret_type = TYPE_UNKNOWN;
-    stmt->var_decl.func_param_types = NULL;
-    stmt->var_decl.func_param_count = 0;
-    stmt->var_decl.func_variadic = 0;
+    stmt->data.var_decl.is_static = is_static;
+    stmt->data.var_decl.is_register = is_register;
+    stmt->data.var_decl.is_extern = is_extern;
+    stmt->data.var_decl.is_const = is_const;
+    stmt->data.var_decl.is_volatile = is_volatile;
+    stmt->data.var_decl.is_restrict = is_restrict;
+    stmt->data.var_decl.init = init;
+    stmt->data.var_decl.init_list = init_list;
+    stmt->data.var_decl.init_count = init_count;
+    stmt->data.var_decl.members = members;
+    stmt->data.var_decl.member_count = member_count;
+    stmt->data.var_decl.func_ret_type = TYPE_UNKNOWN;
+    stmt->data.var_decl.func_param_types = NULL;
+    stmt->data.var_decl.func_param_count = 0;
+    stmt->data.var_decl.func_variadic = 0;
     return stmt;
 }
 
@@ -105,9 +105,9 @@ stmt_t *ast_make_if(expr_t *cond, stmt_t *then_branch, stmt_t *else_branch,
     stmt->kind = STMT_IF;
     stmt->line = line;
     stmt->column = column;
-    stmt->if_stmt.cond = cond;
-    stmt->if_stmt.then_branch = then_branch;
-    stmt->if_stmt.else_branch = else_branch;
+    stmt->data.if_stmt.cond = cond;
+    stmt->data.if_stmt.then_branch = then_branch;
+    stmt->data.if_stmt.else_branch = else_branch;
     return stmt;
 }
 
@@ -121,8 +121,8 @@ stmt_t *ast_make_while(expr_t *cond, stmt_t *body,
     stmt->kind = STMT_WHILE;
     stmt->line = line;
     stmt->column = column;
-    stmt->while_stmt.cond = cond;
-    stmt->while_stmt.body = body;
+    stmt->data.while_stmt.cond = cond;
+    stmt->data.while_stmt.body = body;
     return stmt;
 }
 
@@ -136,8 +136,8 @@ stmt_t *ast_make_do_while(expr_t *cond, stmt_t *body,
     stmt->kind = STMT_DO_WHILE;
     stmt->line = line;
     stmt->column = column;
-    stmt->do_while_stmt.cond = cond;
-    stmt->do_while_stmt.body = body;
+    stmt->data.do_while_stmt.cond = cond;
+    stmt->data.do_while_stmt.body = body;
     return stmt;
 }
 
@@ -152,11 +152,11 @@ stmt_t *ast_make_for(stmt_t *init_decl, expr_t *init, expr_t *cond,
     stmt->kind = STMT_FOR;
     stmt->line = line;
     stmt->column = column;
-    stmt->for_stmt.init_decl = init_decl;
-    stmt->for_stmt.init = init;
-    stmt->for_stmt.cond = cond;
-    stmt->for_stmt.incr = incr;
-    stmt->for_stmt.body = body;
+    stmt->data.for_stmt.init_decl = init_decl;
+    stmt->data.for_stmt.init = init;
+    stmt->data.for_stmt.cond = cond;
+    stmt->data.for_stmt.incr = incr;
+    stmt->data.for_stmt.body = body;
     return stmt;
 }
 
@@ -170,10 +170,10 @@ stmt_t *ast_make_switch(expr_t *expr, switch_case_t *cases, size_t case_count,
     stmt->kind = STMT_SWITCH;
     stmt->line = line;
     stmt->column = column;
-    stmt->switch_stmt.expr = expr;
-    stmt->switch_stmt.cases = cases;
-    stmt->switch_stmt.case_count = case_count;
-    stmt->switch_stmt.default_body = default_body;
+    stmt->data.switch_stmt.expr = expr;
+    stmt->data.switch_stmt.cases = cases;
+    stmt->data.switch_stmt.case_count = case_count;
+    stmt->data.switch_stmt.default_body = default_body;
     return stmt;
 }
 
@@ -210,8 +210,8 @@ stmt_t *ast_make_label(const char *name, size_t line, size_t column)
     stmt->kind = STMT_LABEL;
     stmt->line = line;
     stmt->column = column;
-    stmt->label.name = vc_strdup(name ? name : "");
-    if (!stmt->label.name) {
+    stmt->data.label.name = vc_strdup(name ? name : "");
+    if (!stmt->data.label.name) {
         free(stmt);
         return NULL;
     }
@@ -227,8 +227,8 @@ stmt_t *ast_make_goto(const char *name, size_t line, size_t column)
     stmt->kind = STMT_GOTO;
     stmt->line = line;
     stmt->column = column;
-    stmt->goto_stmt.name = vc_strdup(name ? name : "");
-    if (!stmt->goto_stmt.name) {
+    stmt->data.goto_stmt.name = vc_strdup(name ? name : "");
+    if (!stmt->data.goto_stmt.name) {
         free(stmt);
         return NULL;
     }
@@ -245,9 +245,9 @@ stmt_t *ast_make_static_assert(expr_t *expr, const char *msg,
     stmt->kind = STMT_STATIC_ASSERT;
     stmt->line = line;
     stmt->column = column;
-    stmt->static_assert.expr = expr;
-    stmt->static_assert.message = vc_strdup(msg ? msg : "");
-    if (!stmt->static_assert.message) {
+    stmt->data.static_assert.expr = expr;
+    stmt->data.static_assert.message = vc_strdup(msg ? msg : "");
+    if (!stmt->data.static_assert.message) {
         free(stmt);
         return NULL;
     }
@@ -264,14 +264,14 @@ stmt_t *ast_make_typedef(const char *name, type_kind_t type, size_t array_size,
     stmt->kind = STMT_TYPEDEF;
     stmt->line = line;
     stmt->column = column;
-    stmt->typedef_decl.name = vc_strdup(name ? name : "");
-    if (!stmt->typedef_decl.name) {
+    stmt->data.typedef_decl.name = vc_strdup(name ? name : "");
+    if (!stmt->data.typedef_decl.name) {
         free(stmt);
         return NULL;
     }
-    stmt->typedef_decl.type = type;
-    stmt->typedef_decl.array_size = array_size;
-    stmt->typedef_decl.elem_size = elem_size;
+    stmt->data.typedef_decl.type = type;
+    stmt->data.typedef_decl.array_size = array_size;
+    stmt->data.typedef_decl.elem_size = elem_size;
     return stmt;
 }
 
@@ -285,13 +285,13 @@ stmt_t *ast_make_enum_decl(const char *tag, enumerator_t *items, size_t count,
     stmt->kind = STMT_ENUM_DECL;
     stmt->line = line;
     stmt->column = column;
-    stmt->enum_decl.tag = vc_strdup(tag ? tag : "");
-    if (!stmt->enum_decl.tag) {
+    stmt->data.enum_decl.tag = vc_strdup(tag ? tag : "");
+    if (!stmt->data.enum_decl.tag) {
         free(stmt);
         return NULL;
     }
-    stmt->enum_decl.items = items;
-    stmt->enum_decl.count = count;
+    stmt->data.enum_decl.items = items;
+    stmt->data.enum_decl.count = count;
     return stmt;
 }
 
@@ -305,13 +305,13 @@ stmt_t *ast_make_struct_decl(const char *tag, struct_member_t *members,
     stmt->kind = STMT_STRUCT_DECL;
     stmt->line = line;
     stmt->column = column;
-    stmt->struct_decl.tag = vc_strdup(tag ? tag : "");
-    if (!stmt->struct_decl.tag) {
+    stmt->data.struct_decl.tag = vc_strdup(tag ? tag : "");
+    if (!stmt->data.struct_decl.tag) {
         free(stmt);
         return NULL;
     }
-    stmt->struct_decl.members = members;
-    stmt->struct_decl.count = count;
+    stmt->data.struct_decl.members = members;
+    stmt->data.struct_decl.count = count;
     return stmt;
 }
 
@@ -325,13 +325,13 @@ stmt_t *ast_make_union_decl(const char *tag, union_member_t *members,
     stmt->kind = STMT_UNION_DECL;
     stmt->line = line;
     stmt->column = column;
-    stmt->union_decl.tag = vc_strdup(tag ? tag : "");
-    if (!stmt->union_decl.tag) {
+    stmt->data.union_decl.tag = vc_strdup(tag ? tag : "");
+    if (!stmt->data.union_decl.tag) {
         free(stmt);
         return NULL;
     }
-    stmt->union_decl.members = members;
-    stmt->union_decl.count = count;
+    stmt->data.union_decl.members = members;
+    stmt->data.union_decl.count = count;
     return stmt;
 }
 
@@ -345,8 +345,8 @@ stmt_t *ast_make_block(stmt_t **stmts, size_t count,
     stmt->kind = STMT_BLOCK;
     stmt->line = line;
     stmt->column = column;
-    stmt->block.stmts = stmts;
-    stmt->block.count = count;
+    stmt->data.block.stmts = stmts;
+    stmt->data.block.count = count;
     return stmt;
 }
 

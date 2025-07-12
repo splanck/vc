@@ -7,7 +7,7 @@ static int check_expr_stmt(stmt_t *stmt, symtable_t *vars, symtable_t *funcs,
                            ir_builder_t *ir)
 {
     ir_value_t tmp;
-    return check_expr(stmt->expr.expr, vars, funcs, ir, &tmp) != TYPE_UNKNOWN;
+    return check_expr(stmt->data.expr.expr, vars, funcs, ir, &tmp) != TYPE_UNKNOWN;
 }
 
 int stmt_expr_handler(stmt_t *stmt, symtable_t *vars, symtable_t *funcs,

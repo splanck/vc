@@ -10,7 +10,7 @@ static int validate_struct_return(stmt_t *stmt, symtable_t *vars,
                                   type_kind_t func_ret_type)
 {
     if (expr_type != func_ret_type) {
-        error_set(stmt->ret.expr->line, stmt->ret.expr->column,
+        error_set(stmt->data.ret.expr->line, stmt->data.ret.expr->column,
                   error_current_file, error_current_function);
         return 0;
     }
@@ -21,23 +21,23 @@ static int validate_struct_return(stmt_t *stmt, symtable_t *vars,
     size_t expected = func_sym ? func_sym->ret_struct_size : 0;
     size_t actual = 0;
 
-    if (stmt->ret.expr->kind == EXPR_IDENT) {
-        symbol_t *vsym = symtable_lookup(vars, stmt->ret.expr->ident.name);
+    if (stmt->data.ret.expr->kind == EXPR_IDENT) {
+        symbol_t *vsym = symtable_lookup(vars, stmt->data.ret.expr->ident.name);
         if (vsym)
             actual = (expr_type == TYPE_STRUCT)
                 ? vsym->struct_total_size : vsym->total_size;
-    } else if (stmt->ret.expr->kind == EXPR_CALL) {
-        symbol_t *fsym = symtable_lookup(funcs, stmt->ret.expr->call.name);
+    } else if (stmt->data.ret.expr->kind == EXPR_CALL) {
+        symbol_t *fsym = symtable_lookup(funcs, stmt->data.ret.expr->call.name);
         if (!fsym)
-            fsym = symtable_lookup(vars, stmt->ret.expr->call.name);
+            fsym = symtable_lookup(vars, stmt->data.ret.expr->call.name);
         if (fsym)
             actual = fsym->ret_struct_size;
-    } else if (stmt->ret.expr->kind == EXPR_COMPLIT) {
-        actual = stmt->ret.expr->compound.elem_size;
+    } else if (stmt->data.ret.expr->kind == EXPR_COMPLIT) {
+        actual = stmt->data.ret.expr->compound.elem_size;
     }
 
     if (expected && actual && expected != actual) {
-        error_set(stmt->ret.expr->line, stmt->ret.expr->column,
+        error_set(stmt->data.ret.expr->line, stmt->data.ret.expr->column,
                   error_current_file, error_current_function);
         return 0;
     }
@@ -49,7 +49,7 @@ static int handle_return_stmt(stmt_t *stmt, symtable_t *vars,
                               symtable_t *funcs, ir_builder_t *ir,
                               type_kind_t func_ret_type)
 {
-    if (!stmt->ret.expr) {
+    if (!stmt->data.ret.expr) {
         if (func_ret_type != TYPE_VOID) {
             error_set(stmt->line, stmt->column, error_current_file, error_current_function);
             return 0;
@@ -60,9 +60,9 @@ static int handle_return_stmt(stmt_t *stmt, symtable_t *vars,
     }
 
     ir_value_t val;
-    type_kind_t vt = check_expr(stmt->ret.expr, vars, funcs, ir, &val);
+    type_kind_t vt = check_expr(stmt->data.ret.expr, vars, funcs, ir, &val);
     if (vt == TYPE_UNKNOWN) {
-        error_set(stmt->ret.expr->line, stmt->ret.expr->column,
+        error_set(stmt->data.ret.expr->line, stmt->data.ret.expr->column,
                   error_current_file, error_current_function);
         return 0;
     }

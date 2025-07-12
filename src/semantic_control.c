@@ -112,7 +112,7 @@ static char **emit_case_branches(stmt_t *stmt, symtable_t *vars,
                                  const char *default_label,
                                  const char *end_label, int id)
 {
-    size_t count = stmt->switch_stmt.case_count;
+    size_t count = stmt->data.switch_stmt.case_count;
     char **labels = calloc(count, sizeof(char *));
     long long *values = calloc(count, sizeof(long long));
     if (!labels || !values) {
@@ -126,12 +126,12 @@ static char **emit_case_branches(stmt_t *stmt, symtable_t *vars,
         snprintf(buf, sizeof(buf), "L%d_case%zu", id, i);
         labels[i] = vc_strdup(buf);
         long long cval;
-        if (!eval_const_expr(stmt->switch_stmt.cases[i].expr, vars, 0, &cval)) {
+        if (!eval_const_expr(stmt->data.switch_stmt.cases[i].expr, vars, 0, &cval)) {
             for (size_t j = 0; j <= i; j++)
                 free(labels[j]);
             free(labels);
             free(values);
-            error_set(stmt->switch_stmt.cases[i].expr->line, stmt->switch_stmt.cases[i].expr->column, error_current_file, error_current_function);
+            error_set(stmt->data.switch_stmt.cases[i].expr->line, stmt->data.switch_stmt.cases[i].expr->column, error_current_file, error_current_function);
             return NULL;
         }
         for (size_t j = 0; j < i; j++) {
@@ -140,7 +140,7 @@ static char **emit_case_branches(stmt_t *stmt, symtable_t *vars,
                     free(labels[k]);
                 free(labels);
                 free(values);
-                error_set(stmt->switch_stmt.cases[i].expr->line, stmt->switch_stmt.cases[i].expr->column, error_current_file, error_current_function);
+                error_set(stmt->data.switch_stmt.cases[i].expr->line, stmt->data.switch_stmt.cases[i].expr->column, error_current_file, error_current_function);
                 return NULL;
             }
         }
@@ -150,7 +150,7 @@ static char **emit_case_branches(stmt_t *stmt, symtable_t *vars,
         ir_build_bcond(ir, cmp, labels[i]);
     }
 
-    if (stmt->switch_stmt.default_body)
+    if (stmt->data.switch_stmt.default_body)
         ir_build_br(ir, default_label);
     else
         ir_build_br(ir, end_label);
@@ -172,17 +172,17 @@ static int process_switch_body(stmt_t *stmt, symtable_t *vars,
                                const char *default_label,
                                const char *end_label)
 {
-    for (size_t i = 0; i < stmt->switch_stmt.case_count; i++) {
+    for (size_t i = 0; i < stmt->data.switch_stmt.case_count; i++) {
         ir_build_label(ir, case_labels[i]);
-        if (!check_stmt(stmt->switch_stmt.cases[i].body, vars, funcs, labels,
+        if (!check_stmt(stmt->data.switch_stmt.cases[i].body, vars, funcs, labels,
                         ir, func_ret_type, end_label, NULL))
             return 0;
         ir_build_br(ir, end_label);
     }
 
-    if (stmt->switch_stmt.default_body) {
+    if (stmt->data.switch_stmt.default_body) {
         ir_build_label(ir, default_label);
-        if (!check_stmt(stmt->switch_stmt.default_body, vars, funcs, labels, ir,
+        if (!check_stmt(stmt->data.switch_stmt.default_body, vars, funcs, labels, ir,
                         func_ret_type, end_label, NULL))
             return 0;
     }
@@ -203,7 +203,7 @@ int check_switch_stmt(stmt_t *stmt, symtable_t *vars, symtable_t *funcs,
                       type_kind_t func_ret_type)
 {
     ir_value_t expr_val;
-    if (check_expr(stmt->switch_stmt.expr, vars, funcs, ir, &expr_val) == TYPE_UNKNOWN)
+    if (check_expr(stmt->data.switch_stmt.expr, vars, funcs, ir, &expr_val) == TYPE_UNKNOWN)
         return 0;
     char end_label[32];
     char default_label[32];
@@ -222,7 +222,7 @@ int check_switch_stmt(stmt_t *stmt, symtable_t *vars, symtable_t *funcs,
     int ok = process_switch_body(stmt, vars, funcs, labels, ir, func_ret_type,
                                  case_labels, default_label, end_label);
 
-    for (size_t j = 0; j < stmt->switch_stmt.case_count; j++)
+    for (size_t j = 0; j < stmt->data.switch_stmt.case_count; j++)
         free(case_labels[j]);
     free(case_labels);
     return ok;
@@ -257,7 +257,7 @@ int check_if_stmt(stmt_t *stmt, symtable_t *vars, symtable_t *funcs,
                   const char *break_label, const char *continue_label)
 {
     ir_value_t cond_val;
-    if (check_expr(stmt->if_stmt.cond, vars, funcs, ir, &cond_val) == TYPE_UNKNOWN)
+    if (check_expr(stmt->data.if_stmt.cond, vars, funcs, ir, &cond_val) == TYPE_UNKNOWN)
         return 0;
     char else_label[32];
     char end_label[32];
@@ -265,15 +265,15 @@ int check_if_stmt(stmt_t *stmt, symtable_t *vars, symtable_t *funcs,
     if (!label_format_suffix("L", id, "_else", else_label) ||
         !label_format_suffix("L", id, "_end", end_label))
         return 0;
-    const char *target = stmt->if_stmt.else_branch ? else_label : end_label;
+    const char *target = stmt->data.if_stmt.else_branch ? else_label : end_label;
     ir_build_bcond(ir, cond_val, target);
-    if (!check_stmt(stmt->if_stmt.then_branch, vars, funcs, labels, ir,
+    if (!check_stmt(stmt->data.if_stmt.then_branch, vars, funcs, labels, ir,
                     func_ret_type, break_label, continue_label))
         return 0;
-    if (stmt->if_stmt.else_branch) {
+    if (stmt->data.if_stmt.else_branch) {
         ir_build_br(ir, end_label);
         ir_build_label(ir, else_label);
-        if (!check_stmt(stmt->if_stmt.else_branch, vars, funcs, labels, ir,
+        if (!check_stmt(stmt->data.if_stmt.else_branch, vars, funcs, labels, ir,
                         func_ret_type, break_label, continue_label))
             return 0;
     }
