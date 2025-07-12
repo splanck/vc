@@ -260,7 +260,6 @@ static void cleanup_preproc_vectors(preproc_context_t *ctx, vector_t *macros,
     for (size_t i = 0; i < ctx->pragma_once_files.count; i++)
         free(((char **)ctx->pragma_once_files.data)[i]);
     vector_free(&ctx->pragma_once_files);
-    vector_free(&ctx->pack_stack);
     strbuf_free(out);
 }
 

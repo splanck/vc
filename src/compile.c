@@ -93,27 +93,32 @@ int run_preprocessor(const cli_options_t *cli)
                                 &cli->undefines);
         if (!text) {
             perror("preproc_run");
+            preproc_context_free(&ctx);
             return 1;
         }
         size_t len = strlen(text);
         if (fwrite(text, 1, len, stdout) != len) {
             perror("fwrite");
             free(text);
+            preproc_context_free(&ctx);
             return 1;
         }
         if (len == 0 || text[len - 1] != '\n') {
             if (putchar('\n') == EOF) {
                 perror("putchar");
                 free(text);
+                preproc_context_free(&ctx);
                 return 1;
             }
         }
         if (fflush(stdout) == EOF) {
             perror("fflush");
             free(text);
+            preproc_context_free(&ctx);
             return 1;
         }
         free(text);
+        preproc_context_free(&ctx);
     }
     return 0;
 }
