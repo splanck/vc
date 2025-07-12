@@ -21,7 +21,7 @@ void emit_ptr_add(strbuf_t *sb, ir_instr_t *ins,
     char b1[32];
     char b2[32];
     const char *sfx = x64 ? "q" : "l";
-    int scale = ins->imm;
+    int scale = (int)ins->imm;
     x86_emit_mov(sb, sfx,
                  x86_loc_str(b1, ra, ins->src2, x64, syntax),
                  x86_loc_str(b2, ra, ins->dest, x64, syntax),
@@ -45,7 +45,7 @@ void emit_ptr_diff(strbuf_t *sb, ir_instr_t *ins,
     char b1[32];
     char b2[32];
     const char *sfx = x64 ? "q" : "l";
-    int esz = ins->imm;
+    int esz = (int)ins->imm;
     int shift = 0;
     while ((esz >>= 1) > 0) shift++;
     x86_emit_mov(sb, sfx,
