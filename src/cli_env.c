@@ -9,7 +9,7 @@ int load_vcflags(int *argc, char ***argv, char ***out_argv,
 {
     char **vcargv = NULL;
     char *vcbuf = NULL;
-    int vcargc = 0;
+    size_t vcargc = 0;
     const char *env = getenv("VCFLAGS");
     if (env && *env) {
         vcbuf = vc_strdup(env);
@@ -28,7 +28,8 @@ int load_vcflags(int *argc, char ***argv, char ***out_argv,
             vcargc++;
         free(tmp);
 
-        vcargv = malloc(sizeof(char *) * (size_t)(*argc + vcargc));
+        size_t alloc_sz = sizeof(char *) * ((size_t)*argc + vcargc);
+        vcargv = malloc(alloc_sz);
         if (!vcargv) {
             fprintf(stderr, "Out of memory while processing VCFLAGS.\n");
             free(vcbuf);
@@ -36,14 +37,14 @@ int load_vcflags(int *argc, char ***argv, char ***out_argv,
         }
 
         vcargv[0] = (*argv)[0];
-        int idx = 1;
+        size_t idx = 1;
         for (char *t = strtok(vcbuf, " "); t; t = strtok(NULL, " "))
             vcargv[idx++] = t;
         for (int i = 1; i < *argc; i++)
             vcargv[idx++] = (*argv)[i];
 
         *argv = vcargv;
-        *argc += vcargc;
+        *argc += (int)vcargc;
     }
 
     *out_argv = vcargv;
