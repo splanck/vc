@@ -3,12 +3,6 @@
 
 #include "ir_core.h"
 
-typedef struct alias_ent {
-    const char *name;
-    int set;
-    struct alias_ent *next;
-} alias_ent_t;
-
 /* Append a new blank instruction to the builder's list */
 ir_instr_t *append_instr(ir_builder_t *b);
 

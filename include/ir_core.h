@@ -103,7 +103,12 @@ typedef struct ir_instr {
     size_t column;
 } ir_instr_t;
 
-typedef struct alias_ent alias_ent_t;
+
+typedef struct alias_ent {
+    const char *name;
+    int set;
+    struct alias_ent *next;
+} alias_ent_t;
 
 typedef struct {
     ir_instr_t *head;

@@ -8,12 +8,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include "opt.h"
-
-typedef struct alias_ent {
-    const char *name;
-    int set;
-    struct alias_ent *next;
-} alias_ent_t;
+#include "ir_core.h"
 
 static int lookup_alias(alias_ent_t **list, const char *name, int *next_id)
 {
