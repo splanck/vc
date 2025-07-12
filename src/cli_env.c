@@ -28,7 +28,7 @@ int load_vcflags(int *argc, char ***argv, char ***out_argv,
             vcargc++;
         free(tmp);
 
-        vcargv = malloc(sizeof(char *) * (*argc + vcargc));
+        vcargv = malloc(sizeof(char *) * (size_t)(*argc + vcargc));
         if (!vcargv) {
             fprintf(stderr, "Out of memory while processing VCFLAGS.\n");
             free(vcbuf);
