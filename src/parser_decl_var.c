@@ -288,10 +288,10 @@ stmt_t *parser_parse_var_decl(parser_t *p)
         free(tag_name);
         free(param_types);
     } else {
-        res->var_decl.func_ret_type = func_ret_type;
-        res->var_decl.func_param_types = param_types;
-        res->var_decl.func_param_count = param_count;
-        res->var_decl.func_variadic = variadic;
+        STMT_VAR_DECL(res).func_ret_type = func_ret_type;
+        STMT_VAR_DECL(res).func_param_types = param_types;
+        STMT_VAR_DECL(res).func_param_count = param_count;
+        STMT_VAR_DECL(res).func_variadic = variadic;
     }
     return res;
 }
