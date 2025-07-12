@@ -151,6 +151,16 @@ cc -Iinclude -Wall -Wextra -std=c99 -c src/util.c -o util_stringize.o
 cc -Iinclude -Wall -Wextra -std=c99 -c "$DIR/unit/test_macro_stringize_escape.c" -o "$DIR/test_macro_stringize_escape.o"
 cc -o "$DIR/macro_stringize_escape" preproc_expand.o preproc_table.o strbuf_stringize.o vector_stringize.o util_stringize.o "$DIR/test_macro_stringize_escape.o"
 rm -f preproc_expand.o preproc_table.o strbuf_stringize.o vector_stringize.o util_stringize.o "$DIR/test_macro_stringize_escape.o"
+# build literal argument parsing tests
+cc -Iinclude -Wall -Wextra -std=c99 -c src/preproc_expand.c -o preproc_expand.o
+cc -Iinclude -Wall -Wextra -std=c99 -c src/preproc_table.c -o preproc_table.o
+cc -Iinclude -Wall -Wextra -std=c99 -c src/strbuf.c -o strbuf_litargs.o
+cc -Iinclude -Wall -Wextra -std=c99 -c src/vector.c -o vector_litargs.o
+cc -Iinclude -Wall -Wextra -std=c99 -c src/util.c -o util_litargs.o
+cc -Iinclude -Wall -Wextra -std=c99 -c src/preproc_builtin.c -o preproc_builtin_litargs.o
+cc -Iinclude -Wall -Wextra -std=c99 -c "$DIR/unit/test_preproc_literal_args.c" -o "$DIR/test_preproc_literal_args.o"
+cc -o "$DIR/preproc_literal_args" preproc_expand.o preproc_table.o strbuf_litargs.o vector_litargs.o util_litargs.o preproc_builtin_litargs.o "$DIR/test_preproc_literal_args.o"
+rm -f preproc_expand.o preproc_table.o strbuf_litargs.o vector_litargs.o util_litargs.o preproc_builtin_litargs.o "$DIR/test_preproc_literal_args.o"
 # build pack pragma layout tests
 cc -Iinclude -Wall -Wextra -std=c99 \
     -o "$DIR/pack_pragma_tests" "$DIR/unit/test_pack_pragma.c"
@@ -390,6 +400,7 @@ rm -f ir_licm.o util_licm.o label_licm.o error_licm.o opt_main_licm.o \
 "$DIR/add_macro_fail_tests"
 "$DIR/variadic_macro_tests"
 "$DIR/macro_stringize_escape"
+"$DIR/preproc_literal_args"
 "$DIR/pack_pragma_tests"
 "$DIR/preproc_stdio"
 "$DIR/preproc_has_include"
