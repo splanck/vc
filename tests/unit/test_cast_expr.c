@@ -26,8 +26,8 @@ static void test_parser_cast_expr(void)
     expr_t *e = parser_parse_expr(&p);
     ASSERT(e);
     ASSERT(e->kind == EXPR_CAST);
-    ASSERT(e->cast.type == TYPE_INT);
-    ASSERT(e->cast.expr && e->cast.expr->kind == EXPR_NUMBER);
+    ASSERT(e->data.cast.type == TYPE_INT);
+    ASSERT(e->data.cast.expr && e->data.cast.expr->kind == EXPR_NUMBER);
     ast_free_expr(e);
     lexer_free_tokens(toks, count);
 }

@@ -69,15 +69,15 @@ int is_complexlike(type_kind_t t)
 static int eval_number(expr_t *expr, long long *out)
 {
     errno = 0;
-    if (expr->number.is_unsigned) {
-        unsigned long long val = strtoull(expr->number.value, NULL, 0);
+    if (expr->data.number.is_unsigned) {
+        unsigned long long val = strtoull(expr->data.number.value, NULL, 0);
         if (errno != 0)
             return 0;
         if (out)
             *out = (long long)val;
         return 1;
     } else {
-        long long val = strtoll(expr->number.value, NULL, 0);
+        long long val = strtoll(expr->data.number.value, NULL, 0);
         if (errno != 0)
             return 0;
         if (out)
@@ -92,7 +92,7 @@ static int eval_number(expr_t *expr, long long *out)
 static int eval_char(expr_t *expr, long long *out)
 {
     if (out)
-        *out = (long long)expr->ch.value;
+        *out = (long long)expr->data.ch.value;
     return 1;
 }
 
@@ -102,9 +102,9 @@ static int eval_char(expr_t *expr, long long *out)
 static int eval_unary(expr_t *expr, symtable_t *vars,
                       int use_x86_64, long long *out)
 {
-    if (expr->unary.op == UNOP_NEG) {
+    if (expr->data.unary.op == UNOP_NEG) {
         long long val;
-        if (eval_const_expr(expr->unary.operand, vars, use_x86_64, &val)) {
+        if (eval_const_expr(expr->data.unary.operand, vars, use_x86_64, &val)) {
             if (val == LLONG_MIN)
                 return report_overflow(expr);
             if (out)
@@ -122,12 +122,12 @@ static int eval_binary(expr_t *expr, symtable_t *vars,
                        int use_x86_64, long long *out)
 {
     long long a, b;
-    if (!eval_const_expr(expr->binary.left, vars, use_x86_64, &a) ||
-        !eval_const_expr(expr->binary.right, vars, use_x86_64, &b))
+    if (!eval_const_expr(expr->data.binary.left, vars, use_x86_64, &a) ||
+        !eval_const_expr(expr->data.binary.right, vars, use_x86_64, &b))
         return 0;
 
     long long tmp;
-    switch (expr->binary.op) {
+    switch (expr->data.binary.op) {
     case BINOP_ADD:
         if (__builtin_add_overflow(a, b, &tmp))
             return report_overflow(expr);
@@ -178,11 +178,11 @@ static int eval_conditional(expr_t *expr, symtable_t *vars,
                             int use_x86_64, long long *out)
 {
     long long cval;
-    if (!eval_const_expr(expr->cond.cond, vars, use_x86_64, &cval))
+    if (!eval_const_expr(expr->data.cond.cond, vars, use_x86_64, &cval))
         return 0;
     if (cval)
-        return eval_const_expr(expr->cond.then_expr, vars, use_x86_64, out);
-    return eval_const_expr(expr->cond.else_expr, vars, use_x86_64, out);
+        return eval_const_expr(expr->data.cond.then_expr, vars, use_x86_64, out);
+    return eval_const_expr(expr->data.cond.else_expr, vars, use_x86_64, out);
 }
 
 /*
@@ -190,7 +190,7 @@ static int eval_conditional(expr_t *expr, symtable_t *vars,
  */
 static int eval_ident(expr_t *expr, symtable_t *vars, long long *out)
 {
-    symbol_t *sym = vars ? symtable_lookup(vars, expr->ident.name) : NULL;
+    symbol_t *sym = vars ? symtable_lookup(vars, expr->data.ident.name) : NULL;
     if (sym && sym->is_enum_const) {
         if (out)
             *out = sym->enum_value;
@@ -204,11 +204,11 @@ static int eval_ident(expr_t *expr, symtable_t *vars, long long *out)
  */
 static int eval_sizeof(expr_t *expr, int use_x86_64, long long *out)
 {
-    if (!expr->sizeof_expr.is_type)
+    if (!expr->data.sizeof_expr.is_type)
         return 0;
     if (out) {
         int sz = 0;
-        switch (expr->sizeof_expr.type) {
+        switch (expr->data.sizeof_expr.type) {
         case TYPE_CHAR: case TYPE_UCHAR: case TYPE_BOOL: sz = 1; break;
         case TYPE_SHORT: case TYPE_USHORT: sz = 2; break;
         case TYPE_INT: case TYPE_UINT:
@@ -218,11 +218,11 @@ static int eval_sizeof(expr_t *expr, int use_x86_64, long long *out)
             sz = use_x86_64 ? 8 : 4;
             break;
         case TYPE_ARRAY:
-            sz = (int)expr->sizeof_expr.array_size *
-                 (int)expr->sizeof_expr.elem_size;
+            sz = (int)expr->data.sizeof_expr.array_size *
+                 (int)expr->data.sizeof_expr.elem_size;
             break;
         case TYPE_UNION:
-            sz = (int)expr->sizeof_expr.elem_size;
+            sz = (int)expr->data.sizeof_expr.elem_size;
             break;
         default: sz = 0; break;
         }
@@ -260,14 +260,14 @@ static int lookup_member_offset(symbol_t *sym, const char *name, size_t *out)
 static int eval_offsetof(expr_t *expr, symtable_t *vars, long long *out)
 {
     symbol_t *sym = NULL;
-    if (expr->offsetof_expr.type == TYPE_STRUCT)
-        sym = vars ? symtable_lookup_struct(vars, expr->offsetof_expr.tag) : NULL;
-    else if (expr->offsetof_expr.type == TYPE_UNION)
-        sym = vars ? symtable_lookup_union(vars, expr->offsetof_expr.tag) : NULL;
-    if (!sym || expr->offsetof_expr.member_count == 0)
+    if (expr->data.offsetof_expr.type == TYPE_STRUCT)
+        sym = vars ? symtable_lookup_struct(vars, expr->data.offsetof_expr.tag) : NULL;
+    else if (expr->data.offsetof_expr.type == TYPE_UNION)
+        sym = vars ? symtable_lookup_union(vars, expr->data.offsetof_expr.tag) : NULL;
+    if (!sym || expr->data.offsetof_expr.member_count == 0)
         return 0;
     size_t off = 0;
-    if (!lookup_member_offset(sym, expr->offsetof_expr.members[0], &off))
+    if (!lookup_member_offset(sym, expr->data.offsetof_expr.members[0], &off))
         return 0;
     if (out)
         *out = (long long)off;
@@ -277,10 +277,10 @@ static int eval_offsetof(expr_t *expr, symtable_t *vars, long long *out)
 static int eval_alignof(expr_t *expr, int use_x86_64, long long *out)
 {
     (void)use_x86_64;
-    if (!expr->alignof_expr.is_type)
+    if (!expr->data.alignof_expr.is_type)
         return 0;
     int al = 0;
-    switch (expr->alignof_expr.type) {
+    switch (expr->data.alignof_expr.type) {
     case TYPE_CHAR: case TYPE_UCHAR: case TYPE_BOOL: al = 1; break;
     case TYPE_SHORT: case TYPE_USHORT: al = 2; break;
     case TYPE_INT: case TYPE_UINT: case TYPE_LONG: case TYPE_ULONG:
@@ -304,7 +304,7 @@ static int eval_cast(expr_t *expr, symtable_t *vars,
 {
     (void)use_x86_64;
     long long val;
-    if (!eval_const_expr(expr->cast.expr, vars, use_x86_64, &val))
+    if (!eval_const_expr(expr->data.cast.expr, vars, use_x86_64, &val))
         return 0;
     if (out)
         *out = val;

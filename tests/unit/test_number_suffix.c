@@ -17,8 +17,8 @@ static void check_flags(const char *lit, int u, int lcnt, type_kind_t expect)
 {
     expr_t *e = ast_make_number(lit, 1, 1);
     ASSERT(e);
-    ASSERT(e->number.is_unsigned == u);
-    ASSERT(e->number.long_count == lcnt);
+    ASSERT(e->data.number.is_unsigned == u);
+    ASSERT(e->data.number.long_count == lcnt);
     ir_builder_t ir; ir_builder_init(&ir);
     symtable_t vars, funcs; symtable_init(&vars); symtable_init(&funcs);
     type_kind_t t = check_expr(e, &vars, &funcs, &ir, NULL);

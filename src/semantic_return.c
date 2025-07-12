@@ -22,18 +22,18 @@ static int validate_struct_return(stmt_t *stmt, symtable_t *vars,
     size_t actual = 0;
 
     if (stmt->ret.expr->kind == EXPR_IDENT) {
-        symbol_t *vsym = symtable_lookup(vars, stmt->ret.expr->ident.name);
+        symbol_t *vsym = symtable_lookup(vars, stmt->ret.expr->data.ident.name);
         if (vsym)
             actual = (expr_type == TYPE_STRUCT)
                 ? vsym->struct_total_size : vsym->total_size;
     } else if (stmt->ret.expr->kind == EXPR_CALL) {
-        symbol_t *fsym = symtable_lookup(funcs, stmt->ret.expr->call.name);
+        symbol_t *fsym = symtable_lookup(funcs, stmt->ret.expr->data.call.name);
         if (!fsym)
-            fsym = symtable_lookup(vars, stmt->ret.expr->call.name);
+            fsym = symtable_lookup(vars, stmt->ret.expr->data.call.name);
         if (fsym)
             actual = fsym->ret_struct_size;
     } else if (stmt->ret.expr->kind == EXPR_COMPLIT) {
-        actual = stmt->ret.expr->compound.elem_size;
+        actual = stmt->ret.expr->data.compound.elem_size;
     }
 
     if (expected && actual && expected != actual) {

@@ -69,71 +69,71 @@ static void dump_expr(strbuf_t *sb, const expr_t *e, int lvl)
     indent(sb, lvl);
     strbuf_appendf(sb, "%s", expr_name(e->kind));
     if (e->kind == EXPR_NUMBER)
-        strbuf_appendf(sb, " %s", e->number.value);
+        strbuf_appendf(sb, " %s", e->data.number.value);
     else if (e->kind == EXPR_IDENT)
-        strbuf_appendf(sb, " %s", e->ident.name);
+        strbuf_appendf(sb, " %s", e->data.ident.name);
     else if (e->kind == EXPR_STRING)
-        strbuf_appendf(sb, " \"%s\"", e->string.value);
+        strbuf_appendf(sb, " \"%s\"", e->data.string.value);
     else if (e->kind == EXPR_CHAR)
-        strbuf_appendf(sb, " '%c'", e->ch.value);
+        strbuf_appendf(sb, " '%c'", e->data.ch.value);
     else if (e->kind == EXPR_COMPLEX_LITERAL)
-        strbuf_appendf(sb, " %f%+fi", e->complex_lit.real, e->complex_lit.imag);
+        strbuf_appendf(sb, " %f%+fi", e->data.complex_lit.real, e->data.complex_lit.imag);
     strbuf_append(sb, "\n");
 
     switch (e->kind) {
     case EXPR_UNARY:
-        dump_expr(sb, e->unary.operand, lvl + 1);
+        dump_expr(sb, e->data.unary.operand, lvl + 1);
         break;
     case EXPR_BINARY:
-        dump_expr(sb, e->binary.left, lvl + 1);
-        dump_expr(sb, e->binary.right, lvl + 1);
+        dump_expr(sb, e->data.binary.left, lvl + 1);
+        dump_expr(sb, e->data.binary.right, lvl + 1);
         break;
     case EXPR_COND:
-        dump_expr(sb, e->cond.cond, lvl + 1);
-        dump_expr(sb, e->cond.then_expr, lvl + 1);
-        dump_expr(sb, e->cond.else_expr, lvl + 1);
+        dump_expr(sb, e->data.cond.cond, lvl + 1);
+        dump_expr(sb, e->data.cond.then_expr, lvl + 1);
+        dump_expr(sb, e->data.cond.else_expr, lvl + 1);
         break;
     case EXPR_ASSIGN:
-        dump_expr(sb, e->assign.value, lvl + 1);
+        dump_expr(sb, e->data.assign.value, lvl + 1);
         break;
     case EXPR_CALL:
-        for (size_t i = 0; i < e->call.arg_count; i++)
-            dump_expr(sb, e->call.args[i], lvl + 1);
+        for (size_t i = 0; i < e->data.call.arg_count; i++)
+            dump_expr(sb, e->data.call.args[i], lvl + 1);
         break;
     case EXPR_INDEX:
-        dump_expr(sb, e->index.array, lvl + 1);
-        dump_expr(sb, e->index.index, lvl + 1);
+        dump_expr(sb, e->data.index.array, lvl + 1);
+        dump_expr(sb, e->data.index.index, lvl + 1);
         break;
     case EXPR_ASSIGN_INDEX:
-        dump_expr(sb, e->assign_index.array, lvl + 1);
-        dump_expr(sb, e->assign_index.index, lvl + 1);
-        dump_expr(sb, e->assign_index.value, lvl + 1);
+        dump_expr(sb, e->data.assign_index.array, lvl + 1);
+        dump_expr(sb, e->data.assign_index.index, lvl + 1);
+        dump_expr(sb, e->data.assign_index.value, lvl + 1);
         break;
     case EXPR_ASSIGN_MEMBER:
-        dump_expr(sb, e->assign_member.object, lvl + 1);
-        dump_expr(sb, e->assign_member.value, lvl + 1);
+        dump_expr(sb, e->data.assign_member.object, lvl + 1);
+        dump_expr(sb, e->data.assign_member.value, lvl + 1);
         break;
     case EXPR_MEMBER:
-        dump_expr(sb, e->member.object, lvl + 1);
+        dump_expr(sb, e->data.member.object, lvl + 1);
         break;
     case EXPR_SIZEOF:
-        if (!e->sizeof_expr.is_type)
-            dump_expr(sb, e->sizeof_expr.expr, lvl + 1);
+        if (!e->data.sizeof_expr.is_type)
+            dump_expr(sb, e->data.sizeof_expr.expr, lvl + 1);
         break;
     case EXPR_ALIGNOF:
-        if (!e->alignof_expr.is_type)
-            dump_expr(sb, e->alignof_expr.expr, lvl + 1);
+        if (!e->data.alignof_expr.is_type)
+            dump_expr(sb, e->data.alignof_expr.expr, lvl + 1);
         break;
     case EXPR_OFFSETOF:
         break;
     case EXPR_CAST:
-        dump_expr(sb, e->cast.expr, lvl + 1);
+        dump_expr(sb, e->data.cast.expr, lvl + 1);
         break;
     case EXPR_COMPLIT:
-        if (e->compound.init)
-            dump_expr(sb, e->compound.init, lvl + 1);
-        for (size_t i = 0; i < e->compound.init_count; i++)
-            dump_expr(sb, e->compound.init_list[i].value, lvl + 1);
+        if (e->data.compound.init)
+            dump_expr(sb, e->data.compound.init, lvl + 1);
+        for (size_t i = 0; i < e->data.compound.init_count; i++)
+            dump_expr(sb, e->data.compound.init_list[i].value, lvl + 1);
         break;
     default:
         break;

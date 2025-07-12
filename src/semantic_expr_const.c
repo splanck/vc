@@ -26,7 +26,7 @@ type_kind_t check_number_expr(expr_t *expr, symtable_t *vars,
 {
     (void)vars; (void)funcs;
     errno = 0;
-    long long val = strtoll(expr->number.value, NULL, 0);
+    long long val = strtoll(expr->data.number.value, NULL, 0);
     if (errno != 0) {
         error_set(expr->line, expr->column, error_current_file,
                   error_current_function);
@@ -36,11 +36,11 @@ type_kind_t check_number_expr(expr_t *expr, symtable_t *vars,
     }
     if (out)
         *out = ir_build_const(ir, val);
-    if (expr->number.long_count == 2)
-        return expr->number.is_unsigned ? TYPE_ULLONG : TYPE_LLONG;
-    if (expr->number.long_count == 1)
-        return expr->number.is_unsigned ? TYPE_ULONG : TYPE_LONG;
-    if (expr->number.is_unsigned)
+    if (expr->data.number.long_count == 2)
+        return expr->data.number.is_unsigned ? TYPE_ULLONG : TYPE_LLONG;
+    if (expr->data.number.long_count == 1)
+        return expr->data.number.is_unsigned ? TYPE_ULONG : TYPE_LONG;
+    if (expr->data.number.is_unsigned)
         return TYPE_UINT;
     if (val > INT_MAX || val < INT_MIN)
         return TYPE_LLONG;
@@ -56,9 +56,9 @@ type_kind_t check_string_expr(expr_t *expr, symtable_t *vars,
                               ir_value_t *out)
 {
     (void)vars; (void)funcs;
-    const char *text = expr->string.value;
+    const char *text = expr->data.string.value;
     if (out) {
-        if (expr->string.is_wide)
+        if (expr->data.string.is_wide)
             *out = ir_build_wstring(ir, text);
         else
             *out = ir_build_string(ir, text);
@@ -75,8 +75,8 @@ type_kind_t check_char_expr(expr_t *expr, symtable_t *vars,
 {
     (void)vars; (void)funcs;
     if (out)
-        *out = ir_build_const(ir, (int)expr->ch.value);
-    return expr->ch.is_wide ? TYPE_INT : TYPE_CHAR;
+        *out = ir_build_const(ir, (int)expr->data.ch.value);
+    return expr->data.ch.is_wide ? TYPE_INT : TYPE_CHAR;
 }
 
 /*
@@ -88,8 +88,8 @@ type_kind_t check_complex_literal(expr_t *expr, symtable_t *vars,
 {
     (void)vars; (void)funcs;
     if (out)
-        *out = ir_build_cplx_const(ir, expr->complex_lit.real,
-                                   expr->complex_lit.imag);
+        *out = ir_build_cplx_const(ir, expr->data.complex_lit.real,
+                                   expr->data.complex_lit.imag);
     return TYPE_DOUBLE_COMPLEX;
 }
 

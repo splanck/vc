@@ -130,7 +130,7 @@ static int parse_array_suffix(parser_t *p, type_kind_t *type, char **name,
                 return 0;
             }
             if ((*size_expr)->kind == EXPR_NUMBER) {
-                if (!vc_strtoul_size((*size_expr)->number.value, arr_size)) {
+                if (!vc_strtoul_size((*size_expr)->data.number.value, arr_size)) {
                     error_set((*size_expr)->line, (*size_expr)->column,
                               error_current_file, error_current_function);
                     error_print("Integer constant out of range");

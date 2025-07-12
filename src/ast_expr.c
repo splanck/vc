@@ -64,9 +64,9 @@ expr_t *ast_make_number(const char *value, size_t line, size_t column)
         free(val);
         return NULL;
     }
-    expr->number.value = val;
-    expr->number.is_unsigned = is_unsigned;
-    expr->number.long_count = long_count;
+    expr->data.number.value = val;
+    expr->data.number.is_unsigned = is_unsigned;
+    expr->data.number.long_count = long_count;
     return expr;
 }
 
@@ -76,8 +76,8 @@ expr_t *ast_make_ident(const char *name, size_t line, size_t column)
     expr_t *expr = new_expr(EXPR_IDENT, line, column);
     if (!expr)
         return NULL;
-    expr->ident.name = vc_strdup(name ? name : "");
-    if (!expr->ident.name) {
+    expr->data.ident.name = vc_strdup(name ? name : "");
+    if (!expr->data.ident.name) {
         free(expr);
         return NULL;
     }
@@ -90,12 +90,12 @@ static expr_t *make_string(const char *value, size_t line, size_t column, int is
     expr_t *expr = new_expr(EXPR_STRING, line, column);
     if (!expr)
         return NULL;
-    expr->string.value = vc_strdup(value ? value : "");
-    if (!expr->string.value) {
+    expr->data.string.value = vc_strdup(value ? value : "");
+    if (!expr->data.string.value) {
         free(expr);
         return NULL;
     }
-    expr->string.is_wide = is_wide;
+    expr->data.string.is_wide = is_wide;
     return expr;
 }
 
@@ -115,8 +115,8 @@ static expr_t *make_char(char value, size_t line, size_t column, int is_wide)
     expr_t *expr = new_expr(EXPR_CHAR, line, column);
     if (!expr)
         return NULL;
-    expr->ch.value = value;
-    expr->ch.is_wide = is_wide;
+    expr->data.ch.value = value;
+    expr->data.ch.is_wide = is_wide;
     return expr;
 }
 
@@ -137,8 +137,8 @@ expr_t *ast_make_complex_literal(double real, double imag,
     expr_t *expr = new_expr(EXPR_COMPLEX_LITERAL, line, column);
     if (!expr)
         return NULL;
-    expr->complex_lit.real = real;
-    expr->complex_lit.imag = imag;
+    expr->data.complex_lit.real = real;
+    expr->data.complex_lit.imag = imag;
     return expr;
 }
 
@@ -149,9 +149,9 @@ expr_t *ast_make_binary(binop_t op, expr_t *left, expr_t *right,
     expr_t *expr = new_expr(EXPR_BINARY, line, column);
     if (!expr)
         return NULL;
-    expr->binary.op = op;
-    expr->binary.left = left;
-    expr->binary.right = right;
+    expr->data.binary.op = op;
+    expr->data.binary.left = left;
+    expr->data.binary.right = right;
     return expr;
 }
 
@@ -162,8 +162,8 @@ expr_t *ast_make_unary(unop_t op, expr_t *operand,
     expr_t *expr = new_expr(EXPR_UNARY, line, column);
     if (!expr)
         return NULL;
-    expr->unary.op = op;
-    expr->unary.operand = operand;
+    expr->data.unary.op = op;
+    expr->data.unary.operand = operand;
     return expr;
 }
 
@@ -174,9 +174,9 @@ expr_t *ast_make_cond(expr_t *cond, expr_t *then_expr, expr_t *else_expr,
     expr_t *expr = new_expr(EXPR_COND, line, column);
     if (!expr)
         return NULL;
-    expr->cond.cond = cond;
-    expr->cond.then_expr = then_expr;
-    expr->cond.else_expr = else_expr;
+    expr->data.cond.cond = cond;
+    expr->data.cond.then_expr = then_expr;
+    expr->data.cond.else_expr = else_expr;
     return expr;
 }
 
@@ -187,12 +187,12 @@ expr_t *ast_make_assign(const char *name, expr_t *value,
     expr_t *expr = new_expr(EXPR_ASSIGN, line, column);
     if (!expr)
         return NULL;
-    expr->assign.name = vc_strdup(name ? name : "");
-    if (!expr->assign.name) {
+    expr->data.assign.name = vc_strdup(name ? name : "");
+    if (!expr->data.assign.name) {
         free(expr);
         return NULL;
     }
-    expr->assign.value = value;
+    expr->data.assign.value = value;
     return expr;
 }
 
@@ -203,8 +203,8 @@ expr_t *ast_make_index(expr_t *array, expr_t *index,
     expr_t *expr = new_expr(EXPR_INDEX, line, column);
     if (!expr)
         return NULL;
-    expr->index.array = array;
-    expr->index.index = index;
+    expr->data.index.array = array;
+    expr->data.index.index = index;
     return expr;
 }
 
@@ -215,9 +215,9 @@ expr_t *ast_make_assign_index(expr_t *array, expr_t *index, expr_t *value,
     expr_t *expr = new_expr(EXPR_ASSIGN_INDEX, line, column);
     if (!expr)
         return NULL;
-    expr->assign_index.array = array;
-    expr->assign_index.index = index;
-    expr->assign_index.value = value;
+    expr->data.assign_index.array = array;
+    expr->data.assign_index.index = index;
+    expr->data.assign_index.value = value;
     return expr;
 }
 
@@ -228,14 +228,14 @@ expr_t *ast_make_assign_member(expr_t *object, const char *member, expr_t *value
     expr_t *expr = new_expr(EXPR_ASSIGN_MEMBER, line, column);
     if (!expr)
         return NULL;
-    expr->assign_member.object = object;
-    expr->assign_member.member = vc_strdup(member ? member : "");
-    if (!expr->assign_member.member) {
+    expr->data.assign_member.object = object;
+    expr->data.assign_member.member = vc_strdup(member ? member : "");
+    if (!expr->data.assign_member.member) {
         free(expr);
         return NULL;
     }
-    expr->assign_member.value = value;
-    expr->assign_member.via_ptr = via_ptr;
+    expr->data.assign_member.value = value;
+    expr->data.assign_member.via_ptr = via_ptr;
     return expr;
 }
 
@@ -246,13 +246,13 @@ expr_t *ast_make_member(expr_t *object, const char *member, int via_ptr,
     expr_t *expr = new_expr(EXPR_MEMBER, line, column);
     if (!expr)
         return NULL;
-    expr->member.object = object;
-    expr->member.member = vc_strdup(member ? member : "");
-    if (!expr->member.member) {
+    expr->data.member.object = object;
+    expr->data.member.member = vc_strdup(member ? member : "");
+    if (!expr->data.member.member) {
         free(expr);
         return NULL;
     }
-    expr->member.via_ptr = via_ptr;
+    expr->data.member.via_ptr = via_ptr;
     return expr;
 }
 
@@ -263,11 +263,11 @@ expr_t *ast_make_sizeof_type(type_kind_t type, size_t array_size,
     expr_t *expr = new_expr(EXPR_SIZEOF, line, column);
     if (!expr)
         return NULL;
-    expr->sizeof_expr.is_type = 1;
-    expr->sizeof_expr.type = type;
-    expr->sizeof_expr.array_size = array_size;
-    expr->sizeof_expr.elem_size = elem_size;
-    expr->sizeof_expr.expr = NULL;
+    expr->data.sizeof_expr.is_type = 1;
+    expr->data.sizeof_expr.type = type;
+    expr->data.sizeof_expr.array_size = array_size;
+    expr->data.sizeof_expr.elem_size = elem_size;
+    expr->data.sizeof_expr.expr = NULL;
     return expr;
 }
 
@@ -277,11 +277,11 @@ expr_t *ast_make_sizeof_expr(expr_t *e, size_t line, size_t column)
     expr_t *expr = new_expr(EXPR_SIZEOF, line, column);
     if (!expr)
         return NULL;
-    expr->sizeof_expr.is_type = 0;
-    expr->sizeof_expr.type = TYPE_UNKNOWN;
-    expr->sizeof_expr.array_size = 0;
-    expr->sizeof_expr.elem_size = 0;
-    expr->sizeof_expr.expr = e;
+    expr->data.sizeof_expr.is_type = 0;
+    expr->data.sizeof_expr.type = TYPE_UNKNOWN;
+    expr->data.sizeof_expr.array_size = 0;
+    expr->data.sizeof_expr.elem_size = 0;
+    expr->data.sizeof_expr.expr = e;
     return expr;
 }
 
@@ -293,14 +293,14 @@ expr_t *ast_make_offsetof(type_kind_t type, const char *tag,
     expr_t *expr = new_expr(EXPR_OFFSETOF, line, column);
     if (!expr)
         return NULL;
-    expr->offsetof_expr.type = type;
-    expr->offsetof_expr.tag = vc_strdup(tag ? tag : "");
-    if (!expr->offsetof_expr.tag) {
+    expr->data.offsetof_expr.type = type;
+    expr->data.offsetof_expr.tag = vc_strdup(tag ? tag : "");
+    if (!expr->data.offsetof_expr.tag) {
         free(expr);
         return NULL;
     }
-    expr->offsetof_expr.members = members;
-    expr->offsetof_expr.member_count = member_count;
+    expr->data.offsetof_expr.members = members;
+    expr->data.offsetof_expr.member_count = member_count;
     return expr;
 }
 
@@ -311,11 +311,11 @@ expr_t *ast_make_alignof_type(type_kind_t type, size_t array_size,
     expr_t *expr = new_expr(EXPR_ALIGNOF, line, column);
     if (!expr)
         return NULL;
-    expr->alignof_expr.is_type = 1;
-    expr->alignof_expr.type = type;
-    expr->alignof_expr.array_size = array_size;
-    expr->alignof_expr.elem_size = elem_size;
-    expr->alignof_expr.expr = NULL;
+    expr->data.alignof_expr.is_type = 1;
+    expr->data.alignof_expr.type = type;
+    expr->data.alignof_expr.array_size = array_size;
+    expr->data.alignof_expr.elem_size = elem_size;
+    expr->data.alignof_expr.expr = NULL;
     return expr;
 }
 
@@ -325,11 +325,11 @@ expr_t *ast_make_alignof_expr(expr_t *e, size_t line, size_t column)
     expr_t *expr = new_expr(EXPR_ALIGNOF, line, column);
     if (!expr)
         return NULL;
-    expr->alignof_expr.is_type = 0;
-    expr->alignof_expr.type = TYPE_UNKNOWN;
-    expr->alignof_expr.array_size = 0;
-    expr->alignof_expr.elem_size = 0;
-    expr->alignof_expr.expr = e;
+    expr->data.alignof_expr.is_type = 0;
+    expr->data.alignof_expr.type = TYPE_UNKNOWN;
+    expr->data.alignof_expr.array_size = 0;
+    expr->data.alignof_expr.elem_size = 0;
+    expr->data.alignof_expr.expr = e;
     return expr;
 }
 
@@ -340,10 +340,10 @@ expr_t *ast_make_cast(type_kind_t type, size_t array_size, size_t elem_size,
     expr_t *expr = new_expr(EXPR_CAST, line, column);
     if (!expr)
         return NULL;
-    expr->cast.type = type;
-    expr->cast.array_size = array_size;
-    expr->cast.elem_size = elem_size;
-    expr->cast.expr = e;
+    expr->data.cast.type = type;
+    expr->data.cast.array_size = array_size;
+    expr->data.cast.elem_size = elem_size;
+    expr->data.cast.expr = e;
     return expr;
 }
 
@@ -354,13 +354,13 @@ expr_t *ast_make_call(const char *name, expr_t **args, size_t arg_count,
     expr_t *expr = new_expr(EXPR_CALL, line, column);
     if (!expr)
         return NULL;
-    expr->call.name = vc_strdup(name ? name : "");
-    if (!expr->call.name) {
+    expr->data.call.name = vc_strdup(name ? name : "");
+    if (!expr->data.call.name) {
         free(expr);
         return NULL;
     }
-    expr->call.args = args;
-    expr->call.arg_count = arg_count;
+    expr->data.call.args = args;
+    expr->data.call.arg_count = arg_count;
     return expr;
 }
 
@@ -373,12 +373,12 @@ expr_t *ast_make_compound(type_kind_t type, size_t array_size,
     expr_t *expr = new_expr(EXPR_COMPLIT, line, column);
     if (!expr)
         return NULL;
-    expr->compound.type = type;
-    expr->compound.array_size = array_size;
-    expr->compound.elem_size = elem_size;
-    expr->compound.init = init;
-    expr->compound.init_list = init_list;
-    expr->compound.init_count = init_count;
+    expr->data.compound.type = type;
+    expr->data.compound.array_size = array_size;
+    expr->data.compound.elem_size = elem_size;
+    expr->data.compound.init = init;
+    expr->data.compound.init_list = init_list;
+    expr->data.compound.init_count = init_count;
     return expr;
 }
 
@@ -390,83 +390,83 @@ void ast_free_expr(expr_t *expr)
         return;
     switch (expr->kind) {
     case EXPR_NUMBER:
-        free(expr->number.value);
+        free(expr->data.number.value);
         break;
     case EXPR_IDENT:
-        free(expr->ident.name);
+        free(expr->data.ident.name);
         break;
     case EXPR_STRING:
-        free(expr->string.value);
+        free(expr->data.string.value);
         break;
     case EXPR_CHAR:
         break;
     case EXPR_COMPLEX_LITERAL:
         break;
     case EXPR_UNARY:
-        ast_free_expr(expr->unary.operand);
+        ast_free_expr(expr->data.unary.operand);
         break;
     case EXPR_BINARY:
-        ast_free_expr(expr->binary.left);
-        ast_free_expr(expr->binary.right);
+        ast_free_expr(expr->data.binary.left);
+        ast_free_expr(expr->data.binary.right);
         break;
     case EXPR_COND:
-        ast_free_expr(expr->cond.cond);
-        ast_free_expr(expr->cond.then_expr);
-        ast_free_expr(expr->cond.else_expr);
+        ast_free_expr(expr->data.cond.cond);
+        ast_free_expr(expr->data.cond.then_expr);
+        ast_free_expr(expr->data.cond.else_expr);
         break;
     case EXPR_ASSIGN:
-        free(expr->assign.name);
-        ast_free_expr(expr->assign.value);
+        free(expr->data.assign.name);
+        ast_free_expr(expr->data.assign.value);
         break;
     case EXPR_INDEX:
-        ast_free_expr(expr->index.array);
-        ast_free_expr(expr->index.index);
+        ast_free_expr(expr->data.index.array);
+        ast_free_expr(expr->data.index.index);
         break;
     case EXPR_ASSIGN_INDEX:
-        ast_free_expr(expr->assign_index.array);
-        ast_free_expr(expr->assign_index.index);
-        ast_free_expr(expr->assign_index.value);
+        ast_free_expr(expr->data.assign_index.array);
+        ast_free_expr(expr->data.assign_index.index);
+        ast_free_expr(expr->data.assign_index.value);
         break;
     case EXPR_ASSIGN_MEMBER:
-        ast_free_expr(expr->assign_member.object);
-        free(expr->assign_member.member);
-        ast_free_expr(expr->assign_member.value);
+        ast_free_expr(expr->data.assign_member.object);
+        free(expr->data.assign_member.member);
+        ast_free_expr(expr->data.assign_member.value);
         break;
     case EXPR_MEMBER:
-        ast_free_expr(expr->member.object);
-        free(expr->member.member);
+        ast_free_expr(expr->data.member.object);
+        free(expr->data.member.member);
         break;
     case EXPR_SIZEOF:
-        if (!expr->sizeof_expr.is_type)
-            ast_free_expr(expr->sizeof_expr.expr);
+        if (!expr->data.sizeof_expr.is_type)
+            ast_free_expr(expr->data.sizeof_expr.expr);
         break;
     case EXPR_OFFSETOF:
-        for (size_t i = 0; i < expr->offsetof_expr.member_count; i++)
-            free(expr->offsetof_expr.members[i]);
-        free(expr->offsetof_expr.members);
-        free(expr->offsetof_expr.tag);
+        for (size_t i = 0; i < expr->data.offsetof_expr.member_count; i++)
+            free(expr->data.offsetof_expr.members[i]);
+        free(expr->data.offsetof_expr.members);
+        free(expr->data.offsetof_expr.tag);
         break;
     case EXPR_ALIGNOF:
-        if (!expr->alignof_expr.is_type)
-            ast_free_expr(expr->alignof_expr.expr);
+        if (!expr->data.alignof_expr.is_type)
+            ast_free_expr(expr->data.alignof_expr.expr);
         break;
     case EXPR_CALL:
-        for (size_t i = 0; i < expr->call.arg_count; i++)
-            ast_free_expr(expr->call.args[i]);
-        free(expr->call.args);
-        free(expr->call.name);
+        for (size_t i = 0; i < expr->data.call.arg_count; i++)
+            ast_free_expr(expr->data.call.args[i]);
+        free(expr->data.call.args);
+        free(expr->data.call.name);
         break;
     case EXPR_CAST:
-        ast_free_expr(expr->cast.expr);
+        ast_free_expr(expr->data.cast.expr);
         break;
     case EXPR_COMPLIT:
-        ast_free_expr(expr->compound.init);
-        for (size_t i = 0; i < expr->compound.init_count; i++) {
-            ast_free_expr(expr->compound.init_list[i].index);
-            ast_free_expr(expr->compound.init_list[i].value);
-            free(expr->compound.init_list[i].field);
+        ast_free_expr(expr->data.compound.init);
+        for (size_t i = 0; i < expr->data.compound.init_count; i++) {
+            ast_free_expr(expr->data.compound.init_list[i].index);
+            ast_free_expr(expr->data.compound.init_list[i].value);
+            free(expr->data.compound.init_list[i].field);
         }
-        free(expr->compound.init_list);
+        free(expr->data.compound.init_list);
         break;
     }
     free(expr);

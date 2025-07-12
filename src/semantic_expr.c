@@ -48,9 +48,9 @@ static type_kind_t check_ident_expr(expr_t *expr, symtable_t *vars,
                                     ir_value_t *out)
 {
     (void)funcs;
-    symbol_t *sym = symtable_lookup(vars, expr->ident.name);
+    symbol_t *sym = symtable_lookup(vars, expr->data.ident.name);
     if (!sym) {
-        if (strcmp(expr->ident.name, "__func__") == 0) {
+        if (strcmp(expr->data.ident.name, "__func__") == 0) {
             if (out)
                 *out = ir_build_string(ir, error_current_function ? error_current_function : "");
             return TYPE_PTR;
@@ -89,14 +89,14 @@ static int validate_cond_operands(expr_t *expr, symtable_t *vars,
 {
     ir_builder_t tmpb; ir_builder_init(&tmpb);
     ir_value_t tmpv;
-    *ct = check_expr(expr->cond.cond, vars, funcs, &tmpb, &tmpv);
-    *tt = check_expr(expr->cond.then_expr, vars, funcs, &tmpb, NULL);
-    *ft = check_expr(expr->cond.else_expr, vars, funcs, &tmpb, NULL);
+    *ct = check_expr(expr->data.cond.cond, vars, funcs, &tmpb, &tmpv);
+    *tt = check_expr(expr->data.cond.then_expr, vars, funcs, &tmpb, NULL);
+    *ft = check_expr(expr->data.cond.else_expr, vars, funcs, &tmpb, NULL);
     ir_builder_free(&tmpb);
 
     if (!is_intlike(*ct) || *tt == TYPE_UNKNOWN || *ft == TYPE_UNKNOWN) {
         if (!is_intlike(*ct))
-            error_set(expr->cond.cond->line, expr->cond.cond->column,
+            error_set(expr->data.cond.cond->line, expr->data.cond.cond->column,
                       error_current_file, error_current_function);
         return 0;
     }
@@ -114,7 +114,7 @@ static int emit_cond_branches(expr_t *expr, symtable_t *vars,
                               ir_value_t *out)
 {
     ir_value_t cond_val;
-    check_expr(expr->cond.cond, vars, funcs, ir, &cond_val);
+    check_expr(expr->data.cond.cond, vars, funcs, ir, &cond_val);
 
     char flabel[32], endlabel[32], tmp[32];
     int id = label_next_id();
@@ -125,13 +125,13 @@ static int emit_cond_branches(expr_t *expr, symtable_t *vars,
 
     ir_build_bcond(ir, cond_val, flabel);
     ir_value_t tval;
-    check_expr(expr->cond.then_expr, vars, funcs, ir, &tval);
+    check_expr(expr->data.cond.then_expr, vars, funcs, ir, &tval);
     ir_build_store(ir, tmp, tval);
     ir_build_br(ir, endlabel);
 
     ir_build_label(ir, flabel);
     ir_value_t fval;
-    check_expr(expr->cond.else_expr, vars, funcs, ir, &fval);
+    check_expr(expr->data.cond.else_expr, vars, funcs, ir, &fval);
     ir_build_store(ir, tmp, fval);
     ir_build_label(ir, endlabel);
 
@@ -201,7 +201,7 @@ static type_kind_t check_assign_expr(expr_t *expr, symtable_t *vars,
     ir_value_t val;
 
     /* Step 1: symbol lookup */
-    symbol_t *sym = symtable_lookup(vars, expr->assign.name);
+    symbol_t *sym = symtable_lookup(vars, expr->data.assign.name);
     if (!sym) {
         error_set(expr->line, expr->column, error_current_file, error_current_function);
         error_print("unknown identifier");
@@ -220,7 +220,7 @@ static type_kind_t check_assign_expr(expr_t *expr, symtable_t *vars,
     }
 
     /* Step 3: type compatibility */
-    type_kind_t vt = check_expr(expr->assign.value, vars, funcs, ir, &val);
+    type_kind_t vt = check_expr(expr->data.assign.value, vars, funcs, ir, &val);
     if (!types_compatible(sym->type, vt)) {
         error_set(expr->line, expr->column, error_current_file, error_current_function);
         error_print("incompatible types in assignment");
@@ -233,9 +233,9 @@ static type_kind_t check_assign_expr(expr_t *expr, symtable_t *vars,
     if (sym->param_index >= 0)
         ir_build_store_param(ir, sym->param_index, val);
     else if (sym->is_volatile)
-        ir_build_store_vol(ir, expr->assign.name, val);
+        ir_build_store_vol(ir, expr->data.assign.name, val);
     else
-        ir_build_store(ir, expr->assign.name, val);
+        ir_build_store(ir, expr->data.assign.name, val);
 
     if (out)
         *out = val;
@@ -304,19 +304,19 @@ static int sizeof_from_expr(expr_t *op, type_kind_t t, symtable_t *vars)
     if (t == TYPE_ARRAY) {
         symbol_t *sym = NULL;
         if (op && op->kind == EXPR_IDENT)
-            sym = symtable_lookup(vars, op->ident.name);
+            sym = symtable_lookup(vars, op->data.ident.name);
         return sym ? (int)sym->array_size * (int)sym->elem_size : 4;
     }
     if (t == TYPE_UNION) {
         symbol_t *sym = NULL;
         if (op && op->kind == EXPR_IDENT)
-            sym = symtable_lookup(vars, op->ident.name);
+            sym = symtable_lookup(vars, op->data.ident.name);
         return sym ? (int)sym->total_size : 0;
     }
     if (t == TYPE_STRUCT) {
         symbol_t *sym = NULL;
         if (op && op->kind == EXPR_IDENT)
-            sym = symtable_lookup(vars, op->ident.name);
+            sym = symtable_lookup(vars, op->data.ident.name);
         return sym ? (int)sym->struct_total_size : 0;
     }
     return 0;
@@ -331,23 +331,23 @@ static type_kind_t check_sizeof_expr(expr_t *expr, symtable_t *vars,
                                      ir_value_t *out)
 {
     (void)funcs;
-    if (expr->sizeof_expr.is_type) {
-        int sz = sizeof_from_type(expr->sizeof_expr.type,
-                                 expr->sizeof_expr.array_size,
-                                 expr->sizeof_expr.elem_size);
+    if (expr->data.sizeof_expr.is_type) {
+        int sz = sizeof_from_type(expr->data.sizeof_expr.type,
+                                 expr->data.sizeof_expr.array_size,
+                                 expr->data.sizeof_expr.elem_size);
         if (out)
             *out = ir_build_const(ir, sz);
     } else {
         ir_builder_t tmp; ir_builder_init(&tmp);
-        type_kind_t t = check_expr(expr->sizeof_expr.expr, vars, funcs,
+        type_kind_t t = check_expr(expr->data.sizeof_expr.expr, vars, funcs,
                                    &tmp, NULL);
         ir_builder_free(&tmp);
 
         symbol_t *sym = NULL;
-        if (expr->sizeof_expr.expr &&
-            expr->sizeof_expr.expr->kind == EXPR_IDENT)
+        if (expr->data.sizeof_expr.expr &&
+            expr->data.sizeof_expr.expr->kind == EXPR_IDENT)
             sym = symtable_lookup(vars,
-                                  expr->sizeof_expr.expr->ident.name);
+                                  expr->data.sizeof_expr.expr->data.ident.name);
 
         if (sym && sym->vla_size.id) {
             ir_value_t eszv = ir_build_const(ir, (int)sym->elem_size);
@@ -356,7 +356,7 @@ static type_kind_t check_sizeof_expr(expr_t *expr, symtable_t *vars,
             if (out)
                 *out = total;
         } else {
-            int sz = sizeof_from_expr(expr->sizeof_expr.expr, t, vars);
+            int sz = sizeof_from_expr(expr->data.sizeof_expr.expr, t, vars);
             if (out)
                 *out = ir_build_const(ir, sz);
         }
@@ -371,11 +371,11 @@ static type_kind_t check_offsetof_expr(expr_t *expr, symtable_t *vars,
 {
     (void)funcs;
     symbol_t *sym = NULL;
-    if (expr->offsetof_expr.type == TYPE_STRUCT)
-        sym = symtable_lookup_struct(vars, expr->offsetof_expr.tag);
-    else if (expr->offsetof_expr.type == TYPE_UNION)
-        sym = symtable_lookup_union(vars, expr->offsetof_expr.tag);
-    if (!sym || expr->offsetof_expr.member_count == 0) {
+    if (expr->data.offsetof_expr.type == TYPE_STRUCT)
+        sym = symtable_lookup_struct(vars, expr->data.offsetof_expr.tag);
+    else if (expr->data.offsetof_expr.type == TYPE_UNION)
+        sym = symtable_lookup_union(vars, expr->data.offsetof_expr.tag);
+    if (!sym || expr->data.offsetof_expr.member_count == 0) {
         error_set(expr->line, expr->column, error_current_file,
                   error_current_function);
         return TYPE_UNKNOWN;
@@ -385,14 +385,14 @@ static type_kind_t check_offsetof_expr(expr_t *expr, symtable_t *vars,
     if (sym->type == TYPE_STRUCT) {
         for (size_t i = 0; i < sym->struct_member_count; i++)
             if (strcmp(sym->struct_members[i].name,
-                       expr->offsetof_expr.members[0]) == 0) {
+                       expr->data.offsetof_expr.members[0]) == 0) {
                 off = sym->struct_members[i].offset;
                 found = 1; break;
             }
     } else {
         for (size_t i = 0; i < sym->member_count; i++)
             if (strcmp(sym->members[i].name,
-                       expr->offsetof_expr.members[0]) == 0) {
+                       expr->data.offsetof_expr.members[0]) == 0) {
                 off = sym->members[i].offset;
                 found = 1; break;
             }
@@ -413,8 +413,8 @@ static type_kind_t check_alignof_expr(expr_t *expr, symtable_t *vars,
 {
     (void)funcs; (void)vars;
     int al = 0;
-    if (expr->alignof_expr.is_type) {
-        switch (expr->alignof_expr.type) {
+    if (expr->data.alignof_expr.is_type) {
+        switch (expr->data.alignof_expr.type) {
         case TYPE_CHAR: case TYPE_UCHAR: case TYPE_BOOL: al = 1; break;
         case TYPE_SHORT: case TYPE_USHORT: al = 2; break;
         case TYPE_INT: case TYPE_UINT: case TYPE_LONG: case TYPE_ULONG:
@@ -425,7 +425,7 @@ static type_kind_t check_alignof_expr(expr_t *expr, symtable_t *vars,
         }
     } else {
         ir_builder_t tmp; ir_builder_init(&tmp);
-        type_kind_t t = check_expr(expr->alignof_expr.expr, vars, funcs, &tmp, NULL);
+        type_kind_t t = check_expr(expr->data.alignof_expr.expr, vars, funcs, &tmp, NULL);
         ir_builder_free(&tmp);
         switch (t) {
         case TYPE_CHAR: case TYPE_UCHAR: case TYPE_BOOL: al = 1; break;
