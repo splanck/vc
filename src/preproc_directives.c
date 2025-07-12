@@ -75,8 +75,6 @@ static char *skip_ws(char *p)
 
 
 
-/* Record PATH in the dependency list if not already present */
-
 /* Return 1 if all conditional states on the stack are active */
 static int stack_active(vector_t *conds)
 {
@@ -95,39 +93,14 @@ static int is_active(vector_t *conds)
 }
 
 
-/* Canonicalize PATH and push it on the include stack */
-
 /* forward declaration for recursive include handling */
 int process_file(const char *path, vector_t *macros,
                         vector_t *conds, strbuf_t *out,
                         const vector_t *incdirs, vector_t *stack,
                         preproc_context_t *ctx, size_t idx);
 
-/*
- * Locate the full path of an include file.
- *
- * The search order mirrors traditional compiler behaviour:
- *   1. When the include uses quotes and a directory for the current file
- *      is provided, that directory is checked first.
- *   2. Each path in "incdirs" is consulted in order.
- *   3. For quoted includes the plain filename is tried relative to the
- *      working directory.
- *   4. Finally the built in standard include directories are searched.
- *
- * The resulting path is written to "out_path" if found and a pointer to
- * it is returned.  NULL is returned when the file does not exist in any
- * of the locations.
-*/
-
-
 /* Small helpers used by process_file */
 
-/*
- * Read a file and split it into NUL terminated lines.  The returned
- * text buffer holds the line data and must remain valid for the lifetime
- * of the line array.  The caller must free both using the cleanup helper.
- * NULL is returned on I/O errors.
- */
 static int handle_directive(char *line, const char *dir, vector_t *macros,
                             vector_t *conds, strbuf_t *out,
                             const vector_t *incdirs, vector_t *stack,
@@ -156,8 +129,6 @@ int process_line(char *line, const char *dir, vector_t *macros,
     return handle_directive(line, dir, macros, conds, out, incdirs, stack, ctx);
 }
 
-/* Free resources allocated by process_file */
-/* Free a vector of parameter names */
 /* Remove a macro defined earlier when #undef is seen. */
 static int handle_undef_directive(char *line, const char *dir, vector_t *macros,
                                   vector_t *conds, strbuf_t *out,
