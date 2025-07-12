@@ -47,7 +47,8 @@ typedef enum {
     CLI_OPT_DEP_ONLY,
     CLI_OPT_DEP,
     CLI_OPT_NO_WARN_UNREACHABLE,
-    CLI_OPT_EMIT_DWARF
+    CLI_OPT_EMIT_DWARF,
+    CLI_OPT_FMAX_DEPTH
 } cli_opt_id;
 
 /* Command line options parsed from argv */
@@ -77,6 +78,7 @@ typedef struct {
     vector_t undefines;    /* macros to undefine before compilation */
     vector_t lib_dirs;     /* additional library search paths */
     vector_t libs;         /* libraries to link against */
+    size_t max_include_depth; /* maximum nested includes */
 } cli_options_t;
 
 /* Parse command line arguments. Returns 0 on success, non-zero on error. */

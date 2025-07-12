@@ -13,6 +13,7 @@
 #include "util.h"
 #include "cli_env.h"
 #include "cli_opts.h"
+#include "preproc_file.h"
 
 static void init_default_opts(cli_options_t *opts)
 {
@@ -42,6 +43,7 @@ static void init_default_opts(cli_options_t *opts)
     opts->asm_syntax = ASM_ATT;
     opts->std = STD_C99;
     opts->obj_dir = NULL;
+    opts->max_include_depth = DEFAULT_INCLUDE_DEPTH;
     vector_init(&opts->include_dirs, sizeof(char *));
     vector_init(&opts->sources, sizeof(char *));
     vector_init(&opts->defines, sizeof(char *));
@@ -118,13 +120,14 @@ int cli_parse_args(int argc, char **argv, cli_options_t *opts)
         {"no-color", no_argument, 0, CLI_OPT_NO_COLOR},
         {"no-warn-unreachable", no_argument, 0, CLI_OPT_NO_WARN_UNREACHABLE},
         {"emit-dwarf", no_argument, 0, CLI_OPT_EMIT_DWARF},
+        {"fmax-include-depth", required_argument, 0, CLI_OPT_FMAX_DEPTH},
         {0, 0, 0, 0}
     };
 
     init_default_opts(opts);
 
     int opt;
-    while ((opt = getopt_long(argc, argv, "hvo:O:cD:U:I:L:l:ES", long_opts, NULL)) != -1) {
+    while ((opt = getopt_long(argc, argv, "hvo:O:cD:U:I:L:l:ESf:", long_opts, NULL)) != -1) {
         int ret;
         if ((ret = parse_optimization_opts(opt, optarg, opts)) == 1) {
             return cleanup_parse_error(opts, vcflags_argv, vcflags_buf);

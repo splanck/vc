@@ -43,6 +43,7 @@ The compiler supports the following options:
 - `-l<name>` – link against the specified library.
 - `-Dname[=val]` – define a preprocessor macro before compilation.
 - `-Uname` – undefine a macro before compilation.
+- `-fmax-include-depth=<n>` – set the maximum nested `#include` depth.
 - `-O<N>` – set optimization level (0 disables all passes).
 
 The compiler warns about statements that cannot be reached because a

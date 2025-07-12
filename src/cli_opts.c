@@ -22,6 +22,7 @@ void print_usage(const char *prog)
         "  -l<name>            Link against library\n",
         "  -Dname[=val]       Define a macro\n",
         "  -Uname             Undefine a macro\n",
+        "  -fmax-include-depth=<n>  Set maximum include depth\n",
         "      --std=<std>      Language standard (c99 or gnu99)\n",
         "  -h, --help           Display this help and exit\n",
         "  -v, --version        Print version information and exit\n",
@@ -127,6 +128,19 @@ static int set_standard(cli_options_t *opts, const char *std)
         fprintf(stderr, "Unknown standard '%s'\n", std);
         return 1;
     }
+    return 0;
+}
+
+static int set_max_depth(cli_options_t *opts, const char *val)
+{
+    errno = 0;
+    char *end;
+    long long v = strtoll(val, &end, 10);
+    if (*end != '\0' || errno != 0 || v <= 0 || v > INT_MAX) {
+        fprintf(stderr, "Invalid include depth '%s'\n", val);
+        return 1;
+    }
+    opts->max_include_depth = (size_t)v;
     return 0;
 }
 
@@ -280,8 +294,15 @@ int parse_misc_opts(int opt, const char *arg, const char *prog,
     case CLI_OPT_EMIT_DWARF:
         opts->emit_dwarf = true;
         return 0;
+    case 'f':
+        if (strncmp(arg, "max-include-depth=", 18) == 0)
+            return set_max_depth(opts, arg + 18);
+        fprintf(stderr, "Unknown -f option '%s'\n", arg);
+        return 1;
     case CLI_OPT_STD:
         return handle_std(arg, prog, opts);
+    case CLI_OPT_FMAX_DEPTH:
+        return set_max_depth(opts, arg);
     default:
         return -1;
     }
