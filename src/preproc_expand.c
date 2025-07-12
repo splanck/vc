@@ -452,7 +452,7 @@ static char *decode_string_literal(const char *s, size_t len)
                     int hex = (d >= '0' && d <= '9') ? d - '0' :
                                (d >= 'a' && d <= 'f') ? d - 'a' + 10 :
                                (d >= 'A' && d <= 'F') ? d - 'A' + 10 : 0;
-                    value = value * 16 + hex;
+                    value = value * 16 + (unsigned)hex;
                     i++; digits++;
                 }
                 strbuf_appendf(&sb, "%c", (char)value);
@@ -460,10 +460,10 @@ static char *decode_string_literal(const char *s, size_t len)
             }
             default:
                 if (c >= '0' && c <= '7') {
-                    unsigned value = c - '0';
+                    unsigned value = (unsigned)(c - '0');
                     int digits = 1;
                     while (digits < 3 && i < len && s[i] >= '0' && s[i] <= '7') {
-                        value = value * 8 + (s[i] - '0');
+                        value = value * 8 + (unsigned)(s[i] - '0');
                         i++; digits++;
                     }
                     strbuf_appendf(&sb, "%c", (char)value);
