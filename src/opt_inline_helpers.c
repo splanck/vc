@@ -207,7 +207,7 @@ int collect_funcs(ir_builder_t *ir, inline_func_t **out, size_t *count)
         int param_count = 0;
         for (size_t i = 0; i < body_count; i++)
             if (body[i].op == IR_LOAD_PARAM && body[i].imm + 1 > param_count)
-                param_count = body[i].imm + 1;
+                param_count = (int)(body[i].imm + 1);
 
         int is_inline = 0;
         const char *src_file = ins->next ? ins->next->file : NULL;
