@@ -119,8 +119,8 @@ int check_func(func_t *func, symtable_t *funcs, symtable_t *globals,
 static int check_enum_decl_global(stmt_t *decl, symtable_t *globals)
 {
     int next = 0;
-    for (size_t i = 0; i < decl->enum_decl.count; i++) {
-        enumerator_t *e = &decl->enum_decl.items[i];
+    for (size_t i = 0; i < STMT_ENUM_DECL(decl).count; i++) {
+        enumerator_t *e = &STMT_ENUM_DECL(decl).items[i];
         long long val = next;
         if (e->value) {
             if (!eval_const_expr(e->value, globals, 0, &val)) {
@@ -134,8 +134,8 @@ static int check_enum_decl_global(stmt_t *decl, symtable_t *globals)
         }
         next = (int)val + 1;
     }
-    if (decl->enum_decl.tag && decl->enum_decl.tag[0])
-        symtable_add_enum_tag_global(globals, decl->enum_decl.tag);
+    if (STMT_ENUM_DECL(decl).tag && STMT_ENUM_DECL(decl).tag[0])
+        symtable_add_enum_tag_global(globals, STMT_ENUM_DECL(decl).tag);
     return 1;
 }
 
@@ -146,16 +146,16 @@ static int check_enum_decl_global(stmt_t *decl, symtable_t *globals)
  */
 static int check_struct_decl_global(stmt_t *decl, symtable_t *globals)
 {
-    size_t total = layout_struct_members(decl->struct_decl.members,
-                                         decl->struct_decl.count);
-    if (!symtable_add_struct_global(globals, decl->struct_decl.tag,
-                                    decl->struct_decl.members,
-                                    decl->struct_decl.count)) {
+    size_t total = layout_struct_members(STMT_STRUCT_DECL(decl).members,
+                                         STMT_STRUCT_DECL(decl).count);
+    if (!symtable_add_struct_global(globals, STMT_STRUCT_DECL(decl).tag,
+                                    STMT_STRUCT_DECL(decl).members,
+                                    STMT_STRUCT_DECL(decl).count)) {
         error_set(decl->line, decl->column, error_current_file, error_current_function);
         return 0;
     }
     symbol_t *stype =
-        symtable_lookup_struct(globals, decl->struct_decl.tag);
+        symtable_lookup_struct(globals, STMT_STRUCT_DECL(decl).tag);
     if (stype)
         stype->struct_total_size = total;
     return 1;
@@ -168,10 +168,10 @@ static int check_struct_decl_global(stmt_t *decl, symtable_t *globals)
  */
 static int check_union_decl_global(stmt_t *decl, symtable_t *globals)
 {
-    layout_union_members(decl->union_decl.members, decl->union_decl.count);
-    if (!symtable_add_union_global(globals, decl->union_decl.tag,
-                                   decl->union_decl.members,
-                                   decl->union_decl.count)) {
+    layout_union_members(STMT_UNION_DECL(decl).members, STMT_UNION_DECL(decl).count);
+    if (!symtable_add_union_global(globals, STMT_UNION_DECL(decl).tag,
+                                   STMT_UNION_DECL(decl).members,
+                                   STMT_UNION_DECL(decl).count)) {
         error_set(decl->line, decl->column, error_current_file, error_current_function);
         return 0;
     }
@@ -182,14 +182,14 @@ static int check_union_decl_global(stmt_t *decl, symtable_t *globals)
 static int check_static_assert_stmt(stmt_t *stmt, symtable_t *globals)
 {
     long long val;
-    if (!eval_const_expr(stmt->static_assert.expr, globals, 0, &val)) {
-        error_set(stmt->static_assert.expr->line, stmt->static_assert.expr->column,
+    if (!eval_const_expr(STMT_STATIC_ASSERT(stmt).expr, globals, 0, &val)) {
+        error_set(STMT_STATIC_ASSERT(stmt).expr->line, STMT_STATIC_ASSERT(stmt).expr->column,
                   error_current_file, error_current_function);
         return 0;
     }
     if (val == 0) {
         error_set(stmt->line, stmt->column, error_current_file, error_current_function);
-        error_print(stmt->static_assert.message);
+        error_print(STMT_STATIC_ASSERT(stmt).message);
         return 0;
     }
     return 1;
@@ -203,9 +203,9 @@ static int check_static_assert_stmt(stmt_t *stmt, symtable_t *globals)
 
 static int compute_global_layout(stmt_t *decl, symtable_t *globals)
 {
-    if (decl->var_decl.type == TYPE_UNION)
+    if (STMT_VAR_DECL(decl).type == TYPE_UNION)
         return compute_union_layout(decl, globals);
-    if (decl->var_decl.type == TYPE_STRUCT)
+    if (STMT_VAR_DECL(decl).type == TYPE_STRUCT)
         return compute_struct_layout(decl, globals);
     return 1;
 }
@@ -220,53 +220,53 @@ static symbol_t *register_global_symbol(stmt_t *decl, symtable_t *globals)
     if (!compute_global_layout(decl, globals))
         return NULL;
 
-    if (decl->var_decl.align_expr) {
+    if (STMT_VAR_DECL(decl).align_expr) {
         long long aval;
-        if (!eval_const_expr(decl->var_decl.align_expr, globals, 0, &aval) ||
+        if (!eval_const_expr(STMT_VAR_DECL(decl).align_expr, globals, 0, &aval) ||
             aval <= 0 || (aval & (aval - 1))) {
-            error_set(decl->var_decl.align_expr->line,
-                      decl->var_decl.align_expr->column,
+            error_set(STMT_VAR_DECL(decl).align_expr->line,
+                      STMT_VAR_DECL(decl).align_expr->column,
                       error_current_file, error_current_function);
             error_print("Invalid alignment");
             return NULL;
         }
-        decl->var_decl.alignment = (size_t)aval;
+        STMT_VAR_DECL(decl).alignment = (size_t)aval;
     }
 
-    if (!symtable_add_global(globals, decl->var_decl.name,
-                             decl->var_decl.name, decl->var_decl.type,
-                             decl->var_decl.array_size,
-                             decl->var_decl.elem_size,
-                             decl->var_decl.alignment,
-                             decl->var_decl.is_static,
-                             decl->var_decl.is_register,
-                             decl->var_decl.is_const,
-                             decl->var_decl.is_volatile,
-                             decl->var_decl.is_restrict)) {
+    if (!symtable_add_global(globals, STMT_VAR_DECL(decl).name,
+                             STMT_VAR_DECL(decl).name, STMT_VAR_DECL(decl).type,
+                             STMT_VAR_DECL(decl).array_size,
+                             STMT_VAR_DECL(decl).elem_size,
+                             STMT_VAR_DECL(decl).alignment,
+                             STMT_VAR_DECL(decl).is_static,
+                             STMT_VAR_DECL(decl).is_register,
+                             STMT_VAR_DECL(decl).is_const,
+                             STMT_VAR_DECL(decl).is_volatile,
+                             STMT_VAR_DECL(decl).is_restrict)) {
         error_set(decl->line, decl->column, error_current_file, error_current_function);
         return NULL;
     }
 
-    symbol_t *sym = symtable_lookup_global(globals, decl->var_decl.name);
+    symbol_t *sym = symtable_lookup_global(globals, STMT_VAR_DECL(decl).name);
 
-    if (decl->var_decl.init_list && decl->var_decl.type == TYPE_ARRAY &&
-        decl->var_decl.array_size == 0) {
-        decl->var_decl.array_size = decl->var_decl.init_count;
-        sym->array_size = decl->var_decl.array_size;
+    if (STMT_VAR_DECL(decl).init_list && STMT_VAR_DECL(decl).type == TYPE_ARRAY &&
+        STMT_VAR_DECL(decl).array_size == 0) {
+        STMT_VAR_DECL(decl).array_size = STMT_VAR_DECL(decl).init_count;
+        sym->array_size = STMT_VAR_DECL(decl).array_size;
     }
 
     if (!copy_aggregate_metadata(decl, sym, globals))
         return NULL;
 
-    sym->func_ret_type = decl->var_decl.func_ret_type;
-    sym->func_param_count = decl->var_decl.func_param_count;
-    sym->func_variadic = decl->var_decl.func_variadic;
-    if (decl->var_decl.func_param_count) {
+    sym->func_ret_type = STMT_VAR_DECL(decl).func_ret_type;
+    sym->func_param_count = STMT_VAR_DECL(decl).func_param_count;
+    sym->func_variadic = STMT_VAR_DECL(decl).func_variadic;
+    if (STMT_VAR_DECL(decl).func_param_count) {
         sym->func_param_types = malloc(sym->func_param_count * sizeof(type_kind_t));
         if (!sym->func_param_types)
             return NULL;
         for (size_t i = 0; i < sym->func_param_count; i++)
-            sym->func_param_types[i] = decl->var_decl.func_param_types[i];
+            sym->func_param_types[i] = STMT_VAR_DECL(decl).func_param_types[i];
     }
 
     return sym;
@@ -280,20 +280,20 @@ static symbol_t *register_global_symbol(stmt_t *decl, symtable_t *globals)
 static int emit_global_initializer(stmt_t *decl, symbol_t *sym,
                                    symtable_t *globals, ir_builder_t *ir)
 {
-    if (decl->var_decl.is_extern)
+    if (STMT_VAR_DECL(decl).is_extern)
         return 1;
 
-    if (decl->var_decl.type == TYPE_ARRAY) {
+    if (STMT_VAR_DECL(decl).type == TYPE_ARRAY) {
         long long *vals;
-        if (!expand_array_initializer(decl->var_decl.init_list,
-                                      decl->var_decl.init_count,
-                                      decl->var_decl.array_size, globals,
+        if (!expand_array_initializer(STMT_VAR_DECL(decl).init_list,
+                                      STMT_VAR_DECL(decl).init_count,
+                                      STMT_VAR_DECL(decl).array_size, globals,
                                       decl->line, decl->column, &vals))
             return 0;
-        if (!ir_build_glob_array(ir, decl->var_decl.name, vals,
-                                 decl->var_decl.array_size,
-                                 decl->var_decl.is_static,
-                                 decl->var_decl.alignment)) {
+        if (!ir_build_glob_array(ir, STMT_VAR_DECL(decl).name, vals,
+                                 STMT_VAR_DECL(decl).array_size,
+                                 STMT_VAR_DECL(decl).is_static,
+                                 STMT_VAR_DECL(decl).alignment)) {
             free(vals);
             return 0;
         }
@@ -301,18 +301,18 @@ static int emit_global_initializer(stmt_t *decl, symbol_t *sym,
         return 1;
     }
 
-    if (decl->var_decl.init_list) {
-        if (decl->var_decl.type == TYPE_STRUCT) {
+    if (STMT_VAR_DECL(decl).init_list) {
+        if (STMT_VAR_DECL(decl).type == TYPE_STRUCT) {
             long long *vals;
-            if (!expand_struct_initializer(decl->var_decl.init_list,
-                                           decl->var_decl.init_count, sym,
+            if (!expand_struct_initializer(STMT_VAR_DECL(decl).init_list,
+                                           STMT_VAR_DECL(decl).init_count, sym,
                                            globals, decl->line,
                                            decl->column, &vals))
                 return 0;
-            ir_build_glob_struct(ir, decl->var_decl.name,
-                                 (int)decl->var_decl.elem_size,
-                                 decl->var_decl.is_static,
-                                 decl->var_decl.alignment);
+            ir_build_glob_struct(ir, STMT_VAR_DECL(decl).name,
+                                 (int)STMT_VAR_DECL(decl).elem_size,
+                                 STMT_VAR_DECL(decl).is_static,
+                                 STMT_VAR_DECL(decl).alignment);
             free(vals);
             return 1;
         }
@@ -320,38 +320,38 @@ static int emit_global_initializer(stmt_t *decl, symbol_t *sym,
         return 0;
     }
 
-    if (decl->var_decl.init &&
-        decl->var_decl.init->kind == EXPR_UNARY &&
-        decl->var_decl.init->data.unary.op == UNOP_ADDR &&
-        decl->var_decl.init->data.unary.operand->kind == EXPR_IDENT) {
-        ir_build_glob_addr(ir, decl->var_decl.name,
-                           decl->var_decl.init->data.unary.operand->data.ident.name,
-                           decl->var_decl.is_static);
+    if (STMT_VAR_DECL(decl).init &&
+        STMT_VAR_DECL(decl).init->kind == EXPR_UNARY &&
+        STMT_VAR_DECL(decl).init->data.unary.op == UNOP_ADDR &&
+        STMT_VAR_DECL(decl).init->data.unary.operand->kind == EXPR_IDENT) {
+        ir_build_glob_addr(ir, STMT_VAR_DECL(decl).name,
+                           STMT_VAR_DECL(decl).init->data.unary.operand->data.ident.name,
+                           STMT_VAR_DECL(decl).is_static);
         return 1;
     }
 
     long long value = 0;
-    if (decl->var_decl.init) {
-        if (!eval_const_expr(decl->var_decl.init, globals, 0, &value)) {
-            error_set(decl->var_decl.init->line, decl->var_decl.init->column, error_current_file, error_current_function);
+    if (STMT_VAR_DECL(decl).init) {
+        if (!eval_const_expr(STMT_VAR_DECL(decl).init, globals, 0, &value)) {
+            error_set(STMT_VAR_DECL(decl).init->line, STMT_VAR_DECL(decl).init->column, error_current_file, error_current_function);
             return 0;
         }
     }
 
-    if (decl->var_decl.type == TYPE_UNION)
-        ir_build_glob_union(ir, decl->var_decl.name,
-                           (int)decl->var_decl.elem_size,
-                           decl->var_decl.is_static,
-                           decl->var_decl.alignment);
-    else if (decl->var_decl.type == TYPE_STRUCT)
-        ir_build_glob_struct(ir, decl->var_decl.name,
-                            (int)decl->var_decl.elem_size,
-                            decl->var_decl.is_static,
-                            decl->var_decl.alignment);
+    if (STMT_VAR_DECL(decl).type == TYPE_UNION)
+        ir_build_glob_union(ir, STMT_VAR_DECL(decl).name,
+                           (int)STMT_VAR_DECL(decl).elem_size,
+                           STMT_VAR_DECL(decl).is_static,
+                           STMT_VAR_DECL(decl).alignment);
+    else if (STMT_VAR_DECL(decl).type == TYPE_STRUCT)
+        ir_build_glob_struct(ir, STMT_VAR_DECL(decl).name,
+                            (int)STMT_VAR_DECL(decl).elem_size,
+                            STMT_VAR_DECL(decl).is_static,
+                            STMT_VAR_DECL(decl).alignment);
     else
-        ir_build_glob_var(ir, decl->var_decl.name, value,
-                          decl->var_decl.is_static,
-                          decl->var_decl.alignment);
+        ir_build_glob_var(ir, STMT_VAR_DECL(decl).name, value,
+                          STMT_VAR_DECL(decl).is_static,
+                          STMT_VAR_DECL(decl).alignment);
 
     return 1;
 }
@@ -389,10 +389,10 @@ int check_global(stmt_t *decl, symtable_t *globals, ir_builder_t *ir)
     case STMT_STATIC_ASSERT:
         return check_static_assert_stmt(decl, globals);
     case STMT_TYPEDEF:
-        if (!symtable_add_typedef_global(globals, decl->typedef_decl.name,
-                                         decl->typedef_decl.type,
-                                         decl->typedef_decl.array_size,
-                                         decl->typedef_decl.elem_size)) {
+        if (!symtable_add_typedef_global(globals, STMT_TYPEDEF(decl).name,
+                                         STMT_TYPEDEF(decl).type,
+                                         STMT_TYPEDEF(decl).array_size,
+                                         STMT_TYPEDEF(decl).elem_size)) {
             error_set(decl->line, decl->column, error_current_file, error_current_function);
             return 0;
         }

@@ -12,8 +12,8 @@
 static int check_enum_decl_stmt(stmt_t *stmt, symtable_t *vars)
 {
     int next = 0;
-    for (size_t i = 0; i < stmt->enum_decl.count; i++) {
-        enumerator_t *e = &stmt->enum_decl.items[i];
+    for (size_t i = 0; i < STMT_ENUM_DECL(stmt).count; i++) {
+        enumerator_t *e = &STMT_ENUM_DECL(stmt).items[i];
         long long val = next;
         if (e->value) {
             if (!eval_const_expr(e->value, vars, 0, &val)) {
@@ -28,22 +28,22 @@ static int check_enum_decl_stmt(stmt_t *stmt, symtable_t *vars)
         }
         next = (int)val + 1;
     }
-    if (stmt->enum_decl.tag && stmt->enum_decl.tag[0])
-        symtable_add_enum_tag(vars, stmt->enum_decl.tag);
+    if (STMT_ENUM_DECL(stmt).tag && STMT_ENUM_DECL(stmt).tag[0])
+        symtable_add_enum_tag(vars, STMT_ENUM_DECL(stmt).tag);
     return 1;
 }
 
 static int check_struct_decl_stmt(stmt_t *stmt, symtable_t *vars)
 {
-    size_t total = layout_struct_members(stmt->struct_decl.members,
-                                         stmt->struct_decl.count);
-    if (!symtable_add_struct(vars, stmt->struct_decl.tag,
-                             stmt->struct_decl.members,
-                             stmt->struct_decl.count)) {
+    size_t total = layout_struct_members(STMT_STRUCT_DECL(stmt).members,
+                                         STMT_STRUCT_DECL(stmt).count);
+    if (!symtable_add_struct(vars, STMT_STRUCT_DECL(stmt).tag,
+                             STMT_STRUCT_DECL(stmt).members,
+                             STMT_STRUCT_DECL(stmt).count)) {
         error_set(stmt->line, stmt->column, error_current_file, error_current_function);
         return 0;
     }
-    symbol_t *stype = symtable_lookup_struct(vars, stmt->struct_decl.tag);
+    symbol_t *stype = symtable_lookup_struct(vars, STMT_STRUCT_DECL(stmt).tag);
     if (stype)
         stype->struct_total_size = total;
     return 1;
@@ -51,12 +51,12 @@ static int check_struct_decl_stmt(stmt_t *stmt, symtable_t *vars)
 
 static int check_union_decl_stmt(stmt_t *stmt, symtable_t *vars)
 {
-    size_t max = layout_union_members(stmt->union_decl.members,
-                                      stmt->union_decl.count);
+    size_t max = layout_union_members(STMT_UNION_DECL(stmt).members,
+                                      STMT_UNION_DECL(stmt).count);
     (void)max;
-    if (!symtable_add_union(vars, stmt->union_decl.tag,
-                            stmt->union_decl.members,
-                            stmt->union_decl.count)) {
+    if (!symtable_add_union(vars, STMT_UNION_DECL(stmt).tag,
+                            STMT_UNION_DECL(stmt).members,
+                            STMT_UNION_DECL(stmt).count)) {
         error_set(stmt->line, stmt->column, error_current_file, error_current_function);
         return 0;
     }
@@ -66,35 +66,35 @@ static int check_union_decl_stmt(stmt_t *stmt, symtable_t *vars)
 static symbol_t *insert_var_symbol(stmt_t *stmt, symtable_t *vars,
                                    const char *ir_name)
 {
-    if (stmt->var_decl.align_expr) {
+    if (STMT_VAR_DECL(stmt).align_expr) {
         long long aval;
-        if (!eval_const_expr(stmt->var_decl.align_expr, vars, 0, &aval) ||
+        if (!eval_const_expr(STMT_VAR_DECL(stmt).align_expr, vars, 0, &aval) ||
             aval <= 0 || (aval & (aval - 1))) {
-            error_set(stmt->var_decl.align_expr->line,
-                      stmt->var_decl.align_expr->column,
+            error_set(STMT_VAR_DECL(stmt).align_expr->line,
+                      STMT_VAR_DECL(stmt).align_expr->column,
                       error_current_file, error_current_function);
             error_print("Invalid alignment");
             return NULL;
         }
-        stmt->var_decl.alignment = (size_t)aval;
+        STMT_VAR_DECL(stmt).alignment = (size_t)aval;
     }
-    if (!symtable_add(vars, stmt->var_decl.name, ir_name,
-                      stmt->var_decl.type,
-                      stmt->var_decl.array_size,
-                      stmt->var_decl.elem_size,
-                      stmt->var_decl.alignment,
-                      stmt->var_decl.is_static,
-                      stmt->var_decl.is_register,
-                      stmt->var_decl.is_const,
-                      stmt->var_decl.is_volatile,
-                      stmt->var_decl.is_restrict))
+    if (!symtable_add(vars, STMT_VAR_DECL(stmt).name, ir_name,
+                      STMT_VAR_DECL(stmt).type,
+                      STMT_VAR_DECL(stmt).array_size,
+                      STMT_VAR_DECL(stmt).elem_size,
+                      STMT_VAR_DECL(stmt).alignment,
+                      STMT_VAR_DECL(stmt).is_static,
+                      STMT_VAR_DECL(stmt).is_register,
+                      STMT_VAR_DECL(stmt).is_const,
+                      STMT_VAR_DECL(stmt).is_volatile,
+                      STMT_VAR_DECL(stmt).is_restrict))
         return NULL;
 
-    symbol_t *sym = symtable_lookup(vars, stmt->var_decl.name);
-    if (stmt->var_decl.init_list && stmt->var_decl.type == TYPE_ARRAY &&
-        stmt->var_decl.array_size == 0) {
-        stmt->var_decl.array_size = stmt->var_decl.init_count;
-        sym->array_size = stmt->var_decl.array_size;
+    symbol_t *sym = symtable_lookup(vars, STMT_VAR_DECL(stmt).name);
+    if (STMT_VAR_DECL(stmt).init_list && STMT_VAR_DECL(stmt).type == TYPE_ARRAY &&
+        STMT_VAR_DECL(stmt).array_size == 0) {
+        STMT_VAR_DECL(stmt).array_size = STMT_VAR_DECL(stmt).init_count;
+        sym->array_size = STMT_VAR_DECL(stmt).array_size;
     }
 
     return sym;
@@ -103,8 +103,8 @@ static symbol_t *insert_var_symbol(stmt_t *stmt, symtable_t *vars,
 static symbol_t *register_var_symbol(stmt_t *stmt, symtable_t *vars)
 {
     char ir_name_buf[32];
-    const char *ir_name = stmt->var_decl.name;
-    if (stmt->var_decl.is_static) {
+    const char *ir_name = STMT_VAR_DECL(stmt).name;
+    if (STMT_VAR_DECL(stmt).is_static) {
         if (!label_format("__static", label_next_id(), ir_name_buf))
             return NULL;
         ir_name = ir_name_buf;
@@ -112,8 +112,8 @@ static symbol_t *register_var_symbol(stmt_t *stmt, symtable_t *vars)
 
     if (!compute_var_layout(stmt, vars))
         return NULL;
-    if (stmt->var_decl.is_const && !stmt->var_decl.init &&
-        !stmt->var_decl.init_list) {
+    if (STMT_VAR_DECL(stmt).is_const && !STMT_VAR_DECL(stmt).init &&
+        !STMT_VAR_DECL(stmt).init_list) {
         error_set(stmt->line, stmt->column, error_current_file, error_current_function);
         return NULL;
     }
@@ -123,15 +123,15 @@ static symbol_t *register_var_symbol(stmt_t *stmt, symtable_t *vars)
         return NULL;
     }
 
-    sym->func_ret_type = stmt->var_decl.func_ret_type;
-    sym->func_param_count = stmt->var_decl.func_param_count;
-    sym->func_variadic = stmt->var_decl.func_variadic;
-    if (stmt->var_decl.func_param_count) {
+    sym->func_ret_type = STMT_VAR_DECL(stmt).func_ret_type;
+    sym->func_param_count = STMT_VAR_DECL(stmt).func_param_count;
+    sym->func_variadic = STMT_VAR_DECL(stmt).func_variadic;
+    if (STMT_VAR_DECL(stmt).func_param_count) {
         sym->func_param_types = malloc(sym->func_param_count * sizeof(type_kind_t));
         if (!sym->func_param_types)
             return NULL;
         for (size_t i = 0; i < sym->func_param_count; i++)
-            sym->func_param_types[i] = stmt->var_decl.func_param_types[i];
+            sym->func_param_types[i] = STMT_VAR_DECL(stmt).func_param_types[i];
     }
 
     return sym;
@@ -143,8 +143,8 @@ static int check_var_decl_stmt(stmt_t *stmt, symtable_t *vars,
     symbol_t *sym = register_var_symbol(stmt, vars);
     if (!sym)
         return 0;
-    if (stmt->var_decl.type == TYPE_ARRAY && stmt->var_decl.array_size == 0 &&
-        stmt->var_decl.size_expr) {
+    if (STMT_VAR_DECL(stmt).type == TYPE_ARRAY && STMT_VAR_DECL(stmt).array_size == 0 &&
+        STMT_VAR_DECL(stmt).size_expr) {
         if (!handle_vla_size(stmt, sym, vars, funcs, ir))
             return 0;
     }

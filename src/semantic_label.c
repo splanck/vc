@@ -6,7 +6,7 @@
 static int handle_label_stmt(stmt_t *stmt, label_table_t *labels,
                              ir_builder_t *ir)
 {
-    const char *ir_name = label_table_get_or_add(labels, stmt->label.name);
+    const char *ir_name = label_table_get_or_add(labels, STMT_LABEL(stmt).name);
     ir_build_label(ir, ir_name);
     return 1;
 }
@@ -14,7 +14,7 @@ static int handle_label_stmt(stmt_t *stmt, label_table_t *labels,
 static int check_goto_stmt(stmt_t *stmt, label_table_t *labels,
                            ir_builder_t *ir)
 {
-    const char *ir_name = label_table_get_or_add(labels, stmt->goto_stmt.name);
+    const char *ir_name = label_table_get_or_add(labels, STMT_GOTO(stmt).name);
     ir_build_br(ir, ir_name);
     return 1;
 }
