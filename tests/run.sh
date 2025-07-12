@@ -288,6 +288,13 @@ cc -Iinclude -Wall -Wextra -std=c99 \
     src/preproc_include.c src/preproc_includes.c src/preproc_path.c \
     src/vector.c src/strbuf.c src/util.c src/error.c
 cc -Iinclude -Wall -Wextra -std=c99 \
+    -o "$DIR/preproc_independent" "$DIR/unit/test_preproc_independent.c" \
+    src/preproc_file.c src/preproc_directives.c src/preproc_file_io.c \
+    src/preproc_expand.c src/preproc_table.c src/preproc_builtin.c \
+    src/preproc_args.c src/preproc_cond.c src/preproc_expr.c \
+    src/preproc_include.c src/preproc_includes.c src/preproc_path.c \
+    src/vector.c src/strbuf.c src/util.c src/error.c
+cc -Iinclude -Wall -Wextra -std=c99 \
     -o "$DIR/preproc_errwarn" "$DIR/unit/test_preproc_errwarn.c" \
     src/preproc_file.c src/preproc_directives.c src/preproc_file_io.c \
     src/preproc_expand.c src/preproc_table.c src/preproc_builtin.c \
@@ -395,6 +402,7 @@ rm -f ir_licm.o util_licm.o label_licm.o error_licm.o opt_main_licm.o \
 "$DIR/preproc_builtin_extra"
 "$DIR/preproc_charlit"
 "$DIR/preproc_counter_base"
+"$DIR/preproc_independent"
 "$DIR/preproc_errwarn"
 "$DIR/invalid_macro_tests"
 # separator for clarity

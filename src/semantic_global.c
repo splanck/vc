@@ -27,6 +27,8 @@
 #include <limits.h>
 #include <stdint.h>
 
+static preproc_context_t func_ctx;
+
 /* Active struct packing alignment (0 means natural) */
 size_t semantic_pack_alignment = 0;
 
@@ -49,7 +51,7 @@ int check_func(func_t *func, symtable_t *funcs, symtable_t *globals,
         return 0;
 
     error_current_function = func->name;
-    preproc_set_function(func->name);
+    preproc_set_function(&func_ctx, func->name);
 
     symbol_t *decl = symtable_lookup(funcs, func->name);
     if (!decl) {
@@ -57,7 +59,7 @@ int check_func(func_t *func, symtable_t *funcs, symtable_t *globals,
         return 0;
     }
     if (decl->is_inline && semantic_inline_already_emitted(func->name)) {
-        preproc_set_function(NULL);
+        preproc_set_function(&func_ctx, NULL);
         error_current_function = NULL;
         return 1;
     }
@@ -102,11 +104,11 @@ int check_func(func_t *func, symtable_t *funcs, symtable_t *globals,
     symtable_free(&locals);
     if (decl->is_inline && !semantic_mark_inline_emitted(func->name)) {
         error_set(0, 0, error_current_file, error_current_function);
-        preproc_set_function(NULL);
+        preproc_set_function(&func_ctx, NULL);
         error_current_function = NULL;
         return 0;
     }
-    preproc_set_function(NULL);
+    preproc_set_function(&func_ctx, NULL);
     error_current_function = NULL;
     return ok;
 }

@@ -112,8 +112,9 @@ static void test_variadic_expand(void)
 
     strbuf_t sb;
     strbuf_init(&sb);
-    preproc_set_location("t.c",1,1);
-    ASSERT(expand_line("LOG(\"%d\", 1)", &macros, &sb, 0, 0));
+    preproc_context_t ctx = {0};
+    preproc_set_location(&ctx, "t.c", 1, 1);
+    ASSERT(expand_line("LOG(\"%d\", 1)", &macros, &sb, 0, 0, &ctx));
     ASSERT(strcmp(sb.data, "printf(\"%d\", 1)") == 0);
     strbuf_free(&sb);
 

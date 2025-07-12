@@ -192,7 +192,7 @@ static int handle_error_directive(char *line, const char *dir,
         strbuf_t tmp;
         strbuf_init(&tmp);
         if (*msg) {
-            if (!expand_line(msg, macros, &tmp, 0, 0)) {
+            if (!expand_line(msg, macros, &tmp, 0, 0, ctx)) {
                 strbuf_free(&tmp);
                 return 0;
             }
@@ -200,7 +200,7 @@ static int handle_error_directive(char *line, const char *dir,
             strbuf_append(&tmp, "preprocessor error");
         }
         const char *file = ctx->current_file ? ctx->current_file : "";
-        fprintf(stderr, "%s:%zu: %s\n", file, preproc_get_line(), tmp.data);
+        fprintf(stderr, "%s:%zu: %s\n", file, preproc_get_line(ctx), tmp.data);
         strbuf_free(&tmp);
         return 0;
     }
@@ -220,7 +220,7 @@ static int handle_warning_directive(char *line, const char *dir,
     msg = skip_ws(msg);
     if (is_active(conds)) {
         const char *file = ctx->current_file ? ctx->current_file : "";
-        fprintf(stderr, "%s:%zu: %s\n", file, preproc_get_line(),
+        fprintf(stderr, "%s:%zu: %s\n", file, preproc_get_line(ctx),
                 *msg ? msg : "preprocessor warning");
     }
     return 1;
@@ -236,7 +236,7 @@ static int handle_conditional_directive(char *line, const char *dir,
                                         preproc_context_t *ctx)
 {
     (void)out; (void)ctx;
-    return handle_conditional(line, dir, macros, conds, incdirs, stack);
+    return handle_conditional(line, dir, macros, conds, incdirs, stack, ctx);
 }
 
 /*
@@ -253,7 +253,7 @@ static int handle_text_line(char *line, const char *dir, vector_t *macros,
     if (is_active(conds)) {
         strbuf_t tmp;
         strbuf_init(&tmp);
-        if (!expand_line(line, macros, &tmp, 0, 0))
+        if (!expand_line(line, macros, &tmp, 0, 0, ctx))
             ok = 0;
         else
             strbuf_append(&tmp, "\n");

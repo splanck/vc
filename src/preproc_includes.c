@@ -68,7 +68,7 @@ int handle_line_directive(char *line, const char *dir, vector_t *macros,
         (line[5] == '\0' || isspace((unsigned char)line[5]))) {
         p = line + 5;
         p = skip_ws(p);
-        if (!expand_line(p, macros, &exp, 0, 0)) {
+        if (!expand_line(p, macros, &exp, 0, 0, ctx)) {
             strbuf_free(&exp);
             return 0;
         }
@@ -152,7 +152,7 @@ int handle_pragma_directive(char *line, const char *dir, vector_t *macros,
     arg = skip_ws(arg);
     strbuf_t exp;
     strbuf_init(&exp);
-    if (!expand_line(arg, macros, &exp, 0, 0)) {
+    if (!expand_line(arg, macros, &exp, 0, 0, ctx)) {
         strbuf_free(&exp);
         return 0;
     }
