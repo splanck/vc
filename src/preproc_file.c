@@ -342,6 +342,8 @@ char *preproc_run(preproc_context_t *ctx, const char *path,
 
     /* Prepare all vectors used during preprocessing */
     init_preproc_vectors(ctx, &macros, &conds, &stack, &out);
+    /* Reset builtin counter so each run starts from zero */
+    ctx->counter = 0;
     define_default_macros(&macros, path);
     if (!record_dependency(ctx, path)) {
         cleanup_preproc_vectors(ctx, &macros, &conds, &stack, &search_dirs, &out);
