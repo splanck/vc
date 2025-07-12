@@ -28,74 +28,74 @@ static expr_t *clone_number(const expr_t *expr)
     n->kind = EXPR_NUMBER;
     n->line = expr->line;
     n->column = expr->column;
-    n->number.value = vc_strdup(expr->number.value);
-    if (!n->number.value) {
+    n->data.number.value = vc_strdup(expr->data.number.value);
+    if (!n->data.number.value) {
         free(n);
         return NULL;
     }
-    n->number.is_unsigned = expr->number.is_unsigned;
-    n->number.long_count = expr->number.long_count;
+    n->data.number.is_unsigned = expr->data.number.is_unsigned;
+    n->data.number.long_count = expr->data.number.long_count;
     return n;
 }
 
 /* Duplicate an identifier expression node. */
 static expr_t *clone_ident(const expr_t *expr)
 {
-    return ast_make_ident(expr->ident.name, expr->line, expr->column);
+    return ast_make_ident(expr->data.ident.name, expr->line, expr->column);
 }
 
 /* Duplicate a string literal expression node. */
 static expr_t *clone_string(const expr_t *expr)
 {
-    if (expr->string.is_wide)
-        return ast_make_wstring(expr->string.value, expr->line, expr->column);
-    return ast_make_string(expr->string.value, expr->line, expr->column);
+    if (expr->data.string.is_wide)
+        return ast_make_wstring(expr->data.string.value, expr->line, expr->column);
+    return ast_make_string(expr->data.string.value, expr->line, expr->column);
 }
 
 /* Duplicate a character literal expression node. */
 static expr_t *clone_char(const expr_t *expr)
 {
-    if (expr->ch.is_wide)
-        return ast_make_wchar(expr->ch.value, expr->line, expr->column);
-    return ast_make_char(expr->ch.value, expr->line, expr->column);
+    if (expr->data.ch.is_wide)
+        return ast_make_wchar(expr->data.ch.value, expr->line, expr->column);
+    return ast_make_char(expr->data.ch.value, expr->line, expr->column);
 }
 
 /* Duplicate a complex literal expression node. */
 static expr_t *clone_complex_literal(const expr_t *expr)
 {
-    return ast_make_complex_literal(expr->complex_lit.real,
-                                    expr->complex_lit.imag,
+    return ast_make_complex_literal(expr->data.complex_lit.real,
+                                    expr->data.complex_lit.imag,
                                     expr->line, expr->column);
 }
 
 /* Clone a unary operation and its operand. */
 static expr_t *clone_unary(const expr_t *expr)
 {
-    expr_t *op = clone_expr(expr->unary.operand);
+    expr_t *op = clone_expr(expr->data.unary.operand);
     if (!op)
         return NULL;
-    return ast_make_unary(expr->unary.op, op, expr->line, expr->column);
+    return ast_make_unary(expr->data.unary.op, op, expr->line, expr->column);
 }
 
 /* Clone a binary operation and its operands. */
 static expr_t *clone_binary(const expr_t *expr)
 {
-    expr_t *l = clone_expr(expr->binary.left);
-    expr_t *r = clone_expr(expr->binary.right);
+    expr_t *l = clone_expr(expr->data.binary.left);
+    expr_t *r = clone_expr(expr->data.binary.right);
     if (!l || !r) {
         ast_free_expr(l);
         ast_free_expr(r);
         return NULL;
     }
-    return ast_make_binary(expr->binary.op, l, r, expr->line, expr->column);
+    return ast_make_binary(expr->data.binary.op, l, r, expr->line, expr->column);
 }
 
 /* Clone a conditional expression and its branches. */
 static expr_t *clone_cond(const expr_t *expr)
 {
-    expr_t *c = clone_expr(expr->cond.cond);
-    expr_t *t = clone_expr(expr->cond.then_expr);
-    expr_t *e = clone_expr(expr->cond.else_expr);
+    expr_t *c = clone_expr(expr->data.cond.cond);
+    expr_t *t = clone_expr(expr->data.cond.then_expr);
+    expr_t *e = clone_expr(expr->data.cond.else_expr);
     if (!c || !t || !e) {
         ast_free_expr(c);
         ast_free_expr(t);
@@ -108,17 +108,17 @@ static expr_t *clone_cond(const expr_t *expr)
 /* Clone an assignment expression. */
 static expr_t *clone_assign(const expr_t *expr)
 {
-    expr_t *v = clone_expr(expr->assign.value);
+    expr_t *v = clone_expr(expr->data.assign.value);
     if (!v)
         return NULL;
-    return ast_make_assign(expr->assign.name, v, expr->line, expr->column);
+    return ast_make_assign(expr->data.assign.name, v, expr->line, expr->column);
 }
 
 /* Clone an array indexing expression. */
 static expr_t *clone_index(const expr_t *expr)
 {
-    expr_t *a = clone_expr(expr->index.array);
-    expr_t *i = clone_expr(expr->index.index);
+    expr_t *a = clone_expr(expr->data.index.array);
+    expr_t *i = clone_expr(expr->data.index.index);
     if (!a || !i) {
         ast_free_expr(a);
         ast_free_expr(i);
@@ -130,9 +130,9 @@ static expr_t *clone_index(const expr_t *expr)
 /* Clone an array element assignment. */
 static expr_t *clone_assign_index(const expr_t *expr)
 {
-    expr_t *a = clone_expr(expr->assign_index.array);
-    expr_t *i = clone_expr(expr->assign_index.index);
-    expr_t *v = clone_expr(expr->assign_index.value);
+    expr_t *a = clone_expr(expr->data.assign_index.array);
+    expr_t *i = clone_expr(expr->data.assign_index.index);
+    expr_t *v = clone_expr(expr->data.assign_index.value);
     if (!a || !i || !v) {
         ast_free_expr(a);
         ast_free_expr(i);
@@ -145,37 +145,37 @@ static expr_t *clone_assign_index(const expr_t *expr)
 /* Clone a struct or union member assignment. */
 static expr_t *clone_assign_member(const expr_t *expr)
 {
-    expr_t *obj = clone_expr(expr->assign_member.object);
-    expr_t *val = clone_expr(expr->assign_member.value);
+    expr_t *obj = clone_expr(expr->data.assign_member.object);
+    expr_t *val = clone_expr(expr->data.assign_member.value);
     if (!obj || !val) {
         ast_free_expr(obj);
         ast_free_expr(val);
         return NULL;
     }
-    return ast_make_assign_member(obj, expr->assign_member.member, val,
-                                  expr->assign_member.via_ptr, expr->line,
+    return ast_make_assign_member(obj, expr->data.assign_member.member, val,
+                                  expr->data.assign_member.via_ptr, expr->line,
                                   expr->column);
 }
 
 /* Clone a member access expression. */
 static expr_t *clone_member(const expr_t *expr)
 {
-    expr_t *obj = clone_expr(expr->member.object);
+    expr_t *obj = clone_expr(expr->data.member.object);
     if (!obj)
         return NULL;
-    return ast_make_member(obj, expr->member.member, expr->member.via_ptr,
+    return ast_make_member(obj, expr->data.member.member, expr->data.member.via_ptr,
                            expr->line, expr->column);
 }
 
 /* Clone a sizeof expression. */
 static expr_t *clone_sizeof(const expr_t *expr)
 {
-    if (expr->sizeof_expr.is_type)
-        return ast_make_sizeof_type(expr->sizeof_expr.type,
-                                    expr->sizeof_expr.array_size,
-                                    expr->sizeof_expr.elem_size, expr->line,
+    if (expr->data.sizeof_expr.is_type)
+        return ast_make_sizeof_type(expr->data.sizeof_expr.type,
+                                    expr->data.sizeof_expr.array_size,
+                                    expr->data.sizeof_expr.elem_size, expr->line,
                                     expr->column);
-    expr_t *e = clone_expr(expr->sizeof_expr.expr);
+    expr_t *e = clone_expr(expr->data.sizeof_expr.expr);
     if (!e)
         return NULL;
     return ast_make_sizeof_expr(e, expr->line, expr->column);
@@ -184,14 +184,14 @@ static expr_t *clone_sizeof(const expr_t *expr)
 /* Clone an offsetof expression. */
 static expr_t *clone_offsetof(const expr_t *expr)
 {
-    size_t n = expr->offsetof_expr.member_count;
+    size_t n = expr->data.offsetof_expr.member_count;
     char **members = NULL;
     if (n) {
         members = malloc(n * sizeof(char *));
         if (!members)
             return NULL;
         for (size_t i = 0; i < n; i++) {
-            members[i] = vc_strdup(expr->offsetof_expr.members[i]);
+            members[i] = vc_strdup(expr->data.offsetof_expr.members[i]);
             if (!members[i]) {
                 for (size_t j = 0; j < i; j++)
                     free(members[j]);
@@ -200,26 +200,26 @@ static expr_t *clone_offsetof(const expr_t *expr)
             }
         }
     }
-    char *tag = vc_strdup(expr->offsetof_expr.tag);
+    char *tag = vc_strdup(expr->data.offsetof_expr.tag);
     if (!tag) {
         for (size_t i = 0; i < n; i++)
             free(members[i]);
         free(members);
         return NULL;
     }
-    return ast_make_offsetof(expr->offsetof_expr.type, tag,
+    return ast_make_offsetof(expr->data.offsetof_expr.type, tag,
                              members, n, expr->line, expr->column);
 }
 
 /* Clone an alignof expression. */
 static expr_t *clone_alignof(const expr_t *expr)
 {
-    if (expr->alignof_expr.is_type)
-        return ast_make_alignof_type(expr->alignof_expr.type,
-                                     expr->alignof_expr.array_size,
-                                     expr->alignof_expr.elem_size,
+    if (expr->data.alignof_expr.is_type)
+        return ast_make_alignof_type(expr->data.alignof_expr.type,
+                                     expr->data.alignof_expr.array_size,
+                                     expr->data.alignof_expr.elem_size,
                                      expr->line, expr->column);
-    expr_t *e = clone_expr(expr->alignof_expr.expr);
+    expr_t *e = clone_expr(expr->data.alignof_expr.expr);
     if (!e)
         return NULL;
     return ast_make_alignof_expr(e, expr->line, expr->column);
@@ -228,25 +228,25 @@ static expr_t *clone_alignof(const expr_t *expr)
 /* Clone a cast expression. */
 static expr_t *clone_cast(const expr_t *expr)
 {
-    expr_t *inner = clone_expr(expr->cast.expr);
+    expr_t *inner = clone_expr(expr->data.cast.expr);
     if (!inner)
         return NULL;
-    return ast_make_cast(expr->cast.type, expr->cast.array_size,
-                         expr->cast.elem_size, inner,
+    return ast_make_cast(expr->data.cast.type, expr->data.cast.array_size,
+                         expr->data.cast.elem_size, inner,
                          expr->line, expr->column);
 }
 
 /* Clone a function call expression and its arguments. */
 static expr_t *clone_call(const expr_t *expr)
 {
-    size_t n = expr->call.arg_count;
+    size_t n = expr->data.call.arg_count;
     expr_t **args = NULL;
     if (n) {
         args = malloc(n * sizeof(*args));
         if (!args)
             return NULL;
         for (size_t i = 0; i < n; i++) {
-            args[i] = clone_expr(expr->call.args[i]);
+            args[i] = clone_expr(expr->data.call.args[i]);
             if (!args[i]) {
                 for (size_t j = 0; j < i; j++)
                     ast_free_expr(args[j]);
@@ -255,29 +255,29 @@ static expr_t *clone_call(const expr_t *expr)
             }
         }
     }
-    return ast_make_call(expr->call.name, args, n, expr->line, expr->column);
+    return ast_make_call(expr->data.call.name, args, n, expr->line, expr->column);
 }
 
 /* Clone a compound literal expression and its initializer list. */
 static expr_t *clone_complit(const expr_t *expr)
 {
-    expr_t *init = clone_expr(expr->compound.init);
+    expr_t *init = clone_expr(expr->data.compound.init);
     init_entry_t *list = NULL;
-    if (expr->compound.init_count) {
-        list = malloc(expr->compound.init_count * sizeof(*list));
+    if (expr->data.compound.init_count) {
+        list = malloc(expr->data.compound.init_count * sizeof(*list));
         if (!list) {
             ast_free_expr(init);
             return NULL;
         }
-        for (size_t i = 0; i < expr->compound.init_count; i++) {
-            list[i].kind = expr->compound.init_list[i].kind;
-            list[i].field = expr->compound.init_list[i].field ?
-                            vc_strdup(expr->compound.init_list[i].field) : NULL;
-            list[i].index = clone_expr(expr->compound.init_list[i].index);
-            list[i].value = clone_expr(expr->compound.init_list[i].value);
-            if ((expr->compound.init_list[i].field && !list[i].field) ||
-                (expr->compound.init_list[i].index && !list[i].index) ||
-                (expr->compound.init_list[i].value && !list[i].value)) {
+        for (size_t i = 0; i < expr->data.compound.init_count; i++) {
+            list[i].kind = expr->data.compound.init_list[i].kind;
+            list[i].field = expr->data.compound.init_list[i].field ?
+                            vc_strdup(expr->data.compound.init_list[i].field) : NULL;
+            list[i].index = clone_expr(expr->data.compound.init_list[i].index);
+            list[i].value = clone_expr(expr->data.compound.init_list[i].value);
+            if ((expr->data.compound.init_list[i].field && !list[i].field) ||
+                (expr->data.compound.init_list[i].index && !list[i].index) ||
+                (expr->data.compound.init_list[i].value && !list[i].value)) {
                 for (size_t j = 0; j <= i; j++) {
                     free(list[j].field);
                     ast_free_expr(list[j].index);
@@ -289,9 +289,9 @@ static expr_t *clone_complit(const expr_t *expr)
             }
         }
     }
-    return ast_make_compound(expr->compound.type, expr->compound.array_size,
-                             expr->compound.elem_size, init, list,
-                             expr->compound.init_count, expr->line,
+    return ast_make_compound(expr->data.compound.type, expr->data.compound.array_size,
+                             expr->data.compound.elem_size, init, list,
+                             expr->data.compound.init_count, expr->line,
                              expr->column);
 }
 

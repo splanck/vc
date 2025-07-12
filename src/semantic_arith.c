@@ -99,7 +99,7 @@ type_kind_t check_binary(expr_t *left, expr_t *right, symtable_t *vars,
         size_t esz = 4;
         expr_t *ptexpr = (lt == TYPE_PTR) ? left : right;
         if (ptexpr->kind == EXPR_IDENT) {
-            symbol_t *s = symtable_lookup(vars, ptexpr->ident.name);
+            symbol_t *s = symtable_lookup(vars, ptexpr->data.ident.name);
             if (s && s->elem_size)
                 esz = s->elem_size;
         }
@@ -113,7 +113,7 @@ type_kind_t check_binary(expr_t *left, expr_t *right, symtable_t *vars,
     } else if (lt == TYPE_PTR && rt == TYPE_PTR && op == BINOP_SUB) {
         size_t esz = 4;
         if (left->kind == EXPR_IDENT) {
-            symbol_t *s = symtable_lookup(vars, left->ident.name);
+            symbol_t *s = symtable_lookup(vars, left->data.ident.name);
             if (s && s->elem_size)
                 esz = s->elem_size;
         }
@@ -150,7 +150,7 @@ static type_kind_t unary_deref(expr_t *opnd, symtable_t *vars,
         if (out) {
             int restr = 0;
             if (opnd->kind == EXPR_IDENT) {
-                symbol_t *s = symtable_lookup(vars, opnd->ident.name);
+                symbol_t *s = symtable_lookup(vars, opnd->data.ident.name);
                 restr = s ? s->is_restrict : 0;
             }
             *out = restr ? ir_build_load_ptr_res(ir, addr)
@@ -172,7 +172,7 @@ static type_kind_t unary_addr(expr_t *opnd, symtable_t *vars,
         error_set(opnd->line, opnd->column, error_current_file, error_current_function);
         return TYPE_UNKNOWN;
     }
-    symbol_t *sym = symtable_lookup(vars, opnd->ident.name);
+    symbol_t *sym = symtable_lookup(vars, opnd->data.ident.name);
     if (!sym) {
         error_set(opnd->line, opnd->column, error_current_file, error_current_function);
         return TYPE_UNKNOWN;
@@ -229,14 +229,14 @@ static type_kind_t unary_incdec(expr_t *expr, symtable_t *vars,
                                 symtable_t *funcs, ir_builder_t *ir,
                                 ir_value_t *out)
 {
-    expr_t *opnd = expr->unary.operand;
+    expr_t *opnd = expr->data.unary.operand;
     (void)funcs;
     if (opnd->kind != EXPR_IDENT) {
         error_set(opnd->line, opnd->column, error_current_file, error_current_function);
         return TYPE_UNKNOWN;
     }
 
-    symbol_t *sym = symtable_lookup(vars, opnd->ident.name);
+    symbol_t *sym = symtable_lookup(vars, opnd->data.ident.name);
     if (!sym || !(is_intlike(sym->type) || is_floatlike(sym->type) ||
                   sym->type == TYPE_PTR)) {
         error_set(opnd->line, opnd->column, error_current_file, error_current_function);
@@ -250,8 +250,8 @@ static type_kind_t unary_incdec(expr_t *expr, symtable_t *vars,
 
     if (sym->type == TYPE_PTR) {
         int esz = sym->elem_size ? (int)sym->elem_size : 4;
-        int step = (expr->unary.op == UNOP_PREDEC ||
-                    expr->unary.op == UNOP_POSTDEC)
+        int step = (expr->data.unary.op == UNOP_PREDEC ||
+                    expr->data.unary.op == UNOP_POSTDEC)
                        ? -1
                        : 1;
         ir_value_t idx = ir_build_const(ir, step);
@@ -263,8 +263,8 @@ static type_kind_t unary_incdec(expr_t *expr, symtable_t *vars,
         else
             ir_build_store(ir, sym->ir_name, upd);
         if (out)
-            *out = (expr->unary.op == UNOP_PREINC ||
-                    expr->unary.op == UNOP_PREDEC)
+            *out = (expr->data.unary.op == UNOP_PREINC ||
+                    expr->data.unary.op == UNOP_PREDEC)
                        ? upd
                        : cur;
         return TYPE_PTR;
@@ -273,13 +273,13 @@ static type_kind_t unary_incdec(expr_t *expr, symtable_t *vars,
     ir_value_t one = ir_build_const(ir, 1);
     ir_op_t ir_op;
     if (is_floatlike(sym->type))
-        ir_op = (expr->unary.op == UNOP_PREDEC ||
-                 expr->unary.op == UNOP_POSTDEC)
+        ir_op = (expr->data.unary.op == UNOP_PREDEC ||
+                 expr->data.unary.op == UNOP_POSTDEC)
                     ? (sym->type == TYPE_LDOUBLE ? IR_LFSUB : IR_FSUB)
                     : (sym->type == TYPE_LDOUBLE ? IR_LFADD : IR_FADD);
     else
-        ir_op = (expr->unary.op == UNOP_PREDEC ||
-                 expr->unary.op == UNOP_POSTDEC)
+        ir_op = (expr->data.unary.op == UNOP_PREDEC ||
+                 expr->data.unary.op == UNOP_POSTDEC)
                     ? IR_SUB
                     : IR_ADD;
     ir_value_t upd = ir_build_binop(ir, ir_op, cur, one);
@@ -290,8 +290,8 @@ static type_kind_t unary_incdec(expr_t *expr, symtable_t *vars,
     else
         ir_build_store(ir, sym->ir_name, upd);
     if (out)
-        *out = (expr->unary.op == UNOP_PREINC ||
-                expr->unary.op == UNOP_PREDEC)
+        *out = (expr->data.unary.op == UNOP_PREINC ||
+                expr->data.unary.op == UNOP_PREDEC)
                    ? upd
                    : cur;
     return sym->type;
@@ -301,15 +301,15 @@ type_kind_t check_unary_expr(expr_t *expr, symtable_t *vars,
                              symtable_t *funcs, ir_builder_t *ir,
                              ir_value_t *out)
 {
-    switch (expr->unary.op) {
+    switch (expr->data.unary.op) {
     case UNOP_DEREF:
-        return unary_deref(expr->unary.operand, vars, funcs, ir, out);
+        return unary_deref(expr->data.unary.operand, vars, funcs, ir, out);
     case UNOP_ADDR:
-        return unary_addr(expr->unary.operand, vars, funcs, ir, out);
+        return unary_addr(expr->data.unary.operand, vars, funcs, ir, out);
     case UNOP_NEG:
-        return unary_neg(expr->unary.operand, vars, funcs, ir, out);
+        return unary_neg(expr->data.unary.operand, vars, funcs, ir, out);
     case UNOP_NOT:
-        return unary_not(expr->unary.operand, vars, funcs, ir, out);
+        return unary_not(expr->data.unary.operand, vars, funcs, ir, out);
     case UNOP_PREINC: case UNOP_PREDEC:
     case UNOP_POSTINC: case UNOP_POSTDEC:
         return unary_incdec(expr, vars, funcs, ir, out);
@@ -327,25 +327,25 @@ type_kind_t check_binary_expr(expr_t *expr, symtable_t *vars,
                               symtable_t *funcs, ir_builder_t *ir,
                               ir_value_t *out)
 {
-    if (expr->binary.op == BINOP_LOGAND || expr->binary.op == BINOP_LOGOR) {
+    if (expr->data.binary.op == BINOP_LOGAND || expr->data.binary.op == BINOP_LOGOR) {
         ir_value_t lval, rval;
-        if (!is_intlike(check_expr(expr->binary.left, vars, funcs, ir, &lval))) {
-            error_set(expr->binary.left->line, expr->binary.left->column, error_current_file, error_current_function);
+        if (!is_intlike(check_expr(expr->data.binary.left, vars, funcs, ir, &lval))) {
+            error_set(expr->data.binary.left->line, expr->data.binary.left->column, error_current_file, error_current_function);
             return TYPE_UNKNOWN;
         }
-        if (!is_intlike(check_expr(expr->binary.right, vars, funcs, ir, &rval))) {
-            error_set(expr->binary.right->line, expr->binary.right->column, error_current_file, error_current_function);
+        if (!is_intlike(check_expr(expr->data.binary.right, vars, funcs, ir, &rval))) {
+            error_set(expr->data.binary.right->line, expr->data.binary.right->column, error_current_file, error_current_function);
             return TYPE_UNKNOWN;
         }
         if (out) {
-            if (expr->binary.op == BINOP_LOGAND)
+            if (expr->data.binary.op == BINOP_LOGAND)
                 *out = ir_build_logand(ir, lval, rval);
             else
                 *out = ir_build_logor(ir, lval, rval);
         }
         return TYPE_INT;
     }
-    return check_binary(expr->binary.left, expr->binary.right, vars, funcs,
-                        ir, out, expr->binary.op);
+    return check_binary(expr->data.binary.left, expr->data.binary.right, vars, funcs,
+                        ir, out, expr->data.binary.op);
 }
 

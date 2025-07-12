@@ -133,8 +133,8 @@ static void test_parser_imag_literal(void)
     parser_t p; parser_init(&p, toks, count);
     expr_t *expr = parser_parse_expr(&p);
     ASSERT(expr && expr->kind == EXPR_COMPLEX_LITERAL);
-    ASSERT(expr->complex_lit.real == 0.0);
-    ASSERT(expr->complex_lit.imag == 2.0);
+    ASSERT(expr->data.complex_lit.real == 0.0);
+    ASSERT(expr->data.complex_lit.imag == 2.0);
     ast_free_expr(expr);
     lexer_free_tokens(toks, count);
 }
@@ -148,8 +148,8 @@ static void test_parser_complex_literal(void)
     parser_t p; parser_init(&p, toks, count);
     expr_t *expr = parser_parse_expr(&p);
     ASSERT(expr && expr->kind == EXPR_COMPLEX_LITERAL);
-    ASSERT(expr->complex_lit.real == 1.0);
-    ASSERT(expr->complex_lit.imag == 2.0);
+    ASSERT(expr->data.complex_lit.real == 1.0);
+    ASSERT(expr->data.complex_lit.imag == 2.0);
     ast_free_expr(expr);
     lexer_free_tokens(toks, count);
 }
@@ -164,14 +164,14 @@ static void test_parser_expr(void)
     expr_t *expr = parser_parse_expr(&p);
     ASSERT(expr);
     ASSERT(expr->kind == EXPR_BINARY);
-    ASSERT(expr->binary.op == BINOP_ADD);
-    expr_t *left = expr->binary.left;
-    expr_t *right = expr->binary.right;
-    ASSERT(left && left->kind == EXPR_NUMBER && strcmp(left->number.value, "1") == 0);
+    ASSERT(expr->data.binary.op == BINOP_ADD);
+    expr_t *left = expr->data.binary.left;
+    expr_t *right = expr->data.binary.right;
+    ASSERT(left && left->kind == EXPR_NUMBER && strcmp(left->data.number.value, "1") == 0);
     ASSERT(right && right->kind == EXPR_BINARY);
-    ASSERT(right->binary.op == BINOP_MUL);
-    ASSERT(right->binary.left->kind == EXPR_NUMBER && strcmp(right->binary.left->number.value, "2") == 0);
-    ASSERT(right->binary.right->kind == EXPR_NUMBER && strcmp(right->binary.right->number.value, "3") == 0);
+    ASSERT(right->data.binary.op == BINOP_MUL);
+    ASSERT(right->data.binary.left->kind == EXPR_NUMBER && strcmp(right->data.binary.left->data.number.value, "2") == 0);
+    ASSERT(right->data.binary.right->kind == EXPR_NUMBER && strcmp(right->data.binary.right->data.number.value, "3") == 0);
     ast_free_expr(expr);
     lexer_free_tokens(toks, count);
 }
@@ -186,7 +186,7 @@ static void test_parser_stmt_return(void)
     stmt_t *stmt = parser_parse_stmt(&p);
     ASSERT(stmt);
     ASSERT(stmt->kind == STMT_RETURN);
-    ASSERT(stmt->ret.expr->kind == EXPR_NUMBER && strcmp(stmt->ret.expr->number.value, "5") == 0);
+    ASSERT(stmt->ret.expr->kind == EXPR_NUMBER && strcmp(stmt->ret.expr->data.number.value, "5") == 0);
     ast_free_stmt(stmt);
     lexer_free_tokens(toks, count);
 }
@@ -219,7 +219,7 @@ static void test_parser_var_decl_init(void)
     ASSERT(strcmp(stmt->var_decl.name, "x") == 0);
     ASSERT(stmt->var_decl.type == TYPE_INT);
     ASSERT(stmt->var_decl.init && stmt->var_decl.init->kind == EXPR_NUMBER &&
-           strcmp(stmt->var_decl.init->number.value, "5") == 0);
+           strcmp(stmt->var_decl.init->data.number.value, "5") == 0);
     ast_free_stmt(stmt);
     lexer_free_tokens(toks, count);
 }
@@ -357,10 +357,10 @@ static void test_parser_index_expr(void)
     parser_t p; parser_init(&p, toks, count);
     expr_t *expr = parser_parse_expr(&p);
     ASSERT(expr && expr->kind == EXPR_INDEX);
-    ASSERT(expr->index.array->kind == EXPR_IDENT);
-    ASSERT(strcmp(expr->index.array->ident.name, "a") == 0);
-    ASSERT(expr->index.index->kind == EXPR_NUMBER &&
-           strcmp(expr->index.index->number.value, "1") == 0);
+    ASSERT(expr->data.index.array->kind == EXPR_IDENT);
+    ASSERT(strcmp(expr->data.index.array->data.ident.name, "a") == 0);
+    ASSERT(expr->data.index.index->kind == EXPR_NUMBER &&
+           strcmp(expr->data.index.index->data.number.value, "1") == 0);
     ast_free_expr(expr);
     lexer_free_tokens(toks, count);
 }
@@ -375,9 +375,9 @@ static void test_parser_unary_neg(void)
     expr_t *expr = parser_parse_expr(&p);
     ASSERT(expr);
     ASSERT(expr->kind == EXPR_UNARY);
-    ASSERT(expr->unary.op == UNOP_NEG);
-    ASSERT(expr->unary.operand->kind == EXPR_NUMBER &&
-           strcmp(expr->unary.operand->number.value, "5") == 0);
+    ASSERT(expr->data.unary.op == UNOP_NEG);
+    ASSERT(expr->data.unary.operand->kind == EXPR_NUMBER &&
+           strcmp(expr->data.unary.operand->data.number.value, "5") == 0);
     ast_free_expr(expr);
     lexer_free_tokens(toks, count);
 }
@@ -391,11 +391,11 @@ static void test_parser_pointer_arith(void)
     parser_t p; parser_init(&p, toks, count);
     expr_t *expr = parser_parse_expr(&p);
     ASSERT(expr && expr->kind == EXPR_BINARY);
-    ASSERT(expr->binary.op == BINOP_ADD);
-    ASSERT(expr->binary.left->kind == EXPR_IDENT &&
-           strcmp(expr->binary.left->ident.name, "p") == 0);
-    ASSERT(expr->binary.right->kind == EXPR_NUMBER &&
-           strcmp(expr->binary.right->number.value, "1") == 0);
+    ASSERT(expr->data.binary.op == BINOP_ADD);
+    ASSERT(expr->data.binary.left->kind == EXPR_IDENT &&
+           strcmp(expr->data.binary.left->data.ident.name, "p") == 0);
+    ASSERT(expr->data.binary.right->kind == EXPR_NUMBER &&
+           strcmp(expr->data.binary.right->data.number.value, "1") == 0);
     ast_free_expr(expr);
     lexer_free_tokens(toks, count);
 }
@@ -409,7 +409,7 @@ static void test_parser_mod(void)
     parser_t p; parser_init(&p, toks, count);
     expr_t *expr = parser_parse_expr(&p);
     ASSERT(expr && expr->kind == EXPR_BINARY);
-    ASSERT(expr->binary.op == BINOP_MOD);
+    ASSERT(expr->data.binary.op == BINOP_MOD);
     ast_free_expr(expr);
     lexer_free_tokens(toks, count);
 }
@@ -442,8 +442,8 @@ static void test_parser_unary_expr(void)
     parser_t p; parser_init(&p, toks, count);
     expr_t *expr = parser_parse_expr(&p);
     ASSERT(expr && expr->kind == EXPR_UNARY);
-    ASSERT(expr->unary.op == UNOP_NEG);
-    ASSERT(expr->unary.operand->kind == EXPR_BINARY);
+    ASSERT(expr->data.unary.op == UNOP_NEG);
+    ASSERT(expr->data.unary.operand->kind == EXPR_BINARY);
     ast_free_expr(expr);
     lexer_free_tokens(toks, count);
 }
@@ -457,11 +457,11 @@ static void test_parser_logical(void)
     parser_t p; parser_init(&p, toks, count);
     expr_t *expr = parser_parse_expr(&p);
     ASSERT(expr && expr->kind == EXPR_BINARY);
-    ASSERT(expr->binary.op == BINOP_LOGOR);
-    ASSERT(expr->binary.left->kind == EXPR_BINARY &&
-           expr->binary.left->binary.op == BINOP_LOGAND);
-    ASSERT(expr->binary.right->kind == EXPR_UNARY &&
-           expr->binary.right->unary.op == UNOP_NOT);
+    ASSERT(expr->data.binary.op == BINOP_LOGOR);
+    ASSERT(expr->data.binary.left->kind == EXPR_BINARY &&
+           expr->data.binary.left->data.binary.op == BINOP_LOGAND);
+    ASSERT(expr->data.binary.right->kind == EXPR_UNARY &&
+           expr->data.binary.right->data.unary.op == UNOP_NOT);
     ast_free_expr(expr);
     lexer_free_tokens(toks, count);
 }
@@ -475,9 +475,9 @@ static void test_parser_conditional(void)
     parser_t p; parser_init(&p, toks, count);
     expr_t *expr = parser_parse_expr(&p);
     ASSERT(expr && expr->kind == EXPR_COND);
-    ASSERT(expr->cond.cond->kind == EXPR_IDENT);
-    ASSERT(expr->cond.then_expr->kind == EXPR_IDENT);
-    ASSERT(expr->cond.else_expr->kind == EXPR_IDENT);
+    ASSERT(expr->data.cond.cond->kind == EXPR_IDENT);
+    ASSERT(expr->data.cond.then_expr->kind == EXPR_IDENT);
+    ASSERT(expr->data.cond.else_expr->kind == EXPR_IDENT);
     ast_free_expr(expr);
     lexer_free_tokens(toks, count);
 }
@@ -501,8 +501,8 @@ static void test_parser_sizeof(void)
     parser_t p; parser_init(&p, toks, count);
     expr_t *expr = parser_parse_expr(&p);
     ASSERT(expr && expr->kind == EXPR_SIZEOF);
-    ASSERT(expr->sizeof_expr.is_type);
-    ASSERT(expr->sizeof_expr.type == TYPE_INT);
+    ASSERT(expr->data.sizeof_expr.is_type);
+    ASSERT(expr->data.sizeof_expr.type == TYPE_INT);
     ast_free_expr(expr);
     lexer_free_tokens(toks, count);
 }
@@ -518,7 +518,7 @@ static void test_parser_variadic_call(void)
     parser_t p; parser_init(&p, toks, count);
     expr_t *expr = parser_parse_expr(&p);
     ASSERT(expr && expr->kind == EXPR_CALL);
-    ASSERT(expr->call.arg_count == 2);
+    ASSERT(expr->data.call.arg_count == 2);
     ast_free_expr(expr);
     lexer_free_tokens(toks, count);
 }

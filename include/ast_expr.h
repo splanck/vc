@@ -15,11 +15,7 @@
 
 #include "ast.h"
 
-struct expr {
-    expr_kind_t kind;
-    size_t line;
-    size_t column;
-    union {
+union expr_data {
         struct {
             char *value;
             int is_unsigned;
@@ -117,7 +113,13 @@ struct expr {
             init_entry_t *init_list;
             size_t init_count;
         } compound;
-    };
+};
+
+struct expr {
+    expr_kind_t kind;
+    size_t line;
+    size_t column;
+    union expr_data data;
 };
 
 /* Create a numeric literal expression. */

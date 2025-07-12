@@ -125,19 +125,19 @@ static expr_t *create_assignment_node(expr_t *left, expr_t *right,
 {
     expr_t *res = NULL;
     if (left->kind == EXPR_IDENT) {
-        char *name = left->ident.name;
+        char *name = left->data.ident.name;
         free(left);
         res = ast_make_assign(name, right, line, column);
         free(name);
     } else if (left->kind == EXPR_INDEX) {
-        expr_t *arr = left->index.array;
-        expr_t *idx = left->index.index;
+        expr_t *arr = left->data.index.array;
+        expr_t *idx = left->data.index.index;
         free(left);
         res = ast_make_assign_index(arr, idx, right, line, column);
     } else {
-        expr_t *obj = left->member.object;
-        char *mem = left->member.member;
-        int via_ptr = left->member.via_ptr;
+        expr_t *obj = left->data.member.object;
+        char *mem = left->data.member.member;
+        int via_ptr = left->data.member.via_ptr;
         free(left);
         res = ast_make_assign_member(obj, mem, right, via_ptr,
                                      line, column);

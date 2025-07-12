@@ -24,8 +24,8 @@ type_kind_t check_cast_expr(expr_t *expr, symtable_t *vars,
                             ir_value_t *out)
 {
     ir_value_t val;
-    type_kind_t src = check_expr(expr->cast.expr, vars, funcs, ir, &val);
-    type_kind_t dst = expr->cast.type;
+    type_kind_t src = check_expr(expr->data.cast.expr, vars, funcs, ir, &val);
+    type_kind_t dst = expr->data.cast.type;
 
     if (src == TYPE_UNKNOWN)
         return TYPE_UNKNOWN;

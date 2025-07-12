@@ -28,11 +28,11 @@ type_kind_t check_call_expr(expr_t *expr, symtable_t *vars,
                             symtable_t *funcs, ir_builder_t *ir,
                             ir_value_t *out)
 {
-    symbol_t *fsym = symtable_lookup(funcs, expr->call.name);
+    symbol_t *fsym = symtable_lookup(funcs, expr->data.call.name);
     int via_ptr = 0;
     ir_value_t func_val;
     if (!fsym) {
-        fsym = symtable_lookup(vars, expr->call.name);
+        fsym = symtable_lookup(vars, expr->data.call.name);
         if (!fsym || fsym->type != TYPE_PTR ||
             fsym->func_ret_type == TYPE_UNKNOWN) {
             error_set(expr->line, expr->column, error_current_file, error_current_function);
@@ -45,24 +45,24 @@ type_kind_t check_call_expr(expr_t *expr, symtable_t *vars,
     int variadic = via_ptr ? fsym->func_variadic : fsym->is_variadic;
     type_kind_t *ptypes = via_ptr ? fsym->func_param_types : fsym->param_types;
 
-    if ((!variadic && expected != expr->call.arg_count) ||
-        (variadic && expr->call.arg_count < expected)) {
+    if ((!variadic && expected != expr->data.call.arg_count) ||
+        (variadic && expr->data.call.arg_count < expected)) {
         error_set(expr->line, expr->column, error_current_file, error_current_function);
         return TYPE_UNKNOWN;
     }
     ir_value_t *vals = NULL;
     type_kind_t *atypes = NULL;
-    if (expr->call.arg_count) {
-        vals = malloc(expr->call.arg_count * sizeof(*vals));
-        atypes = malloc(expr->call.arg_count * sizeof(*atypes));
+    if (expr->data.call.arg_count) {
+        vals = malloc(expr->data.call.arg_count * sizeof(*vals));
+        atypes = malloc(expr->data.call.arg_count * sizeof(*atypes));
         if (!vals || !atypes) {
             free(vals);
             free(atypes);
             return TYPE_UNKNOWN;
         }
     }
-    for (size_t i = 0; i < expr->call.arg_count; i++) {
-        type_kind_t at = check_expr(expr->call.args[i], vars, funcs, ir,
+    for (size_t i = 0; i < expr->data.call.arg_count; i++) {
+        type_kind_t at = check_expr(expr->data.call.args[i], vars, funcs, ir,
                                     &vals[i]);
         atypes[i] = at;
         if (at == TYPE_UNKNOWN) {
@@ -74,14 +74,14 @@ type_kind_t check_call_expr(expr_t *expr, symtable_t *vars,
             type_kind_t pt = ptypes[i];
             if (!(((is_intlike(pt) && is_intlike(at)) ||
                    (is_floatlike(pt) && is_floatlike(at))) || at == pt)) {
-                error_set(expr->call.args[i]->line, expr->call.args[i]->column, error_current_file, error_current_function);
+                error_set(expr->data.call.args[i]->line, expr->data.call.args[i]->column, error_current_file, error_current_function);
                 free(vals);
                 free(atypes);
                 return TYPE_UNKNOWN;
             }
         }
     }
-    for (size_t i = expr->call.arg_count; i > 0; i--) {
+    for (size_t i = expr->data.call.arg_count; i > 0; i--) {
         size_t idx = i - 1;
         type_kind_t at = atypes[idx];
         if (idx >= expected &&
@@ -103,11 +103,11 @@ type_kind_t check_call_expr(expr_t *expr, symtable_t *vars,
     }
     ir_value_t call_val = via_ptr
         ? (fsym->is_noreturn
-            ? ir_build_call_ptr_nr(ir, func_val, expr->call.arg_count + (is_aggr ? 1 : 0))
-            : ir_build_call_ptr(ir, func_val, expr->call.arg_count + (is_aggr ? 1 : 0)))
+            ? ir_build_call_ptr_nr(ir, func_val, expr->data.call.arg_count + (is_aggr ? 1 : 0))
+            : ir_build_call_ptr(ir, func_val, expr->data.call.arg_count + (is_aggr ? 1 : 0)))
         : (fsym->is_noreturn
-            ? ir_build_call_nr(ir, expr->call.name, expr->call.arg_count + (is_aggr ? 1 : 0))
-            : ir_build_call(ir, expr->call.name, expr->call.arg_count + (is_aggr ? 1 : 0)));
+            ? ir_build_call_nr(ir, expr->data.call.name, expr->data.call.arg_count + (is_aggr ? 1 : 0))
+            : ir_build_call(ir, expr->data.call.name, expr->data.call.arg_count + (is_aggr ? 1 : 0)));
     if (out)
         *out = is_aggr ? ret_ptr : call_val;
     (void)call_val;

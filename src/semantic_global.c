@@ -322,10 +322,10 @@ static int emit_global_initializer(stmt_t *decl, symbol_t *sym,
 
     if (decl->var_decl.init &&
         decl->var_decl.init->kind == EXPR_UNARY &&
-        decl->var_decl.init->unary.op == UNOP_ADDR &&
-        decl->var_decl.init->unary.operand->kind == EXPR_IDENT) {
+        decl->var_decl.init->data.unary.op == UNOP_ADDR &&
+        decl->var_decl.init->data.unary.operand->kind == EXPR_IDENT) {
         ir_build_glob_addr(ir, decl->var_decl.name,
-                           decl->var_decl.init->unary.operand->ident.name,
+                           decl->var_decl.init->data.unary.operand->data.ident.name,
                            decl->var_decl.is_static);
         return 1;
     }
