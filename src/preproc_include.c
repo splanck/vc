@@ -89,7 +89,7 @@ int handle_include(char *line, const char *dir, vector_t *macros,
 {
     strbuf_t expanded;
     strbuf_init(&expanded);
-    if (!expand_line(line, macros, &expanded, 0, 0)) {
+    if (!expand_line(line, macros, &expanded, 0, 0, ctx)) {
         strbuf_free(&expanded);
         return 0;
     }
@@ -121,7 +121,7 @@ int handle_include_next(char *line, const char *dir, vector_t *macros,
     (void)dir;
     strbuf_t expanded;
     strbuf_init(&expanded);
-    if (!expand_line(line, macros, &expanded, 0, 0)) {
+    if (!expand_line(line, macros, &expanded, 0, 0, ctx)) {
         strbuf_free(&expanded);
         return 0;
     }

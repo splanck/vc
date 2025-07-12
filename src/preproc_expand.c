@@ -212,17 +212,18 @@ static char *expand_params(const char *value, const vector_t *params, char **arg
 
 /* Expand a macro invocation and append the result to "out". */
 static int expand_macro_call(macro_t *m, char **args, vector_t *macros,
-                             strbuf_t *out, int depth)
+                             strbuf_t *out, int depth,
+                             preproc_context_t *ctx)
 {
     strbuf_t tmp;
     strbuf_init(&tmp);
     int ok;
     if (m->params.count || m->variadic) {
         char *body = expand_params(m->value, &m->params, args, m->variadic);
-        ok = expand_line(body, macros, &tmp, preproc_get_column(), depth);
+        ok = expand_line(body, macros, &tmp, preproc_get_column(ctx), depth, ctx);
         free(body);
     } else {
-        ok = expand_line(m->value, macros, &tmp, preproc_get_column(), depth);
+        ok = expand_line(m->value, macros, &tmp, preproc_get_column(ctx), depth, ctx);
     }
     if (ok)
         strbuf_append(out, tmp.data ? tmp.data : "");
@@ -309,9 +310,10 @@ static int parse_macro_arguments(macro_t *m, const char *line, size_t *pos,
  * expansion failure.
  */
 static int invoke_macro_body(macro_t *m, char **ap, vector_t *macros,
-                             strbuf_t *out, int depth)
+                             strbuf_t *out, int depth,
+                             preproc_context_t *ctx)
 {
-    if (!expand_macro_call(m, ap, macros, out, depth + 1))
+    if (!expand_macro_call(m, ap, macros, out, depth + 1, ctx))
         return -1;
     return 1;
 }
@@ -328,7 +330,8 @@ static int invoke_macro_body(macro_t *m, char **ap, vector_t *macros,
  * index after the invocation and 1 is returned.  If the invocation was
  * malformed zero is returned.  On failure a negative value is returned. */
 static int expand_user_macro(macro_t *m, const char *line, size_t *pos,
-                             vector_t *macros, strbuf_t *out, int depth)
+                             vector_t *macros, strbuf_t *out, int depth,
+                             preproc_context_t *ctx)
 {
     if (m->expanding) {
         int saved_errno = errno;
@@ -366,7 +369,7 @@ static int expand_user_macro(macro_t *m, const char *line, size_t *pos,
     m->expanding = 1;
 
     /* Invoke the macro body once arguments have been collected. */
-    if (invoke_macro_body(m, ap, macros, out, depth) < 0) {
+    if (invoke_macro_body(m, ap, macros, out, depth, ctx) < 0) {
         if (m->params.count || m->variadic) {
             free_macro_args(ap, va, m->variadic);
             free_arg_vector(&args);
@@ -400,9 +403,10 @@ static size_t read_macro_ident(const char *line, size_t pos, size_t *out_len)
 /* Dispatch the identifier between builtin and user-defined macros. */
 static int dispatch_macro(const char *line, size_t start, size_t end,
                           size_t len, vector_t *macros, strbuf_t *out,
-                          size_t column, int depth, size_t *pos)
+                          size_t column, int depth, size_t *pos,
+                          preproc_context_t *ctx)
 {
-    int r = handle_builtin_macro(line + start, len, end, column, out, pos);
+    int r = handle_builtin_macro(line + start, len, end, column, out, pos, ctx);
     if (r)
         return r;
 
@@ -410,9 +414,9 @@ static int dispatch_macro(const char *line, size_t start, size_t end,
     if (!m)
         return 0;
 
-    preproc_set_location(NULL, preproc_get_line(), column);
+    preproc_set_location(ctx, NULL, preproc_get_line(ctx), column);
     size_t p = end;
-    r = expand_user_macro(m, line, &p, macros, out, depth);
+    r = expand_user_macro(m, line, &p, macros, out, depth, ctx);
     if (r > 0)
         *pos = p;
     return r;
@@ -536,7 +540,8 @@ static int handle_pragma_operator(const char *line, size_t *pos,
 
 static int parse_macro_invocation(const char *line, size_t *pos,
                                   vector_t *macros, strbuf_t *out,
-                                  size_t column, int depth)
+                                  size_t column, int depth,
+                                  preproc_context_t *ctx)
 {
     if (depth >= MAX_MACRO_DEPTH) {
         fprintf(stderr, "Macro expansion limit exceeded\n");
@@ -554,7 +559,7 @@ static int parse_macro_invocation(const char *line, size_t *pos,
         return 0;
 
     return dispatch_macro(line, start, end, len, macros, out, column, depth,
-                          pos);
+                          pos, ctx);
 }
 
 /*
@@ -563,9 +568,10 @@ static int parse_macro_invocation(const char *line, size_t *pos,
  * macros.  Results are appended to the provided output buffer.
  */
 static int expand_token(const char *line, size_t *pos, vector_t *macros,
-                        strbuf_t *out, size_t column, int depth)
+                        strbuf_t *out, size_t column, int depth,
+                        preproc_context_t *ctx)
 {
-    int r = parse_macro_invocation(line, pos, macros, out, column, depth);
+    int r = parse_macro_invocation(line, pos, macros, out, column, depth, ctx);
     if (r < 0)
         return 0;
     if (!r)
@@ -574,7 +580,7 @@ static int expand_token(const char *line, size_t *pos, vector_t *macros,
 }
 
 int expand_line(const char *line, vector_t *macros, strbuf_t *out,
-                size_t column, int depth)
+                size_t column, int depth, preproc_context_t *ctx)
 {
     if (depth >= MAX_MACRO_DEPTH) {
         fprintf(stderr, "Macro expansion limit exceeded\n");
@@ -587,7 +593,7 @@ int expand_line(const char *line, vector_t *macros, strbuf_t *out,
             continue;
         }
         size_t col = column ? column : i + 1;
-        if (!expand_token(line, &i, macros, out, col, depth))
+        if (!expand_token(line, &i, macros, out, col, depth, ctx))
             return 0;
     }
     return 1;

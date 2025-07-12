@@ -79,7 +79,7 @@ int process_file(const char *path, vector_t *macros,
 
     line_state_pop(ctx, prev_file, prev_delta);
 
-    include_stack_pop(stack);
+    include_stack_pop(stack, ctx);
 
     cleanup_file_resources(text, lines, dir);
     return ok;
@@ -100,6 +100,13 @@ static void init_preproc_vectors(preproc_context_t *ctx, vector_t *macros,
     ctx->in_comment = 0;
     ctx->current_file = NULL;
     ctx->line_delta = 0;
+    ctx->file = "";
+    ctx->line = 0;
+    ctx->column = 1;
+    ctx->func = NULL;
+    ctx->base_file = "";
+    ctx->include_level = 0;
+    ctx->counter = 0;
     strbuf_init(out);
 }
 

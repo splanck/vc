@@ -46,8 +46,8 @@ void preproc_apply_line_directive(preproc_context_t *ctx,
         free(ctx->current_file);
         ctx->current_file = vc_strdup(file);
     }
-    ctx->line_delta = line - ((long)preproc_get_line() + 1);
-    preproc_set_location(ctx->current_file, (size_t)line - 1, 1);
+    ctx->line_delta = line - ((long)preproc_get_line(ctx) + 1);
+    preproc_set_location(ctx, ctx->current_file, (size_t)line - 1, 1);
 }
 
 int include_stack_contains(vector_t *stack, const char *path)
@@ -66,7 +66,8 @@ int include_stack_contains(vector_t *stack, const char *path)
     return 0;
 }
 
-int include_stack_push(vector_t *stack, const char *path, size_t idx)
+int include_stack_push(vector_t *stack, const char *path, size_t idx,
+                       preproc_context_t *ctx)
 {
     char *canon = canonical_path(path);
     if (!canon) {
@@ -80,12 +81,12 @@ int include_stack_push(vector_t *stack, const char *path, size_t idx)
         return 0;
     }
     if (stack->count == 1)
-        preproc_set_base_file(canon);
-    preproc_set_include_level(stack->count - 1);
+        preproc_set_base_file(ctx, canon);
+    preproc_set_include_level(ctx, stack->count - 1);
     return 1;
 }
 
-void include_stack_pop(vector_t *stack)
+void include_stack_pop(vector_t *stack, preproc_context_t *ctx)
 {
     if (stack->count) {
         include_entry_t *e = &((include_entry_t *)stack->data)[stack->count - 1];
@@ -93,9 +94,9 @@ void include_stack_pop(vector_t *stack)
         stack->count--;
     }
     if (stack->count)
-        preproc_set_include_level(stack->count - 1);
+        preproc_set_include_level(ctx, stack->count - 1);
     else
-        preproc_set_include_level(0);
+        preproc_set_include_level(ctx, 0);
 }
 
 static char *read_file_lines_internal(const char *path, char ***out_lines)
@@ -186,7 +187,7 @@ int load_and_register_file(const char *path, vector_t *stack, size_t idx,
     if (!load_file_lines(path, out_lines, out_dir, out_text))
         return 0;
 
-    if (!include_stack_push(stack, path, idx)) {
+    if (!include_stack_push(stack, path, idx, ctx)) {
         free(*out_lines);
         free(*out_text);
         free(*out_dir);
@@ -197,7 +198,7 @@ int load_and_register_file(const char *path, vector_t *stack, size_t idx,
         free(*out_lines);
         free(*out_text);
         free(*out_dir);
-        include_stack_pop(stack);
+        include_stack_pop(stack, ctx);
         return 0;
     }
 
@@ -212,7 +213,8 @@ int process_all_lines(char **lines, const char *path, const char *dir,
     /* defined in preproc_directives.c */
     for (size_t i = 0; lines[i]; i++) {
         size_t line = (size_t)((long)(i + 1) + ctx->line_delta);
-        preproc_set_location(ctx->current_file ? ctx->current_file : path,
+        preproc_set_location(ctx,
+                             ctx->current_file ? ctx->current_file : path,
                              line, 1);
         if (!process_line(lines[i], dir, macros, conds, out, incdirs, stack,
                           ctx))

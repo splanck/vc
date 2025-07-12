@@ -32,6 +32,13 @@ typedef struct {
     int in_comment;             /* tracks multi-line comment state */
     char *current_file;         /* file name for __FILE__ macro */
     long line_delta;            /* offset applied to __LINE__ */
+    const char *file;           /* builtin __FILE__ value */
+    size_t line;                /* builtin __LINE__ value */
+    size_t column;              /* builtin column number */
+    const char *func;           /* builtin __func__ value */
+    const char *base_file;      /* builtin __BASE_FILE__ value */
+    size_t include_level;       /* builtin __INCLUDE_LEVEL__ value */
+    unsigned long counter;      /* builtin __COUNTER__ value */
 } preproc_context_t;
 
 /* Free the dependency lists stored in the context */

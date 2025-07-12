@@ -39,7 +39,7 @@ void macro_free(macro_t *m);
 
 /* Expand macros in one line */
 int expand_line(const char *line, vector_t *macros, strbuf_t *out,
-                size_t column, int depth);
+                size_t column, int depth, preproc_context_t *ctx);
 
 /* Check whether a macro exists */
 int is_macro_defined(vector_t *macros, const char *name);
@@ -48,10 +48,11 @@ int is_macro_defined(vector_t *macros, const char *name);
 void remove_macro(vector_t *macros, const char *name);
 
 /* Update builtin macro expansion context */
-void preproc_set_location(const char *file, size_t line, size_t column);
+void preproc_set_location(preproc_context_t *ctx, const char *file,
+                          size_t line, size_t column);
 
 /* Set the current function name for __func__ expansion */
-void preproc_set_function(const char *name);
+void preproc_set_function(preproc_context_t *ctx, const char *name);
 
 /* Add a macro definition to the table */
 int add_macro(const char *name, const char *value, vector_t *params,

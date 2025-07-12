@@ -15,8 +15,9 @@ typedef struct {
 } include_entry_t;
 
 int include_stack_contains(vector_t *stack, const char *path);
-int include_stack_push(vector_t *stack, const char *path, size_t idx);
-void include_stack_pop(vector_t *stack);
+int include_stack_push(vector_t *stack, const char *path, size_t idx,
+                       preproc_context_t *ctx);
+void include_stack_pop(vector_t *stack, preproc_context_t *ctx);
 
 char *read_file_lines(const char *path, char ***out_lines);
 int load_file_lines(const char *path, char ***out_lines,

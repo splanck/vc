@@ -29,8 +29,9 @@ int main(void)
     add_str_macro(&macros);
 
     strbuf_t sb; strbuf_init(&sb);
-    preproc_set_location("t.c", 1, 1);
-    ASSERT(expand_line("STR(\"a\\\"b\\\\c\")", &macros, &sb, 0, 0));
+    preproc_context_t ctx = {0};
+    preproc_set_location(&ctx, "t.c", 1, 1);
+    ASSERT(expand_line("STR(\"a\\\"b\\\\c\")", &macros, &sb, 0, 0, &ctx));
     ASSERT(strcmp(sb.data, "\"\\\"a\\\\\\\"b\\\\\\\\c\\\"\"") == 0);
     strbuf_free(&sb);
 
