@@ -32,10 +32,10 @@ make PLATFORM=generic
 This disables any NetBSD specific extensions.
 
 On Linux the compiler also searches `/usr/include/<multiarch>` for headers.
-The multiarch directory is determined at build time using `gcc -print-multiarch`
-(via `$(CC)` by default) and falls back to `x86_64-linux-gnu` when detection
-fails.  The detected value is passed to the build as the `MULTIARCH` variable
-and may be overridden if needed:
+The multiarch directory is detected at runtime using `gcc -print-multiarch`
+(via the `gcc` in `PATH`). If detection fails the generic directory
+`x86_64-linux-gnu` is used.  The detected value can be overridden at build time
+with the `MULTIARCH` variable if needed:
 
 ```sh
 make MULTIARCH=arm-linux-gnueabihf

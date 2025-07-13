@@ -12,27 +12,51 @@
 
 /* Default system include search paths */
 #ifdef __linux__
-#ifndef MULTIARCH
-#define MULTIARCH "x86_64-linux-gnu"
+#ifndef MULTIARCH_FALLBACK
+#define MULTIARCH_FALLBACK "x86_64-linux-gnu"
 #endif
 #endif
 
-#ifndef GCC_INCLUDE_DIR
-# ifdef __linux__
-#  define FALLBACK_GCC_INCLUDE_DIR "/usr/lib/gcc/" MULTIARCH "/include"
-# else
-#  define FALLBACK_GCC_INCLUDE_DIR "/usr/lib/gcc/include"
-# endif
-#else
-# define FALLBACK_GCC_INCLUDE_DIR GCC_INCLUDE_DIR
-#endif
 
 #if !defined(GCC_INCLUDE_DIR)
 static char *gcc_include_cached = NULL;
 static int gcc_include_initialized = 0;
 #endif
 
+static char *multiarch_cached = NULL;
+static int multiarch_initialized = 0;
 static int std_dirs_initialized = 0;
+
+static const char *get_multiarch_dir(void)
+{
+#if defined(__linux__)
+    if (!multiarch_initialized) {
+        multiarch_initialized = 1;
+        FILE *fp = popen("gcc -print-multiarch 2>/dev/null", "r");
+        if (fp) {
+            char buf[256];
+            if (fgets(buf, sizeof(buf), fp)) {
+                size_t len = strlen(buf);
+                while (len && (buf[len-1] == '\n' || buf[len-1] == '\r'))
+                    buf[--len] = '\0';
+                if (len)
+                    multiarch_cached = vc_strndup(buf, len);
+            }
+            pclose(fp);
+        }
+        if (!multiarch_cached) {
+#ifdef MULTIARCH
+            multiarch_cached = vc_strdup(MULTIARCH);
+#else
+            multiarch_cached = vc_strdup(MULTIARCH_FALLBACK);
+#endif
+        }
+    }
+    return multiarch_cached;
+#else
+    return NULL;
+#endif
+}
 
 static const char *get_gcc_include_dir(void)
 {
@@ -53,8 +77,16 @@ static const char *get_gcc_include_dir(void)
             }
             pclose(fp);
         }
-        if (!gcc_include_cached)
-            gcc_include_cached = vc_strdup(FALLBACK_GCC_INCLUDE_DIR);
+        if (!gcc_include_cached) {
+#if defined(__linux__)
+            const char *multi = get_multiarch_dir();
+            size_t len = strlen("/usr/lib/gcc/") + strlen(multi) + strlen("/include");
+            gcc_include_cached = vc_alloc_or_exit(len + 1);
+            snprintf(gcc_include_cached, len + 1, "/usr/lib/gcc/%s/include", multi);
+#else
+            gcc_include_cached = vc_strdup("/usr/lib/gcc/include");
+#endif
+        }
     }
     return gcc_include_cached;
 #endif
@@ -64,10 +96,10 @@ static void init_std_include_dirs(void);
 
 static const char *std_include_dirs[] = {
 #if defined(__linux__)
-    "/usr/include/" MULTIARCH,
-    NULL,
+    NULL, /* /usr/include/<multiarch> */
+    NULL, /* gcc include */
 #elif defined(__NetBSD__) || defined(__FreeBSD__)
-    NULL,
+    NULL, /* gcc include */
 #endif
     "/usr/local/include",
     "/usr/include",
@@ -79,6 +111,11 @@ static void init_std_include_dirs(void)
     if (std_dirs_initialized)
         return;
 #if defined(__linux__)
+    const char *multi = get_multiarch_dir();
+    size_t len = strlen("/usr/include/") + strlen(multi);
+    char *path = vc_alloc_or_exit(len + 1);
+    snprintf(path, len + 1, "/usr/include/%s", multi);
+    std_include_dirs[0] = path;
     std_include_dirs[1] = get_gcc_include_dir();
 #elif defined(__NetBSD__) || defined(__FreeBSD__)
     std_include_dirs[0] = get_gcc_include_dir();
@@ -339,7 +376,12 @@ void preproc_path_cleanup(void)
     gcc_include_initialized = 0;
 #endif
 #if defined(__linux__)
+    free((char *)std_include_dirs[0]);
+    std_include_dirs[0] = NULL;
     std_include_dirs[1] = NULL;
+    free(multiarch_cached);
+    multiarch_cached = NULL;
+    multiarch_initialized = 0;
 #elif defined(__NetBSD__) || defined(__FreeBSD__)
     std_include_dirs[0] = NULL;
 #endif
