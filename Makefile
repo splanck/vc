@@ -1,7 +1,7 @@
 CC ?= gcc
 CFLAGS ?= -Wall -Wextra -Wpedantic -Wconversion -std=c99
 OPTFLAGS ?=
-MULTIARCH := $(shell $(CC) -print-multiarch 2>/dev/null || echo x86_64-linux-gnu)
+MULTIARCH ?= $(shell $(CC) -print-multiarch 2>/dev/null || echo x86_64-linux-gnu)
 GCC_INCLUDE_DIR := $(shell $(CC) -print-file-name=include | tr -d '\n')
 BIN = vc
 # The resulting binary accepts -c/--compile to assemble objects using cc
