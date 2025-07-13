@@ -45,7 +45,8 @@ int process_file(const char *path, vector_t *macros,
                         preproc_context_t *ctx, size_t idx)
 {
     if (stack->count >= ctx->max_include_depth) {
-        fprintf(stderr, "Include depth limit exceeded\n");
+        fprintf(stderr, "Include depth limit exceeded: %s (depth %zu)\n",
+                path, stack->count);
         return 0;
     }
     char **lines;
