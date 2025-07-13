@@ -114,6 +114,8 @@ int gather_varargs(vector_t *args, size_t fixed,
     }
     char *va = vc_strdup(sb.data ? sb.data : "");
     strbuf_free(&sb);
+    if (!va)
+        return 0;
     char **ap = malloc((fixed + 1) * sizeof(char *));
     if (!ap) {
         vc_oom();

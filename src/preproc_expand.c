@@ -237,6 +237,8 @@ static char *expand_params(const char *value, const vector_t *params, char **arg
     }
     char *out = vc_strdup(sb.data ? sb.data : "");
     strbuf_free(&sb);
+    if (!out)
+        vc_oom();
     return out;
 }
 
@@ -515,6 +517,8 @@ static char *decode_string_literal(const char *s, size_t len)
 
     char *res = vc_strdup(sb.data ? sb.data : "");
     strbuf_free(&sb);
+    if (!res)
+        vc_oom();
     return res;
 }
 
