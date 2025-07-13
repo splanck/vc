@@ -27,15 +27,20 @@
 # define FALLBACK_GCC_INCLUDE_DIR GCC_INCLUDE_DIR
 #endif
 
+#if !defined(GCC_INCLUDE_DIR)
+static char *gcc_include_cached = NULL;
+static int gcc_include_initialized = 0;
+#endif
+
+static int std_dirs_initialized = 0;
+
 static const char *get_gcc_include_dir(void)
 {
 #ifdef GCC_INCLUDE_DIR
     return GCC_INCLUDE_DIR;
 #else
-    static char *cached = NULL;
-    static int initialized = 0;
-    if (!initialized) {
-        initialized = 1;
+    if (!gcc_include_initialized) {
+        gcc_include_initialized = 1;
         FILE *fp = popen("gcc -print-file-name=include 2>/dev/null", "r");
         if (fp) {
             char buf[4096];
@@ -44,14 +49,14 @@ static const char *get_gcc_include_dir(void)
                 while (len && (buf[len-1] == '\n' || buf[len-1] == '\r'))
                     buf[--len] = '\0';
                 if (len)
-                    cached = vc_strndup(buf, len);
+                    gcc_include_cached = vc_strndup(buf, len);
             }
             pclose(fp);
         }
-        if (!cached)
-            cached = vc_strdup(FALLBACK_GCC_INCLUDE_DIR);
+        if (!gcc_include_cached)
+            gcc_include_cached = vc_strdup(FALLBACK_GCC_INCLUDE_DIR);
     }
-    return cached;
+    return gcc_include_cached;
 #endif
 }
 
@@ -71,15 +76,14 @@ static const char *std_include_dirs[] = {
 
 static void init_std_include_dirs(void)
 {
-    static int initialized = 0;
-    if (initialized)
+    if (std_dirs_initialized)
         return;
 #if defined(__linux__)
     std_include_dirs[1] = get_gcc_include_dir();
 #elif defined(__NetBSD__) || defined(__FreeBSD__)
     std_include_dirs[0] = get_gcc_include_dir();
 #endif
-    initialized = 1;
+    std_dirs_initialized = 1;
 }
 
 int record_dependency(preproc_context_t *ctx, const char *path)
@@ -325,5 +329,20 @@ void print_include_search_dirs(FILE *fp, char endc, const char *dir,
         fprintf(fp, "  .\n");
     for (size_t i = builtin_start; std_include_dirs[i]; i++)
         fprintf(fp, "  %s\n", std_include_dirs[i]);
+}
+
+void preproc_path_cleanup(void)
+{
+#ifndef GCC_INCLUDE_DIR
+    free(gcc_include_cached);
+    gcc_include_cached = NULL;
+    gcc_include_initialized = 0;
+#endif
+#if defined(__linux__)
+    std_include_dirs[1] = NULL;
+#elif defined(__NetBSD__) || defined(__FreeBSD__)
+    std_include_dirs[0] = NULL;
+#endif
+    std_dirs_initialized = 0;
 }
 
