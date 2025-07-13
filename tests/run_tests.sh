@@ -399,6 +399,19 @@ if [ $ret -eq 0 ] || ! grep -q "Malformed include directive" "${err}"; then
 fi
 rm -f "${out}" "${err}"
 
+# negative test for include_next outside header
+err=$(mktemp)
+out=$(mktemp)
+set +e
+"$BINARY" -o "${out}" "$DIR/invalid/include_next_outside.c" 2> "${err}"
+ret=$?
+set -e
+if [ $ret -eq 0 ] || ! grep -q "#include_next is invalid outside a header" "${err}"; then
+    echo "Test include_next_outside failed"
+    fail=1
+fi
+rm -f "${out}" "${err}"
+
 # macro recursion should fail without expansion limit error
 err=$(mktemp)
 out=$(mktemp)
