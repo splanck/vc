@@ -43,6 +43,7 @@ static void init_default_opts(cli_options_t *opts)
     opts->asm_syntax = ASM_ATT;
     opts->std = STD_C99;
     opts->obj_dir = NULL;
+    opts->sysroot = NULL;
     opts->max_include_depth = DEFAULT_INCLUDE_DEPTH;
     vector_init(&opts->include_dirs, sizeof(char *));
     vector_init(&opts->sources, sizeof(char *));
@@ -121,6 +122,7 @@ int cli_parse_args(int argc, char **argv, cli_options_t *opts)
         {"no-warn-unreachable", no_argument, 0, CLI_OPT_NO_WARN_UNREACHABLE},
         {"emit-dwarf", no_argument, 0, CLI_OPT_EMIT_DWARF},
         {"fmax-include-depth", required_argument, 0, CLI_OPT_FMAX_DEPTH},
+        {"sysroot", required_argument, 0, CLI_OPT_SYSROOT},
         {0, 0, 0, 0}
     };
 

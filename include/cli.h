@@ -48,7 +48,8 @@ typedef enum {
     CLI_OPT_DEP,
     CLI_OPT_NO_WARN_UNREACHABLE,
     CLI_OPT_EMIT_DWARF,
-    CLI_OPT_FMAX_DEPTH
+    CLI_OPT_FMAX_DEPTH,
+    CLI_OPT_SYSROOT
 } cli_opt_id;
 
 /* Command line options parsed from argv */
@@ -72,6 +73,7 @@ typedef struct {
     asm_syntax_t asm_syntax; /* assembly syntax flavor */
     c_std_t std;        /* language standard */
     char *obj_dir;      /* directory for temporary object files */
+    char *sysroot;      /* prefix for system include paths */
     vector_t include_dirs; /* additional include directories */
     vector_t sources;      /* input source files */
     vector_t defines;      /* command line macro definitions */
