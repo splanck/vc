@@ -224,6 +224,20 @@ int handle_pragma_directive(char *line, const char *dir, vector_t *macros,
         strbuf_free(&exp);
         (void)stack;
         return 1; /* do not emit pragma line */
+    } else if (strncmp(p, "system_header", 13) == 0) {
+        ctx->system_header = 1;
+        strbuf_free(&exp);
+        (void)conds; (void)stack;
+        return 1; /* do not emit pragma line */
+    } else if (strncmp(p, "GCC", 3) == 0) {
+        p += 3;
+        p = skip_ws(p);
+        if (strncmp(p, "system_header", 13) == 0) {
+            ctx->system_header = 1;
+            strbuf_free(&exp);
+            (void)conds; (void)stack;
+            return 1; /* do not emit pragma line */
+        }
     }
     if (is_active(conds)) {
         if (strbuf_appendf(out, "#pragma %s\n", exp.data ? exp.data : "") < 0) {

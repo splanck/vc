@@ -104,6 +104,7 @@ static void init_preproc_vectors(preproc_context_t *ctx, vector_t *macros,
     ctx->base_file = "";
     ctx->include_level = 0;
     ctx->counter = 0;
+    ctx->system_header = 0;
     if (ctx->max_include_depth == 0)
         ctx->max_include_depth = DEFAULT_INCLUDE_DEPTH;
     strbuf_init(out);

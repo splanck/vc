@@ -32,6 +32,7 @@ int main(int argc, char **argv)
 
     error_use_color = cli.color_diag;
     semantic_warn_unreachable = cli.warn_unreachable;
+    semantic_suppress_warnings = false;
 
 
     if (cli.preprocess) {

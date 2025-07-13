@@ -14,6 +14,7 @@
 #include <string.h>
 
 bool semantic_warn_unreachable = true;
+bool semantic_suppress_warnings = false;
 
 /* Handlers implemented in dedicated modules */
 extern int stmt_expr_handler(stmt_t *stmt, symtable_t *vars, symtable_t *funcs,
@@ -145,7 +146,7 @@ static const char *find_end_label(func_t *func)
 
 void warn_unreachable_function(func_t *func, symtable_t *funcs)
 {
-    if (!semantic_warn_unreachable || !func)
+    if (!semantic_warn_unreachable || semantic_suppress_warnings || !func)
         return;
 
     const char *end_label = find_end_label(func);
@@ -154,7 +155,8 @@ void warn_unreachable_function(func_t *func, symtable_t *funcs)
         stmt_t *s = func->body[i];
         if (!reachable) {
             if (!(s->kind == STMT_LABEL && end_label &&
-                  strcmp(STMT_LABEL(s).name, end_label) == 0)) {
+                  strcmp(STMT_LABEL(s).name, end_label) == 0) &&
+                !semantic_suppress_warnings) {
                 error_set(s->line, s->column, error_current_file,
                           error_current_function);
                 error_print("warning: unreachable statement");
@@ -172,7 +174,8 @@ void warn_unreachable_function(func_t *func, symtable_t *funcs)
                  STMT_EXPR(s).expr->kind == EXPR_CALL) {
             symbol_t *fs = symtable_lookup(funcs, STMT_EXPR(s).expr->data.call.name);
             if (fs && fs->is_noreturn) {
-                if (i + 1 < func->body_count &&
+                if (!semantic_suppress_warnings &&
+                    i + 1 < func->body_count &&
                     !(func->body[i+1]->kind == STMT_LABEL && end_label &&
                       strcmp(STMT_LABEL(func->body[i+1]).name, end_label) == 0)) {
                     error_set(s->line, s->column, error_current_file,

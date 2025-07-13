@@ -339,6 +339,13 @@ cc -Iinclude -Wall -Wextra -std=c99 \
     src/preproc_args.c src/preproc_cond.c src/preproc_expr.c \
     src/preproc_include.c src/preproc_includes.c src/preproc_path.c \
     src/vector.c src/strbuf.c src/util.c src/error.c
+cc -Iinclude -Wall -Wextra -std=c99 \
+    -o "$DIR/preproc_system_header" "$DIR/unit/test_preproc_system_header.c" \
+    src/preproc_file.c src/preproc_directives.c src/preproc_file_io.c \
+    src/preproc_expand.c src/preproc_table.c src/preproc_builtin.c \
+    src/preproc_args.c src/preproc_cond.c src/preproc_expr.c \
+    src/preproc_include.c src/preproc_includes.c src/preproc_path.c \
+    src/vector.c src/strbuf.c src/util.c src/error.c
 # build create_temp_file path length regression test
 cc -Iinclude -Wall -Wextra -std=c99 -DUNIT_TESTING -ffunction-sections -fdata-sections -c src/compile.c -o compile_temp.o
 cc -Iinclude -Wall -Wextra -std=c99 -c "$DIR/unit/test_temp_file.c" -o "$DIR/test_temp_file.o"
@@ -447,6 +454,7 @@ rm -f ir_licm.o util_licm.o label_licm.o error_licm.o opt_main_licm.o \
 "$DIR/preproc_counter_reset"
 "$DIR/preproc_independent"
 "$DIR/preproc_errwarn"
+"$DIR/preproc_system_header"
 "$DIR/invalid_macro_tests"
 # separator for clarity
 echo "======="

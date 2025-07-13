@@ -13,6 +13,7 @@
 #include "preproc.h"
 #include "strbuf.h"
 #include "semantic_global.h"
+#include "semantic_stmt.h"
 
 /* Use binary mode for temporary files on platforms that require it */
 #if defined(_WIN32)
@@ -200,6 +201,8 @@ static int read_stdin_source(const cli_options_t *cli,
         return 0;
     }
     semantic_set_pack(ctx.pack_alignment);
+    if (ctx.system_header)
+        semantic_suppress_warnings = true;
     preproc_context_free(&ctx);
 
     *out_path = path;
@@ -250,6 +253,8 @@ int compile_tokenize_impl(const char *source, const cli_options_t *cli,
             }
         }
         semantic_set_pack(ctx.pack_alignment);
+        if (ctx.system_header)
+            semantic_suppress_warnings = true;
         preproc_context_free(&ctx);
     }
 
