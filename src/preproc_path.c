@@ -33,7 +33,9 @@ static const char *get_multiarch_dir(void)
     if (!multiarch_initialized) {
         multiarch_initialized = 1;
         FILE *fp = popen("gcc -print-multiarch 2>/dev/null", "r");
-        if (fp) {
+        if (!fp) {
+            perror("popen");
+        } else {
             char buf[256];
             if (fgets(buf, sizeof(buf), fp)) {
                 size_t len = strlen(buf);
@@ -41,6 +43,8 @@ static const char *get_multiarch_dir(void)
                     buf[--len] = '\0';
                 if (len)
                     multiarch_cached = vc_strndup(buf, len);
+            } else {
+                perror("fgets");
             }
             pclose(fp);
         }
@@ -66,7 +70,9 @@ static const char *get_gcc_include_dir(void)
     if (!gcc_include_initialized) {
         gcc_include_initialized = 1;
         FILE *fp = popen("gcc -print-file-name=include 2>/dev/null", "r");
-        if (fp) {
+        if (!fp) {
+            perror("popen");
+        } else {
             char buf[4096];
             if (fgets(buf, sizeof(buf), fp)) {
                 size_t len = strlen(buf);
@@ -74,6 +80,8 @@ static const char *get_gcc_include_dir(void)
                     buf[--len] = '\0';
                 if (len)
                     gcc_include_cached = vc_strndup(buf, len);
+            } else {
+                perror("fgets");
             }
             pclose(fp);
         }
