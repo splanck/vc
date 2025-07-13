@@ -15,24 +15,72 @@
 #ifndef MULTIARCH
 #define MULTIARCH "x86_64-linux-gnu"
 #endif
-#ifndef GCC_INCLUDE_DIR
-#define GCC_INCLUDE_DIR "/usr/lib/gcc/" MULTIARCH "/include"
-#endif
 #endif
 
+#ifndef GCC_INCLUDE_DIR
+# ifdef __linux__
+#  define FALLBACK_GCC_INCLUDE_DIR "/usr/lib/gcc/" MULTIARCH "/include"
+# else
+#  define FALLBACK_GCC_INCLUDE_DIR "/usr/lib/gcc/include"
+# endif
+#else
+# define FALLBACK_GCC_INCLUDE_DIR GCC_INCLUDE_DIR
+#endif
+
+static const char *get_gcc_include_dir(void)
+{
+#ifdef GCC_INCLUDE_DIR
+    return GCC_INCLUDE_DIR;
+#else
+    static char *cached = NULL;
+    static int initialized = 0;
+    if (!initialized) {
+        initialized = 1;
+        FILE *fp = popen("gcc -print-file-name=include 2>/dev/null", "r");
+        if (fp) {
+            char buf[4096];
+            if (fgets(buf, sizeof(buf), fp)) {
+                size_t len = strlen(buf);
+                while (len && (buf[len-1] == '\n' || buf[len-1] == '\r'))
+                    buf[--len] = '\0';
+                if (len)
+                    cached = vc_strndup(buf, len);
+            }
+            pclose(fp);
+        }
+        if (!cached)
+            cached = vc_strdup(FALLBACK_GCC_INCLUDE_DIR);
+    }
+    return cached;
+#endif
+}
+
+static void init_std_include_dirs(void);
+
 static const char *std_include_dirs[] = {
-#ifdef __linux__
+#if defined(__linux__)
     "/usr/include/" MULTIARCH,
-    GCC_INCLUDE_DIR,
-#elif defined(__NetBSD__)
-    GCC_INCLUDE_DIR,
-#elif defined(__FreeBSD__)
-    GCC_INCLUDE_DIR,
+    NULL,
+#elif defined(__NetBSD__) || defined(__FreeBSD__)
+    NULL,
 #endif
     "/usr/local/include",
     "/usr/include",
     NULL
 };
+
+static void init_std_include_dirs(void)
+{
+    static int initialized = 0;
+    if (initialized)
+        return;
+#if defined(__linux__)
+    std_include_dirs[1] = get_gcc_include_dir();
+#elif defined(__NetBSD__) || defined(__FreeBSD__)
+    std_include_dirs[0] = get_gcc_include_dir();
+#endif
+    initialized = 1;
+}
 
 int record_dependency(preproc_context_t *ctx, const char *path)
 {
@@ -103,6 +151,7 @@ int pragma_once_add(preproc_context_t *ctx, const char *path)
 char *find_include_path(const char *fname, char endc, const char *dir,
                         const vector_t *incdirs, size_t start, size_t *out_idx)
 {
+    init_std_include_dirs();
     size_t fname_len = strlen(fname);
     size_t max_len = fname_len;
     if (endc == '"' && dir && start == 0) {
@@ -201,7 +250,9 @@ int append_env_paths(const char *env, vector_t *search_dirs)
 int collect_include_dirs(vector_t *search_dirs,
                          const vector_t *include_dirs)
 {
-    assert(strcspn(GCC_INCLUDE_DIR, " \t\n") == strlen(GCC_INCLUDE_DIR));
+    init_std_include_dirs();
+    const char *gcc_dir = get_gcc_include_dir();
+    assert(strcspn(gcc_dir, " \t\n") == strlen(gcc_dir));
     vector_init(search_dirs, sizeof(char *));
     for (size_t i = 0; i < include_dirs->count; i++) {
         const char *s = ((const char **)include_dirs->data)[i];
