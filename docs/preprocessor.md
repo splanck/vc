@@ -85,9 +85,10 @@ an explicit `#define`:
 - `__func__` yields the enclosing function name as a string literal.
 - `__BASE_FILE__` holds the name of the initial source file being
   processed.
-- `__COUNTER__` expands to an incrementing integer starting at `0`.
-  The counter is reset to zero each time `preproc_run` begins so
-  consecutive preprocessing operations behave independently.
+- `__COUNTER__` expands to an incrementing 64-bit integer starting at `0`.
+  The counter is reset to zero each time `preproc_run` begins and upon
+  overflow.  When wraparound occurs a diagnostic is printed so consecutive
+  preprocessing operations behave independently.
 
 These macros are always available and cannot be undefined. They are useful for
 diagnostics and logging as they convey file names, line numbers and processing
