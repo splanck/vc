@@ -52,6 +52,11 @@ vc --debug -S source.c
 
 Disable colored diagnostics with `--no-color` when capturing output.
 
+The compiler also consults a few environment variables for additional include
+search paths. Any directories listed in `VCPATH`, `VCINC`, `CPATH` or
+`C_INCLUDE_PATH` are appended after `-I` options and searched before the builtin
+locations.
+
 ## Examples
 
 Several small example programs live in the `examples` directory. They

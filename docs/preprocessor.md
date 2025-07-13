@@ -7,7 +7,17 @@ are produced.  `preproc_run` in `src/preproc_file.c` drives this process.
 ## File processing
 
 `preproc_run` builds a list of include search paths then calls `process_file` to
-read the initial source.  Directories specified with `-I` are added first and paths from the `VCPATH`, `VCINC`, `CPATH` and `C_INCLUDE_PATH` environment variables are appended before the builtin system locations.  The list is released with [`free_string_vector`](memory_helpers.md) once preprocessing finishes.  Each line is inspected in order and any recognised
+read the initial source.  Directories specified with `-I` are added first and
+paths from a set of environment variables are appended before the builtin
+system locations.  The variables considered by `collect_include_dirs` are:
+
+- `VCPATH` – directories searched for both `<file>` and `"file"` includes.
+- `VCINC` – additional directories for quoted include paths.
+- `CPATH` – standard search directories used by many C compilers.
+- `C_INCLUDE_PATH` – like `CPATH` but specific to C headers.
+
+The list is released with [`free_string_vector`](memory_helpers.md) once
+preprocessing finishes.  Each line is inspected in order and any recognised
 preprocessor directive is handled immediately:
 
 - `#include` resolves the requested path and recursively invokes `process_file`
