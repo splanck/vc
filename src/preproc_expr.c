@@ -24,6 +24,7 @@
 #include <limits.h>
 #include "preproc_path.h"
 #include "preproc_file_io.h"
+#include "preproc_utils.h"
 
 /* Parser context */
 typedef struct {
@@ -35,17 +36,12 @@ typedef struct {
     int error;
 } expr_ctx_t;
 
-/* Advance the parser position past any whitespace */
-static void skip_ws(expr_ctx_t *ctx)
-{
-    while (isspace((unsigned char)*ctx->s))
-        ctx->s++;
-}
+
 
 /* Parse an identifier token from the input and return a new string */
 static char *parse_ident(expr_ctx_t *ctx)
 {
-    skip_ws(ctx);
+    ctx->s = skip_ws((char *)ctx->s);
     if (!isalpha((unsigned char)*ctx->s) && *ctx->s != '_')
         return NULL;
     const char *start = ctx->s;
@@ -64,7 +60,7 @@ static long long parse_conditional(expr_ctx_t *ctx);
 /* Parse a header name argument used by __has_include */
 static char *parse_header_name(expr_ctx_t *ctx, char *endc)
 {
-    skip_ws(ctx);
+    ctx->s = skip_ws((char *)ctx->s);
     if (*ctx->s == '"') {
         *endc = '"';
         ctx->s++;
@@ -99,7 +95,7 @@ static char *parse_header_name(expr_ctx_t *ctx, char *endc)
 static long long parse_has_include(expr_ctx_t *ctx, int is_next)
 {
     ctx->s += is_next ? 18 : 13; /* skip directive name */
-    skip_ws(ctx);
+    ctx->s = skip_ws((char *)ctx->s);
     if (*ctx->s != '(') {
         ctx->error = 1;
         return 0;
@@ -112,7 +108,7 @@ static long long parse_has_include(expr_ctx_t *ctx, int is_next)
         ctx->s++;
     size_t len = (size_t)(ctx->s - start);
     char *tok = vc_strndup(start, len);
-    skip_ws(ctx);
+    ctx->s = skip_ws((char *)ctx->s);
     if (*ctx->s == ')')
         ctx->s++;
     else
@@ -211,7 +207,7 @@ static int parse_char_escape(const char **s)
  */
 static long long parse_primary(expr_ctx_t *ctx)
 {
-    skip_ws(ctx);
+    ctx->s = skip_ws((char *)ctx->s);
     if (strncmp(ctx->s, "__has_include_next", 18) == 0 && ctx->s[18] == '(')
         return parse_has_include(ctx, 1);
     if (strncmp(ctx->s, "__has_include", 13) == 0 && ctx->s[13] == '(')
@@ -219,11 +215,11 @@ static long long parse_primary(expr_ctx_t *ctx)
     if (strncmp(ctx->s, "defined", 7) == 0 &&
         (ctx->s[7] == '(' || ctx->s[7] == ' ' || ctx->s[7] == '\t')) {
         ctx->s += 7;
-        skip_ws(ctx);
+        ctx->s = skip_ws((char *)ctx->s);
         if (*ctx->s == '(') {
             ctx->s++;
             char *id = parse_ident(ctx);
-            skip_ws(ctx);
+            ctx->s = skip_ws((char *)ctx->s);
             if (*ctx->s == ')')
                 ctx->s++;
             else
@@ -240,7 +236,7 @@ static long long parse_primary(expr_ctx_t *ctx)
     } else if (*ctx->s == '(') {
         ctx->s++;
         long long val = parse_expr(ctx);
-        skip_ws(ctx);
+        ctx->s = skip_ws((char *)ctx->s);
         if (*ctx->s == ')')
             ctx->s++;
         else
@@ -290,7 +286,7 @@ static long long parse_primary(expr_ctx_t *ctx)
  */
 static long long parse_unary(expr_ctx_t *ctx)
 {
-    skip_ws(ctx);
+    ctx->s = skip_ws((char *)ctx->s);
     if (*ctx->s == '!') {
         ctx->s++;
         return !parse_unary(ctx);
@@ -311,7 +307,7 @@ static long long parse_unary(expr_ctx_t *ctx)
 static long long parse_mul(expr_ctx_t *ctx)
 {
     long long val = parse_unary(ctx);
-    skip_ws(ctx);
+    ctx->s = skip_ws((char *)ctx->s);
     while (*ctx->s == '*' || *ctx->s == '/' || *ctx->s == '%') {
         char op = *ctx->s++;
         long long rhs = parse_unary(ctx);
@@ -320,7 +316,7 @@ static long long parse_mul(expr_ctx_t *ctx)
         case '/': val = rhs ? val / rhs : 0; break;
         case '%': val = rhs ? val % rhs : 0; break;
         }
-        skip_ws(ctx);
+        ctx->s = skip_ws((char *)ctx->s);
     }
     return val;
 }
@@ -329,7 +325,7 @@ static long long parse_mul(expr_ctx_t *ctx)
 static long long parse_add(expr_ctx_t *ctx)
 {
     long long val = parse_mul(ctx);
-    skip_ws(ctx);
+    ctx->s = skip_ws((char *)ctx->s);
     while (*ctx->s == '+' || *ctx->s == '-') {
         char op = *ctx->s++;
         long long rhs = parse_mul(ctx);
@@ -337,7 +333,7 @@ static long long parse_add(expr_ctx_t *ctx)
             val += rhs;
         else
             val -= rhs;
-        skip_ws(ctx);
+        ctx->s = skip_ws((char *)ctx->s);
     }
     return val;
 }
@@ -346,7 +342,7 @@ static long long parse_add(expr_ctx_t *ctx)
 static long long parse_shift(expr_ctx_t *ctx)
 {
     long long val = parse_add(ctx);
-    skip_ws(ctx);
+    ctx->s = skip_ws((char *)ctx->s);
     while (strncmp(ctx->s, "<<", 2) == 0 || strncmp(ctx->s, ">>", 2) == 0) {
         int left = (ctx->s[0] == '<');
         ctx->s += 2;
@@ -355,7 +351,7 @@ static long long parse_shift(expr_ctx_t *ctx)
             val <<= rhs;
         else
             val >>= rhs;
-        skip_ws(ctx);
+        ctx->s = skip_ws((char *)ctx->s);
     }
     return val;
 }
@@ -364,7 +360,7 @@ static long long parse_shift(expr_ctx_t *ctx)
 static long long parse_rel(expr_ctx_t *ctx)
 {
     long long val = parse_shift(ctx);
-    skip_ws(ctx);
+    ctx->s = skip_ws((char *)ctx->s);
     while (1) {
         if (strncmp(ctx->s, "<=", 2) == 0) {
             ctx->s += 2;
@@ -385,7 +381,7 @@ static long long parse_rel(expr_ctx_t *ctx)
         } else {
             break;
         }
-        skip_ws(ctx);
+        ctx->s = skip_ws((char *)ctx->s);
     }
     return val;
 }
@@ -394,7 +390,7 @@ static long long parse_rel(expr_ctx_t *ctx)
 static long long parse_eq(expr_ctx_t *ctx)
 {
     long long val = parse_rel(ctx);
-    skip_ws(ctx);
+    ctx->s = skip_ws((char *)ctx->s);
     while (1) {
         if (strncmp(ctx->s, "==", 2) == 0) {
             ctx->s += 2;
@@ -407,7 +403,7 @@ static long long parse_eq(expr_ctx_t *ctx)
         } else {
             break;
         }
-        skip_ws(ctx);
+        ctx->s = skip_ws((char *)ctx->s);
     }
     return val;
 }
@@ -416,12 +412,12 @@ static long long parse_eq(expr_ctx_t *ctx)
 static long long parse_band(expr_ctx_t *ctx)
 {
     long long val = parse_eq(ctx);
-    skip_ws(ctx);
+    ctx->s = skip_ws((char *)ctx->s);
     while (*ctx->s == '&' && ctx->s[1] != '&') {
         ctx->s++;
         long long rhs = parse_eq(ctx);
         val &= rhs;
-        skip_ws(ctx);
+        ctx->s = skip_ws((char *)ctx->s);
     }
     return val;
 }
@@ -430,12 +426,12 @@ static long long parse_band(expr_ctx_t *ctx)
 static long long parse_xor(expr_ctx_t *ctx)
 {
     long long val = parse_band(ctx);
-    skip_ws(ctx);
+    ctx->s = skip_ws((char *)ctx->s);
     while (*ctx->s == '^') {
         ctx->s++;
         long long rhs = parse_band(ctx);
         val ^= rhs;
-        skip_ws(ctx);
+        ctx->s = skip_ws((char *)ctx->s);
     }
     return val;
 }
@@ -444,12 +440,12 @@ static long long parse_xor(expr_ctx_t *ctx)
 static long long parse_bor(expr_ctx_t *ctx)
 {
     long long val = parse_xor(ctx);
-    skip_ws(ctx);
+    ctx->s = skip_ws((char *)ctx->s);
     while (*ctx->s == '|' && ctx->s[1] != '|') {
         ctx->s++;
         long long rhs = parse_xor(ctx);
         val |= rhs;
-        skip_ws(ctx);
+        ctx->s = skip_ws((char *)ctx->s);
     }
     return val;
 }
@@ -458,12 +454,12 @@ static long long parse_bor(expr_ctx_t *ctx)
 static long long parse_and(expr_ctx_t *ctx)
 {
     long long val = parse_bor(ctx);
-    skip_ws(ctx);
+    ctx->s = skip_ws((char *)ctx->s);
     while (strncmp(ctx->s, "&&", 2) == 0) {
         ctx->s += 2;
         long long rhs = parse_bor(ctx);
         val = val && rhs;
-        skip_ws(ctx);
+        ctx->s = skip_ws((char *)ctx->s);
     }
     return val;
 }
@@ -472,12 +468,12 @@ static long long parse_and(expr_ctx_t *ctx)
 static long long parse_or(expr_ctx_t *ctx)
 {
     long long val = parse_and(ctx);
-    skip_ws(ctx);
+    ctx->s = skip_ws((char *)ctx->s);
     while (strncmp(ctx->s, "||", 2) == 0) {
         ctx->s += 2;
         long long rhs = parse_and(ctx);
         val = val || rhs;
-        skip_ws(ctx);
+        ctx->s = skip_ws((char *)ctx->s);
     }
     return val;
 }
@@ -486,11 +482,11 @@ static long long parse_or(expr_ctx_t *ctx)
 static long long parse_conditional(expr_ctx_t *ctx)
 {
     long long val = parse_or(ctx);
-    skip_ws(ctx);
+    ctx->s = skip_ws((char *)ctx->s);
     if (*ctx->s == '?') {
         ctx->s++;
         long long then_val = parse_conditional(ctx);
-        skip_ws(ctx);
+        ctx->s = skip_ws((char *)ctx->s);
         if (*ctx->s == ':')
             ctx->s++;
         long long else_val = parse_conditional(ctx);
@@ -512,7 +508,7 @@ static long long eval_internal(const char *s, vector_t *macros,
 {
     expr_ctx_t ctx = { s, macros, dir, incdirs, stack, 0 };
     long long val = parse_expr(&ctx);
-    skip_ws(&ctx);
+    ctx.s = skip_ws((char *)ctx.s);
     if (*ctx.s != '\0')
         ctx.error = 1;
     if (ctx.error) {
