@@ -331,13 +331,18 @@ int collect_include_dirs(vector_t *search_dirs,
     if (sysroot && *sysroot) {
         for (size_t i = 0; std_include_dirs[i]; i++) {
             const char *base = std_include_dirs[i];
-            size_t len = strlen(sysroot) + strlen(base);
+            size_t root_len = strlen(sysroot);
+            while (root_len && (sysroot[root_len - 1] == '/' ||
+                                sysroot[root_len - 1] == '\\'))
+                root_len--; /* strip trailing slash */
+            size_t len = root_len + strlen(base);
             char *dup = malloc(len + 1);
             if (!dup) {
                 free_string_vector(search_dirs);
                 return 0;
             }
-            strcpy(dup, sysroot);
+            memcpy(dup, sysroot, root_len);
+            dup[root_len] = '\0';
             strcat(dup, base);
             if (!vector_push(search_dirs, &dup)) {
                 free(dup);
