@@ -21,6 +21,7 @@ int check_stmt(stmt_t *stmt, symtable_t *vars, symtable_t *funcs,
 
 /* Emit warnings for unreachable statements in a function body */
 extern bool semantic_warn_unreachable;
+extern bool semantic_suppress_warnings;
 void warn_unreachable_function(func_t *func, symtable_t *funcs);
 
 #endif /* VC_SEMANTIC_STMT_H */

@@ -44,6 +44,7 @@ typedef struct {
     size_t include_level;       /* builtin __INCLUDE_LEVEL__ value */
     uint64_t counter;           /* builtin __COUNTER__ value */
     size_t max_include_depth;   /* maximum nested includes allowed */
+    int system_header;          /* suppress warnings for current file */
 } preproc_context_t;
 
 /* Free the dependency lists stored in the context */
