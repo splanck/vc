@@ -168,7 +168,10 @@ static int handle_error_directive(char *line, const char *dir,
                 return 0;
             }
         } else {
-            strbuf_append(&tmp, "preprocessor error");
+            if (strbuf_append(&tmp, "preprocessor error") != 0) {
+                strbuf_free(&tmp);
+                return 0;
+            }
         }
         const char *file = ctx->current_file ? ctx->current_file : "";
         fprintf(stderr, "%s:%zu: %s\n", file, preproc_get_line(ctx), tmp.data);
@@ -224,12 +227,13 @@ static int handle_text_line(char *line, const char *dir, vector_t *macros,
     if (is_active(conds)) {
         strbuf_t tmp;
         strbuf_init(&tmp);
-        if (!expand_line(line, macros, &tmp, 0, 0, ctx))
+        if (!expand_line(line, macros, &tmp, 0, 0, ctx)) {
             ok = 0;
-        else
-            strbuf_append(&tmp, "\n");
-        if (ok)
-            strbuf_append(out, tmp.data);
+        } else if (strbuf_append(&tmp, "\n") != 0) {
+            ok = 0;
+        }
+        if (ok && strbuf_append(out, tmp.data) != 0)
+            ok = 0;
         strbuf_free(&tmp);
     }
     return ok;

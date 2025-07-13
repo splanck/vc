@@ -108,6 +108,13 @@ cc -Iinclude -Wall -Wextra -std=c99 -c src/util.c -o util_strbuf.o
 cc -Iinclude -Wall -Wextra -std=c99 -c "$DIR/unit/test_strbuf_overflow.c" -o "$DIR/test_strbuf_overflow.o"
 cc -o "$DIR/strbuf_overflow" strbuf_overflow_impl.o util_strbuf.o "$DIR/test_strbuf_overflow.o"
 rm -f strbuf_overflow_impl.o util_strbuf.o "$DIR/test_strbuf_overflow.o"
+# build text line append failure test
+cc -Iinclude -Wall -Wextra -std=c99 -c src/strbuf.c -o strbuf_textfail_impl.o
+cc -Iinclude -Wall -Wextra -std=c99 -c src/util.c -o util_textfail.o
+cc -Iinclude -Wall -Wextra -std=c99 -Dstrbuf_append=test_strbuf_append \
+    -c "$DIR/unit/test_text_line_fail.c" -o "$DIR/test_text_line_fail.o"
+cc -o "$DIR/text_line_fail" strbuf_textfail_impl.o util_textfail.o "$DIR/test_text_line_fail.o"
+rm -f strbuf_textfail_impl.o util_textfail.o "$DIR/test_text_line_fail.o"
 # build builtin counter wraparound regression test
 cc -Iinclude -Wall -Wextra -std=c99 -c src/preproc_builtin.c -o preproc_builtin_wrap.o
 cc -Iinclude -Wall -Wextra -std=c99 -c src/strbuf.c -o strbuf_wrap.o
@@ -461,6 +468,7 @@ rm -f ir_licm.o util_licm.o label_licm.o error_licm.o opt_main_licm.o \
 "$DIR/compile_obj_fail"
 "$DIR/preproc_alloc_tests"
 "$DIR/add_macro_fail_tests"
+"$DIR/text_line_fail"
 "$DIR/variadic_macro_tests"
 "$DIR/macro_stringize_escape"
 "$DIR/preproc_literal_args"
