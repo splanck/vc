@@ -6,6 +6,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <stdint.h>
+#include <fcntl.h>
 
 #include "util.h"
 #include "preproc_include.h"
@@ -63,6 +64,18 @@ static void report_missing_include(const char *line, const char *fname,
 }
 
 /* Shared logic for processing an include file */
+static char *fd_realpath(int fd, const char *fallback)
+{
+    char proc[64];
+    snprintf(proc, sizeof(proc), "/proc/self/fd/%d", fd);
+    char *canon = realpath(proc, NULL);
+    if (!canon)
+        canon = realpath(fallback, NULL);
+    if (!canon)
+        canon = vc_strdup(fallback);
+    return canon;
+}
+
 static int process_include_file(const char *fname, const char *chosen,
                                 size_t idx, vector_t *macros, vector_t *conds,
                                 strbuf_t *out, const vector_t *incdirs,
@@ -74,16 +87,28 @@ static int process_include_file(const char *fname, const char *chosen,
     if (is_active(conds)) {
         if (!chosen) {
             ok = 0;
-        } else if (!pragma_once_contains(ctx, chosen)) {
-            if (include_stack_contains(stack, chosen)) {
-                fprintf(stderr, "Include cycle detected: %s\n", chosen);
-                ok = 0;
-            } else if (!process_file(chosen, macros, &subconds, out,
-                                     incdirs, stack, ctx, idx)) {
-                if (errno)
-                    perror(chosen);
-                ok = 0;
+        } else {
+            int fd = open(chosen, O_RDONLY);
+            char *canon = NULL;
+            if (fd >= 0) {
+                canon = fd_realpath(fd, chosen);
+                close(fd);
             }
+            if (!canon)
+                canon = vc_strdup(chosen);
+
+            if (!pragma_once_contains(ctx, canon)) {
+                if (include_stack_contains(stack, canon)) {
+                    fprintf(stderr, "Include cycle detected: %s\n", canon);
+                    ok = 0;
+                } else if (!process_file(canon, macros, &subconds, out,
+                                         incdirs, stack, ctx, idx)) {
+                    if (errno)
+                        perror(canon);
+                    ok = 0;
+                }
+            }
+            free(canon);
         }
     }
     vector_free(&subconds);

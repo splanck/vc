@@ -10,7 +10,7 @@ for cfile in "$DIR"/fixtures/*.c; do
     base=$(basename "$cfile" .c)
 
     case "$base" in
-        *_x86-64|struct_*|bitfield_rw|include_search|include_angle|include_env|macro_bad_define|preproc_blank|macro_cli|include_once|include_next|include_next_quote|libm_program|union_example|varargs_double)
+        *_x86-64|struct_*|bitfield_rw|include_search|include_angle|include_env|macro_bad_define|preproc_blank|macro_cli|include_once|include_once_link|include_next|include_next_quote|libm_program|union_example|varargs_double)
             continue;;
     esac
     expect="$DIR/fixtures/$base.s"
@@ -328,6 +328,19 @@ if [ $ret -eq 0 ] || ! grep -q "Include cycle detected" "${err}"; then
 fi
 rm -f "${out}" "${err}"
 
+# negative test for include cycle with symlinked header
+err=$(mktemp)
+out=$(mktemp)
+set +e
+"$BINARY" -o "${out}" "$DIR/invalid/include_cycle_symlink.c" 2> "${err}"
+ret=$?
+set -e
+if [ $ret -eq 0 ] || ! grep -q "Include cycle detected" "${err}"; then
+    echo "Test include_cycle_symlink failed"
+    fail=1
+fi
+rm -f "${out}" "${err}"
+
 # negative test for missing include file
 err=$(mktemp)
 out=$(mktemp)
@@ -570,6 +583,15 @@ if ! diff -u "$DIR/fixtures/include_once.expected" "${pp_once}"; then
     fail=1
 fi
 rm -f "${pp_once}"
+
+# verify #pragma once with symlinked header
+pp_link=$(mktemp)
+"$BINARY" -I "$DIR/includes" -E "$DIR/fixtures/include_once_link.c" > "${pp_link}"
+if ! diff -u "$DIR/fixtures/include_once_link.expected" "${pp_link}"; then
+    echo "Test pragma_once_symlink failed"
+    fail=1
+fi
+rm -f "${pp_link}"
 
 # verify _Pragma handling in glibc headers does not hit expansion limit
 if [ -f /usr/include/sys/cdefs.h ]; then
