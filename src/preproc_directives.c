@@ -17,6 +17,7 @@
 #include "util.h"
 #include "vector.h"
 #include "strbuf.h"
+#include "preproc_utils.h"
 
 /* Remove comments from S, tracking multi-line state in *IN_COMMENT.
  * Comment markers inside string or character literals are ignored. */
@@ -65,13 +66,6 @@ static void strip_comments(char *s, int *in_comment)
     *out = '\0';
 }
 
-/* Advance P past whitespace and return the updated pointer */
-static char *skip_ws(char *p)
-{
-    while (isspace((unsigned char)*p))
-        p++;
-    return p;
-}
 
 
 

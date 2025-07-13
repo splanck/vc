@@ -32,7 +32,7 @@ HDR = include/token.h include/token_names.h include/ast.h include/ast_clone.h in
     include/ir_core.h include/ir_const.h include/ir_memory.h include/ir_control.h include/ir_builder.h include/ir_global.h include/ir_dump.h include/ast_dump.h include/opt.h include/codegen.h include/codegen_mem.h include/codegen_loadstore.h include/codegen_arith.h include/codegen_arith_int.h include/codegen_arith_float.h include/codegen_branch.h include/strbuf.h \
     include/util.h include/command.h include/cli.h include/vector.h include/regalloc_x86.h include/label.h include/error.h include/lexer_internal.h \
     include/opt_inline_helpers.h \
-    include/preproc.h include/preproc_file.h include/preproc_macros.h include/preproc_includes.h include/preproc_expr.h include/preproc_cond.h include/preproc_path.h include/parser_types.h include/parser_core.h include/startup.h include/compile_stage.h
+    include/preproc.h include/preproc_file.h include/preproc_macros.h include/preproc_includes.h include/preproc_expr.h include/preproc_cond.h include/preproc_path.h include/preproc_utils.h include/parser_types.h include/parser_core.h include/startup.h include/compile_stage.h
 PREFIX ?= /usr/local
 INCLUDEDIR ?= $(PREFIX)/include/vc
 MANDIR ?= $(PREFIX)/share/man

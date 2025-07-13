@@ -20,6 +20,7 @@
 #include "util.h"
 #include "vector.h"
 #include "strbuf.h"
+#include "preproc_utils.h"
 /*
  * Release all memory associated with a macro definition.
  *
@@ -81,13 +82,6 @@ void remove_macro(vector_t *macros, const char *name)
     }
 }
 
-/* Advance P past whitespace and return the updated pointer */
-static char *skip_ws(char *p)
-{
-    while (isspace((unsigned char)*p))
-        p++;
-    return p;
-}
 
 /* Return 1 if all conditional states on the stack are active */
 static int stack_active(vector_t *conds)
