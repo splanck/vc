@@ -464,6 +464,19 @@ if [ $ret -eq 0 ] || ! grep -q "Missing ')' in macro definition" "${err}"; then
 fi
 rm -f "${out}" "${err}"
 
+# negative test for duplicate macro parameter names
+err=$(mktemp)
+out=$(mktemp)
+set +e
+"$BINARY" -o "${out}" "$DIR/invalid/macro_param_dup.c" 2> "${err}"
+ret=$?
+set -e
+if [ $ret -eq 0 ] || ! grep -q "Duplicate macro parameter name" "${err}"; then
+    echo "Test macro_param_dup failed"
+    fail=1
+fi
+rm -f "${out}" "${err}"
+
 # negative test for include depth limit
 err=$(mktemp)
 out=$(mktemp)

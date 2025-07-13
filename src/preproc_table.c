@@ -171,6 +171,19 @@ static char *parse_macro_params(char *p, vector_t *out, int *variadic)
             out->count--;
         }
     }
+
+    /* check for duplicate parameter names */
+    for (size_t i = 0; i < out->count; i++) {
+        char *name_i = ((char **)out->data)[i];
+        for (size_t j = i + 1; j < out->count; j++) {
+            char *name_j = ((char **)out->data)[j];
+            if (strcmp(name_i, name_j) == 0) {
+                fprintf(stderr, "Duplicate macro parameter name: %s\n", name_j);
+                free_param_vector(out);
+                return NULL;
+            }
+        }
+    }
     return p;
 }
 
