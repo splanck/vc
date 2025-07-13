@@ -191,7 +191,7 @@ static int read_stdin_source(const cli_options_t *cli,
         return 0;
     }
 
-    preproc_context_t ctx;
+    preproc_context_t ctx = {0};
     ctx.max_include_depth = cli->max_include_depth;
     char *text = preproc_run(&ctx, path, incdirs, defines, undefines,
                              cli->sysroot);
@@ -234,7 +234,7 @@ int compile_tokenize_impl(const char *source, const cli_options_t *cli,
             stdin_path = NULL;
         }
     } else {
-        preproc_context_t ctx;
+        preproc_context_t ctx = {0};
         ctx.max_include_depth = cli->max_include_depth;
         text = preproc_run(&ctx, source, incdirs, defines, undefines,
                            cli->sysroot);

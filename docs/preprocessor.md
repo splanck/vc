@@ -68,6 +68,10 @@ Macro expansion is recursive so macro bodies may reference other macros. To
 avoid infinite loops a hard limit of 4096 nested expansions is enforced.  When
 this limit is hit `expand_line` returns zero and the compiler aborts
 preprocessing after printing "Macro expansion limit exceeded".
+In addition the preprocessor tracks the total text length produced by
+each expansion.  When this exceeds the `max_expand_size` value from
+`preproc_context_t` expansion stops with "Macro expansion size limit
+exceeded".
 
 File inclusion works the same way and may recurse when headers themselves
 contain `#include` directives.  To guard against unbounded recursion the

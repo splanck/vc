@@ -387,6 +387,13 @@ cc -Iinclude -Wall -Wextra -std=c99 \
     src/preproc_include.c src/preproc_includes.c src/preproc_path.c \
     src/vector.c src/strbuf.c src/util.c src/error.c
 cc -Iinclude -Wall -Wextra -std=c99 \
+    -o "$DIR/preproc_expand_size" "$DIR/unit/test_preproc_expand_size.c" \
+    src/preproc_file.c src/preproc_directives.c src/preproc_file_io.c \
+    src/preproc_expand.c src/preproc_table.c src/preproc_builtin.c \
+    src/preproc_args.c src/preproc_cond.c src/preproc_expr.c \
+    src/preproc_include.c src/preproc_includes.c src/preproc_path.c \
+    src/vector.c src/strbuf.c src/util.c src/error.c
+cc -Iinclude -Wall -Wextra -std=c99 \
     -o "$DIR/preproc_system_header" "$DIR/unit/test_preproc_system_header.c" \
     src/preproc_file.c src/preproc_directives.c src/preproc_file_io.c \
     src/preproc_expand.c src/preproc_table.c src/preproc_builtin.c \
@@ -515,6 +522,7 @@ rm -f ir_licm.o util_licm.o label_licm.o error_licm.o opt_main_licm.o \
 "$DIR/preproc_counter_reset"
 "$DIR/preproc_independent"
 "$DIR/preproc_errwarn"
+"$DIR/preproc_expand_size"
 "$DIR/preproc_system_header"
 "$DIR/collect_include_sysroot"
 "$DIR/preproc_popen_fail"
