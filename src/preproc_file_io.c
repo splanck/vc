@@ -212,7 +212,10 @@ int process_all_lines(char **lines, const char *path, const char *dir,
 {
     /* defined in preproc_directives.c */
     for (size_t i = 0; lines[i]; i++) {
-        size_t line = (size_t)((long)(i + 1) + ctx->line_delta);
+        long line_tmp = (long)(i + 1) + ctx->line_delta;
+        if (line_tmp < 0)
+            line_tmp = 0;
+        size_t line = (size_t)line_tmp;
         preproc_set_location(ctx,
                              ctx->current_file ? ctx->current_file : path,
                              line, 1);
