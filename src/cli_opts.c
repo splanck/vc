@@ -75,6 +75,15 @@ static int add_include_dir(cli_options_t *opts, const char *dir)
     return 0;
 }
 
+static int add_isystem_dir(cli_options_t *opts, const char *dir)
+{
+    if (!vector_push(&opts->isystem_dirs, &dir)) {
+        vc_oom();
+        return -1;
+    }
+    return 0;
+}
+
 static int add_lib_dir(cli_options_t *opts, const char *dir)
 {
     if (!vector_push(&opts->lib_dirs, &dir)) {
@@ -233,6 +242,8 @@ int parse_io_paths(int opt, const char *arg, cli_options_t *opts)
     case CLI_OPT_SYSROOT:
         opts->sysroot = (char *)arg;
         return 0;
+    case CLI_OPT_ISYSTEM:
+        return add_isystem_dir(opts, arg);
     default:
         return -1;
     }

@@ -46,6 +46,7 @@ static void init_default_opts(cli_options_t *opts)
     opts->sysroot = NULL;
     opts->max_include_depth = DEFAULT_INCLUDE_DEPTH;
     vector_init(&opts->include_dirs, sizeof(char *));
+    vector_init(&opts->isystem_dirs, sizeof(char *));
     vector_init(&opts->sources, sizeof(char *));
     vector_init(&opts->defines, sizeof(char *));
     vector_init(&opts->undefines, sizeof(char *));
@@ -59,6 +60,7 @@ void cli_free_opts(cli_options_t *opts)
         return;
     vector_free(&opts->sources);
     vector_free(&opts->include_dirs);
+    vector_free(&opts->isystem_dirs);
     vector_free(&opts->defines);
     vector_free(&opts->undefines);
     vector_free(&opts->lib_dirs);
@@ -123,6 +125,7 @@ int cli_parse_args(int argc, char **argv, cli_options_t *opts)
         {"emit-dwarf", no_argument, 0, CLI_OPT_EMIT_DWARF},
         {"fmax-include-depth", required_argument, 0, CLI_OPT_FMAX_DEPTH},
         {"sysroot", required_argument, 0, CLI_OPT_SYSROOT},
+        {"isystem", required_argument, 0, CLI_OPT_ISYSTEM},
         {0, 0, 0, 0}
     };
 

@@ -30,7 +30,7 @@ int main(void)
 
     vector_t dirs; vector_init(&dirs, sizeof(char *));
     preproc_context_t ctx;
-    char *res = preproc_run(&ctx, tmpl, &dirs, NULL, NULL);
+    char *res = preproc_run(&ctx, tmpl, &dirs, NULL, NULL, NULL);
     ASSERT(res == NULL);
     preproc_context_free(&ctx);
     vector_free(&dirs);

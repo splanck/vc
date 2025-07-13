@@ -7,9 +7,10 @@ are produced.  `preproc_run` in `src/preproc_file.c` drives this process.
 ## File processing
 
 `preproc_run` builds a list of include search paths then calls `process_file` to
-read the initial source.  Directories specified with `-I` are added first and
-paths from a set of environment variables are appended before the builtin
-system locations.  The variables considered by `collect_include_dirs` are:
+read the initial source.  Directories specified with `-I` are added first,
+followed by paths from a set of environment variables. Any directories given
+with `-isystem` are appended next and the builtin system locations are searched
+last.  The variables considered by `collect_include_dirs` are:
 
 - `VCPATH` – directories searched for both `<file>` and `"file"` includes.
 - `VCINC` – additional directories for quoted include paths.
@@ -115,7 +116,7 @@ the lexer for tokenization.
 quoted or angle-bracket file name and evaluate to `1` when that header would be
 found, or `0` otherwise.  The search order matches the behaviour of
 `#include` and `#include_next` respectively, consulting directories supplied with
-`-I`, the `VCPATH`, `VCINC`, `CPATH` and `C_INCLUDE_PATH` environment variables and the builtin system locations.
+`-I` and `-isystem`, the `VCPATH`, `VCINC`, `CPATH` and `C_INCLUDE_PATH` environment variables and the builtin system locations.
 ```c
 #if __has_include("config.h")
 #  include "config.h"

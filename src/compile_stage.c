@@ -30,6 +30,7 @@ extern const char *error_current_function;
 /* Stage implementations from other compilation units */
 int compile_tokenize_impl(const char *source, const cli_options_t *cli,
                           const vector_t *incdirs,
+                          const vector_t *isystem_dirs,
                           const vector_t *defines,
                           const vector_t *undefines,
                           char **out_src, token_t **out_toks,
@@ -189,10 +190,11 @@ static void compile_ctx_cleanup(compile_context_t *ctx)
 static int compile_tokenize_stage(compile_context_t *ctx, const char *source,
                                   const cli_options_t *cli,
                                   const vector_t *incdirs,
+                                  const vector_t *isystem_dirs,
                                   const vector_t *defines,
                                   const vector_t *undefines)
 {
-    return compile_tokenize_impl(source, cli, incdirs, defines, undefines,
+    return compile_tokenize_impl(source, cli, incdirs, isystem_dirs, defines, undefines,
                                  &ctx->src_text,
                                  &ctx->tokens, &ctx->tok_count,
                                  &ctx->stdin_tmp, &ctx->deps);
@@ -268,6 +270,7 @@ static int run_tokenize(compile_context_t *ctx, const char *source,
 {
     int ok = compile_tokenize_stage(ctx, source, cli,
                                     &cli->include_dirs,
+                                    &cli->isystem_dirs,
                                     &cli->defines,
                                     &cli->undefines);
     if (ok && cli->dump_tokens) {

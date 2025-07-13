@@ -145,6 +145,7 @@ char *tokens_to_string(const token_t *toks, size_t count)
 
 static int read_stdin_source(const cli_options_t *cli,
                              const vector_t *incdirs,
+                             const vector_t *isystem_dirs,
                              const vector_t *defines,
                              const vector_t *undefines,
                              char **out_path, char **out_text)
@@ -193,7 +194,7 @@ static int read_stdin_source(const cli_options_t *cli,
 
     preproc_context_t ctx;
     ctx.max_include_depth = cli->max_include_depth;
-    char *text = preproc_run(&ctx, path, incdirs, defines, undefines,
+    char *text = preproc_run(&ctx, path, incdirs, isystem_dirs, defines, undefines,
                              cli->sysroot);
     if (!text) {
         perror("preproc_run");
@@ -212,7 +213,9 @@ static int read_stdin_source(const cli_options_t *cli,
 }
 
 int compile_tokenize_impl(const char *source, const cli_options_t *cli,
-                          const vector_t *incdirs, const vector_t *defines,
+                          const vector_t *incdirs,
+                          const vector_t *isystem_dirs,
+                          const vector_t *defines,
                           const vector_t *undefines, char **out_src,
                           token_t **out_toks, size_t *out_count,
                           char **tmp_path, vector_t *deps)
@@ -223,7 +226,7 @@ int compile_tokenize_impl(const char *source, const cli_options_t *cli,
     char *stdin_path = NULL;
     char *text = NULL;
     if (source && strcmp(source, "-") == 0) {
-        if (!read_stdin_source(cli, incdirs, defines, undefines,
+        if (!read_stdin_source(cli, incdirs, isystem_dirs, defines, undefines,
                                &stdin_path, &text))
             return 0;
         if (tmp_path)
@@ -236,7 +239,7 @@ int compile_tokenize_impl(const char *source, const cli_options_t *cli,
     } else {
         preproc_context_t ctx;
         ctx.max_include_depth = cli->max_include_depth;
-        text = preproc_run(&ctx, source, incdirs, defines, undefines,
+        text = preproc_run(&ctx, source, incdirs, isystem_dirs, defines, undefines,
                            cli->sysroot);
         if (!text) {
             perror("preproc_run");

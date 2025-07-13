@@ -60,6 +60,8 @@ void scan_shortcuts(int *argc, char **argv)
             argv[new_argc++] = "--MD";
         else if (strcmp(argv[i], "-M") == 0)
             argv[new_argc++] = "--M";
+        else if (strcmp(argv[i], "-isystem") == 0)
+            argv[new_argc++] = "--isystem";
         else
             argv[new_argc++] = argv[i];
     }

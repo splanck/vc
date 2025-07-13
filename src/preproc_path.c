@@ -303,6 +303,7 @@ int append_env_paths(const char *env, vector_t *search_dirs)
 
 int collect_include_dirs(vector_t *search_dirs,
                          const vector_t *include_dirs,
+                         const vector_t *isystem_dirs,
                          const char *sysroot)
 {
     init_std_include_dirs();
@@ -334,6 +335,16 @@ int collect_include_dirs(vector_t *search_dirs,
     if (!append_env_paths(getenv("C_INCLUDE_PATH"), search_dirs)) {
         free_string_vector(search_dirs);
         return 0;
+    }
+
+    for (size_t i = 0; i < isystem_dirs->count; i++) {
+        const char *s = ((const char **)isystem_dirs->data)[i];
+        char *dup = vc_strdup(s);
+        if (!dup || !vector_push(search_dirs, &dup)) {
+            free(dup);
+            free_string_vector(search_dirs);
+            return 0;
+        }
     }
 
     if (sysroot && *sysroot) {
