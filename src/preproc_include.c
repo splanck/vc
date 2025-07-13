@@ -8,6 +8,7 @@
 #include <stdint.h>
 #include <fcntl.h>
 #include <limits.h>
+#include <ctype.h>
 
 #include "util.h"
 #include "preproc_include.h"
@@ -48,6 +49,11 @@ static char *parse_include_name(char *line, char *endc)
         return NULL;
     char *end = strchr(start + 1, *endc);
     if (!end)
+        return NULL;
+    char *p = end + 1;
+    while (isspace((unsigned char)*p))
+        p++;
+    if (*p && !(p[0] == '/' && (p[1] == '*' || p[1] == '/')))
         return NULL;
     size_t len = (size_t)(end - start - 1);
     return vc_strndup(start + 1, len);
