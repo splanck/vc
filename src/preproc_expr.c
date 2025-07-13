@@ -105,13 +105,49 @@ static long long parse_has_include(expr_ctx_t *ctx, int is_next)
         return 0;
     }
     ctx->s++;
-    char endc = '"';
-    char *fname = parse_header_name(ctx, &endc);
+
+    /* extract the token between parentheses */
+    const char *start = ctx->s;
+    while (*ctx->s && *ctx->s != ')')
+        ctx->s++;
+    size_t len = (size_t)(ctx->s - start);
+    char *tok = vc_strndup(start, len);
     skip_ws(ctx);
     if (*ctx->s == ')')
         ctx->s++;
     else
         ctx->error = 1;
+
+    if (ctx->error) {
+        free(tok);
+        return 0;
+    }
+
+    /* expand macros inside the argument */
+    strbuf_t exp;
+    strbuf_init(&exp);
+    preproc_context_t dummy = {0};
+    if (!expand_line(tok, ctx->macros, &exp, 0, 0, &dummy)) {
+        ctx->error = 1;
+        free(tok);
+        strbuf_free(&exp);
+        return 0;
+    }
+    free(tok);
+
+    /* parse the expanded token as a header name */
+    expr_ctx_t tmp = { exp.data ? exp.data : "", ctx->macros, ctx->dir,
+                       ctx->incdirs, ctx->stack, 0 };
+    char endc = '"';
+    char *fname = parse_header_name(&tmp, &endc);
+    if (tmp.error) {
+        ctx->error = 1;
+        strbuf_free(&exp);
+        free(fname);
+        return 0;
+    }
+    strbuf_free(&exp);
+
     int found = 0;
     if (fname && ctx->incdirs) {
         size_t cur = (size_t)-1;
