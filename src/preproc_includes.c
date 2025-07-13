@@ -157,6 +157,11 @@ int handle_pragma_directive(char *line, const char *dir, vector_t *macros,
         strbuf_appendf(&tmp, "#pragma %s", exp.data ? exp.data : "");
         char *dup = vc_strdup(tmp.data ? tmp.data : "");
         strbuf_free(&tmp);
+        if (!dup) {
+            strbuf_free(&exp);
+            vc_oom();
+            return 0;
+        }
         strbuf_free(&exp);
         int r = process_line(dup, dir, macros, conds, out, incdirs, stack, ctx);
         free(dup);

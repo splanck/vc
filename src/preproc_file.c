@@ -125,7 +125,7 @@ static int define_simple_macro(vector_t *macros, const char *name,
 
 /* Add some common builtin macros based on the host compiler. The path to the
  * main source file is used to initialise __BASE_FILE__. */
-static void define_default_macros(vector_t *macros, const char *base_file)
+static int define_default_macros(vector_t *macros, const char *base_file)
 {
 #define STR2(x) #x
 #define STR(x) STR2(x)
@@ -238,6 +238,10 @@ static void define_default_macros(vector_t *macros, const char *base_file)
         char *canon = realpath(base_file, NULL);
         if (!canon)
             canon = vc_strdup(base_file);
+        if (!canon) {
+            vc_oom();
+            return 0;
+        }
         char quoted[PATH_MAX + 2];
         snprintf(quoted, sizeof(quoted), "\"%s\"", canon);
         define_simple_macro(macros, "__BASE_FILE__", quoted);
@@ -245,6 +249,7 @@ static void define_default_macros(vector_t *macros, const char *base_file)
     } else {
         define_simple_macro(macros, "__BASE_FILE__", "\"\"");
     }
+    return 1;
 }
 
 /* Release vectors and buffers used during preprocessing */
@@ -348,7 +353,10 @@ char *preproc_run(preproc_context_t *ctx, const char *path,
     init_preproc_vectors(ctx, &macros, &conds, &stack, &out);
     /* Reset builtin counter so each run starts from zero */
     ctx->counter = 0;
-    define_default_macros(&macros, path);
+    if (!define_default_macros(&macros, path)) {
+        cleanup_preproc_vectors(ctx, &macros, &conds, &stack, &search_dirs, &out);
+        return NULL;
+    }
     if (!record_dependency(ctx, path)) {
         cleanup_preproc_vectors(ctx, &macros, &conds, &stack, &search_dirs, &out);
         return NULL;
@@ -366,8 +374,11 @@ char *preproc_run(preproc_context_t *ctx, const char *path,
 
     int saved_errno = errno;
     char *res = NULL;
-    if (ok)
+    if (ok) {
         res = vc_strdup(out.data ? out.data : "");
+        if (!res)
+            vc_oom();
+    }
 
     cleanup_preproc_vectors(ctx, &macros, &conds, &stack, &search_dirs, &out);
     errno = saved_errno;
