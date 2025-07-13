@@ -335,7 +335,9 @@ set +e
 "$BINARY" -o "${out}" "$DIR/invalid/include_missing.c" 2> "${err}"
 ret=$?
 set -e
-if [ $ret -eq 0 ] || ! grep -q "nonexistent.h: No such file or directory" "${err}"; then
+if [ $ret -eq 0 ] || ! grep -q "nonexistent.h: No such file or directory" "${err}" \
+   || ! grep -q "#include \"nonexistent.h\"" "${err}" \
+   || ! grep -q "Searched directories:" "${err}"; then
     echo "Test include_missing failed"
     fail=1
 fi
@@ -348,7 +350,9 @@ set +e
 "$BINARY" -I "$DIR/include_next/miss1" -I "$DIR/include_next/miss2" -o "${out}" "$DIR/invalid/include_next_missing.c" 2> "${err}"
 ret=$?
 set -e
-if [ $ret -eq 0 ] || ! grep -q "foo.h: No such file or directory" "${err}"; then
+if [ $ret -eq 0 ] || ! grep -q "foo.h: No such file or directory" "${err}" \
+   || ! grep -q "#include_next <foo.h>" "${err}" \
+   || ! grep -q "Searched directories:" "${err}"; then
     echo "Test include_next_missing failed"
     fail=1
 fi
@@ -361,7 +365,9 @@ set +e
 "$BINARY" -I "$DIR/include_next_quote/miss1" -I "$DIR/include_next_quote/miss2" -o "${out}" "$DIR/invalid/include_next_quote_missing.c" 2> "${err}"
 ret=$?
 set -e
-if [ $ret -eq 0 ] || ! grep -q "foo.h: No such file or directory" "${err}"; then
+if [ $ret -eq 0 ] || ! grep -q "foo.h: No such file or directory" "${err}" \
+   || ! grep -q "#include_next \"foo.h\"" "${err}" \
+   || ! grep -q "Searched directories:" "${err}"; then
     echo "Test include_next_quote_missing failed"
     fail=1
 fi

@@ -283,3 +283,22 @@ int collect_include_dirs(vector_t *search_dirs,
     return 1;
 }
 
+void print_include_search_dirs(FILE *fp, char endc, const char *dir,
+                               const vector_t *incdirs, size_t start)
+{
+    init_std_include_dirs();
+    if (endc == '"' && dir && start == 0)
+        fprintf(fp, "  %s\n", dir);
+    for (size_t i = start; i < incdirs->count; i++) {
+        const char *base = ((const char **)incdirs->data)[i];
+        fprintf(fp, "  %s\n", base);
+    }
+    size_t builtin_start = 0;
+    if (start > incdirs->count)
+        builtin_start = start - incdirs->count;
+    if (endc != '<')
+        fprintf(fp, "  .\n");
+    for (size_t i = builtin_start; std_include_dirs[i]; i++)
+        fprintf(fp, "  %s\n", std_include_dirs[i]);
+}
+
