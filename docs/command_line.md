@@ -71,7 +71,7 @@ source (for example `file.o`) is created in the current directory.
 
 ## Preprocessor Usage
 
-The preprocessor runs automatically before the lexer. It supports both `#include "file"` and `#include <file>` to insert the contents of another file. Additional directories to search for included files can be provided with the `-I`/`--include` option. Angle-bracket includes search those directories, then any paths listed in the `VCPATH` environment variable (colon separated), followed by the standard system locations such as `/usr/include`. Quoted includes also consult directories from `VCINC`. Entries from `VCPATH` and `VCINC` are appended after all `-I` directories so command-line paths are searched first. It also supports
+The preprocessor runs automatically before the lexer. It supports both `#include "file"` and `#include <file>` to insert the contents of another file. Additional directories to search for included files can be provided with the `-I`/`--include` option. Angle-bracket includes search those directories, then any paths listed in the `VCPATH` environment variable (colon separated, or semicolons on Windows), followed by the standard system locations such as `/usr/include`. Quoted includes also consult directories from `VCINC`. Entries from `VCPATH` and `VCINC` are appended after all `-I` directories so command-line paths are searched first. It also supports
 For example:
 
 ```sh
