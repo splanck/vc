@@ -145,6 +145,12 @@ int handle_include_next(char *line, const char *dir, vector_t *macros,
         strbuf_free(&expanded);
         return 0;
     }
+    if (stack->count <= 1) {
+        fprintf(stderr, "#include_next is invalid outside a header\n");
+        free(fname);
+        strbuf_free(&expanded);
+        return 0;
+    }
     int result = 1;
     size_t cur = SIZE_MAX;
     if (stack->count) {
