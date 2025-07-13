@@ -274,6 +274,7 @@ void preproc_context_free(preproc_context_t *ctx)
     vector_free(&ctx->deps);
     free(ctx->current_file);
     vector_free(&ctx->pack_stack);
+    preproc_path_cleanup();
 }
 
 /*
