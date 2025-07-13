@@ -42,7 +42,9 @@ The compiler supports the following options:
 - `-I`, `--include <dir>` – add directory to the `#include` search path.
 - `-L<dir>` – add a directory to the library search path when linking.
 - `-l<name>` – link against the specified library.
-- `-Dname[=val]` – define a preprocessor macro before compilation.
+- `-Dname[=val]` – define a preprocessor macro before compilation. When
+  `val` contains spaces it may be quoted as in `-Dname="some value"`. Any
+  surrounding single or double quotes are stripped.
 - `-Uname` – undefine a macro before compilation.
 - `-fmax-include-depth=<n>` – set the maximum nested `#include` depth.
 - `-O<N>` – set optimization level (0 disables all passes).
@@ -61,7 +63,8 @@ syntax.  When unset they default to `nasm` (Intel mode) and `cc`.
 Additional options may be supplied in the `VCFLAGS` environment variable.
 Its contents are split on spaces and prepended to the argument vector so
 flags provided directly on the command line override those from
-`VCFLAGS`.
+`VCFLAGS`. Values containing spaces may be quoted with single or double
+quotes which will be removed during parsing.
 
 Use `vc -o out.s source.c` to compile a file, `vc -c -o out.o source.c` to
 produce an object, `vc --link -o prog main.c util.c` to build an executable
