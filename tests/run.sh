@@ -178,6 +178,10 @@ rm -f preproc_expand.o preproc_table.o strbuf_litargs.o vector_litargs.o util_li
 # build pack pragma layout tests
 cc -Iinclude -Wall -Wextra -std=c99 \
     -o "$DIR/pack_pragma_tests" "$DIR/unit/test_pack_pragma.c"
+# build read_file_lines large input test
+cc -Iinclude -Wall -Wextra -std=c99 \
+    -o "$DIR/read_file_lines_large" "$DIR/unit/test_read_file_lines_large.c" \
+    src/preproc_file_io.c src/util.c
 # build preprocessing of stdio.h regression test
 MULTIARCH=$(gcc -print-multiarch 2>/dev/null || echo x86_64-linux-gnu)
 GCC_INCLUDE_DIR=$(gcc -print-file-name=include)
@@ -432,6 +436,7 @@ rm -f ir_licm.o util_licm.o label_licm.o error_licm.o opt_main_licm.o \
 "$DIR/macro_stringize_escape"
 "$DIR/preproc_literal_args"
 "$DIR/pack_pragma_tests"
+"$DIR/read_file_lines_large"
 "$DIR/preproc_stdio"
 "$DIR/preproc_has_include"
 "$DIR/preproc_ifmacro"

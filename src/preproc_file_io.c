@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdint.h>
 #include <unistd.h>
 
 #include "util.h"
@@ -101,34 +102,59 @@ void include_stack_pop(vector_t *stack, preproc_context_t *ctx)
 
 static char *read_file_lines_internal(const char *path, char ***out_lines)
 {
-    char *text = vc_read_file(path);
-    if (!text)
+    FILE *f = fopen(path, "rb");
+    if (!f) {
+        perror(path);
         return NULL;
-
-    size_t len = strlen(text);
-
-    size_t w = 0;
-    for (size_t r = 0; r < len; r++) {
-        if (text[r] == '\\' && r + 1 < len) {
-            if (text[r + 1] == '\n') {
-                r++;
-                continue;
-            }
-            if (text[r + 1] == '\r' && r + 2 < len && text[r + 2] == '\n') {
-                r += 2;
-                continue;
-            }
-        }
-        if (text[r] == '\r')
-            continue;
-        text[w++] = text[r];
     }
-    text[w] = '\0';
-    len = w;
+
+    size_t cap = 8192;
+    size_t len = 0;
+    char *text = vc_alloc_or_exit(cap);
+
+    int c;
+    while ((c = fgetc(f)) != EOF) {
+        if (c == '\\') {
+            int next = fgetc(f);
+            if (next == '\n')
+                continue;
+            if (next == '\r') {
+                int next2 = fgetc(f);
+                if (next2 == '\n')
+                    continue;
+                if (next2 != EOF)
+                    ungetc(next2, f);
+            }
+            if (next != EOF)
+                ungetc(next, f);
+        } else if (c == '\r') {
+            continue;
+        }
+
+        if (len + 1 >= cap) {
+            if (cap > SIZE_MAX / 2)
+                cap = cap + 1;
+            else
+                cap *= 2;
+            text = vc_realloc_or_exit(text, cap);
+        }
+        text[len++] = (char)c;
+    }
+
+    if (ferror(f)) {
+        perror(path);
+        fclose(f);
+        free(text);
+        return NULL;
+    }
+
+    fclose(f);
+
+    text[len] = '\0';
 
     size_t line_count = 1;
-    for (char *p = text; *p; p++)
-        if (*p == '\n')
+    for (size_t i = 0; i < len; i++)
+        if (text[i] == '\n')
             line_count++;
     if (len > 0 && text[len - 1] == '\n')
         line_count--;
