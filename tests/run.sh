@@ -108,6 +108,13 @@ cc -Iinclude -Wall -Wextra -std=c99 -c src/util.c -o util_strbuf.o
 cc -Iinclude -Wall -Wextra -std=c99 -c "$DIR/unit/test_strbuf_overflow.c" -o "$DIR/test_strbuf_overflow.o"
 cc -o "$DIR/strbuf_overflow" strbuf_overflow_impl.o util_strbuf.o "$DIR/test_strbuf_overflow.o"
 rm -f strbuf_overflow_impl.o util_strbuf.o "$DIR/test_strbuf_overflow.o"
+# build builtin counter wraparound regression test
+cc -Iinclude -Wall -Wextra -std=c99 -c src/preproc_builtin.c -o preproc_builtin_wrap.o
+cc -Iinclude -Wall -Wextra -std=c99 -c src/strbuf.c -o strbuf_wrap.o
+cc -Iinclude -Wall -Wextra -std=c99 -c src/util.c -o util_wrap.o
+cc -Iinclude -Wall -Wextra -std=c99 -c "$DIR/unit/test_preproc_counter_wrap.c" -o "$DIR/test_preproc_counter_wrap.o"
+cc -o "$DIR/preproc_counter_wrap" preproc_builtin_wrap.o strbuf_wrap.o util_wrap.o "$DIR/test_preproc_counter_wrap.o"
+rm -f preproc_builtin_wrap.o strbuf_wrap.o util_wrap.o "$DIR/test_preproc_counter_wrap.o"
 # build collect_funcs overflow regression test
 cc -Iinclude -Wall -Wextra -std=c99 "$DIR/unit/test_collect_funcs_overflow.c" -o "$DIR/collect_funcs_overflow"
 # build waitpid EINTR regression test
@@ -454,6 +461,17 @@ if [ $ret -ne 0 ] || ! grep -q "string buffer too large" "$err"; then
     fail=1
 fi
 rm -f "$err" "$DIR/strbuf_overflow"
+# regression test for builtin counter overflow handling
+err=$(mktemp)
+set +e
+"$DIR/preproc_counter_wrap" 2> "$err"
+ret=$?
+set -e
+if [ $ret -ne 0 ] || ! grep -q "Builtin counter overflow" "$err"; then
+    echo "Test preproc_counter_wrap failed"
+    fail=1
+fi
+rm -f "$err" "$DIR/preproc_counter_wrap"
 # regression test for constant expression overflow handling
 err=$(mktemp)
 set +e

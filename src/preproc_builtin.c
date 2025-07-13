@@ -1,6 +1,8 @@
 #define _POSIX_C_SOURCE 200809L
 #include <string.h>
 #include <time.h>
+#include <inttypes.h>
+#include <stdio.h>
 #include "preproc_builtin.h"
 #include "util.h"
 
@@ -94,7 +96,10 @@ int handle_builtin_macro(const char *name, size_t len, size_t end,
         return 1;
     } else if (len == 11 && strncmp(name, "__COUNTER__", 11) == 0) {
         preproc_set_location(ctx, NULL, ctx->line, column);
-        strbuf_appendf(out, "%lu", ctx->counter++);
+        uint64_t value = ctx->counter++;
+        if (ctx->counter == 0)
+            fprintf(stderr, "Builtin counter overflow\n");
+        strbuf_appendf(out, "%" PRIu64, value);
         *pos = end;
         return 1;
     } else if (len == 17 && strncmp(name, "__INCLUDE_LEVEL__", 17) == 0) {

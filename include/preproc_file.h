@@ -16,6 +16,7 @@
 
 #include "vector.h"
 #include "strbuf.h"
+#include <stdint.h>
 
 /* Context used by the preprocessor.
  *
@@ -41,7 +42,7 @@ typedef struct {
     const char *func;           /* builtin __func__ value */
     const char *base_file;      /* builtin __BASE_FILE__ value */
     size_t include_level;       /* builtin __INCLUDE_LEVEL__ value */
-    unsigned long counter;      /* builtin __COUNTER__ value */
+    uint64_t counter;           /* builtin __COUNTER__ value */
     size_t max_include_depth;   /* maximum nested includes allowed */
 } preproc_context_t;
 
