@@ -209,6 +209,13 @@ cc -Iinclude -Wall -Wextra -std=c99 \
     src/preproc_include.c src/preproc_includes.c src/preproc_path.c \
     src/vector.c src/strbuf.c src/util.c src/error.c
 cc -Iinclude -Wall -Wextra -std=c99 \
+    -o "$DIR/preproc_multi_stdheaders" "$DIR/unit/test_preproc_multi_stdheaders.c" \
+    src/preproc_file.c src/preproc_directives.c src/preproc_file_io.c \
+    src/preproc_expand.c src/preproc_table.c src/preproc_builtin.c \
+    src/preproc_args.c src/preproc_cond.c src/preproc_expr.c \
+    src/preproc_include.c src/preproc_includes.c src/preproc_path.c \
+    src/vector.c src/strbuf.c src/util.c src/error.c
+cc -Iinclude -Wall -Wextra -std=c99 \
     -o "$DIR/preproc_has_include" "$DIR/unit/test_preproc_has_include.c" \
     src/preproc_file.c src/preproc_directives.c src/preproc_file_io.c \
     src/preproc_expand.c src/preproc_table.c src/preproc_builtin.c \
@@ -480,6 +487,7 @@ rm -f ir_licm.o util_licm.o label_licm.o error_licm.o opt_main_licm.o \
 "$DIR/read_file_lines_large"
 "$DIR/preproc_stdio"
 "$DIR/preproc_stdio_skip"
+"$DIR/preproc_multi_stdheaders"
 "$DIR/preproc_has_include"
 "$DIR/preproc_has_include_macro"
 "$DIR/preproc_include_comment"
