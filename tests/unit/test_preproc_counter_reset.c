@@ -24,7 +24,7 @@ int main(void)
     if (fd >= 0) { write(fd, src, strlen(src)); close(fd); }
 
     vector_t dirs; vector_init(&dirs, sizeof(char *));
-    preproc_context_t ctx;
+    preproc_context_t ctx = {0};
 
     char *r1 = preproc_run(&ctx, tmpl, &dirs, NULL, NULL); ASSERT(r1);
     if (r1) { ASSERT(strstr(r1, "int v = 0;") != NULL); free(r1); }

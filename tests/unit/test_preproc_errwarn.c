@@ -29,7 +29,7 @@ int main(void)
     }
 
     vector_t dirs; vector_init(&dirs, sizeof(char *));
-    preproc_context_t ctx;
+    preproc_context_t ctx = {0};
 
     FILE *tmp = tmpfile();
     if (!tmp) {

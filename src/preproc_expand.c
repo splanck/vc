@@ -26,6 +26,16 @@
 
 #define MAX_MACRO_DEPTH 4096
 
+/* check expanded size against context limit */
+static int check_expand_limit(strbuf_t *sb, preproc_context_t *ctx)
+{
+    if (ctx->max_expand_size && sb->len > ctx->max_expand_size) {
+        fprintf(stderr, "Macro expansion size limit exceeded\n");
+        return 0;
+    }
+    return 1;
+}
+
 /*
  * Remove trailing spaces or tabs from a string buffer.
  * Used when concatenating macro tokens with the ## operator.
@@ -258,8 +268,13 @@ static int expand_macro_call(macro_t *m, char **args, vector_t *macros,
     } else {
         ok = expand_line(m->value, macros, &tmp, preproc_get_column(ctx), depth, ctx);
     }
-    if (ok)
+    if (ok) {
         strbuf_append(out, tmp.data ? tmp.data : "");
+        if (!check_expand_limit(out, ctx)) {
+            strbuf_free(&tmp);
+            return 0;
+        }
+    }
     strbuf_free(&tmp);
     return ok;
 }
@@ -629,6 +644,8 @@ int expand_line(const char *line, vector_t *macros, strbuf_t *out,
         }
         size_t col = column ? column : i + 1;
         if (!expand_token(line, &i, macros, out, col, depth, ctx))
+            return 0;
+        if (!check_expand_limit(out, ctx))
             return 0;
     }
     return 1;

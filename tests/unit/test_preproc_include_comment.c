@@ -42,7 +42,7 @@ int main(void)
     char *d = strdup(dir);
     vector_push(&dirs, &d);
 
-    preproc_context_t ctx;
+    preproc_context_t ctx = {0};
     char *res = preproc_run(&ctx, src, &dirs, NULL, NULL, NULL);
     ASSERT(res != NULL);
     if (res) {

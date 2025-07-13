@@ -110,6 +110,8 @@ static void init_preproc_vectors(preproc_context_t *ctx, vector_t *macros,
     ctx->system_header = 0;
     if (ctx->max_include_depth == 0)
         ctx->max_include_depth = DEFAULT_INCLUDE_DEPTH;
+    if (ctx->max_expand_size == 0)
+        ctx->max_expand_size = SIZE_MAX;
     strbuf_init(out);
 }
 

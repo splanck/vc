@@ -58,7 +58,7 @@ int main(void)
     vector_push(&dirs, &d1);
     vector_push(&dirs, &d2);
 
-    preproc_context_t ctx;
+    preproc_context_t ctx = {0};
     char *res = preproc_run(&ctx, src, &dirs, NULL, NULL);
     ASSERT(res != NULL);
     if (res) {
