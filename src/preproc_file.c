@@ -56,6 +56,8 @@ int process_file(const char *path, vector_t *macros,
     if (!load_and_register_file(path, stack, idx, &lines, &dir, &text, ctx))
         return 0;
 
+    ctx->system_header = 0;
+
     char *prev_file;
     long prev_delta;
     line_state_push(ctx, path, 0, &prev_file, &prev_delta);
