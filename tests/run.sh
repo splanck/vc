@@ -386,6 +386,10 @@ cc -Iinclude -Wall -Wextra -std=c99 \
     src/preproc_args.c src/preproc_cond.c src/preproc_expr.c \
     src/preproc_include.c src/preproc_includes.c src/preproc_path.c \
     src/vector.c src/strbuf.c src/util.c src/error.c
+cc -Iinclude -Wall -Wextra -std=c99 \
+    -DMULTIARCH="${MULTIARCH}" -DGCC_INCLUDE_DIR="${GCC_INCLUDE_DIR}" \
+    -o "$DIR/collect_include_sysroot" "$DIR/unit/test_collect_include_sysroot.c" \
+    src/preproc_path.c src/vector.c src/util.c
 # build create_temp_file path length regression test
 cc -Iinclude -Wall -Wextra -std=c99 -DUNIT_TESTING -ffunction-sections -fdata-sections -c src/compile.c -o compile_temp.o
 cc -Iinclude -Wall -Wextra -std=c99 -c "$DIR/unit/test_temp_file.c" -o "$DIR/test_temp_file.o"
@@ -501,6 +505,7 @@ rm -f ir_licm.o util_licm.o label_licm.o error_licm.o opt_main_licm.o \
 "$DIR/preproc_independent"
 "$DIR/preproc_errwarn"
 "$DIR/preproc_system_header"
+"$DIR/collect_include_sysroot"
 "$DIR/invalid_macro_tests"
 # separator for clarity
 echo "======="
