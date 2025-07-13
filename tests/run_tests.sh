@@ -10,7 +10,7 @@ for cfile in "$DIR"/fixtures/*.c; do
     base=$(basename "$cfile" .c)
 
     case "$base" in
-        *_x86-64|struct_*|bitfield_rw|include_search|include_angle|include_env|macro_bad_define|preproc_blank|macro_cli|include_once|include_once_link|include_next|include_next_quote|libm_program|union_example|varargs_double)
+        *_x86-64|struct_*|bitfield_rw|include_search|include_angle|include_env|macro_bad_define|preproc_blank|macro_cli|macro_cli_quote|include_once|include_once_link|include_next|include_next_quote|libm_program|union_example|varargs_double)
             continue;;
     esac
     expect="$DIR/fixtures/$base.s"
@@ -197,6 +197,15 @@ if ! diff -u "$DIR/fixtures/macro_cli_undef.s" "${macro_u_out}"; then
     fail=1
 fi
 rm -f "${macro_u_out}"
+
+# verify quoted macro values are unquoted
+macro_quote=$(mktemp)
+"$BINARY" -E "$DIR/fixtures/macro_cli_quote.c" '-DVAL="1 + 4"' > "${macro_quote}"
+if ! diff -u "$DIR/fixtures/macro_cli_quote.expected" "${macro_quote}"; then
+    echo "Test macro_cli_quote failed"
+    fail=1
+fi
+rm -f "${macro_quote}"
 
 # negative test for parse error message
 err=$(mktemp)

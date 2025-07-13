@@ -287,6 +287,20 @@ void preproc_context_free(preproc_context_t *ctx)
  *
  * Returns 1 on success, 0 on failure when adding a definition.
  */
+/* Remove matching single or double quotes around a string value.
+ * Returns a newly allocated copy without the quotes when present or
+ * NULL when no stripping was performed. */
+static char *unquote_value(const char *val)
+{
+    size_t len = strlen(val);
+    if (len >= 2 &&
+        ((val[0] == '"' && val[len - 1] == '"') ||
+         (val[0] == '\'' && val[len - 1] == '\''))) {
+        return vc_strndup(val + 1, len - 2);
+    }
+    return NULL;
+}
+
 static int update_macros_from_cli(vector_t *macros, const vector_t *defines,
                                   const vector_t *undefines)
 {
@@ -296,9 +310,13 @@ static int update_macros_from_cli(vector_t *macros, const vector_t *defines,
             const char *eq = strchr(def, '=');
             const char *val = "1";
             char *name;
+            char *unquoted = NULL;
             if (eq) {
                 name = vc_strndup(def, (size_t)(eq - def));
                 val = eq + 1;
+                unquoted = unquote_value(val);
+                if (unquoted)
+                    val = unquoted;
             } else {
                 name = vc_strdup(def);
             }
@@ -307,9 +325,11 @@ static int update_macros_from_cli(vector_t *macros, const vector_t *defines,
             remove_macro(macros, name);
             if (!add_macro(name, val, &params, 0, macros)) {
                 free(name);
+                free(unquoted);
                 return 0;
             }
             free(name);
+            free(unquoted);
         }
     }
 
