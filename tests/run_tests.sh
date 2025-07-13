@@ -180,6 +180,16 @@ if ! diff -u "$DIR/fixtures/include_next_quote.s" "${next_quote_out}"; then
 fi
 rm -f "${next_quote_out}"
 
+# verify -include option with multiple headers
+incopt_out=$(mktemp)
+"$BINARY" -include "$DIR/includes/val.h" -include "$DIR/includes/header.h" \
+    -o "${incopt_out}" "$DIR/fixtures/include_option.c"
+if ! diff -u "$DIR/fixtures/include_option.s" "${incopt_out}"; then
+    echo "Test include_option failed"
+    fail=1
+fi
+rm -f "${incopt_out}"
+
 # verify command-line macro definitions
 macro_out=$(mktemp)
 "$BINARY" -DVAL=4 -DFLAG -o "${macro_out}" "$DIR/fixtures/macro_cli.c"

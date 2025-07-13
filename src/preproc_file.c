@@ -360,6 +360,7 @@ static int process_input_file(const char *path, vector_t *macros,
 char *preproc_run(preproc_context_t *ctx, const char *path,
                   const vector_t *include_dirs,
                   const vector_t *defines, const vector_t *undefines,
+                  const vector_t *includes,
                   const char *sysroot)
 {
     vector_t search_dirs, macros, conds, stack;
@@ -386,6 +387,19 @@ char *preproc_run(preproc_context_t *ctx, const char *path,
     if (!update_macros_from_cli(&macros, defines, undefines)) {
         cleanup_preproc_vectors(ctx, &macros, &conds, &stack, &search_dirs, &out);
         return NULL;
+    }
+
+    /* Automatically include headers specified on the command line */
+    if (includes) {
+        for (size_t i = 0; i < includes->count; i++) {
+            const char *h = ((const char **)includes->data)[i];
+            if (!process_input_file(h, &macros, &conds, &out,
+                                   &search_dirs, &stack, ctx)) {
+                cleanup_preproc_vectors(ctx, &macros, &conds, &stack,
+                                       &search_dirs, &out);
+                return NULL;
+            }
+        }
     }
 
     /* Process the initial source file */

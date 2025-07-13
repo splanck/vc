@@ -109,6 +109,9 @@ directories, then any paths from the \fBVCPATH\fR environment variable,
 followed by the standard locations such as \fI/usr/include\fR. Quoted
 includes also consult directories from \fBVCINC\fR.
 .TP
+.BI -include \ \fIfile\fR
+Include the specified header before preprocessing each source file. This option may be repeated.
+.TP
 .B \-L\fIdir\fR
 Add directory to the library search path when linking.
 .TP
