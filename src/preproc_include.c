@@ -51,6 +51,17 @@ static char *parse_include_name(char *line, char *endc)
     return vc_strndup(start + 1, len);
 }
 
+static void report_missing_include(const char *line, const char *fname,
+                                   char endc, const char *dir,
+                                   const vector_t *incdirs, size_t start)
+{
+    errno = ENOENT;
+    perror(fname);
+    fprintf(stderr, "%s\n", line);
+    fprintf(stderr, "Searched directories:\n");
+    print_include_search_dirs(stderr, endc, dir, incdirs, start);
+}
+
 /* Shared logic for processing an include file */
 static int process_include_file(const char *fname, const char *chosen,
                                 size_t idx, vector_t *macros, vector_t *conds,
@@ -62,8 +73,6 @@ static int process_include_file(const char *fname, const char *chosen,
     int ok = 1;
     if (is_active(conds)) {
         if (!chosen) {
-            errno = ENOENT;
-            perror(fname);
             ok = 0;
         } else if (!pragma_once_contains(ctx, chosen)) {
             if (include_stack_contains(stack, chosen)) {
@@ -104,9 +113,12 @@ int handle_include(char *line, const char *dir, vector_t *macros,
     int result = 1;
     size_t idx = SIZE_MAX;
     char *incpath = find_include_path(fname, endc, dir, incdirs, 0, &idx);
+    int missing = (incpath == NULL);
     if (!process_include_file(fname, incpath, idx, macros, conds, out,
                               incdirs, stack, ctx))
         result = 0;
+    if (missing)
+        report_missing_include(line, fname, endc, dir, incdirs, 0);
     free(incpath);
     free(fname);
     strbuf_free(&expanded);
@@ -144,9 +156,12 @@ int handle_include_next(char *line, const char *dir, vector_t *macros,
     size_t start_idx = (cur == (size_t)-1) ? 0 : cur + 1;
     char *incpath = find_include_path(fname, endc, NULL, incdirs,
                                       start_idx, &idx);
+    int missing = (incpath == NULL);
     if (!process_include_file(fname, incpath, idx, macros, conds, out,
                               incdirs, stack, ctx))
         result = 0;
+    if (missing)
+        report_missing_include(line, fname, endc, NULL, incdirs, start_idx);
     free(incpath);
     free(fname);
     strbuf_free(&expanded);

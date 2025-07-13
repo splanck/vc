@@ -4,6 +4,7 @@
 #ifndef VC_PREPROC_PATH_H
 #define VC_PREPROC_PATH_H
 
+#include <stdio.h>
 #include "vector.h"
 #include "preproc_file.h"
 
@@ -15,5 +16,9 @@ char *find_include_path(const char *fname, char endc, const char *dir,
 int append_env_paths(const char *env, vector_t *search_dirs);
 int collect_include_dirs(vector_t *search_dirs,
                          const vector_t *include_dirs);
+
+/* Print the directories searched for an include directive */
+void print_include_search_dirs(FILE *fp, char endc, const char *dir,
+                               const vector_t *incdirs, size_t start);
 
 #endif /* VC_PREPROC_PATH_H */
