@@ -231,7 +231,12 @@ int append_env_paths(const char *env, vector_t *search_dirs)
     if (!tmp)
         return 0;
     char *tok, *sp;
-    tok = strtok_r(tmp, ":", &sp);
+#if defined(_WIN32)
+    const char *sep = ";:";
+#else
+    const char *sep = ":";
+#endif
+    tok = strtok_r(tmp, sep, &sp);
     while (tok) {
         if (*tok) {
             char *dup = vc_strdup(tok);
@@ -241,7 +246,7 @@ int append_env_paths(const char *env, vector_t *search_dirs)
                 return 0;
             }
         }
-        tok = strtok_r(NULL, ":", &sp);
+        tok = strtok_r(NULL, sep, &sp);
     }
     free(tmp);
     return 1;

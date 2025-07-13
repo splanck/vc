@@ -116,6 +116,13 @@ cc -Iinclude -Wall -Wextra -std=c99 -c src/util.c -o util_eintr.o
 cc -Iinclude -Wall -Wextra -std=c99 -c "$DIR/unit/test_waitpid_retry.c" -o "$DIR/test_waitpid_retry.o"
 cc -o "$DIR/waitpid_retry" strbuf_eintr_impl.o util_eintr.o "$DIR/test_waitpid_retry.o"
 rm -f strbuf_eintr_impl.o util_eintr.o "$DIR/test_waitpid_retry.o"
+# build append_env_paths tests
+cc -Iinclude -Wall -Wextra -std=c99 \
+    -o "$DIR/append_env_paths_colon" "$DIR/unit/test_append_env_paths_colon.c" \
+    src/preproc_path.c src/vector.c src/util.c
+cc -Iinclude -Wall -Wextra -std=c99 -D_WIN32 \
+    -o "$DIR/append_env_paths_semicolon" "$DIR/unit/test_append_env_paths_semicolon.c" \
+    src/preproc_path.c src/vector.c src/util.c
 # build invalid macro parse test
 cc -Iinclude -Wall -Wextra -std=c99 -c "$DIR/unit/test_invalid_macro.c" -o "$DIR/test_invalid_macro.o"
 cc -Iinclude -Wall -Wextra -std=c99 -c src/vector.c -o vector_invalid.o
@@ -401,6 +408,8 @@ rm -f ir_licm.o util_licm.o label_licm.o error_licm.o opt_main_licm.o \
 "$DIR/number_overflow"
 "$DIR/number_suffix"
 "$DIR/waitpid_retry"
+"$DIR/append_env_paths_colon"
+"$DIR/append_env_paths_semicolon"
 "$DIR/temp_file_tests"
 "$DIR/compile_obj_fail"
 "$DIR/preproc_alloc_tests"
