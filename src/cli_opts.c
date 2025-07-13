@@ -29,6 +29,7 @@ void print_usage(const char *prog)
         "  -c, --compile        Assemble to an object file\n",
         "      --link           Compile and link to an executable\n",
         "      --obj-dir <dir>  Directory for temporary object files\n",
+        "      --sysroot <dir>  Prefix system include paths with <dir>\n",
         "      --no-fold        Disable constant folding\n",
         "      --no-dce         Disable dead code elimination\n",
         "      --no-cprop       Disable constant propagation\n",
@@ -228,6 +229,9 @@ int parse_io_paths(int opt, const char *arg, cli_options_t *opts)
         return add_library(opts, arg);
     case CLI_OPT_OBJ_DIR:
         opts->obj_dir = (char *)arg;
+        return 0;
+    case CLI_OPT_SYSROOT:
+        opts->sysroot = (char *)arg;
         return 0;
     default:
         return -1;
