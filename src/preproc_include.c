@@ -7,6 +7,7 @@
 #include <unistd.h>
 #include <stdint.h>
 #include <fcntl.h>
+#include <limits.h>
 
 #include "util.h"
 #include "preproc_include.h"
@@ -66,11 +67,31 @@ static void report_missing_include(const char *line, const char *fname,
 /* Shared logic for processing an include file */
 static char *fd_realpath(int fd, const char *fallback)
 {
+    char path[PATH_MAX];
+
+#ifdef F_GETPATH
+    if (fcntl(fd, F_GETPATH, path) == 0) {
+        char *canon = realpath(path, NULL);
+        if (!canon)
+            canon = vc_strdup(path);
+        return canon;
+    }
+#endif
+
+#ifdef __linux__
     char proc[64];
     snprintf(proc, sizeof(proc), "/proc/self/fd/%d", fd);
-    char *canon = realpath(proc, NULL);
-    if (!canon)
-        canon = realpath(fallback, NULL);
+    ssize_t len = readlink(proc, path, sizeof(path) - 1);
+    if (len >= 0) {
+        path[len] = '\0';
+        char *canon = realpath(path, NULL);
+        if (!canon)
+            canon = vc_strdup(path);
+        return canon;
+    }
+#endif
+
+    char *canon = realpath(fallback, NULL);
     if (!canon)
         canon = vc_strdup(fallback);
     return canon;
