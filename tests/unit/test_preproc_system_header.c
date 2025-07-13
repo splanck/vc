@@ -29,12 +29,12 @@ int main(void)
 
     vector_t dirs; vector_init(&dirs, sizeof(char *));
     preproc_context_t ctx;
-    char *res = preproc_run(&ctx, tmpl, &dirs, NULL, NULL);
+    char *res = preproc_run(&ctx, tmpl, &dirs, NULL, NULL, NULL);
     ASSERT(res != NULL);
     if (res) {
         ASSERT(strstr(res, "#pragma system_header") == NULL);
     }
-    ASSERT(ctx.system_header);
+    ASSERT(!ctx.system_header);
     free(res);
     preproc_context_free(&ctx);
     vector_free(&dirs);

@@ -75,7 +75,7 @@ int include_stack_push(vector_t *stack, const char *path, size_t idx,
         vc_oom();
         return 0;
     }
-    include_entry_t ent = { canon, idx };
+    include_entry_t ent = { canon, idx, ctx->system_header };
     if (!vector_push(stack, &ent)) {
         free(canon);
         vc_oom();
@@ -91,6 +91,7 @@ void include_stack_pop(vector_t *stack, preproc_context_t *ctx)
 {
     if (stack->count) {
         include_entry_t *e = &((include_entry_t *)stack->data)[stack->count - 1];
+        ctx->system_header = e->prev_system_header;
         free(e->path);
         stack->count--;
     }

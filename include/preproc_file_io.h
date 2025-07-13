@@ -12,6 +12,7 @@
 typedef struct {
     char *path;
     size_t dir_index;
+    int prev_system_header;
 } include_entry_t;
 
 int include_stack_contains(vector_t *stack, const char *path);
