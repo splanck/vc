@@ -17,6 +17,7 @@
 #include "vector.h"
 #include "strbuf.h"
 #include <stdint.h>
+#include <stdbool.h>
 
 /* Context used by the preprocessor.
  *
@@ -58,7 +59,7 @@ void preproc_context_free(preproc_context_t *ctx);
 char *preproc_run(preproc_context_t *ctx, const char *path,
                   const vector_t *include_dirs, const vector_t *defines,
                   const vector_t *undefines, const char *sysroot,
-                  const char *vc_sysinclude);
+                  const char *vc_sysinclude, bool internal_libc);
 
 /* Internal helpers shared across preprocessing modules */
 int process_line(char *line, const char *dir, vector_t *macros,

@@ -40,7 +40,7 @@ int main(void)
     dup2(fileno(tmp), fileno(stderr));
 
     vector_t dirs;
-    ASSERT(collect_include_dirs(&dirs, &empty, "/tmp/sysroot"));
+    ASSERT(collect_include_dirs(&dirs, &empty, "/tmp/sysroot", false));
 
     fflush(stderr);
     fseek(tmp, 0, SEEK_SET);
