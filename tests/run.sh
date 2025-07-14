@@ -4,8 +4,8 @@ set -e
 DIR=$(dirname "$0")
 # track failing regression tests
 fail=0
-# build the compiler
-make
+# build the compiler and internal libc
+make vc libc
 # build unit test binary
 cc -Iinclude -Wall -Wextra -std=c99 \
     -o "$DIR/unit_tests" "$DIR/unit/test_lexer_parser.c" \
