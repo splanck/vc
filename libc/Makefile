@@ -1,7 +1,7 @@
 CC ?= gcc
 CFLAGS ?= -Wall -Wextra -std=c99
 
-SRC := $(wildcard src/*.c)
+SRC := src/stdio.c src/stdlib.c src/string.c src/syscalls.c
 OBJ32 := $(SRC:src/%.c=src/%.32.o)
 OBJ64 := $(SRC:src/%.c=src/%.64.o)
 
