@@ -135,6 +135,8 @@ static int define_default_macros(vector_t *macros, const char *base_file)
     /* basic language environment */
     define_simple_macro(macros, "__STDC__", "1");
     define_simple_macro(macros, "__STDC_HOSTED__", "1");
+    /* identify the vc compiler */
+    define_simple_macro(macros, "__VC__", "1");
 
 #if UINTPTR_MAX == 0xffffffffffffffffULL
     define_simple_macro(macros, "__x86_64__", "1");
