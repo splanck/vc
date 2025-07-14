@@ -40,6 +40,7 @@ The compiler supports the following options:
 - `--std=<c99|gnu99>` – select the language standard (default is `c99`).
 - `-E`, `--preprocess` – print the preprocessed source to stdout and exit.
 - `-I`, `--include <dir>` – add directory to the `#include` search path.
+- `-include <file>` – include the given header before preprocessing each source. May be repeated.
 - `-L<dir>` – add a directory to the library search path when linking.
 - `-l<name>` – link against the specified library.
 - `-Dname[=val]` – define a preprocessor macro before compilation. When
@@ -75,7 +76,7 @@ source (for example `file.o`) is created in the current directory.
 
 ## Preprocessor Usage
 
-The preprocessor runs automatically before the lexer. It supports both `#include "file"` and `#include <file>` to insert the contents of another file. Additional directories to search for included files can be provided with the `-I`/`--include` option. Angle-bracket includes search those directories, then any paths listed in the `VCPATH` environment variable (colon separated, or semicolons on Windows), followed by the standard system locations such as `/usr/include`. Quoted includes also consult directories from `VCINC`. Entries from `VCPATH` and `VCINC` are appended after all `-I` directories so command-line paths are searched first. When `--sysroot` is used these builtin locations are prefixed with the provided directory. It also supports
+The preprocessor runs automatically before the lexer. It supports both `#include "file"` and `#include <file>` to insert the contents of another file. Additional directories to search for included files can be provided with the `-I`/`--include` option. Angle-bracket includes search those directories, then any paths listed in the `VCPATH` environment variable (colon separated, or semicolons on Windows), followed by the standard system locations such as `/usr/include`. Quoted includes also consult directories from `VCINC`. Entries from `VCPATH` and `VCINC` are appended after all `-I` directories so command-line paths are searched first. When `--sysroot` is used these builtin locations are prefixed with the provided directory. Headers passed with `-include` are inserted before the main source file in the order given. It also supports
 For example:
 
 ```sh

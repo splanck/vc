@@ -18,6 +18,7 @@ void print_usage(const char *prog)
         "  -o, --output <file>  Output path\n",
         "  -O<N>               Optimization level (0-3)\n",
         "  -I, --include <dir> Add directory to include search path\n",
+        "  -include <file>     Include file before each source\n",
         "  -L<dir>             Add library search path\n",
         "  -l<name>            Link against library\n",
         "  -Dname[=val]       Define a macro\n",
@@ -87,6 +88,15 @@ static int add_lib_dir(cli_options_t *opts, const char *dir)
 static int add_library(cli_options_t *opts, const char *name)
 {
     if (!vector_push(&opts->libs, &name)) {
+        vc_oom();
+        return -1;
+    }
+    return 0;
+}
+
+static int add_include_file(cli_options_t *opts, const char *path)
+{
+    if (!vector_push(&opts->includes, &path)) {
         vc_oom();
         return -1;
     }
@@ -233,6 +243,8 @@ int parse_io_paths(int opt, const char *arg, cli_options_t *opts)
     case CLI_OPT_SYSROOT:
         opts->sysroot = (char *)arg;
         return 0;
+    case CLI_OPT_INCLUDE_FILE:
+        return add_include_file(opts, arg);
     default:
         return -1;
     }

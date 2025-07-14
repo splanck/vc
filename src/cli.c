@@ -51,6 +51,7 @@ static void init_default_opts(cli_options_t *opts)
     vector_init(&opts->undefines, sizeof(char *));
     vector_init(&opts->lib_dirs, sizeof(char *));
     vector_init(&opts->libs, sizeof(char *));
+    vector_init(&opts->includes, sizeof(char *));
 }
 
 void cli_free_opts(cli_options_t *opts)
@@ -63,6 +64,7 @@ void cli_free_opts(cli_options_t *opts)
     vector_free(&opts->undefines);
     vector_free(&opts->lib_dirs);
     vector_free(&opts->libs);
+    vector_free(&opts->includes);
 }
 
 /*
@@ -123,6 +125,7 @@ int cli_parse_args(int argc, char **argv, cli_options_t *opts)
         {"emit-dwarf", no_argument, 0, CLI_OPT_EMIT_DWARF},
         {"fmax-include-depth", required_argument, 0, CLI_OPT_FMAX_DEPTH},
         {"sysroot", required_argument, 0, CLI_OPT_SYSROOT},
+        {"include-file", required_argument, 0, CLI_OPT_INCLUDE_FILE},
         {0, 0, 0, 0}
     };
 

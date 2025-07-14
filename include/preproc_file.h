@@ -57,7 +57,8 @@ void preproc_context_free(preproc_context_t *ctx);
  */
 char *preproc_run(preproc_context_t *ctx, const char *path,
                   const vector_t *include_dirs, const vector_t *defines,
-                  const vector_t *undefines, const char *sysroot);
+                  const vector_t *undefines, const vector_t *includes,
+                  const char *sysroot);
 
 /* Internal helpers shared across preprocessing modules */
 int process_line(char *line, const char *dir, vector_t *macros,
