@@ -1,0 +1,24 @@
+/*
+ * Low level syscall helpers for vc's internal libc.
+ *
+ * Part of vc under the BSD 2-Clause license.
+ * See LICENSE for details.
+ */
+
+#ifndef VC__VC_SYSCALLS_H
+#define VC__VC_SYSCALLS_H
+
+#ifdef __x86_64__
+#define VC_SYS_WRITE 1
+#define VC_SYS_EXIT 60
+#elif defined(__i386__)
+#define VC_SYS_WRITE 4
+#define VC_SYS_EXIT 1
+#endif
+
+long _vc_write(int fd, const void *buf, unsigned long count);
+void _vc_exit(int status);
+void *_vc_malloc(unsigned long size);
+void _vc_free(void *ptr);
+
+#endif /* VC__VC_SYSCALLS_H */
