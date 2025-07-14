@@ -10,12 +10,5 @@ for src in "$DIR"/*.c; do
 
     echo "Building $exe"
 
-    flags="--link --internal-libc"
-    case "$base" in
-        *_x86-64)
-            flags="$flags --x86-64"
-            ;;
-    esac
-
-    "$VC" $flags -o "$exe" "$src"
+    "$VC" --link --internal-libc -o "$exe" "$src"
 done
