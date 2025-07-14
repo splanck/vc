@@ -4,6 +4,8 @@ DIR=$(dirname "$0")
 BINARY="$DIR/../vc"
 
 fail=0
+# ensure internal libc archive is available for tests
+make -s -C "$DIR/../libc" >/dev/null
 # compile each fixture, including vla.c which exercises
 # variable length array support
 for cfile in "$DIR"/fixtures/*.c; do
