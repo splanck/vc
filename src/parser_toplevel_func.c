@@ -81,6 +81,8 @@ static int parse_param_list_proto(parser_t *p, symtable_t *funcs,
 
     if (!match(p, TOK_RPAREN)) {
         do {
+            match(p, TOK_KW_CONST);
+            match(p, TOK_KW_VOLATILE);
             if (match(p, TOK_ELLIPSIS)) {
                 *is_variadic = 1;
                 break;

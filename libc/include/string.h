@@ -10,7 +10,7 @@
 
 #include <stddef.h>
 
-size_t strlen(const char *);
-void *memcpy(void *, const void *, size_t);
+size_t strlen(const char *s);
+void *memcpy(void *dest, const void *src, size_t n);
 
 #endif /* VC_STRING_H */
