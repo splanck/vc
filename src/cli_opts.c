@@ -6,6 +6,9 @@
 #include <unistd.h>
 #include <getopt.h>
 #include "cli_opts.h"
+#ifndef PATH_MAX
+#define PATH_MAX 4096
+#endif
 #define VERSION "0.1.0"
 #include "util.h"
 
@@ -348,6 +351,30 @@ int finalize_options(int argc, char **argv, const char *prog,
         print_usage(prog);
         cli_free_opts(opts);
         return 1;
+    }
+
+    if (opts->internal_libc) {
+        const char *dir = (opts->vc_sysinclude && *opts->vc_sysinclude)
+                            ? opts->vc_sysinclude : "libc/include";
+        char hdr[PATH_MAX];
+        snprintf(hdr, sizeof(hdr), "%s/stdio.h", dir);
+        if (access(hdr, F_OK) != 0) {
+            fprintf(stderr,
+                    "Error: internal libc header '%s' not found.\n",
+                    hdr);
+            cli_free_opts(opts);
+            return 1;
+        }
+
+        const char *archive = opts->use_x86_64 ?
+                               "libc/libc64.a" : "libc/libc32.a";
+        if (access(archive, F_OK) != 0) {
+            fprintf(stderr,
+                    "Error: internal libc archive '%s' not found.\n",
+                    archive);
+            cli_free_opts(opts);
+            return 1;
+        }
     }
 
     return 0;
