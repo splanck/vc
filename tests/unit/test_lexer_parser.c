@@ -186,7 +186,8 @@ static void test_parser_stmt_return(void)
     stmt_t *stmt = parser_parse_stmt(&p);
     ASSERT(stmt);
     ASSERT(stmt->kind == STMT_RETURN);
-    ASSERT(stmt->ret.expr->kind == EXPR_NUMBER && strcmp(stmt->ret.expr->data.number.value, "5") == 0);
+    ASSERT(STMT_RET(stmt).expr->kind == EXPR_NUMBER &&
+           strcmp(STMT_RET(stmt).expr->data.number.value, "5") == 0);
     ast_free_stmt(stmt);
     lexer_free_tokens(toks, count);
 }
@@ -201,7 +202,7 @@ static void test_parser_stmt_return_void(void)
     stmt_t *stmt = parser_parse_stmt(&p);
     ASSERT(stmt);
     ASSERT(stmt->kind == STMT_RETURN);
-    ASSERT(stmt->ret.expr == NULL);
+    ASSERT(STMT_RET(stmt).expr == NULL);
     ast_free_stmt(stmt);
     lexer_free_tokens(toks, count);
 }
@@ -216,10 +217,10 @@ static void test_parser_var_decl_init(void)
     stmt_t *stmt = parser_parse_stmt(&p);
     ASSERT(stmt);
     ASSERT(stmt->kind == STMT_VAR_DECL);
-    ASSERT(strcmp(stmt->var_decl.name, "x") == 0);
-    ASSERT(stmt->var_decl.type == TYPE_INT);
-    ASSERT(stmt->var_decl.init && stmt->var_decl.init->kind == EXPR_NUMBER &&
-           strcmp(stmt->var_decl.init->data.number.value, "5") == 0);
+    ASSERT(strcmp(STMT_VAR_DECL(stmt).name, "x") == 0);
+    ASSERT(STMT_VAR_DECL(stmt).type == TYPE_INT);
+    ASSERT(STMT_VAR_DECL(stmt).init && STMT_VAR_DECL(stmt).init->kind == EXPR_NUMBER &&
+           strcmp(STMT_VAR_DECL(stmt).init->data.number.value, "5") == 0);
     ast_free_stmt(stmt);
     lexer_free_tokens(toks, count);
 }
@@ -233,7 +234,7 @@ static void test_parser_short_decl(void)
     parser_t p; parser_init(&p, toks, count);
     stmt_t *stmt = parser_parse_stmt(&p);
     ASSERT(stmt && stmt->kind == STMT_VAR_DECL);
-    ASSERT(stmt->var_decl.type == TYPE_SHORT);
+    ASSERT(STMT_VAR_DECL(stmt).type == TYPE_SHORT);
     ast_free_stmt(stmt);
     lexer_free_tokens(toks, count);
 }
@@ -247,7 +248,7 @@ static void test_parser_bool_decl(void)
     parser_t p; parser_init(&p, toks, count);
     stmt_t *stmt = parser_parse_stmt(&p);
     ASSERT(stmt && stmt->kind == STMT_VAR_DECL);
-    ASSERT(stmt->var_decl.type == TYPE_BOOL);
+    ASSERT(STMT_VAR_DECL(stmt).type == TYPE_BOOL);
     ast_free_stmt(stmt);
     lexer_free_tokens(toks, count);
 }
@@ -261,7 +262,7 @@ static void test_parser__Bool_decl(void)
     parser_t p; parser_init(&p, toks, count);
     stmt_t *stmt = parser_parse_stmt(&p);
     ASSERT(stmt && stmt->kind == STMT_VAR_DECL);
-    ASSERT(stmt->var_decl.type == TYPE_BOOL);
+    ASSERT(STMT_VAR_DECL(stmt).type == TYPE_BOOL);
     ast_free_stmt(stmt);
     lexer_free_tokens(toks, count);
 }
@@ -275,7 +276,7 @@ static void test_parser_float_complex_decl(void)
     parser_t p; parser_init(&p, toks, count);
     stmt_t *stmt = parser_parse_stmt(&p);
     ASSERT(stmt && stmt->kind == STMT_VAR_DECL);
-    ASSERT(stmt->var_decl.type == TYPE_FLOAT_COMPLEX);
+    ASSERT(STMT_VAR_DECL(stmt).type == TYPE_FLOAT_COMPLEX);
     ast_free_stmt(stmt);
     lexer_free_tokens(toks, count);
 }
@@ -289,7 +290,7 @@ static void test_parser_double_complex_decl(void)
     parser_t p; parser_init(&p, toks, count);
     stmt_t *stmt = parser_parse_stmt(&p);
     ASSERT(stmt && stmt->kind == STMT_VAR_DECL);
-    ASSERT(stmt->var_decl.type == TYPE_DOUBLE_COMPLEX);
+    ASSERT(STMT_VAR_DECL(stmt).type == TYPE_DOUBLE_COMPLEX);
     ast_free_stmt(stmt);
     lexer_free_tokens(toks, count);
 }
@@ -303,7 +304,7 @@ static void test_parser_long_double_complex_decl(void)
     parser_t p; parser_init(&p, toks, count);
     stmt_t *stmt = parser_parse_stmt(&p);
     ASSERT(stmt && stmt->kind == STMT_VAR_DECL);
-    ASSERT(stmt->var_decl.type == TYPE_LDOUBLE_COMPLEX);
+    ASSERT(STMT_VAR_DECL(stmt).type == TYPE_LDOUBLE_COMPLEX);
     ast_free_stmt(stmt);
     lexer_free_tokens(toks, count);
 }
@@ -326,7 +327,7 @@ static void test_parser_static_local(void)
     token_t *toks = lexer_tokenize(src, &count);
     parser_t p; parser_init(&p, toks, count);
     stmt_t *stmt = parser_parse_stmt(&p);
-    ASSERT(stmt && stmt->kind == STMT_VAR_DECL && stmt->var_decl.is_static);
+    ASSERT(stmt && stmt->kind == STMT_VAR_DECL && STMT_VAR_DECL(stmt).is_static);
     ast_free_stmt(stmt);
     lexer_free_tokens(toks, count);
 }
@@ -341,9 +342,9 @@ static void test_parser_array_decl(void)
     stmt_t *stmt = parser_parse_stmt(&p);
     ASSERT(stmt);
     ASSERT(stmt->kind == STMT_VAR_DECL);
-    ASSERT(strcmp(stmt->var_decl.name, "a") == 0);
-    ASSERT(stmt->var_decl.type == TYPE_ARRAY);
-    ASSERT(stmt->var_decl.array_size == 4);
+    ASSERT(strcmp(STMT_VAR_DECL(stmt).name, "a") == 0);
+    ASSERT(STMT_VAR_DECL(stmt).type == TYPE_ARRAY);
+    ASSERT(STMT_VAR_DECL(stmt).array_size == 4);
     ast_free_stmt(stmt);
     lexer_free_tokens(toks, count);
 }
@@ -426,8 +427,8 @@ static void test_parser_global_init(void)
     ASSERT(parser_parse_toplevel(&p, &funcs, &fn, &global));
     ASSERT(fn == NULL);
     ASSERT(global && global->kind == STMT_VAR_DECL);
-    ASSERT(strcmp(global->var_decl.name, "y") == 0);
-    ASSERT(global->var_decl.init && global->var_decl.init->kind == EXPR_BINARY);
+    ASSERT(strcmp(STMT_VAR_DECL(global).name, "y") == 0);
+    ASSERT(STMT_VAR_DECL(global).init && STMT_VAR_DECL(global).init->kind == EXPR_BINARY);
     symtable_free(&funcs);
     ast_free_stmt(global);
     lexer_free_tokens(toks, count);
@@ -550,11 +551,11 @@ static void test_parser_block(void)
     stmt_t *stmt = parser_parse_stmt(&p);
     ASSERT(stmt);
     ASSERT(stmt->kind == STMT_BLOCK);
-    ASSERT(stmt->block.count == 2);
-    ASSERT(stmt->block.stmts[0]->kind == STMT_VAR_DECL);
-    ASSERT(stmt->block.stmts[1]->kind == STMT_BLOCK);
-    ASSERT(stmt->block.stmts[1]->block.count == 1);
-    ASSERT(stmt->block.stmts[1]->block.stmts[0]->kind == STMT_VAR_DECL);
+    ASSERT(STMT_BLOCK(stmt).count == 2);
+    ASSERT(STMT_BLOCK(stmt).stmts[0]->kind == STMT_VAR_DECL);
+    ASSERT(STMT_BLOCK(stmt).stmts[1]->kind == STMT_BLOCK);
+    ASSERT(STMT_BLOCK(STMT_BLOCK(stmt).stmts[1]).count == 1);
+    ASSERT(STMT_BLOCK(STMT_BLOCK(stmt).stmts[1]).stmts[0]->kind == STMT_VAR_DECL);
     ast_free_stmt(stmt);
     lexer_free_tokens(toks, count);
 }
@@ -569,9 +570,9 @@ static void test_parser_bitfield(void)
     stmt_t *stmt = parser_parse_struct_decl(&p);
     ASSERT(stmt);
     ASSERT(stmt->kind == STMT_STRUCT_DECL);
-    ASSERT(stmt->struct_decl.count == 1);
-    ASSERT(strcmp(stmt->struct_decl.members[0].name, "f") == 0);
-    ASSERT(stmt->struct_decl.members[0].bit_width == 1);
+    ASSERT(STMT_STRUCT_DECL(stmt).count == 1);
+    ASSERT(strcmp(STMT_STRUCT_DECL(stmt).members[0].name, "f") == 0);
+    ASSERT(STMT_STRUCT_DECL(stmt).members[0].bit_width == 1);
     ast_free_stmt(stmt);
     lexer_free_tokens(toks, count);
 }
@@ -586,10 +587,10 @@ static void test_parser_member_helpers(void)
     stmt_t *stmt = parser_parse_struct_decl(&p);
     ASSERT(stmt);
     ASSERT(stmt->kind == STMT_STRUCT_DECL);
-    ASSERT(stmt->struct_decl.count == 3);
-    ASSERT(strcmp(stmt->struct_decl.members[0].name, "a") == 0);
-    ASSERT(stmt->struct_decl.members[1].type == TYPE_ARRAY);
-    ASSERT(stmt->struct_decl.members[2].bit_width == 3);
+    ASSERT(STMT_STRUCT_DECL(stmt).count == 3);
+    ASSERT(strcmp(STMT_STRUCT_DECL(stmt).members[0].name, "a") == 0);
+    ASSERT(STMT_STRUCT_DECL(stmt).members[1].type == TYPE_ARRAY);
+    ASSERT(STMT_STRUCT_DECL(stmt).members[2].bit_width == 3);
     ast_free_stmt(stmt);
     lexer_free_tokens(toks, count);
 }
@@ -606,8 +607,8 @@ static void test_parser_struct_tag_var(void)
     ASSERT(parser_parse_toplevel(&p, &funcs, &fn, &global));
     ASSERT(fn == NULL);
     ASSERT(global && global->kind == STMT_VAR_DECL);
-    ASSERT(global->var_decl.type == TYPE_STRUCT);
-    ASSERT(strcmp(global->var_decl.tag, "S") == 0);
+    ASSERT(STMT_VAR_DECL(global).type == TYPE_STRUCT);
+    ASSERT(strcmp(STMT_VAR_DECL(global).tag, "S") == 0);
     symtable_free(&funcs);
     ast_free_stmt(global);
     lexer_free_tokens(toks, count);
