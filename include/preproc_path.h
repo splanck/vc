@@ -16,7 +16,8 @@ char *find_include_path(const char *fname, char endc, const char *dir,
 int append_env_paths(const char *env, vector_t *search_dirs);
 int collect_include_dirs(vector_t *search_dirs,
                          const vector_t *include_dirs,
-                         const char *sysroot);
+                         const char *sysroot,
+                         const char *vc_sysinclude);
 
 /* Print the directories searched for an include directive */
 void print_include_search_dirs(FILE *fp, char endc, const char *dir,

@@ -29,7 +29,7 @@ int main(void)
 
     vector_t dirs; vector_init(&dirs, sizeof(char *));
     preproc_context_t ctx = {0};
-    char *res = preproc_run(&ctx, tmpl, &dirs, NULL, NULL);
+    char *res = preproc_run(&ctx, tmpl, &dirs, NULL, NULL, NULL, NULL);
     ASSERT(res != NULL);
     if (res) {
         ASSERT(res[0] != '\0');
