@@ -29,7 +29,7 @@ int main(void)
 
     vector_t dirs; vector_init(&dirs, sizeof(char *));
     preproc_context_t ctx = {0};
-    char *res = preproc_run(&ctx, tmpl, &dirs, NULL, NULL, NULL, NULL, false);
+    char *res = preproc_run(&ctx, tmpl, &dirs, NULL, NULL, NULL, NULL, false, false);
     ASSERT(res != NULL);
     if (res) {
         ASSERT(strstr(res, "#pragma unknown_directive") != NULL);

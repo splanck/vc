@@ -37,7 +37,7 @@ int main(void)
 
     vector_t dirs; vector_init(&dirs, sizeof(char *));
     preproc_context_t ctx = {0};
-    char *res = preproc_run(&ctx, tmpl, &dirs, NULL, NULL, NULL, NULL, false);
+    char *res = preproc_run(&ctx, tmpl, &dirs, NULL, NULL, NULL, NULL, false, false);
     if (!res) {
         printf("Skipping preproc_stdio_skip tests (preprocessing failed)\n");
         preproc_context_free(&ctx);

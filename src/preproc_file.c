@@ -127,7 +127,8 @@ static int define_simple_macro(vector_t *macros, const char *name,
 
 /* Add some common builtin macros based on the host compiler. The path to the
  * main source file is used to initialise __BASE_FILE__. */
-static int define_default_macros(vector_t *macros, const char *base_file)
+static int define_default_macros(vector_t *macros, const char *base_file,
+                                 bool use_x86_64)
 {
 #define STR2(x) #x
 #define STR(x) STR2(x)
@@ -136,15 +137,15 @@ static int define_default_macros(vector_t *macros, const char *base_file)
     define_simple_macro(macros, "__STDC__", "1");
     define_simple_macro(macros, "__STDC_HOSTED__", "1");
 
-#if UINTPTR_MAX == 0xffffffffffffffffULL
-    define_simple_macro(macros, "__x86_64__", "1");
-    define_simple_macro(macros, "__SIZE_TYPE__", "unsigned long");
-    define_simple_macro(macros, "__PTRDIFF_TYPE__", "long");
-#else
-    define_simple_macro(macros, "__i386__", "1");
-    define_simple_macro(macros, "__SIZE_TYPE__", "unsigned int");
-    define_simple_macro(macros, "__PTRDIFF_TYPE__", "int");
-#endif
+    if (use_x86_64) {
+        define_simple_macro(macros, "__x86_64__", "1");
+        define_simple_macro(macros, "__SIZE_TYPE__", "unsigned long");
+        define_simple_macro(macros, "__PTRDIFF_TYPE__", "long");
+    } else {
+        define_simple_macro(macros, "__i386__", "1");
+        define_simple_macro(macros, "__SIZE_TYPE__", "unsigned int");
+        define_simple_macro(macros, "__PTRDIFF_TYPE__", "int");
+    }
 
 #ifdef __linux__
     define_simple_macro(macros, "__linux__", "1");
@@ -362,7 +363,7 @@ char *preproc_run(preproc_context_t *ctx, const char *path,
                   const vector_t *include_dirs,
                   const vector_t *defines, const vector_t *undefines,
                   const char *sysroot, const char *vc_sysinclude,
-                  bool internal_libc)
+                  bool internal_libc, bool use_x86_64)
 {
     vector_t search_dirs, macros, conds, stack;
     strbuf_t out;
@@ -376,7 +377,7 @@ char *preproc_run(preproc_context_t *ctx, const char *path,
     init_preproc_vectors(ctx, &macros, &conds, &stack, &out);
     /* Reset builtin counter so each run starts from zero */
     ctx->counter = 0;
-    if (!define_default_macros(&macros, path)) {
+    if (!define_default_macros(&macros, path, use_x86_64)) {
         cleanup_preproc_vectors(ctx, &macros, &conds, &stack, &search_dirs, &out);
         return NULL;
     }

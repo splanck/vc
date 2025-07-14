@@ -93,7 +93,8 @@ int run_preprocessor(const cli_options_t *cli)
         ctx.max_include_depth = cli->max_include_depth;
         char *text = preproc_run(&ctx, src, &cli->include_dirs, &cli->defines,
                                 &cli->undefines, cli->sysroot,
-                                cli->vc_sysinclude, cli->internal_libc);
+                                cli->vc_sysinclude, cli->internal_libc,
+                                cli->use_x86_64);
         if (!text) {
             perror("preproc_run");
             preproc_context_free(&ctx);
@@ -136,7 +137,8 @@ int generate_dependencies(const cli_options_t *cli)
         ctx.max_include_depth = cli->max_include_depth;
         char *text = preproc_run(&ctx, src, &cli->include_dirs,
                                  &cli->defines, &cli->undefines, cli->sysroot,
-                                 cli->vc_sysinclude, cli->internal_libc);
+                                 cli->vc_sysinclude, cli->internal_libc,
+                                 cli->use_x86_64);
         if (!text) {
             perror("preproc_run");
             return 1;
