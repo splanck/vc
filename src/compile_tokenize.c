@@ -196,7 +196,7 @@ static int read_stdin_source(const cli_options_t *cli,
     ctx.max_include_depth = cli->max_include_depth;
     char *text = preproc_run(&ctx, path, incdirs, defines, undefines,
                              cli->sysroot, cli->vc_sysinclude,
-                             cli->internal_libc);
+                             cli->internal_libc, cli->use_x86_64);
     if (!text) {
         perror("preproc_run");
         unlink(path);
@@ -241,7 +241,7 @@ int compile_tokenize_impl(const char *source, const cli_options_t *cli,
         ctx.max_include_depth = cli->max_include_depth;
         text = preproc_run(&ctx, source, incdirs, defines, undefines,
                            cli->sysroot, cli->vc_sysinclude,
-                           cli->internal_libc);
+                           cli->internal_libc, cli->use_x86_64);
         if (!text) {
             perror("preproc_run");
             return 0;

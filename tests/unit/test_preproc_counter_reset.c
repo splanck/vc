@@ -26,11 +26,11 @@ int main(void)
     vector_t dirs; vector_init(&dirs, sizeof(char *));
     preproc_context_t ctx = {0};
 
-    char *r1 = preproc_run(&ctx, tmpl, &dirs, NULL, NULL, NULL, NULL, false); ASSERT(r1);
+    char *r1 = preproc_run(&ctx, tmpl, &dirs, NULL, NULL, NULL, NULL, false, false); ASSERT(r1);
     if (r1) { ASSERT(strstr(r1, "int v = 0;") != NULL); free(r1); }
     preproc_context_free(&ctx);
 
-    char *r2 = preproc_run(&ctx, tmpl, &dirs, NULL, NULL, NULL, NULL, false); ASSERT(r2);
+    char *r2 = preproc_run(&ctx, tmpl, &dirs, NULL, NULL, NULL, NULL, false, false); ASSERT(r2);
     if (r2) { ASSERT(strstr(r2, "int v = 0;") != NULL); free(r2); }
     preproc_context_free(&ctx);
 
