@@ -132,25 +132,30 @@ static int define_default_macros(vector_t *macros, const char *base_file)
 #define STR2(x) #x
 #define STR(x) STR2(x)
 
+    /* basic language environment */
+    define_simple_macro(macros, "__STDC__", "1");
+    define_simple_macro(macros, "__STDC_HOSTED__", "1");
+
+#if UINTPTR_MAX == 0xffffffffffffffffULL
+    define_simple_macro(macros, "__x86_64__", "1");
+    define_simple_macro(macros, "__SIZE_TYPE__", "unsigned long");
+    define_simple_macro(macros, "__PTRDIFF_TYPE__", "long");
+#else
+    define_simple_macro(macros, "__i386__", "1");
+    define_simple_macro(macros, "__SIZE_TYPE__", "unsigned int");
+    define_simple_macro(macros, "__PTRDIFF_TYPE__", "int");
+#endif
+
 #ifdef __linux__
     define_simple_macro(macros, "__linux__", "1");
     define_simple_macro(macros, "__unix__", "1");
 #endif
 
-#if defined(__x86_64__) || defined(__amd64__)
-    define_simple_macro(macros, "__x86_64__", "1");
-# ifdef __LP64__
-    define_simple_macro(macros, "__LP64__", "1");
-# endif
-#endif
 
 #ifdef __GNUC__
     define_simple_macro(macros, "__GNUC__", STR(__GNUC__));
     define_simple_macro(macros, "__GNUC_MINOR__", STR(__GNUC_MINOR__));
     define_simple_macro(macros, "__GNUC_PATCHLEVEL__", STR(__GNUC_PATCHLEVEL__));
-#endif
-#ifdef __STDC_HOSTED__
-    define_simple_macro(macros, "__STDC_HOSTED__", STR(__STDC_HOSTED__));
 #endif
 #ifdef __STDC_UTF_16__
     define_simple_macro(macros, "__STDC_UTF_16__", STR(__STDC_UTF_16__));
@@ -174,12 +179,6 @@ static int define_default_macros(vector_t *macros, const char *base_file)
     define_simple_macro(macros, "__STDC_IEC_60559_COMPLEX__", STR(__STDC_IEC_60559_COMPLEX__));
 #endif
 
-#ifdef __SIZE_TYPE__
-    define_simple_macro(macros, "__SIZE_TYPE__", STR(__SIZE_TYPE__));
-#endif
-#ifdef __PTRDIFF_TYPE__
-    define_simple_macro(macros, "__PTRDIFF_TYPE__", STR(__PTRDIFF_TYPE__));
-#endif
 #ifdef __WCHAR_TYPE__
     define_simple_macro(macros, "__WCHAR_TYPE__", STR(__WCHAR_TYPE__));
 #endif

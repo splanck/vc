@@ -87,13 +87,18 @@ under `tests/`. It returns a non-zero status if any test fails.
 
 ## Builtin preprocessor macros
 
-Several macros commonly provided by GCC are defined automatically during
-compilation. Their values are taken from the output of `$(CC) -dM -E` so the
-preprocessor sees the same definitions as system headers. This includes:
+Several macros expected by system headers are defined automatically during
+compilation. Most values mirror the output of `$(CC) -dM -E` so the
+preprocessor behaves like GCC.  The compiler also provides a set of standard
+definitions:
 
+- `__STDC__` and `__STDC_HOSTED__` evaluate to `1`.
+- `__i386__` or `__x86_64__` is defined based on the selected bit width.
+- `__SIZE_TYPE__` and `__PTRDIFF_TYPE__` use `unsigned int`/`int` on ILP32 and
+  `unsigned long`/`long` on LP64.
 - `__GNUC__`, `__GNUC_MINOR__`, `__GNUC_PATCHLEVEL__`
-- `__SIZE_TYPE__`, `__PTRDIFF_TYPE__`, `__WCHAR_TYPE__`, `__WINT_TYPE__`
-- `__INTMAX_TYPE__`, `__UINTMAX_TYPE__`, `__INTPTR_TYPE__`, `__UINTPTR_TYPE__`
+- `__WCHAR_TYPE__`, `__WINT_TYPE__`, `__INTMAX_TYPE__`, `__UINTMAX_TYPE__`,
+  `__INTPTR_TYPE__`, `__UINTPTR_TYPE__`
 
 These defaults prevent runaway expansions when processing standard library
 headers.
