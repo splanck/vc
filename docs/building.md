@@ -6,6 +6,7 @@ See the [documentation index](README.md) for a list of all available pages.
 
 - [Requirements](#requirements)
 - [Build options](#build-options)
+- [Bundled libc](#bundled-libc)
 - [Additional build steps](#additional-build-steps)
 - [Running the test suite](#running-the-test-suite)
 - [Builtin preprocessor macros](#builtin-preprocessor-macros)
@@ -59,6 +60,22 @@ invoke `cc -c` on the generated assembly to produce the object file.
 When the `--intel-syntax` flag is used together with `--compile` or the
 `--link` option, the build requires `nasm` to assemble the Intel-style
 output.
+
+## Bundled libc
+
+The repository includes a small C library under `libc` used for tests and
+examples. Running `make` builds the compiler and both `libc/libc32.a` and
+`libc/libc64.a`. They may also be built individually:
+
+```sh
+make libc32
+make libc64
+```
+
+Invoke the compiler with `--internal-libc` to search `libc/include` before
+system directories and link the appropriate archive. Additional system
+header locations can be supplied with `--vc-sysinclude=<dir>` or the
+`VC_SYSINCLUDE` environment variable.
 
 ## Additional build steps
 

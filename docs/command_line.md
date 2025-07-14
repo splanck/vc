@@ -32,6 +32,7 @@ The compiler supports the following options:
 - `--obj-dir <path>` – directory for temporary object files.
 - `--sysroot=<dir>` – prepend `<dir>` to builtin include paths.
 - `--vc-sysinclude=<dir>` – prepend `<dir>` to the system header list.
+- `--internal-libc` – use the bundled libc headers and archive when linking.
 - `--verbose-includes` – print each include directory searched and the
   final resolved path.
 - `-S`, `--dump-asm` – print the generated assembly to stdout instead of creating a file.
@@ -78,14 +79,28 @@ source (for example `file.o`) is created in the current directory.
 
 ## Preprocessor Usage
 
-The preprocessor runs automatically before the lexer. It supports both `#include "file"` and `#include <file>` to insert the contents of another file. Additional directories to search for included files can be provided with the `-I`/`--include` option. Angle-bracket includes search those directories, then any paths listed in the `VCPATH` environment variable (colon separated, or semicolons on Windows), followed by the standard system locations such as `/usr/include`. Quoted includes also consult directories from `VCINC`. Entries from `VCPATH` and `VCINC` are appended after all `-I` directories so command-line paths are searched first. Directories from `VC_SYSINCLUDE` are searched before the builtin list. When `--sysroot` is used these builtin locations are prefixed with the provided directory. It also supports
+The preprocessor runs automatically before the lexer. It supports both
+`#include "file"` and `#include <file>` to insert the contents of another
+file. Additional directories to search for included files can be provided
+with the `-I`/`--include` option. Angle‑bracket includes search those
+directories, then any paths listed in the `VCPATH` environment variable
+(colon separated, or semicolons on Windows), followed by the standard
+system locations such as `/usr/include`. Quoted includes also consult
+directories from `VCINC`. Entries from `VCPATH` and `VCINC` are appended
+after all `-I` directories so command-line paths are searched first.
+Directories from `VC_SYSINCLUDE` or the `--vc-sysinclude` option are
+searched before the builtin list. When `--internal-libc` is used
+`libc/include` is inserted automatically. When `--sysroot` is used these
+builtin locations are prefixed with the provided directory.
 For example:
 
 ```sh
 VCPATH=/opt/headers VCINC=./quoted vc -I ./inc -o prog.s prog.c
 ```
 
-The compiler will search `./inc` first, then `/opt/headers` for `<...>` includes and `./quoted` for `"..."` includes before falling back to the system directories.
+The compiler will search `./inc` first, then `/opt/headers` for `<...>`
+includes and `./quoted` for `"..."` includes before falling back to the
+system directories.
 
 object-like `#define` macros and parameterized
 macros such as `#define NAME(a, b)`; macro bodies are expanded recursively.
