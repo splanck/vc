@@ -225,6 +225,14 @@ static int parse_param_list(parser_t *p, symtable_t *symtab,
     *is_variadic = 0;
 
     if (!match(p, TOK_RPAREN)) {
+        if (match(p, TOK_KW_VOID)) {
+            token_t *next = peek(p);
+            if (next && next->type == TOK_RPAREN) {
+                p->pos++; /* consume ')' */
+                goto done_params;
+            }
+            p->pos--; /* treat 'void' as normal type */
+        }
         do {
             if (match(p, TOK_ELLIPSIS)) {
                 *is_variadic = 1;
@@ -244,6 +252,7 @@ static int parse_param_list(parser_t *p, symtable_t *symtab,
         }
     }
 
+done_params:
     if (!validate_param_info(names_v.count, *is_variadic)) {
         cleanup_param_vectors(&names_v, &types_v,
                              &sizes_v, &restrict_v, &tags_v);
