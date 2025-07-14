@@ -80,6 +80,14 @@ static int parse_param_list_proto(parser_t *p, symtable_t *funcs,
     *is_variadic = 0;
 
     if (!match(p, TOK_RPAREN)) {
+        if (match(p, TOK_KW_VOID)) {
+            token_t *next = peek(p);
+            if (next && next->type == TOK_RPAREN) {
+                p->pos++; /* consume ')' */
+                goto done_proto;
+            }
+            p->pos--; /* treat 'void' as normal type */
+        }
         do {
             match(p, TOK_KW_CONST);
             match(p, TOK_KW_VOLATILE);
@@ -124,6 +132,7 @@ static int parse_param_list_proto(parser_t *p, symtable_t *funcs,
             return 0;
     }
 
+done_proto:
     return 1;
 }
 
