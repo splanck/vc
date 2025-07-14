@@ -32,6 +32,8 @@ The compiler supports the following options:
 - `--obj-dir <path>` – directory for temporary object files.
 - `--sysroot=<dir>` – prepend `<dir>` to builtin include paths.
 - `--vc-sysinclude=<dir>` – prepend `<dir>` to the system header list.
+- `--verbose-includes` – print each include directory searched and the
+  final resolved path.
 - `-S`, `--dump-asm` – print the generated assembly to stdout instead of creating a file.
 - `--dump-ast` – print the AST to stdout after parsing.
 - `--dump-ir` – print the IR to stdout before code generation.

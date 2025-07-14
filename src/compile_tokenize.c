@@ -192,6 +192,7 @@ static int read_stdin_source(const cli_options_t *cli,
     }
 
     preproc_context_t ctx = {0};
+    preproc_set_verbose_includes(cli->verbose_includes);
     ctx.max_include_depth = cli->max_include_depth;
     char *text = preproc_run(&ctx, path, incdirs, defines, undefines,
                              cli->sysroot, cli->vc_sysinclude,
@@ -236,6 +237,7 @@ int compile_tokenize_impl(const char *source, const cli_options_t *cli,
         }
     } else {
         preproc_context_t ctx = {0};
+        preproc_set_verbose_includes(cli->verbose_includes);
         ctx.max_include_depth = cli->max_include_depth;
         text = preproc_run(&ctx, source, incdirs, defines, undefines,
                            cli->sysroot, cli->vc_sysinclude,
