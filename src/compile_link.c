@@ -244,16 +244,78 @@ static int build_and_link_objects(vector_t *objs, const cli_options_t *cli)
 {
     char *stubobj = NULL;
     int ok = create_startup_object(cli, cli->use_x86_64, &stubobj);
-    if (ok) {
-        if (!vector_push(objs, &stubobj)) {
+    if (!ok)
+        return 0;
+
+    if (!vector_push(objs, &stubobj)) {
+        vc_oom();
+        unlink(stubobj);
+        free(stubobj);
+        return 0;
+    }
+
+    int disable_stdlib = 0;
+    for (size_t i = 0; i < cli->libs.count; i++) {
+        const char *lib = ((const char **)cli->libs.data)[i];
+        if (strcmp(lib, "nostdlib") == 0) {
+            disable_stdlib = 1;
+            break;
+        }
+    }
+
+    vector_t lib_dirs;
+    vector_t libs;
+    vector_init(&lib_dirs, sizeof(char *));
+    vector_init(&libs, sizeof(char *));
+    for (size_t i = 0; i < cli->lib_dirs.count; i++) {
+        char *dir = ((char **)cli->lib_dirs.data)[i];
+        if (!vector_push(&lib_dirs, &dir)) {
             vc_oom();
-            unlink(stubobj);
-            free(stubobj);
+            vector_free(&lib_dirs);
+            vector_free(&libs);
             return 0;
         }
-        ok = run_link_command(objs, &cli->lib_dirs, &cli->libs,
-                              cli->output, cli->use_x86_64);
     }
+    for (size_t i = 0; i < cli->libs.count; i++) {
+        char *lib = ((char **)cli->libs.data)[i];
+        if (!vector_push(&libs, &lib)) {
+            vc_oom();
+            vector_free(&lib_dirs);
+            vector_free(&libs);
+            return 0;
+        }
+    }
+
+    if (cli->internal_libc && !disable_stdlib) {
+        const char *dir = "libc";
+        const char *libname = cli->use_x86_64 ? "c64" : "c32";
+        const char *archive = cli->use_x86_64 ? "libc/libc64.a" : "libc/libc32.a";
+
+        if (access(archive, F_OK) != 0) {
+            fprintf(stderr, "vc: internal libc archive '%s' not found\n", archive);
+            vector_free(&lib_dirs);
+            vector_free(&libs);
+            return 0;
+        }
+
+        if (!vector_push(&lib_dirs, &dir)) {
+            vc_oom();
+            vector_free(&lib_dirs);
+            vector_free(&libs);
+            return 0;
+        }
+        if (!vector_push(&libs, &libname)) {
+            vc_oom();
+            vector_free(&lib_dirs);
+            vector_free(&libs);
+            return 0;
+        }
+    }
+
+    ok = run_link_command(objs, &lib_dirs, &libs,
+                          cli->output, cli->use_x86_64);
+    vector_free(&lib_dirs);
+    vector_free(&libs);
     return ok;
 }
 
