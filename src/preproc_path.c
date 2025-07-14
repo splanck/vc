@@ -26,6 +26,7 @@ static int gcc_include_initialized = 0;
 static char *multiarch_cached = NULL;
 static int multiarch_initialized = 0;
 static int std_dirs_initialized = 0;
+static vector_t extra_sys_dirs;
 
 static const char *get_multiarch_dir(void)
 {
@@ -118,6 +119,7 @@ static void init_std_include_dirs(void)
 {
     if (std_dirs_initialized)
         return;
+    vector_init(&extra_sys_dirs, sizeof(char *));
 #if defined(__linux__)
     const char *multi = get_multiarch_dir();
     size_t len = strlen("/usr/include/") + strlen(multi);
@@ -241,11 +243,22 @@ char *find_include_path(const char *fname, char endc, const char *dir,
     if (start > incdirs->count)
         builtin_start = start - incdirs->count;
     if (endc == '<') {
-        for (size_t i = builtin_start; std_include_dirs[i]; i++) {
-            snprintf(out_path, max_len + 1, "%s/%s", std_include_dirs[i], fname);
+        for (size_t i = builtin_start; i < extra_sys_dirs.count; i++) {
+            const char *base = ((const char **)extra_sys_dirs.data)[i];
+            snprintf(out_path, max_len + 1, "%s/%s", base, fname);
             if (access(out_path, R_OK) == 0) {
                 if (out_idx)
                     *out_idx = incdirs->count + i;
+                return out_path;
+            }
+        }
+        size_t off = builtin_start > extra_sys_dirs.count ?
+                      builtin_start - extra_sys_dirs.count : 0;
+        for (size_t i = off; std_include_dirs[i]; i++) {
+            snprintf(out_path, max_len + 1, "%s/%s", std_include_dirs[i], fname);
+            if (access(out_path, R_OK) == 0) {
+                if (out_idx)
+                    *out_idx = incdirs->count + extra_sys_dirs.count + i;
                 return out_path;
             }
         }
@@ -258,11 +271,22 @@ char *find_include_path(const char *fname, char endc, const char *dir,
             *out_idx = (size_t)-1;
         return out_path;
     }
-    for (size_t i = builtin_start; std_include_dirs[i]; i++) {
-        snprintf(out_path, max_len + 1, "%s/%s", std_include_dirs[i], fname);
+    for (size_t i = builtin_start; i < extra_sys_dirs.count; i++) {
+        const char *base = ((const char **)extra_sys_dirs.data)[i];
+        snprintf(out_path, max_len + 1, "%s/%s", base, fname);
         if (access(out_path, R_OK) == 0) {
             if (out_idx)
                 *out_idx = incdirs->count + i;
+            return out_path;
+        }
+    }
+    size_t off = builtin_start > extra_sys_dirs.count ?
+                  builtin_start - extra_sys_dirs.count : 0;
+    for (size_t i = off; std_include_dirs[i]; i++) {
+        snprintf(out_path, max_len + 1, "%s/%s", std_include_dirs[i], fname);
+        if (access(out_path, R_OK) == 0) {
+            if (out_idx)
+                *out_idx = incdirs->count + extra_sys_dirs.count + i;
             return out_path;
         }
     }
@@ -303,7 +327,8 @@ int append_env_paths(const char *env, vector_t *search_dirs)
 
 int collect_include_dirs(vector_t *search_dirs,
                          const vector_t *include_dirs,
-                         const char *sysroot)
+                         const char *sysroot,
+                         const char *vc_sysinclude)
 {
     init_std_include_dirs();
     const char *gcc_dir = get_gcc_include_dir();
@@ -334,6 +359,18 @@ int collect_include_dirs(vector_t *search_dirs,
     if (!append_env_paths(getenv("C_INCLUDE_PATH"), search_dirs)) {
         free_string_vector(search_dirs);
         return 0;
+    }
+
+    free_string_vector(&extra_sys_dirs);
+    vector_init(&extra_sys_dirs, sizeof(char *));
+    const char *sysinc = vc_sysinclude && *vc_sysinclude ? vc_sysinclude
+                       : getenv("VC_SYSINCLUDE");
+    if (sysinc && *sysinc) {
+        if (!append_env_paths(sysinc, &extra_sys_dirs)) {
+            free_string_vector(search_dirs);
+            free_string_vector(&extra_sys_dirs);
+            return 0;
+        }
     }
 
     if (sysroot && *sysroot) {
@@ -377,7 +414,11 @@ void print_include_search_dirs(FILE *fp, char endc, const char *dir,
         builtin_start = start - incdirs->count;
     if (endc != '<')
         fprintf(fp, "  .\n");
-    for (size_t i = builtin_start; std_include_dirs[i]; i++)
+    for (size_t i = builtin_start; i < extra_sys_dirs.count; i++)
+        fprintf(fp, "  %s\n", ((char **)extra_sys_dirs.data)[i]);
+    size_t off = builtin_start > extra_sys_dirs.count ?
+                  builtin_start - extra_sys_dirs.count : 0;
+    for (size_t i = off; std_include_dirs[i]; i++)
         fprintf(fp, "  %s\n", std_include_dirs[i]);
 }
 
@@ -399,5 +440,6 @@ void preproc_path_cleanup(void)
     std_include_dirs[0] = NULL;
 #endif
     std_dirs_initialized = 0;
+    free_string_vector(&extra_sys_dirs);
 }
 

@@ -43,7 +43,7 @@ int main(void)
 
     vector_t dirs; vector_init(&dirs, sizeof(char *));
     preproc_context_t ctx = {0};
-    char *res = preproc_run(&ctx, maintmpl, &dirs, NULL, NULL);
+    char *res = preproc_run(&ctx, maintmpl, &dirs, NULL, NULL, NULL, NULL);
     ASSERT(res != NULL);
     if (res) {
         char exp0[64]; snprintf(exp0, sizeof(exp0), "int cnt0 = 0;");

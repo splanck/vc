@@ -15,6 +15,7 @@ system locations.  The variables considered by `collect_include_dirs` are:
 - `VCINC` – additional directories for quoted include paths.
 - `CPATH` – standard search directories used by many C compilers.
 - `C_INCLUDE_PATH` – like `CPATH` but specific to C headers.
+- `VC_SYSINCLUDE` – system directories searched before `/usr/include`.
 
 The list is released with [`free_string_vector`](memory_helpers.md) once
 preprocessing finishes.  Each line is inspected in order and any recognised

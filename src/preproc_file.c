@@ -362,13 +362,14 @@ static int process_input_file(const char *path, vector_t *macros,
 char *preproc_run(preproc_context_t *ctx, const char *path,
                   const vector_t *include_dirs,
                   const vector_t *defines, const vector_t *undefines,
-                  const char *sysroot)
+                  const char *sysroot, const char *vc_sysinclude)
 {
     vector_t search_dirs, macros, conds, stack;
     strbuf_t out;
 
     /* Build include search list from CLI options and environment */
-    if (!collect_include_dirs(&search_dirs, include_dirs, sysroot))
+    if (!collect_include_dirs(&search_dirs, include_dirs, sysroot,
+                              vc_sysinclude))
         return NULL;
 
     /* Prepare all vectors used during preprocessing */

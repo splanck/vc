@@ -39,7 +39,7 @@ int main(void)
     int saved = dup(fileno(stderr));
     dup2(fileno(tmp), fileno(stderr));
 
-    char *res = preproc_run(&ctx, tmpl, &dirs, NULL, NULL);
+    char *res = preproc_run(&ctx, tmpl, &dirs, NULL, NULL, NULL, NULL);
 
     fflush(stderr);
     fseek(tmp, 0, SEEK_SET);

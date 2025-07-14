@@ -30,6 +30,8 @@ void print_usage(const char *prog)
         "      --link           Compile and link to an executable\n",
         "      --obj-dir <dir>  Directory for temporary object files\n",
         "      --sysroot <dir>  Prefix system include paths with <dir>\n",
+        "      --vc-sysinclude <dir>  Prepend <dir> to system headers\n",
+        "      --internal-libc   Use bundled libc headers\n",
         "      --no-fold        Disable constant folding\n",
         "      --no-dce         Disable dead code elimination\n",
         "      --no-cprop       Disable constant propagation\n",
@@ -232,6 +234,12 @@ int parse_io_paths(int opt, const char *arg, cli_options_t *opts)
         return 0;
     case CLI_OPT_SYSROOT:
         opts->sysroot = (char *)arg;
+        return 0;
+    case CLI_OPT_VC_SYSINCLUDE:
+        opts->vc_sysinclude = (char *)arg;
+        return 0;
+    case CLI_OPT_INTERNAL_LIBC:
+        opts->internal_libc = true;
         return 0;
     default:
         return -1;
