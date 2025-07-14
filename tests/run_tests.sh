@@ -793,6 +793,25 @@ if ! od -An -t x1 "${libm_exe}" | head -n 1 | grep -q "7f 45 4c 46"; then
 fi
 rm -f "${libm_exe}"
 
+# build and run simple program with internal libc (32-bit and 64-bit)
+libc32=$(mktemp)
+rm -f "${libc32}"
+"$BINARY" --link --internal-libc -o "${libc32}" "$DIR/fixtures/libc_puts.c"
+if [ "$("${libc32}")" != "hello" ]; then
+    echo "Test libc_puts_32 failed"
+    fail=1
+fi
+rm -f "${libc32}"
+
+libc64=$(mktemp)
+rm -f "${libc64}"
+"$BINARY" --x86-64 --link --internal-libc -o "${libc64}" "$DIR/fixtures/libc_puts.c"
+if [ "$("${libc64}")" != "hello" ]; then
+    echo "Test libc_puts_64 failed"
+    fail=1
+fi
+rm -f "${libc64}"
+
 # dependency generation with -MD
 dep_obj=depobj$$.o
 "$BINARY" -MD -c -I "$DIR/includes" -o "$dep_obj" "$DIR/fixtures/include_search.c"
