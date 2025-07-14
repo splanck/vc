@@ -29,8 +29,8 @@ int main(void)
 
     vector_t dirs; vector_init(&dirs, sizeof(char *));
     preproc_context_t c1, c2;
-    char *r1 = preproc_run(&c1, tmpl1, &dirs, NULL, NULL, NULL, NULL); ASSERT(r1);
-    char *r2 = preproc_run(&c2, tmpl2, &dirs, NULL, NULL, NULL, NULL); ASSERT(r2);
+    char *r1 = preproc_run(&c1, tmpl1, &dirs, NULL, NULL, NULL, NULL, false); ASSERT(r1);
+    char *r2 = preproc_run(&c2, tmpl2, &dirs, NULL, NULL, NULL, NULL, false); ASSERT(r2);
     if (r1) { ASSERT(strstr(r1, "int v = 0;") != NULL); }
     if (r2) { ASSERT(strstr(r2, "int v = 0;") != NULL); }
     free(r1); preproc_context_free(&c1); unlink(tmpl1);

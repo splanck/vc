@@ -5,6 +5,7 @@
 #define VC_PREPROC_PATH_H
 
 #include <stdio.h>
+#include <stdbool.h>
 #include "vector.h"
 #include "preproc_file.h"
 
@@ -17,7 +18,8 @@ int append_env_paths(const char *env, vector_t *search_dirs);
 int collect_include_dirs(vector_t *search_dirs,
                          const vector_t *include_dirs,
                          const char *sysroot,
-                         const char *vc_sysinclude);
+                         const char *vc_sysinclude,
+                         bool internal_libc);
 
 /* Print the directories searched for an include directive */
 void print_include_search_dirs(FILE *fp, char endc, const char *dir,

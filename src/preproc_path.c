@@ -9,6 +9,7 @@
 
 #include "util.h"
 #include "preproc_path.h"
+#include <stdbool.h>
 
 /* Default system include search paths */
 #ifdef __linux__
@@ -328,7 +329,8 @@ int append_env_paths(const char *env, vector_t *search_dirs)
 int collect_include_dirs(vector_t *search_dirs,
                          const vector_t *include_dirs,
                          const char *sysroot,
-                         const char *vc_sysinclude)
+                         const char *vc_sysinclude,
+                         bool internal_libc)
 {
     init_std_include_dirs();
     const char *gcc_dir = get_gcc_include_dir();
@@ -363,6 +365,15 @@ int collect_include_dirs(vector_t *search_dirs,
 
     free_string_vector(&extra_sys_dirs);
     vector_init(&extra_sys_dirs, sizeof(char *));
+    if (internal_libc) {
+        char *dup = vc_strdup("libc/include");
+        if (!dup || !vector_push(&extra_sys_dirs, &dup)) {
+            free(dup);
+            free_string_vector(search_dirs);
+            free_string_vector(&extra_sys_dirs);
+            return 0;
+        }
+    }
     const char *sysinc = vc_sysinclude && *vc_sysinclude ? vc_sysinclude
                        : getenv("VC_SYSINCLUDE");
     if (sysinc && *sysinc) {

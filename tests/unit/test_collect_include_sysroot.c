@@ -16,7 +16,7 @@ static int failures = 0;
 int main(void)
 {
     vector_t empty; vector_init(&empty, sizeof(char *));
-    vector_t base; ASSERT(collect_include_dirs(&base, &empty, NULL));
+    vector_t base; ASSERT(collect_include_dirs(&base, &empty, NULL, false));
     size_t count = base.count;
     char **paths = calloc(count, sizeof(char*));
     for (size_t i = 0; i < count; i++)
@@ -24,7 +24,7 @@ int main(void)
     free_string_vector(&base);
 
     const char *sysroot = "/tmp/sysroot";
-    vector_t pref; ASSERT(collect_include_dirs(&pref, &empty, sysroot));
+    vector_t pref; ASSERT(collect_include_dirs(&pref, &empty, sysroot, false));
     ASSERT(pref.count == count);
     for (size_t i = 0; i < count; i++) {
         char expect[4096];
@@ -33,7 +33,7 @@ int main(void)
     }
     free_string_vector(&pref);
 
-    vector_t pref_slash; ASSERT(collect_include_dirs(&pref_slash, &empty, "/tmp/sysroot/"));
+    vector_t pref_slash; ASSERT(collect_include_dirs(&pref_slash, &empty, "/tmp/sysroot/", false));
     ASSERT(pref_slash.count == count);
     for (size_t i = 0; i < count; i++) {
         char expect[4096];
