@@ -8,7 +8,12 @@
 #ifndef VC_STDIO_H
 #define VC_STDIO_H
 
+#ifdef __VC__
+int puts();
+int printf();
+#else
 int puts(const char *);
 int printf(const char *, ...);
+#endif
 
 #endif /* VC_STDIO_H */
