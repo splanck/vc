@@ -36,14 +36,23 @@ HDR = include/token.h include/token_names.h include/ast.h include/ast_clone.h in
 PREFIX ?= /usr/local
 INCLUDEDIR ?= $(PREFIX)/include/vc
 MANDIR ?= $(PREFIX)/share/man
+LIBC_MAKE = $(MAKE) -C libc
 
-all: $(BIN)
+all: $(BIN) libc
 
 test: $(BIN)
 	./tests/run_tests.sh
 
 $(BIN): $(OBJ)
 	$(CC) $(CFLAGS) $(OPTFLAGS) -o $@ $(OBJ)
+
+libc32:
+	$(LIBC_MAKE) libc32
+
+libc64:
+	$(LIBC_MAKE) libc64
+
+libc: libc32 libc64
 
 install: $(BIN)
 	install -d $(DESTDIR)$(INCLUDEDIR)
@@ -55,8 +64,9 @@ install: $(BIN)
 
 clean:
 	rm -f $(BIN) $(OBJ)
+	$(LIBC_MAKE) clean
 
-.PHONY: all clean install test
+.PHONY: all clean install test libc32 libc64 libc
 src/main.o: src/main.c $(HDR)
 	$(CC) $(CFLAGS) $(OPTFLAGS) -Iinclude -c src/main.c -o src/main.o
 src/compile.o: src/compile.c $(HDR)
