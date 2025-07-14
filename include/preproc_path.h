@@ -25,6 +25,9 @@ int collect_include_dirs(vector_t *search_dirs,
 void print_include_search_dirs(FILE *fp, char endc, const char *dir,
                                const vector_t *incdirs, size_t start);
 
+/* Toggle verbose include search output */
+void preproc_set_verbose_includes(bool flag);
+
 /* Release cached include path resources */
 void preproc_path_cleanup(void);
 

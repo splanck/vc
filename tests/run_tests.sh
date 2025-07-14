@@ -10,7 +10,7 @@ for cfile in "$DIR"/fixtures/*.c; do
     base=$(basename "$cfile" .c)
 
     case "$base" in
-        *_x86-64|struct_*|bitfield_rw|include_search|include_angle|include_env|macro_bad_define|preproc_blank|macro_cli|macro_cli_quote|include_once|include_once_link|include_next|include_next_quote|libm_program|union_example|varargs_double)
+        *_x86-64|struct_*|bitfield_rw|include_search|include_angle|include_env|macro_bad_define|preproc_blank|macro_cli|macro_cli_quote|include_once|include_once_link|include_next|include_next_quote|libm_program|union_example|varargs_double|include_stdio)
             continue;;
     esac
     expect="$DIR/fixtures/$base.s"
@@ -144,6 +144,15 @@ if ! diff -u "$DIR/fixtures/include_env.s" "${cinc_out}"; then
     fail=1
 fi
 rm -f "${cinc_out}"
+
+# verify verbose include resolution with internal libc
+err=$(mktemp)
+"$BINARY" --preprocess --verbose-includes --internal-libc "$DIR/fixtures/include_stdio.c" >/dev/null 2> "$err"
+if ! grep -q "libc/include/stdio.h" "$err"; then
+    echo "Test verbose_internal_stdio failed"
+    fail=1
+fi
+rm -f "$err"
 
 # verify VCFLAGS options are parsed
 vcflags_out=$(mktemp)

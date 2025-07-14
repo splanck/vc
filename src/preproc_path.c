@@ -28,6 +28,7 @@ static char *multiarch_cached = NULL;
 static int multiarch_initialized = 0;
 static int std_dirs_initialized = 0;
 static vector_t extra_sys_dirs;
+static int verbose_includes = 0;
 
 static const char *get_multiarch_dir(void)
 {
@@ -225,18 +226,26 @@ char *find_include_path(const char *fname, char endc, const char *dir,
     char *out_path = vc_alloc_or_exit(max_len + 1);
     if (endc == '"' && dir && start == 0) {
         snprintf(out_path, max_len + 1, "%s%s", dir, fname);
+        if (verbose_includes)
+            fprintf(stderr, "checking %s%s\n", dir, fname);
         if (access(out_path, R_OK) == 0) {
             if (out_idx)
                 *out_idx = (size_t)-1;
+            if (verbose_includes)
+                fprintf(stderr, "found %s\n", out_path);
             return out_path;
         }
     }
     for (size_t i = start; i < incdirs->count; i++) {
         const char *base = ((const char **)incdirs->data)[i];
         snprintf(out_path, max_len + 1, "%s/%s", base, fname);
+        if (verbose_includes)
+            fprintf(stderr, "checking %s/%s\n", base, fname);
         if (access(out_path, R_OK) == 0) {
             if (out_idx)
                 *out_idx = i;
+            if (verbose_includes)
+                fprintf(stderr, "found %s\n", out_path);
             return out_path;
         }
     }
@@ -247,9 +256,13 @@ char *find_include_path(const char *fname, char endc, const char *dir,
         for (size_t i = builtin_start; i < extra_sys_dirs.count; i++) {
             const char *base = ((const char **)extra_sys_dirs.data)[i];
             snprintf(out_path, max_len + 1, "%s/%s", base, fname);
+            if (verbose_includes)
+                fprintf(stderr, "checking %s/%s\n", base, fname);
             if (access(out_path, R_OK) == 0) {
                 if (out_idx)
                     *out_idx = incdirs->count + i;
+                if (verbose_includes)
+                    fprintf(stderr, "found %s\n", out_path);
                 return out_path;
             }
         }
@@ -257,9 +270,13 @@ char *find_include_path(const char *fname, char endc, const char *dir,
                       builtin_start - extra_sys_dirs.count : 0;
         for (size_t i = off; std_include_dirs[i]; i++) {
             snprintf(out_path, max_len + 1, "%s/%s", std_include_dirs[i], fname);
+            if (verbose_includes)
+                fprintf(stderr, "checking %s/%s\n", std_include_dirs[i], fname);
             if (access(out_path, R_OK) == 0) {
                 if (out_idx)
                     *out_idx = incdirs->count + extra_sys_dirs.count + i;
+                if (verbose_includes)
+                    fprintf(stderr, "found %s\n", out_path);
                 return out_path;
             }
         }
@@ -267,17 +284,25 @@ char *find_include_path(const char *fname, char endc, const char *dir,
         return NULL;
     }
     snprintf(out_path, max_len + 1, "%s", fname);
+    if (verbose_includes)
+        fprintf(stderr, "checking %s\n", out_path);
     if (access(out_path, R_OK) == 0) {
         if (out_idx)
             *out_idx = (size_t)-1;
+        if (verbose_includes)
+            fprintf(stderr, "found %s\n", out_path);
         return out_path;
     }
     for (size_t i = builtin_start; i < extra_sys_dirs.count; i++) {
         const char *base = ((const char **)extra_sys_dirs.data)[i];
         snprintf(out_path, max_len + 1, "%s/%s", base, fname);
+        if (verbose_includes)
+            fprintf(stderr, "checking %s/%s\n", base, fname);
         if (access(out_path, R_OK) == 0) {
             if (out_idx)
                 *out_idx = incdirs->count + i;
+            if (verbose_includes)
+                fprintf(stderr, "found %s\n", out_path);
             return out_path;
         }
     }
@@ -285,9 +310,13 @@ char *find_include_path(const char *fname, char endc, const char *dir,
                   builtin_start - extra_sys_dirs.count : 0;
     for (size_t i = off; std_include_dirs[i]; i++) {
         snprintf(out_path, max_len + 1, "%s/%s", std_include_dirs[i], fname);
+        if (verbose_includes)
+            fprintf(stderr, "checking %s/%s\n", std_include_dirs[i], fname);
         if (access(out_path, R_OK) == 0) {
             if (out_idx)
                 *out_idx = incdirs->count + extra_sys_dirs.count + i;
+            if (verbose_includes)
+                fprintf(stderr, "found %s\n", out_path);
             return out_path;
         }
     }
@@ -431,6 +460,11 @@ void print_include_search_dirs(FILE *fp, char endc, const char *dir,
                   builtin_start - extra_sys_dirs.count : 0;
     for (size_t i = off; std_include_dirs[i]; i++)
         fprintf(fp, "  %s\n", std_include_dirs[i]);
+}
+
+void preproc_set_verbose_includes(bool flag)
+{
+    verbose_includes = flag ? 1 : 0;
 }
 
 void preproc_path_cleanup(void)

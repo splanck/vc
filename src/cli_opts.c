@@ -32,6 +32,7 @@ void print_usage(const char *prog)
         "      --sysroot <dir>  Prefix system include paths with <dir>\n",
         "      --vc-sysinclude <dir>  Prepend <dir> to system headers\n",
         "      --internal-libc   Use bundled libc headers\n",
+        "      --verbose-includes  Print include search details\n",
         "      --no-fold        Disable constant folding\n",
         "      --no-dce         Disable dead code elimination\n",
         "      --no-cprop       Disable constant propagation\n",
@@ -305,6 +306,9 @@ int parse_misc_opts(int opt, const char *arg, const char *prog,
         return 0;
     case CLI_OPT_EMIT_DWARF:
         opts->emit_dwarf = true;
+        return 0;
+    case CLI_OPT_VERBOSE_INCLUDES:
+        opts->verbose_includes = true;
         return 0;
     case 'f':
         if (strncmp(arg, "max-include-depth=", 18) == 0)

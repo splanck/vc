@@ -51,7 +51,8 @@ typedef enum {
     CLI_OPT_FMAX_DEPTH,
     CLI_OPT_SYSROOT,
     CLI_OPT_VC_SYSINCLUDE,
-    CLI_OPT_INTERNAL_LIBC
+    CLI_OPT_INTERNAL_LIBC,
+    CLI_OPT_VERBOSE_INCLUDES
 } cli_opt_id;
 
 /* Command line options parsed from argv */
@@ -78,6 +79,7 @@ typedef struct {
     char *sysroot;      /* prefix for system include paths */
     char *vc_sysinclude; /* first system include directory */
     bool internal_libc; /* use bundled libc */
+    bool verbose_includes; /* print include search details */
     vector_t include_dirs; /* additional include directories */
     vector_t sources;      /* input source files */
     vector_t defines;      /* command line macro definitions */

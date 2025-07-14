@@ -66,6 +66,16 @@ static void test_dump_tokens_option(void)
     cli_free_opts(&opts);
 }
 
+static void test_verbose_includes_option(void)
+{
+    cli_options_t opts;
+    char *argv[] = {"vc", "--verbose-includes", "--preprocess", "file.c", NULL};
+    int ret = cli_parse_args(4, argv, &opts);
+    ASSERT(ret == 0);
+    ASSERT(opts.verbose_includes);
+    cli_free_opts(&opts);
+}
+
 static void test_parse_failure(void)
 {
     cli_options_t opts;
@@ -107,6 +117,7 @@ int main(void)
     test_intel_syntax_option();
     test_dump_ast_option();
     test_dump_tokens_option();
+    test_verbose_includes_option();
     test_parse_failure();
     if (failures == 0)
         printf("All cli tests passed\n");
