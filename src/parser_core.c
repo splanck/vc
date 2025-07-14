@@ -163,6 +163,9 @@ static int parse_param_decl(parser_t *p, symtable_t *symtab,
     type_kind_t pt;
     char *tag = NULL;
 
+    match(p, TOK_KW_CONST);
+    match(p, TOK_KW_VOLATILE);
+
     if (match(p, TOK_KW_STRUCT) || match(p, TOK_KW_UNION)) {
         token_type_t kw = p->tokens[p->pos - 1].type;
         token_t *id = peek(p);

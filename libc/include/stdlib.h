@@ -10,8 +10,8 @@
 
 #include <stddef.h>
 
-void exit(int);
-void *malloc(size_t);
-void free(void *);
+void exit(int status);
+void *malloc(size_t size);
+void free(void *ptr);
 
 #endif /* VC_STDLIB_H */
