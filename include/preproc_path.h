@@ -27,6 +27,7 @@ void print_include_search_dirs(FILE *fp, char endc, const char *dir,
 
 /* Toggle verbose include search output */
 void preproc_set_verbose_includes(bool flag);
+void preproc_set_internal_libc_dir(const char *path);
 
 /* Release cached include path resources */
 void preproc_path_cleanup(void);

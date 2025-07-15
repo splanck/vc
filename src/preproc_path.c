@@ -29,6 +29,7 @@ static int multiarch_initialized = 0;
 static int std_dirs_initialized = 0;
 static vector_t extra_sys_dirs;
 static int verbose_includes = 0;
+static const char *internal_libc_dir = PROJECT_ROOT "/libc/include";
 
 static const char *get_multiarch_dir(void)
 {
@@ -395,7 +396,7 @@ int collect_include_dirs(vector_t *search_dirs,
     free_string_vector(&extra_sys_dirs);
     vector_init(&extra_sys_dirs, sizeof(char *));
     if (internal_libc) {
-        char *dup = vc_strdup(PROJECT_ROOT "/libc/include");
+        char *dup = vc_strdup(internal_libc_dir);
         if (!dup || !vector_push(&extra_sys_dirs, &dup)) {
             free(dup);
             free_string_vector(search_dirs);
@@ -465,6 +466,11 @@ void print_include_search_dirs(FILE *fp, char endc, const char *dir,
 void preproc_set_verbose_includes(bool flag)
 {
     verbose_includes = flag ? 1 : 0;
+}
+
+void preproc_set_internal_libc_dir(const char *path)
+{
+    internal_libc_dir = (path && *path) ? path : PROJECT_ROOT "/libc/include";
 }
 
 void preproc_path_cleanup(void)
