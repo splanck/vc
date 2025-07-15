@@ -1070,6 +1070,12 @@ if ! grep -q "warning: unreachable statement" "${err}"; then
 fi
 rm -f "${out}" "${err}"
 
+# build and run example programs with internal libc
+if ! "$DIR/run_examples.sh"; then
+    echo "Test run_examples failed"
+    fail=1
+fi
+
 if [ $fail -eq 0 ]; then
     echo "All tests passed"
 else
