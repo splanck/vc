@@ -23,20 +23,21 @@ long _vc_write(int fd, const void *buf, unsigned long count)
     SYSCALL_INVOKE(VC_SYS_WRITE, fd, buf, count);
 }
 
-void _vc_exit(int status)
+__attribute__((noreturn, naked)) void _vc_exit(int status)
 {
 #ifdef __x86_64__
-    __asm__ volatile ("syscall" 
-                      :
-                      : "a"(VC_SYS_EXIT), "D"(status)
-                      : "rcx", "r11", "memory");
+    __asm__ volatile(
+        "mov $60, %rax\n"
+        "syscall\n"
+        "hlt\n"
+    );
 #elif defined(__i386__)
-    __asm__ volatile ("int $0x80" 
-                      :
-                      : "a"(VC_SYS_EXIT), "b"(status)
-                      : "memory");
+    __asm__ volatile(
+        "mov $1, %eax\n"
+        "int $0x80\n"
+        "hlt\n"
+    );
 #endif
-    for (;;);
 }
 
 void *_vc_malloc(unsigned long size)

@@ -807,7 +807,9 @@ if [ $CAN_COMPILE_32 -eq 0 ]; then
     libc32=$(mktemp)
     rm -f "${libc32}"
     "$BINARY" --link --internal-libc -o "${libc32}" "$DIR/fixtures/libc_puts.c"
-    if [ "$("${libc32}")" != "hello" ]; then
+    out=$("${libc32}")
+    status=$?
+    if [ "$out" != "hello" ] || [ $status -ne 0 ]; then
         echo "Test libc_puts_32 failed"
         fail=1
     fi
@@ -817,7 +819,9 @@ fi
 libc64=$(mktemp)
 rm -f "${libc64}"
 "$BINARY" --x86-64 --link --internal-libc -o "${libc64}" "$DIR/fixtures/libc_puts.c"
-if [ "$("${libc64}")" != "hello" ]; then
+out=$("${libc64}")
+status=$?
+if [ "$out" != "hello" ] || [ $status -ne 0 ]; then
     echo "Test libc_puts_64 failed"
     fail=1
 fi
