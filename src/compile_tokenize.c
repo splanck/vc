@@ -204,6 +204,7 @@ static int read_stdin_source(const cli_options_t *cli,
         return 0;
     }
     semantic_set_pack(ctx.pack_alignment);
+    semantic_set_use_x86_64(cli->use_x86_64);
     if (ctx.system_header)
         semantic_suppress_warnings = true;
     preproc_context_free(&ctx);
@@ -259,6 +260,7 @@ int compile_tokenize_impl(const char *source, const cli_options_t *cli,
             }
         }
         semantic_set_pack(ctx.pack_alignment);
+        semantic_set_use_x86_64(cli->use_x86_64);
         if (ctx.system_header)
             semantic_suppress_warnings = true;
         preproc_context_free(&ctx);

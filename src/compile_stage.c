@@ -250,6 +250,7 @@ static void init_compile_context(compile_context_t *ctx, const char *source,
     codegen_set_debug(cli->debug || cli->emit_dwarf);
     codegen_set_dwarf(cli->emit_dwarf);
     compile_ctx_init(ctx);
+    semantic_set_use_x86_64(cli->use_x86_64);
 }
 
 static void finalize_compile_context(compile_context_t *ctx)

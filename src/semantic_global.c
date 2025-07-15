@@ -35,6 +35,14 @@ size_t semantic_pack_alignment = 0;
 /* total bytes of automatic storage for the current function */
 int semantic_stack_offset = 0;
 
+/* whether 64-bit code generation is enabled */
+int semantic_use_x86_64 = 0;
+
+void semantic_set_use_x86_64(int flag)
+{
+    semantic_use_x86_64 = flag;
+}
+
 void semantic_set_pack(size_t align)
 {
     semantic_pack_alignment = align;

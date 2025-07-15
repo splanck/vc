@@ -14,6 +14,7 @@
 #include "semantic_expr.h"
 #include "consteval.h"
 #include "symtable.h"
+#include "semantic_global.h"
 #include "util.h"
 #include "label.h"
 #include "error.h"
@@ -81,14 +82,13 @@ type_kind_t check_call_expr(expr_t *expr, symtable_t *vars,
             }
         }
     }
-    for (size_t i = expr->data.call.arg_count; i > 0; i--) {
-        size_t idx = i - 1;
-        type_kind_t at = atypes[idx];
-        if (idx >= expected &&
-            (at == TYPE_FLOAT || at == TYPE_DOUBLE || at == TYPE_LDOUBLE)) {
-            ir_build_arg(ir, vals[idx], at);
-        } else {
-            ir_build_arg(ir, vals[idx], at);
+    if (semantic_use_x86_64) {
+        for (size_t idx = 0; idx < expr->data.call.arg_count; idx++)
+            ir_build_arg(ir, vals[idx], atypes[idx]);
+    } else {
+        for (size_t i = expr->data.call.arg_count; i > 0; i--) {
+            size_t idx = i - 1;
+            ir_build_arg(ir, vals[idx], atypes[idx]);
         }
     }
     free(vals);

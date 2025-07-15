@@ -18,6 +18,9 @@
 extern size_t semantic_pack_alignment;
 extern int semantic_stack_offset;
 void semantic_set_pack(size_t align);
+/* Target architecture flag used by semantic analysis */
+extern int semantic_use_x86_64;
+void semantic_set_use_x86_64(int flag);
 
 int check_func(func_t *func, symtable_t *funcs, symtable_t *globals,
                ir_builder_t *ir);
