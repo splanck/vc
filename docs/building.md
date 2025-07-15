@@ -116,15 +116,22 @@ under `tests/`. It returns a non-zero status if any test fails.
 Several macros expected by system headers are defined automatically during
 compilation. Most values mirror the output of `$(CC) -dM -E` so the
 preprocessor behaves like GCC.  The compiler also provides a set of standard
-definitions:
+definitions.  They are grouped by purpose to match the behaviour of GCC:
 
-- `__STDC__` and `__STDC_HOSTED__` evaluate to `1`.
-- `__i386__` or `__x86_64__` is defined based on the selected bit width.
-- `__SIZE_TYPE__` and `__PTRDIFF_TYPE__` use `unsigned int`/`int` on ILP32 and
-  `unsigned long`/`long` on LP64.
-- `__GNUC__`, `__GNUC_MINOR__`, `__GNUC_PATCHLEVEL__`
-- `__WCHAR_TYPE__`, `__WINT_TYPE__`, `__INTMAX_TYPE__`, `__UINTMAX_TYPE__`,
-  `__INTPTR_TYPE__`, `__UINTPTR_TYPE__`
+- *Architecture*: `__i386__` or `__x86_64__` is defined based on the selected
+  bit width. `__SIZE_TYPE__` and `__PTRDIFF_TYPE__` use `unsigned int`/`int` on
+  ILP32 and `unsigned long`/`long` on LP64.
+- *Compiler*: when built with GCC the values of `__GNUC__`, `__GNUC_MINOR__` and
+  `__GNUC_PATCHLEVEL__` from the host tool chain are propagated so that system
+  headers guarded by GCC conditionals behave identically.
+- *Host features*: various character and integer properties such as
+  `__WCHAR_TYPE__`, `__WINT_TYPE__`, `__INTMAX_TYPE__`, `__UINTMAX_TYPE__`,
+  `__INTPTR_TYPE__`, `__UINTPTR_TYPE__`, `__CHAR_BIT__` and the `__SIZEOF_*`
+  macros are defined whenever the host compiler reports them. Feature macros
+  like `__STDC_UTF_16__` and `__STDC_IEC_559__` are handled the same way.
+
+`__STDC__` and `__STDC_HOSTED__` always evaluate to `1` so standard library
+headers behave as they would under GCC.
 
 These defaults prevent runaway expansions when processing standard library
 headers.

@@ -125,114 +125,177 @@ static int define_simple_macro(vector_t *macros, const char *name,
     return add_macro(name, val, &params, 0, macros);
 }
 
+/* Convenience structure used to define groups of builtin macros */
+typedef struct {
+    const char *name;
+    const char *value;
+} macro_def_t;
+
+/* Define all macros in LIST until a NULL name is encountered */
+static int define_macro_list(vector_t *macros, const macro_def_t *list)
+{
+    for (size_t i = 0; list[i].name; i++) {
+        if (!define_simple_macro(macros, list[i].name, list[i].value))
+            return 0;
+    }
+    return 1;
+}
+
+/* Architecture specific macros mimic GCC for LP64 and ILP32 targets */
+static int define_arch_macros(vector_t *macros, bool use_x86_64)
+{
+    static const macro_def_t arch64[] = {
+        {"__x86_64__", "1"},
+        {"__SIZE_TYPE__", "unsigned long"},
+        {"__PTRDIFF_TYPE__", "long"},
+        {NULL, NULL}
+    };
+    static const macro_def_t arch32[] = {
+        {"__i386__", "1"},
+        {"__SIZE_TYPE__", "unsigned int"},
+        {"__PTRDIFF_TYPE__", "int"},
+        {NULL, NULL}
+    };
+    return define_macro_list(macros, use_x86_64 ? arch64 : arch32);
+}
+
+/* Operating system macros used by system headers */
+static int define_host_macros(vector_t *macros)
+{
+#ifdef __linux__
+    static const macro_def_t os_list[] = {
+        {"__linux__", "1"},
+        {"__unix__", "1"},
+        {NULL, NULL}
+    };
+    return define_macro_list(macros, os_list);
+#else
+    (void)macros;
+    return 1;
+#endif
+}
+
+/* Compiler identification macros follow the host GCC values */
+static int define_compiler_macros(vector_t *macros)
+{
+#ifdef __GNUC__
+#define STR2(x) #x
+#define STR(x) STR2(x)
+    static const macro_def_t gcc_list[] = {
+        {"__GNUC__", STR(__GNUC__)},
+        {"__GNUC_MINOR__", STR(__GNUC_MINOR__)},
+        {"__GNUC_PATCHLEVEL__", STR(__GNUC_PATCHLEVEL__)},
+        {NULL, NULL}
+    };
+#undef STR
+#undef STR2
+    return define_macro_list(macros, gcc_list);
+#else
+    (void)macros;
+    return 1;
+#endif
+}
+
+/* Misc host feature macros copied when available */
+static int define_feature_macros(vector_t *macros)
+{
+#define STR2(x) #x
+#define STR(x) STR2(x)
+#define HOST_MACRO(name) \
+    do { if (!define_simple_macro(macros, #name, STR(name))) return 0; } while (0)
+
+#ifdef __STDC_UTF_16__
+    HOST_MACRO(__STDC_UTF_16__);
+#endif
+#ifdef __STDC_UTF_32__
+    HOST_MACRO(__STDC_UTF_32__);
+#endif
+#ifdef __STDC_ISO_10646__
+    HOST_MACRO(__STDC_ISO_10646__);
+#endif
+#ifdef __STDC_IEC_559__
+    HOST_MACRO(__STDC_IEC_559__);
+#endif
+#ifdef __STDC_IEC_559_COMPLEX__
+    HOST_MACRO(__STDC_IEC_559_COMPLEX__);
+#endif
+#ifdef __STDC_IEC_60559_BFP__
+    HOST_MACRO(__STDC_IEC_60559_BFP__);
+#endif
+#ifdef __STDC_IEC_60559_COMPLEX__
+    HOST_MACRO(__STDC_IEC_60559_COMPLEX__);
+#endif
+#ifdef __WCHAR_TYPE__
+    HOST_MACRO(__WCHAR_TYPE__);
+#endif
+#ifdef __WINT_TYPE__
+    HOST_MACRO(__WINT_TYPE__);
+#endif
+#ifdef __INTMAX_TYPE__
+    HOST_MACRO(__INTMAX_TYPE__);
+#endif
+#ifdef __UINTMAX_TYPE__
+    HOST_MACRO(__UINTMAX_TYPE__);
+#endif
+#ifdef __INTPTR_TYPE__
+    HOST_MACRO(__INTPTR_TYPE__);
+#endif
+#ifdef __UINTPTR_TYPE__
+    HOST_MACRO(__UINTPTR_TYPE__);
+#endif
+#ifdef __CHAR_BIT__
+    HOST_MACRO(__CHAR_BIT__);
+#endif
+#ifdef __SIZEOF_SHORT__
+    HOST_MACRO(__SIZEOF_SHORT__);
+#endif
+#ifdef __SIZEOF_INT__
+    HOST_MACRO(__SIZEOF_INT__);
+#endif
+#ifdef __SIZEOF_LONG__
+    HOST_MACRO(__SIZEOF_LONG__);
+#endif
+#ifdef __SIZEOF_LONG_LONG__
+    HOST_MACRO(__SIZEOF_LONG_LONG__);
+#endif
+#ifdef __SIZEOF_POINTER__
+    HOST_MACRO(__SIZEOF_POINTER__);
+#endif
+#ifdef __SIZEOF_WCHAR_T__
+    HOST_MACRO(__SIZEOF_WCHAR_T__);
+#endif
+#ifdef __BYTE_ORDER__
+    HOST_MACRO(__BYTE_ORDER__);
+#endif
+#ifdef __ORDER_LITTLE_ENDIAN__
+    HOST_MACRO(__ORDER_LITTLE_ENDIAN__);
+#endif
+#ifdef __ORDER_BIG_ENDIAN__
+    HOST_MACRO(__ORDER_BIG_ENDIAN__);
+#endif
+#ifdef __FLOAT_WORD_ORDER__
+    HOST_MACRO(__FLOAT_WORD_ORDER__);
+#endif
+
+#undef HOST_MACRO
+#undef STR
+#undef STR2
+    return 1;
+}
+
 /* Add some common builtin macros based on the host compiler. The path to the
  * main source file is used to initialise __BASE_FILE__. */
 static int define_default_macros(vector_t *macros, const char *base_file,
                                  bool use_x86_64)
 {
-#define STR2(x) #x
-#define STR(x) STR2(x)
-
-    /* basic language environment */
     define_simple_macro(macros, "__STDC__", "1");
     define_simple_macro(macros, "__STDC_HOSTED__", "1");
 
-    if (use_x86_64) {
-        define_simple_macro(macros, "__x86_64__", "1");
-        define_simple_macro(macros, "__SIZE_TYPE__", "unsigned long");
-        define_simple_macro(macros, "__PTRDIFF_TYPE__", "long");
-    } else {
-        define_simple_macro(macros, "__i386__", "1");
-        define_simple_macro(macros, "__SIZE_TYPE__", "unsigned int");
-        define_simple_macro(macros, "__PTRDIFF_TYPE__", "int");
-    }
-
-#ifdef __linux__
-    define_simple_macro(macros, "__linux__", "1");
-    define_simple_macro(macros, "__unix__", "1");
-#endif
-
-
-#ifdef __GNUC__
-    define_simple_macro(macros, "__GNUC__", STR(__GNUC__));
-    define_simple_macro(macros, "__GNUC_MINOR__", STR(__GNUC_MINOR__));
-    define_simple_macro(macros, "__GNUC_PATCHLEVEL__", STR(__GNUC_PATCHLEVEL__));
-#endif
-#ifdef __STDC_UTF_16__
-    define_simple_macro(macros, "__STDC_UTF_16__", STR(__STDC_UTF_16__));
-#endif
-#ifdef __STDC_UTF_32__
-    define_simple_macro(macros, "__STDC_UTF_32__", STR(__STDC_UTF_32__));
-#endif
-#ifdef __STDC_ISO_10646__
-    define_simple_macro(macros, "__STDC_ISO_10646__", STR(__STDC_ISO_10646__));
-#endif
-#ifdef __STDC_IEC_559__
-    define_simple_macro(macros, "__STDC_IEC_559__", STR(__STDC_IEC_559__));
-#endif
-#ifdef __STDC_IEC_559_COMPLEX__
-    define_simple_macro(macros, "__STDC_IEC_559_COMPLEX__", STR(__STDC_IEC_559_COMPLEX__));
-#endif
-#ifdef __STDC_IEC_60559_BFP__
-    define_simple_macro(macros, "__STDC_IEC_60559_BFP__", STR(__STDC_IEC_60559_BFP__));
-#endif
-#ifdef __STDC_IEC_60559_COMPLEX__
-    define_simple_macro(macros, "__STDC_IEC_60559_COMPLEX__", STR(__STDC_IEC_60559_COMPLEX__));
-#endif
-
-#ifdef __WCHAR_TYPE__
-    define_simple_macro(macros, "__WCHAR_TYPE__", STR(__WCHAR_TYPE__));
-#endif
-#ifdef __WINT_TYPE__
-    define_simple_macro(macros, "__WINT_TYPE__", STR(__WINT_TYPE__));
-#endif
-#ifdef __INTMAX_TYPE__
-    define_simple_macro(macros, "__INTMAX_TYPE__", STR(__INTMAX_TYPE__));
-#endif
-#ifdef __UINTMAX_TYPE__
-    define_simple_macro(macros, "__UINTMAX_TYPE__", STR(__UINTMAX_TYPE__));
-#endif
-#ifdef __INTPTR_TYPE__
-    define_simple_macro(macros, "__INTPTR_TYPE__", STR(__INTPTR_TYPE__));
-#endif
-#ifdef __UINTPTR_TYPE__
-    define_simple_macro(macros, "__UINTPTR_TYPE__", STR(__UINTPTR_TYPE__));
-#endif
-#ifdef __CHAR_BIT__
-    define_simple_macro(macros, "__CHAR_BIT__", STR(__CHAR_BIT__));
-#endif
-#ifdef __SIZEOF_SHORT__
-    define_simple_macro(macros, "__SIZEOF_SHORT__", STR(__SIZEOF_SHORT__));
-#endif
-#ifdef __SIZEOF_INT__
-    define_simple_macro(macros, "__SIZEOF_INT__", STR(__SIZEOF_INT__));
-#endif
-#ifdef __SIZEOF_LONG__
-    define_simple_macro(macros, "__SIZEOF_LONG__", STR(__SIZEOF_LONG__));
-#endif
-#ifdef __SIZEOF_LONG_LONG__
-    define_simple_macro(macros, "__SIZEOF_LONG_LONG__", STR(__SIZEOF_LONG_LONG__));
-#endif
-#ifdef __SIZEOF_POINTER__
-    define_simple_macro(macros, "__SIZEOF_POINTER__", STR(__SIZEOF_POINTER__));
-#endif
-#ifdef __SIZEOF_WCHAR_T__
-    define_simple_macro(macros, "__SIZEOF_WCHAR_T__", STR(__SIZEOF_WCHAR_T__));
-#endif
-#ifdef __BYTE_ORDER__
-    define_simple_macro(macros, "__BYTE_ORDER__", STR(__BYTE_ORDER__));
-#endif
-#ifdef __ORDER_LITTLE_ENDIAN__
-    define_simple_macro(macros, "__ORDER_LITTLE_ENDIAN__", STR(__ORDER_LITTLE_ENDIAN__));
-#endif
-#ifdef __ORDER_BIG_ENDIAN__
-    define_simple_macro(macros, "__ORDER_BIG_ENDIAN__", STR(__ORDER_BIG_ENDIAN__));
-#endif
-#ifdef __FLOAT_WORD_ORDER__
-    define_simple_macro(macros, "__FLOAT_WORD_ORDER__", STR(__FLOAT_WORD_ORDER__));
-#endif
-#undef STR
-#undef STR2
+    if (!define_arch_macros(macros, use_x86_64) ||
+        !define_host_macros(macros) ||
+        !define_compiler_macros(macros) ||
+        !define_feature_macros(macros))
+        return 0;
 
     /* Predefined macros for internal bookkeeping */
     define_simple_macro(macros, "__COUNTER__", "0");
