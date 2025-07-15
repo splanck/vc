@@ -84,7 +84,9 @@ Conditional expressions in `#if` directives are parsed by the small recursive
 descent parser in `preproc_expr.c`.  The `defined` operator queries the current
 macro table so feature tests work as expected.  Integer constants and `'c'`
 style character literals may be used and evaluate to numeric values with escape
-sequences such as `\n` or `\x41` recognised.
+sequences such as `\n` or `\x41` recognised.  Octal escapes consume up to
+three digits while hexadecimal escapes use at most two digits and both clamp
+values above `255`.
 
 ## Standard macros
 

@@ -77,14 +77,38 @@ static const escape_entry_t escape_table[] = {
     { '"', '"' }
 };
 
+/* Return the numeric value of a hexadecimal digit or -1 when invalid */
+static int hex_digit_value(char c)
+{
+    if (c >= '0' && c <= '9')
+        return c - '0';
+    if (c >= 'a' && c <= 'f')
+        return c - 'a' + 10;
+    if (c >= 'A' && c <= 'F')
+        return c - 'A' + 10;
+    return -1;
+}
+
+/* Return the numeric value of an octal digit or -1 when invalid */
+static int oct_digit_value(char c)
+{
+    if (c >= '0' && c <= '7')
+        return c - '0';
+    return -1;
+}
+
+/*
+ * Parse up to three octal digits starting at *i. Values above 255 are
+ * clamped and trigger a diagnostic.
+ */
 static int parse_octal(const char *src, size_t *i,
                        size_t line, size_t column)
 {
     int value = 0;
     int digits = 0;
     int overflow = 0;
-    while (digits < 3 && src[*i] >= '0' && src[*i] <= '7') {
-        int digit = src[*i] - '0';
+    int digit;
+    while (digits < 3 && (digit = oct_digit_value(src[*i])) != -1) {
         int next = value * 8 + digit;
         if (next > 255) {
             overflow = 1;
@@ -102,17 +126,15 @@ static int parse_octal(const char *src, size_t *i,
     return value;
 }
 
+/* Parse an \x escape. Up to two hexadecimal digits are consumed. */
 static int parse_hex(const char *src, size_t *i)
 {
     (*i)++;
     int value = 0;
     int digits = 0;
-    while (isxdigit((unsigned char)src[*i]) && digits < 2) {
-        char d = src[*i];
-        int hexval = (d >= '0' && d <= '9') ? d - '0' :
-                     (d >= 'a' && d <= 'f') ? d - 'a' + 10 :
-                     (d >= 'A' && d <= 'F') ? d - 'A' + 10 : 0;
-        value = value * 16 + hexval;
+    int digit;
+    while (digits < 2 && (digit = hex_digit_value(src[*i])) != -1) {
+        value = value * 16 + digit;
         (*i)++;
         digits++;
     }

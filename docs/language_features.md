@@ -41,7 +41,7 @@ shows a short example and how to compile it.
 - Global and external variable declarations.
 - Floating-point types (including `long double`) and the boolean type via `_Bool`.
 - Complex number types using the `_Complex` keyword with support for `+`, `-`, `*`, and `/` operators.
-- 64-bit integer constants (hexadecimal and octal) and character or string literals with standard escape sequences.
+- 64-bit integer constants (hexadecimal and octal) and character or string literals with standard escape sequences. Octal escapes accept up to three digits and values beyond `\255` are clamped. Hexadecimal escapes consume at most two digits.
 - Integer literals may use the suffixes `u`/`U` and `l`/`LL` in any order.
 - Complete `struct` and `union` declarations with bit fields, enumeration types and typedefs.
 - Union access tracking which reports an error if a different member is read after writing another.

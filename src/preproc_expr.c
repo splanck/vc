@@ -37,6 +37,26 @@ typedef struct {
 } expr_ctx_t;
 
 
+/* Return the numeric value of a hexadecimal digit or -1 if invalid */
+static int hex_digit_value(char c)
+{
+    if (c >= '0' && c <= '9')
+        return c - '0';
+    if (c >= 'a' && c <= 'f')
+        return c - 'a' + 10;
+    if (c >= 'A' && c <= 'F')
+        return c - 'A' + 10;
+    return -1;
+}
+
+/* Return the numeric value of an octal digit or -1 if invalid */
+static int oct_digit_value(char c)
+{
+    if (c >= '0' && c <= '7')
+        return c - '0';
+    return -1;
+}
+
 
 /* Parse an identifier token from the input and return a new string */
 static char *parse_ident(expr_ctx_t *ctx)
@@ -165,7 +185,12 @@ static long long parse_has_include(expr_ctx_t *ctx, int is_next)
     free(fname);
     return found;
 }
-/* Parse escape sequences in character literals */
+/*
+ * Parse escape sequences in character literals. Hex escapes consume up to two
+ * digits while octal escapes read at most three. Values beyond 255 are
+ * clamped to avoid overflow. Invalid digits terminate the sequence without
+ * raising an error.
+ */
 static int parse_char_escape(const char **s)
 {
     char c = **s;
@@ -179,21 +204,26 @@ static int parse_char_escape(const char **s)
     if (c == '\'') { (*s)++; return '\''; }
     if (c == '"') { (*s)++; return '"'; }
     if (c == 'x') {
-        (*s)++; int val = 0;
-        while (isxdigit((unsigned char)**s)) {
-            char d = **s;
-            int hex = (d >= '0' && d <= '9') ? d - '0' :
-                       (d >= 'a' && d <= 'f') ? d - 'a' + 10 :
-                       (d >= 'A' && d <= 'F') ? d - 'A' + 10 : 0;
-            val = val * 16 + hex;
-            (*s)++;
+        (*s)++; int val = 0; int digits = 0; int d;
+        while (digits < 2 && (d = hex_digit_value(**s)) != -1) {
+            val = val * 16 + d;
+            (*s)++; digits++;
         }
         return val;
     }
     if (c >= '0' && c <= '7') {
-        int val = 0, digits = 0;
-        while (digits < 3 && **s >= '0' && **s <= '7') {
-            val = val * 8 + (**s - '0');
+        int val = 0, digits = 0, d, next;
+        while (digits < 3 && (d = oct_digit_value(**s)) != -1) {
+            next = val * 8 + d;
+            if (next > 255) {
+                val = 255;
+                /* consume remaining digits but ignore value */
+                while (digits < 3 && oct_digit_value(**s) != -1) {
+                    (*s)++; digits++;
+                }
+                return val;
+            }
+            val = next;
             (*s)++; digits++;
         }
         return val;
