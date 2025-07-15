@@ -168,6 +168,7 @@ static symbol_t *register_var_symbol(stmt_t *stmt, symtable_t *vars)
         size_t sz = local_sym_size(sym);
         sz = (sz + 3) & ~3u;
         semantic_stack_offset += (int)sz;
+        semantic_stack_zero = 0;
         sym->stack_offset = semantic_stack_offset;
         char sbuf[32];
         snprintf(sbuf, sizeof(sbuf), "stack:%d", sym->stack_offset);
