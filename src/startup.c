@@ -47,13 +47,33 @@ int write_startup_asm(int use_x86_64, asm_syntax_t syntax,
     int rc;
     if (syntax == ASM_INTEL) {
         if (use_x86_64) {
-            rc = fputs("global _start\n_start:\n    call main\n    mov rdi, rax\n    mov rax, 60\n    syscall\n", stub);
+            rc = fputs(
+                "global _start\n"
+                "_start:\n"
+                "    and rsp, -16\n"
+                "    lea rbp, [rel after_main]\n"
+                "    call main\n"
+                "after_main:\n"
+                "    mov rdi, rax\n"
+                "    mov rax, 60\n"
+                "    syscall\n",
+                stub);
         } else {
             rc = fputs("global _start\n_start:\n    call main\n    mov ebx, eax\n    mov eax, 1\n    int 0x80\n", stub);
         }
     } else {
         if (use_x86_64) {
-            rc = fputs(".globl _start\n_start:\n    call main\n    mov %rax, %rdi\n    mov $60, %rax\n    syscall\n", stub);
+            rc = fputs(
+                ".globl _start\n"
+                "_start:\n"
+                "    and $-16, %rsp\n"
+                "    lea after_main(%rip), %rbp\n"
+                "    call main\n"
+                "after_main:\n"
+                "    mov %rax, %rdi\n"
+                "    mov $60, %rax\n"
+                "    syscall\n",
+                stub);
         } else {
             rc = fputs(".globl _start\n_start:\n    call main\n    mov %eax, %ebx\n    mov $1, %eax\n    int $0x80\n", stub);
         }
