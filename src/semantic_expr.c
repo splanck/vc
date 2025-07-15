@@ -233,9 +233,9 @@ static type_kind_t check_assign_expr(expr_t *expr, symtable_t *vars,
     if (sym->param_index >= 0)
         ir_build_store_param(ir, sym->param_index, val);
     else if (sym->is_volatile)
-        ir_build_store_vol(ir, expr->data.assign.name, val);
+        ir_build_store_vol(ir, sym->ir_name, val);
     else
-        ir_build_store(ir, expr->data.assign.name, val);
+        ir_build_store(ir, sym->ir_name, val);
 
     if (out)
         *out = val;

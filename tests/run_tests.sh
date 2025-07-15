@@ -865,6 +865,15 @@ if [ "$("${local64}")" != "$expected" ]; then
 fi
 rm -f "${local64}"
 
+# verify stack offsets in generated assembly for local_program
+asm_chk=$(mktemp)
+"$BINARY" --x86-64 --internal-libc -o "${asm_chk}" "$DIR/fixtures/local_program.c"
+if grep -q "\bsum\b" "${asm_chk}"; then
+    echo "Test local_program_stack failed"
+    fail=1
+fi
+rm -f "${asm_chk}"
+
 # dependency generation with -MD
 dep_obj=depobj$$.o
 "$BINARY" -MD -c -I "$DIR/includes" -o "$dep_obj" "$DIR/fixtures/include_search.c"
