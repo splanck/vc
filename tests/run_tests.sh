@@ -903,6 +903,29 @@ if ! diff -u "$DIR/fixtures/local_assign.s" "${assign_out}"; then
 fi
 rm -f "${assign_out}"
 
+# build and run simple file I/O program with internal libc
+io_file="$DIR/input.txt"
+echo "hello" > "$io_file"
+if [ $CAN_COMPILE_32 -eq 0 ]; then
+    fileio32=$(mktemp)
+    rm -f "${fileio32}"
+    "$BINARY" --link --internal-libc -o "${fileio32}" "$DIR/fixtures/libc_fileio.c"
+    if [ "$("${fileio32}")" != "hello" ]; then
+        echo "Test libc_fileio_32 failed"
+        fail=1
+    fi
+    rm -f "${fileio32}"
+fi
+
+fileio64=$(mktemp)
+rm -f "${fileio64}"
+"$BINARY" --x86-64 --link --internal-libc -o "${fileio64}" "$DIR/fixtures/libc_fileio.c"
+if [ "$("${fileio64}")" != "hello" ]; then
+    echo "Test libc_fileio_64 failed"
+    fail=1
+fi
+rm -f "${fileio64}" "$io_file"
+
 # dependency generation with -MD
 dep_obj=depobj$$.o
 "$BINARY" -MD -c -I "$DIR/includes" -o "$dep_obj" "$DIR/fixtures/include_search.c"
