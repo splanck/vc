@@ -43,9 +43,12 @@ void vc_oom(void)
 }
 
 /*
- * Allocate "size" bytes of memory.  If the allocation fails the process
- * prints an error message and terminates.  The returned block is
- * uninitialised.
+ * Allocate 'size' bytes of memory using malloc().
+ *
+ * The argument specifies the number of bytes to reserve.  If the allocation
+ * fails an error message is printed to stderr and the program terminates.
+ * As a result the returned pointer is guaranteed to be non-NULL and refers to
+ * an uninitialised block of the requested size.
  */
 void *vc_alloc_or_exit(size_t size)
 {
@@ -58,8 +61,13 @@ void *vc_alloc_or_exit(size_t size)
 }
 
 /*
- * Reallocate a block previously obtained from malloc.  Behaviour mirrors
- * realloc() except that failure results in program termination.
+ * Resize a heap allocation previously obtained from malloc().
+ *
+ * 'ptr' is the existing allocation and may be NULL to request a new block,
+ * 'size' is the desired size in bytes.  Behaviour otherwise mirrors
+ * realloc() except that if the reallocation fails an error message is
+ * printed and the process terminates.  Consequently this function never
+ * returns NULL.
  */
 void *vc_realloc_or_exit(void *ptr, size_t size)
 {
