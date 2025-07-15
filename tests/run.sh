@@ -404,6 +404,10 @@ cc -Iinclude -Wall -Wextra -std=c99 \
     -DMULTIARCH="${MULTIARCH}" -DGCC_INCLUDE_DIR="${GCC_INCLUDE_DIR}" \
     -o "$DIR/collect_include_sysroot" "$DIR/unit/test_collect_include_sysroot.c" \
     src/preproc_path.c src/vector.c src/util.c
+cc -Iinclude -Wall -Wextra -std=c99 \
+    -DMULTIARCH="${MULTIARCH}" -DGCC_INCLUDE_DIR="${GCC_INCLUDE_DIR}" \
+    -o "$DIR/internal_libc_sysroot" "$DIR/unit/test_internal_libc_sysroot.c" \
+    src/preproc_path.c src/vector.c src/util.c
 cc -Iinclude -Wall -Wextra -std=c99 -Dpopen=test_popen -DUNIT_TESTING -DNO_VECTOR_FREE_STUB \
     -o "$DIR/preproc_popen_fail" "$DIR/unit/test_preproc_popen_fail.c" \
     src/preproc_path.c src/vector.c src/util.c
@@ -525,6 +529,7 @@ rm -f ir_licm.o util_licm.o label_licm.o error_licm.o opt_main_licm.o \
 "$DIR/preproc_expand_size"
 "$DIR/preproc_system_header"
 "$DIR/collect_include_sysroot"
+"$DIR/internal_libc_sysroot"
 "$DIR/preproc_popen_fail"
 "$DIR/invalid_macro_tests"
 # separator for clarity
