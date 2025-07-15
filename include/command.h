@@ -11,6 +11,12 @@
 #ifndef VC_COMMAND_H
 #define VC_COMMAND_H
 
+/*
+ * Declare environ for use with posix_spawnp.  Some systems require the
+ * variable to be visible when spawning child processes.
+ */
+extern char **environ;
+
 /* Convert an argument vector into a single string for debugging.
  * Arguments containing spaces or shell metacharacters are quoted using
  * single quotes. The returned buffer is heap allocated and must be freed
