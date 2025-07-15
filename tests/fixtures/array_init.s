@@ -1,16 +1,17 @@
 main:
     pushl %ebp
     movl %esp, %ebp
+    subl $8, %esp
     movl $0, %eax
     movl $1, %ebx
-    movl %ebx, a(,%eax,4)
+    movl %ebx, -8(%ebp)(,%eax,4)
     movl $1, %ebx
     movl $2, %eax
-    movl %eax, a(,%ebx,4)
+    movl %eax, -8(%ebp)(,%ebx,4)
     movl $0, %eax
-    movl a(,%eax,4), %ebx
+    movl -8(%ebp)(,%eax,4), %ebx
     movl $1, %eax
-    movl a(,%eax,4), %ecx
+    movl -8(%ebp)(,%eax,4), %ecx
     movl %ebx, %eax
     addl %ecx, %eax
     movl %eax, %eax

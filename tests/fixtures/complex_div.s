@@ -1,10 +1,10 @@
 main:
     pushl %ebp
     movl %esp, %ebp
-    movl %eax, a
-    movl %eax, b
-    movl a, %eax
-    movl b, %ebx
+    movl %eax, -0(%ebp)
+    movl %eax, -0(%ebp)
+    movl -0(%ebp), %eax
+    movl -0(%ebp), %ebx
     movsd %ebx, %xmm2
     movsd %ebx, %xmm3
     movsd %xmm2, %xmm4

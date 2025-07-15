@@ -2,7 +2,7 @@ main:
     pushl %ebp
     movl %esp, %ebp
     movl $2, %eax
-    movl %eax, f
+    movl %eax, -0(%ebp)
     movl $2, %eax
     movl %eax, %eax
     ret
