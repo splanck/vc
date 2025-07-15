@@ -241,6 +241,28 @@ static int scan_punctuation(const char *src, size_t *i, size_t *col,
 
 /* Scan and append the next token from the source. Returns 1 on success,
  * 0 when end of input is reached and -1 on error. */
+static int scan_strings(const char *src, size_t *i, size_t *col,
+                        vector_t *tokens, size_t line)
+{
+    int res = scan_string_tokens(src, i, col, tokens, line);
+    if (res)
+        return res;
+    return scan_char_tokens(src, i, col, tokens, line);
+}
+
+static int scan_ident_or_number(const char *src, size_t *i, size_t *col,
+                                vector_t *tokens, size_t line)
+{
+    if (scan_identifier(src, i, col, tokens, line))
+        return 1;
+    return scan_number_token(src, i, col, tokens, line);
+}
+
+/*
+ * Scan and append the next token from the source string.
+ *
+ * Returns 1 on success, 0 when end of input is reached and -1 on error.
+ */
 static int scan_next_token(const char *src, size_t *i, size_t *line,
                            size_t *col, vector_t *tokens)
 {
@@ -250,23 +272,25 @@ static int scan_next_token(const char *src, size_t *i, size_t *line,
 
     int res;
 
-    res = scan_string_tokens(src, i, col, tokens, *line);
+    res = scan_strings(src, i, col, tokens, *line);
     if (res)
         return res;
 
-    res = scan_char_tokens(src, i, col, tokens, *line);
-    if (res)
-        return res;
-
-    res = scan_identifier(src, i, col, tokens, *line);
-    if (res)
-        return 1;
-
-    res = scan_number_token(src, i, col, tokens, *line);
+    res = scan_ident_or_number(src, i, col, tokens, *line);
     if (res)
         return res;
 
     return scan_punctuation(src, i, col, tokens, *line);
+}
+
+/* free tokens stored in the vector and return NULL on error */
+static token_t *cleanup_error_tokens(vector_t *vec)
+{
+    token_t *tokens = (token_t *)vec->data;
+    for (size_t j = 0; j < vec->count; j++)
+        free(tokens[j].lexeme);
+    vector_free(vec);
+    return NULL;
 }
 
 /* Public API */
@@ -277,20 +301,26 @@ token_t *lexer_tokenize(const char *src, size_t *out_count)
     vector_t vec;
     vector_init(&vec, sizeof(token_t));
 
+    /*
+     * Scan tokens sequentially until scan_next_token reports end of
+     * input. A negative return value indicates a lexing error and
+     * triggers cleanup of any tokens already produced.
+     */
+
     size_t i = 0, line = 1, col = 1;
+    /*
+     * Repeatedly scan tokens. The loop stops when scan_next_token
+     * returns 0 (no more input) or a negative value for an error.
+     */
     while (1) {
         int res = scan_next_token(src, &i, &line, &col, &vec);
-        if (res < 0) {
-            token_t *tokens = (token_t *)vec.data;
-            for (size_t j = 0; j < vec.count; j++)
-                free(tokens[j].lexeme);
-            vector_free(&vec);
-            return NULL;
-        }
+        if (res < 0)
+            return cleanup_error_tokens(&vec); /* propagate scanning error */
         if (res == 0)
-            break;
+            break; /* reached end of input */
     }
 
+    /* add explicit EOF marker after the last real token */
     append_token(&vec, TOK_EOF, "", 0, line, col);
     if (out_count)
         *out_count = vec.count;
