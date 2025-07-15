@@ -21,7 +21,7 @@ for cfile in "$DIR"/fixtures/*.c; do
     base=$(basename "$cfile" .c)
 
     case "$base" in
-        *_x86-64|struct_*|bitfield_rw|include_search|include_angle|include_env|macro_bad_define|preproc_blank|macro_cli|macro_cli_quote|include_once|include_once_link|include_next|include_next_quote|libm_program|union_example|varargs_double|include_stdio|libc_puts|libc_printf|local_program)
+        *_x86-64|struct_*|bitfield_rw|include_search|include_angle|include_env|macro_bad_define|preproc_blank|macro_cli|macro_cli_quote|include_once|include_once_link|include_next|include_next_quote|libm_program|union_example|varargs_double|include_stdio|libc_puts|libc_printf|local_program|local_assign)
             continue;;
     esac
     expect="$DIR/fixtures/$base.s"
@@ -873,6 +873,15 @@ if grep -q "\bsum\b" "${asm_chk}"; then
     fail=1
 fi
 rm -f "${asm_chk}"
+
+# verify assembly for local_assign with internal libc
+assign_out=$(mktemp)
+"$BINARY" --x86-64 --internal-libc -o "${assign_out}" "$DIR/fixtures/local_assign.c"
+if ! diff -u "$DIR/fixtures/local_assign.s" "${assign_out}"; then
+    echo "Test local_assign_libc failed"
+    fail=1
+fi
+rm -f "${assign_out}"
 
 # dependency generation with -MD
 dep_obj=depobj$$.o
