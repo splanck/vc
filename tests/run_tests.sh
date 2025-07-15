@@ -3,6 +3,15 @@ set -e
 DIR=$(dirname "$0")
 BINARY="$DIR/../vc"
 
+# check if the host compiler supports 32-bit builds
+set +e
+gcc -m32 -xc /dev/null -o /dev/null 2>/dev/null
+CAN_COMPILE_32=$?
+set -e
+if [ $CAN_COMPILE_32 -ne 0 ]; then
+    echo "Notice: 32-bit compilation not available, skipping 32-bit libc test"
+fi
+
 fail=0
 # ensure internal libc archive is available for tests
 make -s -C "$DIR/../libc" >/dev/null
@@ -794,14 +803,16 @@ fi
 rm -f "${libm_exe}"
 
 # build and run simple program with internal libc (32-bit and 64-bit)
-libc32=$(mktemp)
-rm -f "${libc32}"
-"$BINARY" --link --internal-libc -o "${libc32}" "$DIR/fixtures/libc_puts.c"
-if [ "$("${libc32}")" != "hello" ]; then
-    echo "Test libc_puts_32 failed"
-    fail=1
+if [ $CAN_COMPILE_32 -eq 0 ]; then
+    libc32=$(mktemp)
+    rm -f "${libc32}"
+    "$BINARY" --link --internal-libc -o "${libc32}" "$DIR/fixtures/libc_puts.c"
+    if [ "$("${libc32}")" != "hello" ]; then
+        echo "Test libc_puts_32 failed"
+        fail=1
+    fi
+    rm -f "${libc32}"
 fi
-rm -f "${libc32}"
 
 libc64=$(mktemp)
 rm -f "${libc64}"
