@@ -17,7 +17,9 @@
 /* Current maximum alignment for struct packing */
 extern size_t semantic_pack_alignment;
 extern int semantic_stack_offset;
+extern int semantic_named_locals;
 void semantic_set_pack(size_t align);
+void semantic_set_named_locals(int flag);
 
 int check_func(func_t *func, symtable_t *funcs, symtable_t *globals,
                ir_builder_t *ir);

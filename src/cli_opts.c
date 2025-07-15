@@ -261,6 +261,7 @@ static void set_dep_only(cli_options_t *opts) { opts->dep_only = true; }
 static void set_dep(cli_options_t *opts) { opts->deps = true; }
 static void set_no_warn(cli_options_t *opts) { opts->warn_unreachable = false; }
 static void set_verbose(cli_options_t *opts) { opts->verbose_includes = true; }
+static void set_named_locals(cli_options_t *opts) { opts->named_locals = true; }
 
 
 int parse_optimization_opts(int opt, const char *arg, cli_options_t *opts)
@@ -328,6 +329,7 @@ int parse_misc_opts(int opt, const char *arg, const char *prog,
         { CLI_OPT_DEP, set_dep },
         { CLI_OPT_NO_WARN_UNREACHABLE, set_no_warn },
         { CLI_OPT_VERBOSE_INCLUDES, set_verbose },
+        { CLI_OPT_NAMED_LOCALS, set_named_locals },
     };
 
     for (size_t i = 0; i < sizeof(table) / sizeof(table[0]); i++) {

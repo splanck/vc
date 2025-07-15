@@ -163,7 +163,8 @@ static symbol_t *register_var_symbol(stmt_t *stmt, symtable_t *vars)
             sym->func_param_types[i] = STMT_VAR_DECL(stmt).func_param_types[i];
     }
 
-    if (!STMT_VAR_DECL(stmt).is_static && !STMT_VAR_DECL(stmt).is_extern) {
+    if (!STMT_VAR_DECL(stmt).is_static && !STMT_VAR_DECL(stmt).is_extern &&
+        !semantic_named_locals) {
         size_t sz = local_sym_size(sym);
         sz = (sz + 3) & ~3u;
         semantic_stack_offset += (int)sz;

@@ -47,6 +47,7 @@ static void init_default_opts(cli_options_t *opts)
     opts->vc_sysinclude = NULL;
     opts->internal_libc = false;
     opts->verbose_includes = false;
+    opts->named_locals = false;
     opts->max_include_depth = DEFAULT_INCLUDE_DEPTH;
     vector_init(&opts->include_dirs, sizeof(char *));
     vector_init(&opts->sources, sizeof(char *));
@@ -129,6 +130,7 @@ int cli_parse_args(int argc, char **argv, cli_options_t *opts)
         {"vc-sysinclude", required_argument, 0, CLI_OPT_VC_SYSINCLUDE},
         {"internal-libc", no_argument, 0, CLI_OPT_INTERNAL_LIBC},
         {"verbose-includes", no_argument, 0, CLI_OPT_VERBOSE_INCLUDES},
+        {"named-locals", no_argument, 0, CLI_OPT_NAMED_LOCALS},
         {0, 0, 0, 0}
     };
 
