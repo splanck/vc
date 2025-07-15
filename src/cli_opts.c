@@ -6,6 +6,7 @@
 #include <unistd.h>
 #include <getopt.h>
 #include "cli_opts.h"
+#include "preproc_path.h"
 #ifndef PATH_MAX
 #define PATH_MAX 4096
 #endif
@@ -354,9 +355,31 @@ int finalize_options(int argc, char **argv, const char *prog,
     }
 
     if (opts->internal_libc) {
-        const char *dir = (opts->vc_sysinclude && *opts->vc_sysinclude)
-                            ? opts->vc_sysinclude
-                            : PROJECT_ROOT "/libc/include";
+        if (!opts->vc_sysinclude || !*opts->vc_sysinclude) {
+            char tmp[PATH_MAX];
+            snprintf(tmp, sizeof(tmp), "%s", prog);
+            char *slash = strrchr(tmp, '/');
+            if (slash)
+                *slash = '\0';
+            else
+                strcpy(tmp, ".");
+            size_t dirlen = strlen(tmp);
+            if (dirlen + strlen("/libc/include") >= PATH_MAX) {
+                fprintf(stderr, "Error: internal libc path too long.\n");
+                cli_free_opts(opts);
+                return 1;
+            }
+            strcat(tmp, "/libc/include");
+            opts->vc_sysinclude = vc_strdup(tmp);
+            if (!opts->vc_sysinclude) {
+                vc_oom();
+                cli_free_opts(opts);
+                return 1;
+            }
+        }
+        preproc_set_internal_libc_dir(opts->vc_sysinclude);
+
+        const char *dir = opts->vc_sysinclude;
         char hdr[PATH_MAX];
         snprintf(hdr, sizeof(hdr), "%s/stdio.h", dir);
         if (access(hdr, F_OK) != 0) {
@@ -367,9 +390,18 @@ int finalize_options(int argc, char **argv, const char *prog,
             return 1;
         }
 
-        const char *archive = opts->use_x86_64 ?
-                               PROJECT_ROOT "/libc/libc64.a" :
-                               PROJECT_ROOT "/libc/libc32.a";
+        char libdir[PATH_MAX];
+        snprintf(libdir, sizeof(libdir), "%s", dir);
+        char *slash = strrchr(libdir, '/');
+        if (slash)
+            *slash = '\0';
+        const char *libname = opts->use_x86_64 ? "libc64.a" : "libc32.a";
+        char archive[PATH_MAX];
+        if (snprintf(archive, sizeof(archive), "%s/%s", libdir, libname) >= (int)sizeof(archive)) {
+            fprintf(stderr, "Error: internal libc archive path too long.\n");
+            cli_free_opts(opts);
+            return 1;
+        }
         if (access(archive, F_OK) != 0) {
             fprintf(stderr,
                     "Error: internal libc archive '%s' not found.\n",
