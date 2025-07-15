@@ -27,6 +27,8 @@ static int gcc_include_initialized = 0;
 static char *multiarch_cached = NULL;
 static int multiarch_initialized = 0;
 static int std_dirs_initialized = 0;
+static int gcc_query_failed = 0;
+static int sys_header_warned = 0;
 static vector_t extra_sys_dirs;
 static int verbose_includes = 0;
 static const char *internal_libc_dir = PROJECT_ROOT "/libc/include";
@@ -39,6 +41,7 @@ static const char *get_multiarch_dir(void)
         FILE *fp = popen("gcc -print-multiarch 2>/dev/null", "r");
         if (!fp) {
             perror("popen");
+            gcc_query_failed = 1;
         } else {
             char buf[256];
             if (fgets(buf, sizeof(buf), fp)) {
@@ -49,6 +52,7 @@ static const char *get_multiarch_dir(void)
                     multiarch_cached = vc_strndup(buf, len);
             } else {
                 perror("fgets");
+                gcc_query_failed = 1;
             }
             pclose(fp);
         }
@@ -76,6 +80,7 @@ static const char *get_gcc_include_dir(void)
         FILE *fp = popen("gcc -print-file-name=include 2>/dev/null", "r");
         if (!fp) {
             perror("popen");
+            gcc_query_failed = 1;
         } else {
             char buf[4096];
             if (fgets(buf, sizeof(buf), fp)) {
@@ -86,6 +91,7 @@ static const char *get_gcc_include_dir(void)
                     gcc_include_cached = vc_strndup(buf, len);
             } else {
                 perror("fgets");
+                gcc_query_failed = 1;
             }
             pclose(fp);
         }
@@ -98,6 +104,11 @@ static const char *get_gcc_include_dir(void)
 #else
             gcc_include_cached = vc_strdup("/usr/lib/gcc/include");
 #endif
+        }
+        if (gcc_query_failed && !sys_header_warned) {
+            fprintf(stderr,
+                    "vc: system headers could not be located. Use --vc-sysinclude=<dir> or VC_SYSINCLUDE\n");
+            sys_header_warned = 1;
         }
     }
     return gcc_include_cached;
@@ -497,5 +508,7 @@ void preproc_path_cleanup(void)
 #endif
     std_dirs_initialized = 0;
     free_string_vector(&extra_sys_dirs);
+    gcc_query_failed = 0;
+    sys_header_warned = 0;
 }
 
