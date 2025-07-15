@@ -164,7 +164,8 @@ static int emit_static_initializer(stmt_t *stmt, symbol_t *sym,
                                    symtable_t *vars, ir_builder_t *ir)
 {
     long long cval;
-    if (!eval_const_expr(STMT_VAR_DECL(stmt).init, vars, 0, &cval)) {
+    if (!eval_const_expr(STMT_VAR_DECL(stmt).init, vars,
+                        semantic_get_x86_64(), &cval)) {
         error_set(STMT_VAR_DECL(stmt).init->line, STMT_VAR_DECL(stmt).init->column,
                   error_current_file, error_current_function);
         return 0;

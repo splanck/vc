@@ -88,7 +88,8 @@ type_kind_t check_index_expr(expr_t *expr, symtable_t *vars,
     }
     long long cval;
     if (sym->array_size &&
-        eval_const_expr(expr->data.index.index, vars, 0, &cval)) {
+        eval_const_expr(expr->data.index.index, vars,
+                        semantic_get_x86_64(), &cval)) {
         if (cval < 0 || (size_t)cval >= sym->array_size) {
             error_set(expr->data.index.index->line, expr->data.index.index->column, error_current_file, error_current_function);
             return TYPE_UNKNOWN;
@@ -142,7 +143,8 @@ type_kind_t check_assign_index_expr(expr_t *expr, symtable_t *vars,
     }
     long long cval;
     if (sym->array_size &&
-        eval_const_expr(expr->data.assign_index.index, vars, 0, &cval)) {
+        eval_const_expr(expr->data.assign_index.index, vars,
+                        semantic_get_x86_64(), &cval)) {
         if (cval < 0 || (size_t)cval >= sym->array_size) {
             error_set(expr->data.assign_index.index->line, expr->data.assign_index.index->column, error_current_file, error_current_function);
             return TYPE_UNKNOWN;

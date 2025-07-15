@@ -42,7 +42,8 @@ static int check_enum_decl_stmt(stmt_t *stmt, symtable_t *vars)
         enumerator_t *e = &STMT_ENUM_DECL(stmt).items[i];
         long long val = next;
         if (e->value) {
-            if (!eval_const_expr(e->value, vars, 0, &val)) {
+            if (!eval_const_expr(e->value, vars,
+                                 semantic_get_x86_64(), &val)) {
                 error_set(e->value->line, e->value->column, error_current_file,
                           error_current_function);
                 return 0;
@@ -94,7 +95,8 @@ static symbol_t *insert_var_symbol(stmt_t *stmt, symtable_t *vars,
 {
     if (STMT_VAR_DECL(stmt).align_expr) {
         long long aval;
-        if (!eval_const_expr(STMT_VAR_DECL(stmt).align_expr, vars, 0, &aval) ||
+        if (!eval_const_expr(STMT_VAR_DECL(stmt).align_expr, vars,
+                             semantic_get_x86_64(), &aval) ||
             aval <= 0 || (aval & (aval - 1))) {
             error_set(STMT_VAR_DECL(stmt).align_expr->line,
                       STMT_VAR_DECL(stmt).align_expr->column,

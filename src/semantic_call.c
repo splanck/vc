@@ -81,14 +81,26 @@ type_kind_t check_call_expr(expr_t *expr, symtable_t *vars,
             }
         }
     }
-    for (size_t i = expr->data.call.arg_count; i > 0; i--) {
-        size_t idx = i - 1;
-        type_kind_t at = atypes[idx];
-        if (idx >= expected &&
-            (at == TYPE_FLOAT || at == TYPE_DOUBLE || at == TYPE_LDOUBLE)) {
-            ir_build_arg(ir, vals[idx], at);
-        } else {
-            ir_build_arg(ir, vals[idx], at);
+    if (semantic_get_x86_64()) {
+        for (size_t i = 0; i < expr->data.call.arg_count; i++) {
+            type_kind_t at = atypes[i];
+            if (i >= expected &&
+                (at == TYPE_FLOAT || at == TYPE_DOUBLE || at == TYPE_LDOUBLE)) {
+                ir_build_arg(ir, vals[i], at);
+            } else {
+                ir_build_arg(ir, vals[i], at);
+            }
+        }
+    } else {
+        for (size_t i = expr->data.call.arg_count; i > 0; i--) {
+            size_t idx = i - 1;
+            type_kind_t at = atypes[idx];
+            if (idx >= expected &&
+                (at == TYPE_FLOAT || at == TYPE_DOUBLE || at == TYPE_LDOUBLE)) {
+                ir_build_arg(ir, vals[idx], at);
+            } else {
+                ir_build_arg(ir, vals[idx], at);
+            }
         }
     }
     free(vals);
