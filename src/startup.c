@@ -15,6 +15,7 @@
 #include "cli.h"
 #include "command.h"
 #include "startup.h"
+#include "util.h"
 
 /* Use binary mode for temporary files on platforms that require it */
 #if defined(_WIN32)
@@ -23,8 +24,6 @@
 # define TEMP_FOPEN_MODE "w"
 #endif
 
-int create_temp_file(const cli_options_t *cli, const char *prefix,
-                     char **out_path);
 const char *get_cc(void);
 const char *get_as(int intel);
 

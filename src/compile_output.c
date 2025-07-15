@@ -38,9 +38,6 @@ get_as(int intel)
     return intel ? "nasm" : "cc";
 }
 
-int create_temp_file(const cli_options_t *cli, const char *prefix,
-                     char **out_path);
-
 static const char nasm_macros[] =
     "%macro movl 2\n    mov %1, %2\n%endmacro\n"
     "%macro movq 2\n    mov %1, %2\n%endmacro\n"

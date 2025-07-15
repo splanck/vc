@@ -63,25 +63,6 @@ char *vc_obj_name(const char *source);
  *   ENAMETOOLONG - path would exceed PATH_MAX or snprintf truncated
  *   others       - from malloc, mkstemp or fcntl
  */
-int create_temp_file(const cli_options_t *cli, const char *prefix,
-                     char **out_path)
-{
-    char *tmpl = create_temp_template(cli, prefix);
-    if (!tmpl) {
-        *out_path = NULL;
-        return -1;
-    }
-
-    int fd = open_temp_file(tmpl);
-    if (fd < 0) {
-        free(tmpl);
-        *out_path = NULL;
-        return -1;
-    }
-
-    *out_path = tmpl;
-    return fd;
-}
 
 /* Run the preprocessor and print the result. */
 int run_preprocessor(const cli_options_t *cli)

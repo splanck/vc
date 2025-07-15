@@ -171,7 +171,8 @@ Assemble and link the output to create an executable with \fBcc\fR.
 Place temporary object files in \fIdir\fR.  When this option is
 omitted the compiler first checks \fBTMPDIR\fR and \fBP_tmpdir\fR for
 a directory.  Only if neither variable is set does it default to
-\fB/tmp\fR.
+\fB/tmp\fR.  Temporary files are created with \fBmkstemp(3)\fR and the
+resulting descriptor has \fBFD_CLOEXEC\fR set.
 .TP
 .BR -S "," \fB--dump-asm\fR
 Print generated assembly to stdout rather than creating a file.

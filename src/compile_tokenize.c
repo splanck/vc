@@ -22,9 +22,6 @@
 # define TEMP_FOPEN_MODE "w"
 #endif
 
-int create_temp_file(const cli_options_t *cli, const char *prefix,
-                     char **out_path);
-
 /* Table mapping token types to printable names */
 static const char *tok_names[] = {
     [TOK_EOF] = "end of file",

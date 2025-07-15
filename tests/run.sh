@@ -412,10 +412,10 @@ cc -Iinclude -Wall -Wextra -std=c99 -Dpopen=test_popen -DUNIT_TESTING -DNO_VECTO
     -o "$DIR/preproc_popen_fail" "$DIR/unit/test_preproc_popen_fail.c" \
     src/preproc_path.c src/vector.c src/util.c
 # build create_temp_file path length regression test
-cc -Iinclude -Wall -Wextra -std=c99 -DUNIT_TESTING -ffunction-sections -fdata-sections -c src/compile.c -o compile_temp.o
+cc -Iinclude -Wall -Wextra -std=c99 -DUNIT_TESTING -ffunction-sections -fdata-sections -c src/util.c -o util_temp.o
 cc -Iinclude -Wall -Wextra -std=c99 -c "$DIR/unit/test_temp_file.c" -o "$DIR/test_temp_file.o"
-cc -Wl,--gc-sections -o "$DIR/temp_file_tests" compile_temp.o "$DIR/test_temp_file.o"
-rm -f compile_temp.o "$DIR/test_temp_file.o"
+cc -Wl,--gc-sections -o "$DIR/temp_file_tests" util_temp.o "$DIR/test_temp_file.o"
+rm -f util_temp.o "$DIR/test_temp_file.o"
 # build compile_source_obj temp file failure test
 cc -Iinclude -Wall -Wextra -std=c99 -DUNIT_TESTING -Dcompile_unit=test_compile_unit -ffunction-sections -fdata-sections -c src/compile.c -o compile_obj_fail.o
 cc -Iinclude -Wall -Wextra -std=c99 -DUNIT_TESTING -Dcompile_unit=test_compile_unit -ffunction-sections -fdata-sections -c src/compile_link.c -o compile_link_obj_fail.o

@@ -20,8 +20,6 @@
 #include "cli.h"
 
 /* external helpers from other compilation units */
-int create_temp_file(const cli_options_t *cli, const char *prefix,
-                     char **out_path);
 const char *get_cc(void);
 
 /*

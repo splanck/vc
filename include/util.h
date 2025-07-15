@@ -42,10 +42,21 @@ void free_string_vector(vector_t *v);
 /* Release a vector of macro_t elements */
 void free_macro_vector(vector_t *v);
 
+/* Assemble a temporary file name using cli->obj_dir and open it.
+ *
+ * On success the path of the new file is stored in *out_path and the
+ * descriptor is returned.  The caller is responsible for unlinking and
+ * freeing the returned path.
+ *
+ * If an error occurs -1 is returned, *out_path is set to NULL and errno is
+ * left to indicate the cause.  ENAMETOOLONG signals that the resulting path
+ * would exceed PATH_MAX or snprintf detected truncation.  Other values come
+ * from malloc, mkstemp or fcntl.
+ */
+int create_temp_file(const cli_options_t *cli, const char *prefix,
+                     char **out_path);
+
 /* Assemble an mkstemp template path using cli->obj_dir */
 char *create_temp_template(const cli_options_t *cli, const char *prefix);
-
-/* Create and open the temporary file described by tmpl */
-int open_temp_file(char *tmpl);
 
 #endif /* VC_UTIL_H */

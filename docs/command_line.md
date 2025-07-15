@@ -61,6 +61,8 @@ Temporary object and assembly files are written to the directory given with
 the `--obj-dir` option when provided.  Without this flag the compiler
 consults the `TMPDIR` environment variable and then `P_tmpdir` when set.
 Only if neither variable is available does it fall back to `/tmp`.
+Temporary files are created with `mkstemp(3)` and the returned descriptor
+has `FD_CLOEXEC` set so it is not inherited by child processes.
 The assembler can be overridden with the `AS` environment variable while
 `CC` specifies the linker command and the default assembler for AT&T
 syntax.  When unset they default to `nasm` (Intel mode) and `cc`.

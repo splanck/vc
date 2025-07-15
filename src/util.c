@@ -251,23 +251,38 @@ create_temp_template(const cli_options_t *cli, const char *prefix)
 }
 
 /*
- * Create and open the temporary file described by tmpl.  Returns the file
- * descriptor on success or -1 on failure.  On error the file is unlinked
- * and errno is preserved.
+ * Build a template using create_temp_template, open the file with mkstemp and
+ * set FD_CLOEXEC.  On success the file descriptor is returned and *out_path is
+ * set to the allocated path.  The caller must unlink and free *out_path when
+ * done.  On failure -1 is returned, *out_path is set to NULL and errno
+ * indicates the error.
  */
 int
-open_temp_file(char *tmpl)
+create_temp_file(const cli_options_t *cli, const char *prefix, char **out_path)
 {
-    int fd = mkstemp(tmpl);
-    if (fd < 0)
+    char *tmpl = create_temp_template(cli, prefix);
+    if (!tmpl) {
+        *out_path = NULL;
         return -1;
+    }
+
+    int fd = mkstemp(tmpl);
+    if (fd < 0) {
+        free(tmpl);
+        *out_path = NULL;
+        return -1;
+    }
     if (fcntl(fd, F_SETFD, FD_CLOEXEC) != 0) {
         int err = errno;
         close(fd);
         unlink(tmpl);
+        free(tmpl);
         errno = err;
+        *out_path = NULL;
         return -1;
     }
+
+    *out_path = tmpl;
     return fd;
 }
 
