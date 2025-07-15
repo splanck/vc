@@ -21,5 +21,5 @@ for src in "$DIR"/*.c; do
 
     echo "Building $exe"
 
-    "$VC" --link --internal-libc $ARCH_OPT -o "$exe" "$src"
+    "$VC" --link --internal-libc $ARCH_OPT -o "$exe" "$src" >"$exe.log" 2>&1
 done
