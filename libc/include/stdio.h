@@ -13,9 +13,10 @@
 int puts(const char *s);
 int printf(const char *format, ...);
 
-typedef struct FILE {
+struct FILE_struct {
     int fd;
-} FILE;
+};
+#define FILE struct FILE_struct
 
 FILE *fopen(const char *path, const char *mode);
 int fclose(FILE *stream);
