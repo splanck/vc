@@ -54,7 +54,8 @@ libc32:
 libc64:
 	$(LIBC_MAKE) libc64
 
-libc: libc32 libc64
+libc:
+	$(LIBC_MAKE)
 
 install: $(BIN)
 	install -d $(DESTDIR)$(INCLUDEDIR)
