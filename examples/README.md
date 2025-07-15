@@ -24,6 +24,9 @@ To compile every example at once run the helper script:
 ./build_examples.sh
 ```
 
+If a build fails, check the generated `<program>.log` files in this
+directory for compiler output.
+
 ## Programs
 
 ### hello.c
