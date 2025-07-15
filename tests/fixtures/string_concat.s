@@ -1,6 +1,8 @@
 .data
 Lstr1:
     .asciz "foobar"
+.bss
+.lcomm p, 4
 .text
 main:
     pushl %ebp

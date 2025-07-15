@@ -1,3 +1,9 @@
+.bss
+.lcomm n, 4
+.lcomm ap, 4
+.lcomm t, 4
+.lcomm i, 4
+.text
 sum:
     pushl %ebp
     movl %esp, %ebp

@@ -50,7 +50,12 @@ for cfile in "$DIR"/fixtures/struct_*.c; do
     expect="$DIR/fixtures/$base.s"
     out=$(mktemp)
     echo "Running fixture $base"
-    "$BINARY" -o "${out}" "$cfile"
+    if grep -q "(%ebp)" "$expect" || grep -q "(%rbp)" "$expect" \
+       || grep -q "\[ebp" "$expect" || grep -q "\[rbp" "$expect"; then
+        "$BINARY" -o "${out}" "$cfile"
+    else
+        VC_NAMED_LOCALS=1 "$BINARY" -o "${out}" "$cfile"
+    fi
     if ! diff -u "$expect" "${out}"; then
         echo "Test $base failed"
         fail=1
@@ -63,7 +68,12 @@ for o0asm in "$DIR"/fixtures/*_O0.s; do
     base=$(basename "$o0asm" _O0.s)
     cfile="$DIR/fixtures/$base.c"
     out=$(mktemp)
-    "$BINARY" -O0 -o "${out}" "$cfile"
+    if grep -q "(%ebp)" "$o0asm" || grep -q "(%rbp)" "$o0asm" \
+       || grep -q "\[ebp" "$o0asm" || grep -q "\[rbp" "$o0asm"; then
+        "$BINARY" -O0 -o "${out}" "$cfile"
+    else
+        VC_NAMED_LOCALS=1 "$BINARY" -O0 -o "${out}" "$cfile"
+    fi
     if ! diff -u "$o0asm" "${out}"; then
         echo "Test O0_$base failed"
         fail=1
