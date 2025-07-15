@@ -21,7 +21,7 @@ for cfile in "$DIR"/fixtures/*.c; do
     base=$(basename "$cfile" .c)
 
     case "$base" in
-        *_x86-64|struct_*|bitfield_rw|include_search|include_angle|include_env|macro_bad_define|preproc_blank|macro_cli|macro_cli_quote|include_once|include_once_link|include_next|include_next_quote|libm_program|union_example|varargs_double|include_stdio|libc_puts)
+        *_x86-64|struct_*|bitfield_rw|include_search|include_angle|include_env|macro_bad_define|preproc_blank|macro_cli|macro_cli_quote|include_once|include_once_link|include_next|include_next_quote|libm_program|union_example|varargs_double|include_stdio|libc_puts|libc_printf)
             continue;;
     esac
     expect="$DIR/fixtures/$base.s"
@@ -822,6 +822,26 @@ if [ "$("${libc64}")" != "hello" ]; then
     fail=1
 fi
 rm -f "${libc64}"
+
+if [ $CAN_COMPILE_32 -eq 0 ]; then
+    libc_printf32=$(mktemp)
+    rm -f "${libc_printf32}"
+    "$BINARY" --link --internal-libc -o "${libc_printf32}" "$DIR/fixtures/libc_printf.c"
+    if [ "$("${libc_printf32}")" != "hi" ]; then
+        echo "Test libc_printf_32 failed"
+        fail=1
+    fi
+    rm -f "${libc_printf32}"
+fi
+
+libc_printf64=$(mktemp)
+rm -f "${libc_printf64}"
+"$BINARY" --x86-64 --link --internal-libc -o "${libc_printf64}" "$DIR/fixtures/libc_printf.c"
+if [ "$("${libc_printf64}")" != "hi" ]; then
+    echo "Test libc_printf_64 failed"
+    fail=1
+fi
+rm -f "${libc_printf64}"
 
 # dependency generation with -MD
 dep_obj=depobj$$.o

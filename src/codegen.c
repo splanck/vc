@@ -176,7 +176,28 @@ void codegen_emit_x86(FILE *out, ir_builder_t *ir, int x64,
             if (ins->op == IR_GLOB_VAR) {
                 fprintf(out, "    %s %lld\n", size_directive, ins->imm);
             } else if (ins->op == IR_GLOB_STRING) {
-                fprintf(out, "    .asciz \"%s\"\n", ins->data);
+                const char *s = ins->data;
+                fputs("    .asciz \"", out);
+                for (; *s; s++) {
+                    unsigned char c = (unsigned char)*s;
+                    switch (c) {
+                    case '\\': fputs("\\\\", out); break;
+                    case '"':  fputs("\\\"", out); break;
+                    case '\n': fputs("\\n", out); break;
+                    case '\t': fputs("\\t", out); break;
+                    case '\r': fputs("\\r", out); break;
+                    case '\b': fputs("\\b", out); break;
+                    case '\f': fputs("\\f", out); break;
+                    case '\v': fputs("\\v", out); break;
+                    case '\a': fputs("\\a", out); break;
+                    default:
+                        if (c < 32 || c > 126)
+                            fprintf(out, "\\x%02x", c);
+                        else
+                            fputc(c, out);
+                    }
+                }
+                fputs("\"\n", out);
             } else if (ins->op == IR_GLOB_WSTRING) {
                 long long *vals = (long long *)ins->data;
                 for (long long i = 0; i < ins->imm; i++)
