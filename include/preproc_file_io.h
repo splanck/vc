@@ -27,6 +27,10 @@ int load_and_register_file(const char *path, vector_t *stack, size_t idx,
                            char ***out_lines, char **out_dir, char **out_text,
                            preproc_context_t *ctx);
 
+int open_source_file(const char *path, vector_t *stack, size_t idx,
+                     char ***out_lines, char **out_dir, char **out_text,
+                     preproc_context_t *ctx);
+
 int process_all_lines(char **lines, const char *path, const char *dir,
                       vector_t *macros, vector_t *conds, strbuf_t *out,
                       const vector_t *incdirs, vector_t *stack,

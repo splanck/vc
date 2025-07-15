@@ -232,6 +232,30 @@ int load_and_register_file(const char *path, vector_t *stack, size_t idx,
     return 1;
 }
 
+/*
+ * Load the file at PATH and register it on the include stack.
+ * This helper checks the include depth and resets the system_header
+ * flag before preprocessing begins.
+ */
+int open_source_file(const char *path, vector_t *stack, size_t idx,
+                     char ***out_lines, char **out_dir, char **out_text,
+                     preproc_context_t *ctx)
+{
+    if (stack->count >= ctx->max_include_depth) {
+        fprintf(stderr, "Include depth limit exceeded: %s (depth %zu)\n",
+                path, stack->count);
+        return 0;
+    }
+
+    if (!load_and_register_file(path, stack, idx, out_lines, out_dir,
+                                out_text, ctx))
+        return 0;
+
+    ctx->system_header = 0;
+
+    return 1;
+}
+
 int process_all_lines(char **lines, const char *path, const char *dir,
                       vector_t *macros, vector_t *conds, strbuf_t *out,
                       const vector_t *incdirs, vector_t *stack,
