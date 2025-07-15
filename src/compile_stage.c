@@ -54,8 +54,8 @@ typedef struct compile_context {
     token_t    *tokens;
     size_t      tok_count;
     char       *stdin_tmp;
-    vector_t    func_list_v;
-    vector_t    glob_list_v;
+    vector_t    func_list_v; /* owns func_t* entries */
+    vector_t    glob_list_v; /* owns stmt_t* entries */
     symtable_t  funcs;
     symtable_t  globals;
     ir_builder_t ir;
@@ -168,12 +168,8 @@ static void compile_ctx_init(compile_context_t *ctx)
 
 static void compile_ctx_cleanup(compile_context_t *ctx)
 {
-    for (size_t i = 0; i < ctx->func_list_v.count; i++)
-        ast_free_func(((func_t **)ctx->func_list_v.data)[i]);
-    for (size_t i = 0; i < ctx->glob_list_v.count; i++)
-        ast_free_stmt(((stmt_t **)ctx->glob_list_v.data)[i]);
-    vector_free(&ctx->func_list_v);
-    vector_free(&ctx->glob_list_v);
+    free_func_list_vector(&ctx->func_list_v);
+    free_glob_list_vector(&ctx->glob_list_v);
     symtable_free(&ctx->funcs);
     ir_builder_free(&ctx->ir);
     symtable_free(&ctx->globals);
