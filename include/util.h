@@ -42,6 +42,12 @@ void free_string_vector(vector_t *v);
 /* Release a vector of macro_t elements */
 void free_macro_vector(vector_t *v);
 
+/* Release a vector of func_t* elements */
+void free_func_list_vector(vector_t *v);
+
+/* Release a vector of stmt_t* elements */
+void free_glob_list_vector(vector_t *v);
+
 /* Assemble an mkstemp template path using cli->obj_dir */
 char *create_temp_template(const cli_options_t *cli, const char *prefix);
 

@@ -22,6 +22,7 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include "util.h"
+#include "ast_stmt.h"
 #include "preproc_macros.h"
 
 #ifdef UNIT_TESTING
@@ -199,6 +200,34 @@ void free_macro_vector(vector_t *v)
         return;
     for (size_t i = 0; i < v->count; i++)
         macro_free(&((macro_t *)v->data)[i]);
+    vector_free(v);
+}
+
+/*
+ * Release all functions stored in a vector and free the vector itself.
+ *
+ * Each element must be a func_t pointer created by the AST constructors.
+ */
+void free_func_list_vector(vector_t *v)
+{
+    if (!v)
+        return;
+    for (size_t i = 0; i < v->count; i++)
+        ast_free_func(((func_t **)v->data)[i]);
+    vector_free(v);
+}
+
+/*
+ * Release all global statements stored in a vector and free the vector itself.
+ *
+ * Each element must be a stmt_t pointer created by the AST constructors.
+ */
+void free_glob_list_vector(vector_t *v)
+{
+    if (!v)
+        return;
+    for (size_t i = 0; i < v->count; i++)
+        ast_free_stmt(((stmt_t **)v->data)[i]);
     vector_free(v);
 }
 
