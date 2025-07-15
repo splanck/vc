@@ -26,6 +26,22 @@
 
 #define MAX_MACRO_DEPTH 4096
 
+/*
+ * Expansion algorithm overview
+ * ----------------------------
+ * Lines are scanned token by token.  When a potential macro name is
+ * seen, `parse_macro_invocation` validates the call and dispatches to a
+ * builtin or user-defined macro.  User-defined macros are expanded
+ * recursively through `expand_user_macro` which, after optional argument
+ * parsing, invokes the macro body via `expand_macro_call`.
+ *
+ * Each recursive expansion increments the DEPTH parameter.  To guard
+ * against infinite recursion, calls fail when DEPTH reaches
+ * `MAX_MACRO_DEPTH`.  Callers must propagate negative return values to
+ * signal fatal errors while a zero return indicates malformed input
+ * that should be copied verbatim.
+ */
+
 /* check expanded size against context limit */
 static int check_expand_limit(strbuf_t *sb, preproc_context_t *ctx)
 {
@@ -588,6 +604,13 @@ static int handle_pragma_operator(const char *line, size_t *pos,
     return 1;
 }
 
+/*
+ * Attempt to expand a macro invocation starting at *pos.
+ *
+ * Returns 1 when a macro was successfully expanded, 0 when no
+ * invocation was present and -1 on failure.  The recursion depth is
+ * checked against MAX_MACRO_DEPTH and exceeding it reports an error.
+ */
 static int parse_macro_invocation(const char *line, size_t *pos,
                                   vector_t *macros, strbuf_t *out,
                                   size_t column, int depth,
@@ -629,6 +652,12 @@ static int expand_token(const char *line, size_t *pos, vector_t *macros,
     return 1;
 }
 
+/*
+ * Recursively expand all macros found in LINE and append the result to OUT.
+ *
+ * Returns 1 on success or 0 if a fatal error occurs.  DEPTH limits the
+ * level of nested expansions and is checked against MAX_MACRO_DEPTH.
+ */
 int expand_line(const char *line, vector_t *macros, strbuf_t *out,
                 size_t column, int depth, preproc_context_t *ctx)
 {
