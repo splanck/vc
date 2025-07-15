@@ -22,8 +22,6 @@
 #include "util.h"
 #include "strbuf.h"
 
-extern char **environ;
-
 /* Determine if an argument contains characters that require shell quoting */
 static int needs_quotes(const char *arg)
 {
