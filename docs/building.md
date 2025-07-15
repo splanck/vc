@@ -78,6 +78,9 @@ archive regardless of the current working directory. Additional system
 header locations can be supplied with `--vc-sysinclude=<dir>` or the
 `VC_SYSINCLUDE` environment variable.
 
+If the selected archive is missing the compiler prints an error similar to
+`vc: internal libc archive 'libc/libc64.a' not found. Build it with 'make libc64'`.
+
 ## Additional build steps
 
 Extra source files can be passed to the build using the `EXTRA_SRC`

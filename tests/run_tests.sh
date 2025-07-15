@@ -843,6 +843,22 @@ if [ "$("${libc_printf64}")" != "hi" ]; then
 fi
 rm -f "${libc_printf64}"
 
+# verify error message when internal libc archive is missing
+archive_path="$DIR/../libc/libc64.a"
+mv "$archive_path" "$archive_path.bak"
+err=$(mktemp)
+out=$(mktemp)
+set +e
+"$BINARY" --x86-64 --internal-libc -o "${out}" "$DIR/fixtures/simple_add.c" 2> "$err"
+ret=$?
+set -e
+mv "$archive_path.bak" "$archive_path"
+if [ $ret -eq 0 ] || ! grep -q "make libc64" "$err"; then
+    echo "Test internal_libc_missing failed"
+    fail=1
+fi
+rm -f "${out}" "${err}"
+
 # build and run program with locals using internal libc
 expected="5 + 2 = 7\n5 - 2 = 3\n5 * 2 = 10\n5 / 2 = 2\nSum 1..10 = 55"
 if [ $CAN_COMPILE_32 -eq 0 ]; then

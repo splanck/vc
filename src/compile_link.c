@@ -311,7 +311,10 @@ static int build_and_link_objects(vector_t *objs, const cli_options_t *cli)
         }
 
         if (access(archive, F_OK) != 0) {
-            fprintf(stderr, "vc: internal libc archive '%s' not found\n", archive);
+            const char *make_target = cli->use_x86_64 ? "libc64" : "libc32";
+            fprintf(stderr,
+                    "vc: internal libc archive '%s' not found. Build it with 'make %s'\n",
+                    archive, make_target);
             vector_free(&lib_dirs);
             vector_free(&libs);
             return 0;
