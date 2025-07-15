@@ -11,6 +11,7 @@
 #include <stdio.h>
 #include "codegen_loadstore.h"
 #include "regalloc_x86.h"
+#include "codegen.h"
 
 #define SCRATCH_REG 0
 
@@ -60,12 +61,29 @@ void emit_store(strbuf_t *sb, ir_instr_t *ins,
 {
     char b1[32];
     const char *sfx = x64 ? "q" : "l";
+    char namebuf[32];
+    const char *dst = ins->name;
+    int lslot = codegen_local_slot(ins->name);
+    if (lslot) {
+        if (x64) {
+            if (syntax == ASM_INTEL)
+                snprintf(namebuf, sizeof(namebuf), "[rbp-%d]", lslot * 8);
+            else
+                snprintf(namebuf, sizeof(namebuf), "-%d(%%rbp)", lslot * 8);
+        } else {
+            if (syntax == ASM_INTEL)
+                snprintf(namebuf, sizeof(namebuf), "[ebp-%d]", lslot * 4);
+            else
+                snprintf(namebuf, sizeof(namebuf), "-%d(%%ebp)", lslot * 4);
+        }
+        dst = namebuf;
+    }
     if (syntax == ASM_INTEL)
-        strbuf_appendf(sb, "    mov%s %s, %s\n", sfx, ins->name,
+        strbuf_appendf(sb, "    mov%s %s, %s\n", sfx, dst,
                        loc_str(b1, ra, ins->src1, x64, syntax));
     else
         strbuf_appendf(sb, "    mov%s %s, %s\n", sfx,
-                       loc_str(b1, ra, ins->src1, x64, syntax), ins->name);
+                       loc_str(b1, ra, ins->src1, x64, syntax), dst);
 }
 
 /*

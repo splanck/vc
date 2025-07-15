@@ -14,6 +14,7 @@
 #include "codegen_branch.h"
 #include "regalloc_x86.h"
 #include "codegen_mem.h"
+#include "codegen.h"
 
 
 extern int export_syms;
@@ -183,7 +184,7 @@ static void emit_func_frame(strbuf_t *sb, ir_instr_t *ins,
             strbuf_appendf(sb, "    mov%s %s, %s\n", sfx, bp, sp);
         else
             strbuf_appendf(sb, "    mov%s %s, %s\n", sfx, sp, bp);
-        int frame = ra ? ra->stack_slots * (x64 ? 8 : 4) : 0;
+        int frame = ra ? (ra->stack_slots + codegen_local_count()) * (x64 ? 8 : 4) : 0;
         if (x64 && frame % 16 != 0)
             frame += 16 - (frame % 16);
         if (frame > 0) {

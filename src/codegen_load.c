@@ -11,6 +11,7 @@
 #include <stdio.h>
 #include "codegen_loadstore.h"
 #include "regalloc_x86.h"
+#include "codegen.h"
 
 #define SCRATCH_REG 0
 
@@ -84,7 +85,24 @@ void emit_load(strbuf_t *sb, ir_instr_t *ins,
     const char *dest = spill ? reg_str(SCRATCH_REG, syntax)
                              : loc_str(destb, ra, ins->dest, x64, syntax);
     const char *slot = loc_str(mem, ra, ins->dest, x64, syntax);
-    emit_move_with_spill(sb, sfx, ins->name, dest, slot, spill, syntax);
+    char namebuf[32];
+    const char *src = ins->name;
+    int lslot = codegen_local_slot(ins->name);
+    if (lslot) {
+        if (x64) {
+            if (syntax == ASM_INTEL)
+                snprintf(namebuf, sizeof(namebuf), "[rbp-%d]", lslot * 8);
+            else
+                snprintf(namebuf, sizeof(namebuf), "-%d(%%rbp)", lslot * 8);
+        } else {
+            if (syntax == ASM_INTEL)
+                snprintf(namebuf, sizeof(namebuf), "[ebp-%d]", lslot * 4);
+            else
+                snprintf(namebuf, sizeof(namebuf), "-%d(%%ebp)", lslot * 4);
+        }
+        src = namebuf;
+    }
+    emit_move_with_spill(sb, sfx, src, dest, slot, spill, syntax);
 }
 
 /*

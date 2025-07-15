@@ -40,6 +40,19 @@ int export_syms = 0;
 static int debug_info = 0;
 int dwarf_enabled = 0;
 
+typedef struct local_var {
+    const char *name;
+    int slot;
+    struct local_var *next;
+} local_var_t;
+
+static local_var_t *cur_locals = NULL;
+static int local_slot_count = 0;
+static int locals_start_slot = 0;
+
+static char **global_names = NULL;
+static size_t global_name_count = 0;
+
 /*
  * Enable or disable symbol export.
  *
@@ -62,6 +75,92 @@ void codegen_set_debug(int flag)
 void codegen_set_dwarf(int flag)
 {
     dwarf_enabled = flag;
+}
+
+/* free current local variable list */
+static void free_locals(void)
+{
+    while (cur_locals) {
+        local_var_t *n = cur_locals->next;
+        free(cur_locals);
+        cur_locals = n;
+    }
+    local_slot_count = 0;
+}
+
+/* return 1 if name matches a recorded global symbol */
+static int is_global_name(const char *name)
+{
+    for (size_t i = 0; i < global_name_count; i++)
+        if (strcmp(global_names[i], name) == 0)
+            return 1;
+    return 0;
+}
+
+/* collect all global symbol names */
+static void collect_global_names(ir_builder_t *ir)
+{
+    /* count first */
+    size_t count = 0;
+    for (ir_instr_t *it = ir->head; it; it = it->next) {
+        if (it->op == IR_GLOB_VAR || it->op == IR_GLOB_ARRAY ||
+            it->op == IR_GLOB_UNION || it->op == IR_GLOB_STRUCT ||
+            it->op == IR_GLOB_STRING || it->op == IR_GLOB_WSTRING ||
+            it->op == IR_GLOB_ADDR)
+            count++;
+    }
+    global_names = malloc(count * sizeof(*global_names));
+    global_name_count = count;
+    count = 0;
+    for (ir_instr_t *it = ir->head; it; it = it->next) {
+        if (it->op == IR_GLOB_VAR || it->op == IR_GLOB_ARRAY ||
+            it->op == IR_GLOB_UNION || it->op == IR_GLOB_STRUCT ||
+            it->op == IR_GLOB_STRING || it->op == IR_GLOB_WSTRING ||
+            it->op == IR_GLOB_ADDR)
+            global_names[count++] = it->name;
+    }
+}
+
+/* assign stack slots to automatic variables within one function */
+static void prepare_locals(ir_instr_t *begin, ir_instr_t *end, int start_slot)
+{
+    free_locals();
+    locals_start_slot = start_slot;
+    for (ir_instr_t *it = begin->next; it && it != end; it = it->next) {
+        if ((it->op == IR_LOAD || it->op == IR_STORE) && it->name && *it->name &&
+            !is_global_name(it->name)) {
+            local_var_t *cur = cur_locals;
+            while (cur && strcmp(cur->name, it->name) != 0)
+                cur = cur->next;
+            if (!cur) {
+                cur = malloc(sizeof(*cur));
+                if (!cur)
+                    continue;
+                cur->name = it->name;
+                cur->slot = ++local_slot_count;
+                cur->next = cur_locals;
+                cur_locals = cur;
+            }
+        }
+    }
+}
+
+static int find_local_slot(const char *name)
+{
+    for (local_var_t *v = cur_locals; v; v = v->next)
+        if (strcmp(v->name, name) == 0)
+            return locals_start_slot + v->slot;
+    return 0;
+}
+
+int codegen_local_slot(const char *name)
+{
+    return find_local_slot(name);
+}
+
+int codegen_local_count(void)
+{
+    return local_slot_count;
 }
 
 
@@ -128,6 +227,7 @@ char *codegen_ir_to_string(ir_builder_t *ir, int x64,
     regalloc_set_x86_64(x64);
     regalloc_set_asm_syntax(syntax);
     regalloc_run(ir, &ra);
+    collect_global_names(ir);
     regalloc_xmm_reset();
 
     strbuf_t sb;
@@ -135,12 +235,23 @@ char *codegen_ir_to_string(ir_builder_t *ir, int x64,
     if (debug_info && ir->head && ir->head->file)
         strbuf_appendf(&sb, ".file 1 \"%s\"\n", ir->head->file);
     for (ir_instr_t *ins = ir->head; ins; ins = ins->next) {
+        if (ins->op == IR_FUNC_BEGIN) {
+            ir_instr_t *end = ins->next;
+            while (end && end->op != IR_FUNC_END)
+                end = end->next;
+            prepare_locals(ins, end, ra.stack_slots);
+        }
         if (debug_info && ins->file && ins->line)
             strbuf_appendf(&sb, ".loc 1 %zu %zu\n", ins->line, ins->column);
         emit_instr(&sb, ins, &ra, x64, syntax);
+        if (ins->op == IR_FUNC_END)
+            free_locals();
     }
 
     regalloc_free(&ra);
+    free(global_names);
+    global_names = NULL;
+    global_name_count = 0;
     return sb.data; /* caller takes ownership */
 }
 
