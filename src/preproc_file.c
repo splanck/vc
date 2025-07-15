@@ -5,11 +5,13 @@
  *
  * This file drives reading source text and performing directive
  * processing.  It works with the helpers in `preproc_expand.c`
- * and `preproc_table.c` alongside `preproc_expr.c` to expand macros and evaluate conditional
- * expressions, forming a small stand-alone preprocessor used by
- * the compiler.  The core routine `process_file` reads input one
- * line at a time, handles `#include`, `#define`, conditional blocks
- * and macro expansion, and writes the final text to a buffer.
+ * and `preproc_table.c` alongside `preproc_expr.c` to expand macros and
+ * evaluate conditional expressions, forming a small stand-alone
+ * preprocessor used by the compiler.  Preprocessing happens in three
+ * stages: `open_source_file()` loads the text and records it on the
+ * include stack, `process_file_lines()` expands each line and handles
+ * directives, and `close_source_file()` releases all temporary data.
+ * `process_file()` merely coordinates these helpers for each file.
  *
  * Part of vc under the BSD 2-Clause Simplified License.
  * See LICENSE for details.
@@ -34,30 +36,12 @@
 #include "vector.h"
 #include "strbuf.h"
 
-/*
- * Core file processing routine.  Reads the file, handles directives
- * and macro expansion line by line, writing the preprocessed result
- * to the output buffer.
- */
-int process_file(const char *path, vector_t *macros,
-                        vector_t *conds, strbuf_t *out,
-                        const vector_t *incdirs, vector_t *stack,
-                        preproc_context_t *ctx, size_t idx)
+
+static int process_file_lines(char **lines, const char *path, const char *dir,
+                              vector_t *macros, vector_t *conds, strbuf_t *out,
+                              const vector_t *incdirs, vector_t *stack,
+                              preproc_context_t *ctx)
 {
-    if (stack->count >= ctx->max_include_depth) {
-        fprintf(stderr, "Include depth limit exceeded: %s (depth %zu)\n",
-                path, stack->count);
-        return 0;
-    }
-    char **lines;
-    char *dir;
-    char *text;
-
-    if (!load_and_register_file(path, stack, idx, &lines, &dir, &text, ctx))
-        return 0;
-
-    ctx->system_header = 0;
-
     char *prev_file;
     long prev_delta;
     line_state_push(ctx, path, 0, &prev_file, &prev_delta);
@@ -78,10 +62,37 @@ int process_file(const char *path, vector_t *macros,
     }
 
     line_state_pop(ctx, prev_file, prev_delta);
+    return ok;
+}
 
+static void close_source_file(char *text, char **lines, char *dir,
+                              vector_t *stack, preproc_context_t *ctx)
+{
     include_stack_pop(stack, ctx);
-
     cleanup_file_resources(text, lines, dir);
+}
+
+/*
+ * Core coordinator for preprocessing.  Each file is opened with
+ * open_source_file(), all lines are processed via process_file_lines()
+ * and temporary resources are released by close_source_file().
+ */
+int process_file(const char *path, vector_t *macros,
+                        vector_t *conds, strbuf_t *out,
+                        const vector_t *incdirs, vector_t *stack,
+                        preproc_context_t *ctx, size_t idx)
+{
+    char **lines;
+    char *dir;
+    char *text;
+
+    if (!open_source_file(path, stack, idx, &lines, &dir, &text, ctx))
+        return 0;
+
+    int ok = process_file_lines(lines, path, dir, macros, conds, out,
+                                incdirs, stack, ctx);
+
+    close_source_file(text, lines, dir, stack, ctx);
     return ok;
 }
 
