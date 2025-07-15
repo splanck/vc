@@ -8,7 +8,10 @@
 #ifndef VC_STDIO_H
 #define VC_STDIO_H
 
+#include <stdarg.h>
+
 int puts(const char *s);
 int printf(const char *format, ...);
+
 
 #endif /* VC_STDIO_H */
