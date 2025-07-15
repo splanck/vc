@@ -13,6 +13,12 @@ if [ $HAS_32 -ne 0 ]; then
     ARCH_OPT="--x86-64"
 fi
 
+# build internal libc archives quietly
+if ! make -s -C "$DIR/../libc"; then
+    echo "Failed to build internal libc" >&2
+    exit 1
+fi
+
 success=0
 fail=0
 
