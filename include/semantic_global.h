@@ -16,6 +16,7 @@
 
 /* Current maximum alignment for struct packing */
 extern size_t semantic_pack_alignment;
+extern int semantic_stack_offset;
 void semantic_set_pack(size_t align);
 
 int check_func(func_t *func, symtable_t *funcs, symtable_t *globals,

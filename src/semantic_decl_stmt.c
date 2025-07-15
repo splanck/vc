@@ -5,9 +5,35 @@
 #include "semantic_layout.h"
 #include "consteval.h"
 #include "semantic_control.h"
+#include "semantic_global.h"
+#include <stdio.h>
 #include "ir_core.h"
 #include "label.h"
 #include "error.h"
+
+/* Compute the size in bytes of a symbol for stack allocation */
+static size_t local_sym_size(symbol_t *sym)
+{
+    switch (sym->type) {
+    case TYPE_CHAR: case TYPE_UCHAR: case TYPE_BOOL:
+        return 1;
+    case TYPE_SHORT: case TYPE_USHORT:
+        return 2;
+    case TYPE_INT: case TYPE_UINT: case TYPE_LONG: case TYPE_ULONG:
+    case TYPE_ENUM: case TYPE_PTR:
+        return 4;
+    case TYPE_LLONG: case TYPE_ULLONG:
+        return 8;
+    case TYPE_ARRAY:
+        return sym->array_size * sym->elem_size;
+    case TYPE_STRUCT:
+        return sym->struct_total_size;
+    case TYPE_UNION:
+        return sym->total_size;
+    default:
+        return 0;
+    }
+}
 
 static int check_enum_decl_stmt(stmt_t *stmt, symtable_t *vars)
 {
@@ -132,6 +158,17 @@ static symbol_t *register_var_symbol(stmt_t *stmt, symtable_t *vars)
             return NULL;
         for (size_t i = 0; i < sym->func_param_count; i++)
             sym->func_param_types[i] = STMT_VAR_DECL(stmt).func_param_types[i];
+    }
+
+    if (!STMT_VAR_DECL(stmt).is_static && !STMT_VAR_DECL(stmt).is_extern) {
+        size_t sz = local_sym_size(sym);
+        sz = (sz + 3) & ~3u;
+        semantic_stack_offset += (int)sz;
+        sym->stack_offset = semantic_stack_offset;
+        char sbuf[32];
+        snprintf(sbuf, sizeof(sbuf), "stack:%d", sym->stack_offset);
+        free(sym->ir_name);
+        sym->ir_name = vc_strdup(sbuf);
     }
 
     return sym;

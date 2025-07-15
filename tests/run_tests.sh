@@ -21,7 +21,7 @@ for cfile in "$DIR"/fixtures/*.c; do
     base=$(basename "$cfile" .c)
 
     case "$base" in
-        *_x86-64|struct_*|bitfield_rw|include_search|include_angle|include_env|macro_bad_define|preproc_blank|macro_cli|macro_cli_quote|include_once|include_once_link|include_next|include_next_quote|libm_program|union_example|varargs_double|include_stdio|libc_puts|libc_printf)
+        *_x86-64|struct_*|bitfield_rw|include_search|include_angle|include_env|macro_bad_define|preproc_blank|macro_cli|macro_cli_quote|include_once|include_once_link|include_next|include_next_quote|libm_program|union_example|varargs_double|include_stdio|libc_puts|libc_printf|local_program)
             continue;;
     esac
     expect="$DIR/fixtures/$base.s"
@@ -842,6 +842,28 @@ if [ "$("${libc_printf64}")" != "hi" ]; then
     fail=1
 fi
 rm -f "${libc_printf64}"
+
+# build and run program with locals using internal libc
+expected="5 + 2 = 7\n5 - 2 = 3\n5 * 2 = 10\n5 / 2 = 2\nSum 1..10 = 55"
+if [ $CAN_COMPILE_32 -eq 0 ]; then
+    local32=$(mktemp)
+    rm -f "${local32}"
+    "$BINARY" --link --internal-libc -o "${local32}" "$DIR/fixtures/local_program.c"
+    if [ "$("${local32}")" != "$expected" ]; then
+        echo "Test local_program_32 failed"
+        fail=1
+    fi
+    rm -f "${local32}"
+fi
+
+local64=$(mktemp)
+rm -f "${local64}"
+"$BINARY" --x86-64 --link --internal-libc -o "${local64}" "$DIR/fixtures/local_program.c"
+if [ "$("${local64}")" != "$expected" ]; then
+    echo "Test local_program_64 failed"
+    fail=1
+fi
+rm -f "${local64}"
 
 # dependency generation with -MD
 dep_obj=depobj$$.o

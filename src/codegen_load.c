@@ -9,8 +9,31 @@
  */
 
 #include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 #include "codegen_loadstore.h"
 #include "regalloc_x86.h"
+
+/* Convert "stack:offset" names to frame-pointer relative operands */
+static const char *fmt_stack(char buf[32], const char *name, int x64,
+                             asm_syntax_t syntax)
+{
+    if (strncmp(name, "stack:", 6) != 0)
+        return name;
+    int off = atoi(name + 6);
+    if (x64) {
+        if (syntax == ASM_INTEL)
+            snprintf(buf, 32, "[rbp-%d]", off);
+        else
+            snprintf(buf, 32, "-%d(%%rbp)", off);
+    } else {
+        if (syntax == ASM_INTEL)
+            snprintf(buf, 32, "[ebp-%d]", off);
+        else
+            snprintf(buf, 32, "-%d(%%ebp)", off);
+    }
+    return buf;
+}
 
 #define SCRATCH_REG 0
 
@@ -84,7 +107,9 @@ void emit_load(strbuf_t *sb, ir_instr_t *ins,
     const char *dest = spill ? reg_str(SCRATCH_REG, syntax)
                              : loc_str(destb, ra, ins->dest, x64, syntax);
     const char *slot = loc_str(mem, ra, ins->dest, x64, syntax);
-    emit_move_with_spill(sb, sfx, ins->name, dest, slot, spill, syntax);
+    char sbuf[32];
+    const char *src = fmt_stack(sbuf, ins->name, x64, syntax);
+    emit_move_with_spill(sb, sfx, src, dest, slot, spill, syntax);
 }
 
 /*
@@ -137,8 +162,10 @@ void emit_load_idx(strbuf_t *sb, ir_instr_t *ins,
                              : loc_str(destb, ra, ins->dest, x64, syntax);
     const char *slot = loc_str(mem, ra, ins->dest, x64, syntax);
     char srcbuf[64];
+    char basebuf[32];
+    const char *base = fmt_stack(basebuf, ins->name, x64, syntax);
     snprintf(srcbuf, sizeof(srcbuf), "%s(,%s,4)",
-             ins->name, loc_str(b1, ra, ins->src1, x64, syntax));
+             base, loc_str(b1, ra, ins->src1, x64, syntax));
     emit_move_with_spill(sb, sfx, srcbuf, dest, slot, spill, syntax);
 }
 

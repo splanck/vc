@@ -12,10 +12,32 @@
  */
 
 #include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 #include "codegen_mem.h"
 #include "codegen_loadstore.h"
 #include "regalloc_x86.h"
 #include "ast.h"
+
+static const char *fmt_stack(char buf[32], const char *name, int x64,
+                             asm_syntax_t syntax)
+{
+    if (strncmp(name, "stack:", 6) != 0)
+        return name;
+    int off = atoi(name + 6);
+    if (x64) {
+        if (syntax == ASM_INTEL)
+            snprintf(buf, 32, "[rbp-%d]", off);
+        else
+            snprintf(buf, 32, "-%d(%%rbp)", off);
+    } else {
+        if (syntax == ASM_INTEL)
+            snprintf(buf, 32, "[ebp-%d]", off);
+        else
+            snprintf(buf, 32, "-%d(%%ebp)", off);
+    }
+    return buf;
+}
 
 /* total bytes pushed for the current function call */
 size_t arg_stack_bytes = 0;
@@ -94,13 +116,15 @@ static const char *loc_str(char buf[32], regalloc_t *ra, int id, int x64,
 static void load_dest_scratch(strbuf_t *sb, const char *sfx,
                               const char *name,
                               unsigned long long clear,
-                              asm_syntax_t syntax)
+                              int x64, asm_syntax_t syntax)
 {
     const char *scratch = regalloc_reg_name(SCRATCH_REG);
+    char buf[32];
+    const char *src = fmt_stack(buf, name, x64, syntax);
     if (syntax == ASM_INTEL)
-        strbuf_appendf(sb, "    mov%s %s, %s\n", sfx, scratch, name);
+        strbuf_appendf(sb, "    mov%s %s, %s\n", sfx, scratch, src);
     else
-        strbuf_appendf(sb, "    mov%s %s, %s\n", sfx, name, scratch);
+        strbuf_appendf(sb, "    mov%s %s, %s\n", sfx, src, scratch);
     if (syntax == ASM_INTEL)
         strbuf_appendf(sb, "    and%s %s, %llu\n", sfx, scratch, clear);
     else
@@ -141,10 +165,12 @@ static void write_back_value(strbuf_t *sb, const char *sfx,
     const char *reg = x64 ? fmt_reg("%rcx", syntax)
                           : fmt_reg("%ecx", syntax);
     strbuf_appendf(sb, "    or%s %s, %s\n", sfx, reg, scratch);
+    char buf[32];
+    const char *dst = fmt_stack(buf, name, x64, syntax);
     if (syntax == ASM_INTEL)
-        strbuf_appendf(sb, "    mov%s %s, %s\n", sfx, name, scratch);
+        strbuf_appendf(sb, "    mov%s %s, %s\n", sfx, dst, scratch);
     else
-        strbuf_appendf(sb, "    mov%s %s, %s\n", sfx, scratch, name);
+        strbuf_appendf(sb, "    mov%s %s, %s\n", sfx, scratch, dst);
 }
 
 /* ----------------------------------------------------------------------
@@ -264,10 +290,21 @@ static void emit_addr(strbuf_t *sb, ir_instr_t *ins,
                              : loc_str(destb, ra, ins->dest, x64, syntax);
     const char *slot = loc_str(mem, ra, ins->dest, x64, syntax);
     char srcbuf[32];
+    const char *name = fmt_stack(srcbuf, ins->name, x64, syntax);
+    if (strncmp(ins->name, "stack:", 6) == 0) {
+        /* stack address -> lea */
+        if (syntax == ASM_INTEL)
+            strbuf_appendf(sb, "    lea%s %s, %s\n", sfx, dest, name);
+        else
+            strbuf_appendf(sb, "    lea%s %s, %s\n", sfx, name, dest);
+        if (spill)
+            strbuf_appendf(sb, "    mov%s %s, %s\n", sfx, slot, dest);
+        return;
+    }
     if (syntax == ASM_INTEL)
-        snprintf(srcbuf, sizeof(srcbuf), "%s", ins->name);
+        snprintf(srcbuf, sizeof(srcbuf), "%s", name);
     else
-        snprintf(srcbuf, sizeof(srcbuf), "$%s", ins->name);
+        snprintf(srcbuf, sizeof(srcbuf), "$%s", name);
     emit_move_with_spill(sb, sfx, srcbuf, dest, slot, spill, syntax);
 }
 
@@ -312,7 +349,9 @@ static void emit_bfload(strbuf_t *sb, ir_instr_t *ins,
     unsigned width = (unsigned)(ins->imm & 0xffffffffu);
     unsigned long long mask = (width == 64) ? 0xffffffffffffffffULL
                                             : ((1ULL << width) - 1ULL);
-    emit_move_with_spill(sb, sfx, ins->name, dest, slot, 0, syntax);
+    char nbuf[32];
+    const char *src = fmt_stack(nbuf, ins->name, x64, syntax);
+    emit_move_with_spill(sb, sfx, src, dest, slot, 0, syntax);
     if (shift) {
         if (syntax == ASM_INTEL)
             strbuf_appendf(sb, "    shr%s %s, %u\n", sfx, dest, shift);
@@ -345,7 +384,7 @@ static void emit_bfstore(strbuf_t *sb, ir_instr_t *ins,
     unsigned long long mask = (width == 64) ? 0xffffffffffffffffULL
                                             : ((1ULL << width) - 1ULL);
     unsigned long long clear = ~((unsigned long long)mask << shift);
-    load_dest_scratch(sb, sfx, ins->name, clear, syntax);
+    load_dest_scratch(sb, sfx, ins->name, clear, x64, syntax);
     mask_shift_input(sb, sfx,
                      loc_str(bval, ra, ins->src1, x64, syntax),
                      mask, shift, x64, syntax);

@@ -32,6 +32,9 @@ static preproc_context_t func_ctx;
 /* Active struct packing alignment (0 means natural) */
 size_t semantic_pack_alignment = 0;
 
+/* total bytes of automatic storage for the current function */
+int semantic_stack_offset = 0;
+
 void semantic_set_pack(size_t align)
 {
     semantic_pack_alignment = align;
@@ -79,6 +82,7 @@ int check_func(func_t *func, symtable_t *funcs, symtable_t *globals,
     symtable_t locals;
     symtable_init(&locals);
     locals.globals = globals ? globals->globals : NULL;
+    semantic_stack_offset = 0;
 
     for (size_t i = 0; i < func->param_count; i++)
         symtable_add_param(&locals, func->param_names[i],
@@ -87,7 +91,7 @@ int check_func(func_t *func, symtable_t *funcs, symtable_t *globals,
                            (int)i,
                            func->param_is_restrict ? func->param_is_restrict[i] : 0);
 
-    ir_build_func_begin(ir, func->name);
+    ir_instr_t *func_begin = ir_build_func_begin(ir, func->name);
 
     label_table_t labels;
     label_table_init(&labels);
@@ -97,6 +101,8 @@ int check_func(func_t *func, symtable_t *funcs, symtable_t *globals,
         ok = check_stmt(func->body[i], &locals, funcs, &labels, ir, func->return_type,
                         NULL, NULL);
 
+    if (func_begin)
+        func_begin->imm = semantic_stack_offset;
     ir_build_func_end(ir);
 
     label_table_free(&labels);

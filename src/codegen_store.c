@@ -9,8 +9,30 @@
  */
 
 #include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 #include "codegen_loadstore.h"
 #include "regalloc_x86.h"
+
+static const char *fmt_stack(char buf[32], const char *name, int x64,
+                             asm_syntax_t syntax)
+{
+    if (strncmp(name, "stack:", 6) != 0)
+        return name;
+    int off = atoi(name + 6);
+    if (x64) {
+        if (syntax == ASM_INTEL)
+            snprintf(buf, 32, "[rbp-%d]", off);
+        else
+            snprintf(buf, 32, "-%d(%%rbp)", off);
+    } else {
+        if (syntax == ASM_INTEL)
+            snprintf(buf, 32, "[ebp-%d]", off);
+        else
+            snprintf(buf, 32, "-%d(%%ebp)", off);
+    }
+    return buf;
+}
 
 #define SCRATCH_REG 0
 
@@ -60,12 +82,14 @@ void emit_store(strbuf_t *sb, ir_instr_t *ins,
 {
     char b1[32];
     const char *sfx = x64 ? "q" : "l";
+    char sbuf[32];
+    const char *dst = fmt_stack(sbuf, ins->name, x64, syntax);
     if (syntax == ASM_INTEL)
-        strbuf_appendf(sb, "    mov%s %s, %s\n", sfx, ins->name,
+        strbuf_appendf(sb, "    mov%s %s, %s\n", sfx, dst,
                        loc_str(b1, ra, ins->src1, x64, syntax));
     else
         strbuf_appendf(sb, "    mov%s %s, %s\n", sfx,
-                       loc_str(b1, ra, ins->src1, x64, syntax), ins->name);
+                       loc_str(b1, ra, ins->src1, x64, syntax), dst);
 }
 
 /*
@@ -106,14 +130,16 @@ void emit_store_idx(strbuf_t *sb, ir_instr_t *ins,
     char b1[32];
     char b2[32];
     const char *sfx = x64 ? "q" : "l";
+    char basebuf[32];
+    const char *base = fmt_stack(basebuf, ins->name, x64, syntax);
     if (syntax == ASM_INTEL)
-        strbuf_appendf(sb, "    mov%s %s(,%s,4), %s\n", sfx, ins->name,
+        strbuf_appendf(sb, "    mov%s %s(,%s,4), %s\n", sfx, base,
                        loc_str(b2, ra, ins->src1, x64, syntax),
                        loc_str(b1, ra, ins->src2, x64, syntax));
     else
         strbuf_appendf(sb, "    mov%s %s, %s(,%s,4)\n", sfx,
                        loc_str(b1, ra, ins->src2, x64, syntax),
-                       ins->name,
+                       base,
                        loc_str(b2, ra, ins->src1, x64, syntax));
 }
 
