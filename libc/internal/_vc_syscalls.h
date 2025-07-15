@@ -21,10 +21,10 @@
 #endif
 
 
-long _vc_write(int fd, const void *buf, unsigned long count);
-void _vc_exit(int status);
-void *_vc_malloc(unsigned long size);
-void _vc_free(void *ptr);
+long _vc_write(int, const void *, unsigned long);
+void _vc_exit(int);
+void *_vc_malloc(unsigned long);
+void _vc_free(void *);
 
 
 #endif /* VC__VC_SYSCALLS_H */
