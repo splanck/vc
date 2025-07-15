@@ -17,4 +17,7 @@
 #include "semantic_global.h"
 #include "semantic_inline.h"
 
+void semantic_set_x86_64(int flag);
+int semantic_get_x86_64(void);
+
 #endif /* VC_SEMANTIC_H */

@@ -7,7 +7,8 @@
 static int check_static_assert_stmt(stmt_t *stmt, symtable_t *vars)
 {
     long long val;
-    if (!eval_const_expr(STMT_STATIC_ASSERT(stmt).expr, vars, 0, &val)) {
+    if (!eval_const_expr(STMT_STATIC_ASSERT(stmt).expr, vars,
+                         semantic_get_x86_64(), &val)) {
         error_set(STMT_STATIC_ASSERT(stmt).expr->line, STMT_STATIC_ASSERT(stmt).expr->column,
                   error_current_file, error_current_function);
         return 0;

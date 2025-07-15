@@ -78,6 +78,11 @@ archive regardless of the current working directory. Additional system
 header locations can be supplied with `--vc-sysinclude=<dir>` or the
 `VC_SYSINCLUDE` environment variable.
 
+When combined with `--x86-64` the compiler now evaluates constant
+expressions and orders function call arguments assuming 64-bit pointers.
+This ensures programs linked against the bundled libc behave correctly
+on LP64 systems.
+
 If the selected archive is missing the compiler prints an error similar to
 `vc: internal libc archive 'libc/libc64.a' not found. Build it with 'make libc64'`.
 

@@ -303,6 +303,7 @@ static int run_semantic(compile_context_t *ctx, const cli_options_t *cli)
 {
     if (cli->dump_ast || cli->dump_tokens)
         return 1;
+    semantic_set_x86_64(cli->use_x86_64);
     return compile_semantic_stage(ctx);
 }
 

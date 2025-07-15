@@ -35,6 +35,19 @@ size_t semantic_pack_alignment = 0;
 /* total bytes of automatic storage for the current function */
 int semantic_stack_offset = 0;
 
+/* target bitness for constant evaluation and call conventions */
+static int semantic_x86_64 = 0;
+
+void semantic_set_x86_64(int flag)
+{
+    semantic_x86_64 = flag;
+}
+
+int semantic_get_x86_64(void)
+{
+    return semantic_x86_64;
+}
+
 void semantic_set_pack(size_t align)
 {
     semantic_pack_alignment = align;
@@ -131,7 +144,8 @@ static int check_enum_decl_global(stmt_t *decl, symtable_t *globals)
         enumerator_t *e = &STMT_ENUM_DECL(decl).items[i];
         long long val = next;
         if (e->value) {
-            if (!eval_const_expr(e->value, globals, 0, &val)) {
+            if (!eval_const_expr(e->value, globals,
+                                 semantic_get_x86_64(), &val)) {
                 error_set(e->value->line, e->value->column, error_current_file, error_current_function);
                 return 0;
             }
@@ -190,7 +204,8 @@ static int check_union_decl_global(stmt_t *decl, symtable_t *globals)
 static int check_static_assert_stmt(stmt_t *stmt, symtable_t *globals)
 {
     long long val;
-    if (!eval_const_expr(STMT_STATIC_ASSERT(stmt).expr, globals, 0, &val)) {
+    if (!eval_const_expr(STMT_STATIC_ASSERT(stmt).expr, globals,
+                         semantic_get_x86_64(), &val)) {
         error_set(STMT_STATIC_ASSERT(stmt).expr->line, STMT_STATIC_ASSERT(stmt).expr->column,
                   error_current_file, error_current_function);
         return 0;
@@ -230,7 +245,8 @@ static symbol_t *register_global_symbol(stmt_t *decl, symtable_t *globals)
 
     if (STMT_VAR_DECL(decl).align_expr) {
         long long aval;
-        if (!eval_const_expr(STMT_VAR_DECL(decl).align_expr, globals, 0, &aval) ||
+        if (!eval_const_expr(STMT_VAR_DECL(decl).align_expr, globals,
+                             semantic_get_x86_64(), &aval) ||
             aval <= 0 || (aval & (aval - 1))) {
             error_set(STMT_VAR_DECL(decl).align_expr->line,
                       STMT_VAR_DECL(decl).align_expr->column,
@@ -340,7 +356,8 @@ static int emit_global_initializer(stmt_t *decl, symbol_t *sym,
 
     long long value = 0;
     if (STMT_VAR_DECL(decl).init) {
-        if (!eval_const_expr(STMT_VAR_DECL(decl).init, globals, 0, &value)) {
+        if (!eval_const_expr(STMT_VAR_DECL(decl).init, globals,
+                             semantic_get_x86_64(), &value)) {
             error_set(STMT_VAR_DECL(decl).init->line, STMT_VAR_DECL(decl).init->column, error_current_file, error_current_function);
             return 0;
         }
