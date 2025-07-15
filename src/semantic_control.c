@@ -13,6 +13,7 @@
 #include "semantic_control.h"
 #include "consteval.h"
 #include "semantic_expr.h"
+#include "semantic.h"
 #include "util.h"
 #include "label.h"
 #include "error.h"

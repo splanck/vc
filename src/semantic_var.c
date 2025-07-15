@@ -16,6 +16,7 @@
 #include "semantic_layout.h"
 #include "consteval.h"
 #include "symtable.h"
+#include "semantic.h"
 #include "ir_core.h"
 #include "ir_global.h"
 #include "util.h"

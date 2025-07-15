@@ -18,6 +18,7 @@
 #include "semantic_init.h"
 #include "semantic_layout.h"
 #include "symtable.h"
+#include "semantic.h"
 #include "ir_global.h"
 #include "util.h"
 #include "semantic_inline.h"

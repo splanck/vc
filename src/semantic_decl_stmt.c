@@ -7,6 +7,7 @@
 #include "semantic_control.h"
 #include "semantic_global.h"
 #include <stdio.h>
+#include "semantic.h"
 #include "ir_core.h"
 #include "label.h"
 #include "error.h"

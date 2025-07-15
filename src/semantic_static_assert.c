@@ -2,6 +2,7 @@
 #include "semantic_control.h"
 #include "ir_core.h"
 #include "consteval.h"
+#include "semantic.h"
 #include "error.h"
 
 static int check_static_assert_stmt(stmt_t *stmt, symtable_t *vars)

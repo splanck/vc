@@ -14,6 +14,7 @@
 #include "semantic_expr.h"
 #include "consteval.h"
 #include "symtable.h"
+#include "semantic.h"
 #include "util.h"
 #include "label.h"
 #include "error.h"
