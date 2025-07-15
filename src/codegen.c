@@ -145,25 +145,23 @@ char *codegen_ir_to_string(ir_builder_t *ir, int x64,
 }
 
 /*
- * Emit the assembly representation of `ir` to the stream `out`.
+ * Emit global declarations such as strings and arrays.
  *
- * Global data is written first using `.data` directives.  The instruction
- * sequence is then converted to either 32- or 64-bit x86 via
- * `codegen_ir_to_string` and emitted after a `.text` header when needed.
- * The `x64` argument selects the target word size.
+ * The IR uses specialised opcodes to describe each global object. They
+ * are translated here into `.data` directives.  The helper returns 1
+ * when at least one directive is written so the caller knows whether a
+ * `.text` header is needed before the instruction stream.
  */
-void codegen_emit_x86(FILE *out, ir_builder_t *ir, int x64,
-                      asm_syntax_t syntax)
+static int emit_global_data(FILE *out, ir_builder_t *ir, int x64)
 {
-    if (!out)
-        return;
     const char *size_directive = x64 ? ".quad" : ".long";
     int has_data = 0;
+
     for (ir_instr_t *ins = ir->head; ins; ins = ins->next) {
         if (ins->op == IR_GLOB_VAR || ins->op == IR_GLOB_STRING ||
-            ins->op == IR_GLOB_WSTRING ||
-            ins->op == IR_GLOB_ARRAY || ins->op == IR_GLOB_UNION ||
-            ins->op == IR_GLOB_STRUCT || ins->op == IR_GLOB_ADDR) {
+            ins->op == IR_GLOB_WSTRING || ins->op == IR_GLOB_ARRAY ||
+            ins->op == IR_GLOB_UNION || ins->op == IR_GLOB_STRUCT ||
+            ins->op == IR_GLOB_ADDR) {
             if (!has_data) {
                 fputs(".data\n", out);
                 has_data = 1;
@@ -214,15 +212,50 @@ void codegen_emit_x86(FILE *out, ir_builder_t *ir, int x64,
             }
         }
     }
-    if (has_data)
-        fputs(".text\n", out);
 
+    return has_data;
+}
+
+/*
+ * Convert the instruction stream to text and write it to `out`.
+ *
+ * The heavy lifting is done by `codegen_ir_to_string`, which runs the
+ * register allocator and lowers each instruction to assembly.  The
+ * resulting string is printed and freed here.
+ */
+static void emit_text(FILE *out, ir_builder_t *ir, int x64,
+                      asm_syntax_t syntax)
+{
     char *text = codegen_ir_to_string(ir, x64, syntax);
     if (text) {
         fputs(text, out);
         free(text);
     }
+}
+/*
+ * Emit the assembly representation of `ir` to the stream `out`.
+ *
+ * Global data is written first using `.data` directives.  The instruction
+ * sequence is then converted to either 32- or 64-bit x86 via
+ * `codegen_ir_to_string` and emitted after a `.text` header when needed.
+ * The `x64` argument selects the target word size.
+ */
 
+void codegen_emit_x86(FILE *out, ir_builder_t *ir, int x64,
+                      asm_syntax_t syntax)
+{
+    if (!out)
+        return;
+
+    /* Stage 1: emit global data directives */
+    int has_data = emit_global_data(out, ir, x64);
+    if (has_data)
+        fputs(".text\n", out);
+
+    /* Stage 2: emit the instruction stream */
+    emit_text(out, ir, x64, syntax);
+
+    /* Stage 3: optional DWARF section */
     if (dwarf_enabled)
         fputs(".section .debug_info\n    .byte 0\n", out);
 }
