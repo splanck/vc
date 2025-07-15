@@ -395,7 +395,7 @@ int collect_include_dirs(vector_t *search_dirs,
     free_string_vector(&extra_sys_dirs);
     vector_init(&extra_sys_dirs, sizeof(char *));
     if (internal_libc) {
-        char *dup = vc_strdup("libc/include");
+        char *dup = vc_strdup(PROJECT_ROOT "/libc/include");
         if (!dup || !vector_push(&extra_sys_dirs, &dup)) {
             free(dup);
             free_string_vector(search_dirs);

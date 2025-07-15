@@ -89,9 +89,10 @@ system locations such as `/usr/include`. Quoted includes also consult
 directories from `VCINC`. Entries from `VCPATH` and `VCINC` are appended
 after all `-I` directories so command-line paths are searched first.
 Directories from `VC_SYSINCLUDE` or the `--vc-sysinclude` option are
-searched before the builtin list. When `--internal-libc` is used
-`libc/include` is inserted automatically. When `--sysroot` is used these
-builtin locations are prefixed with the provided directory.
+searched before the builtin list. When `--internal-libc` is used the
+compiler automatically inserts the bundled `libc/include` directory using
+an absolute path, so it works from any directory. When `--sysroot` is
+used these builtin locations are prefixed with the provided directory.
 For example:
 
 ```sh

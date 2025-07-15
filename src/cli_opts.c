@@ -355,7 +355,8 @@ int finalize_options(int argc, char **argv, const char *prog,
 
     if (opts->internal_libc) {
         const char *dir = (opts->vc_sysinclude && *opts->vc_sysinclude)
-                            ? opts->vc_sysinclude : "libc/include";
+                            ? opts->vc_sysinclude
+                            : PROJECT_ROOT "/libc/include";
         char hdr[PATH_MAX];
         snprintf(hdr, sizeof(hdr), "%s/stdio.h", dir);
         if (access(hdr, F_OK) != 0) {
@@ -367,7 +368,8 @@ int finalize_options(int argc, char **argv, const char *prog,
         }
 
         const char *archive = opts->use_x86_64 ?
-                               "libc/libc64.a" : "libc/libc32.a";
+                               PROJECT_ROOT "/libc/libc64.a" :
+                               PROJECT_ROOT "/libc/libc32.a";
         if (access(archive, F_OK) != 0) {
             fprintf(stderr,
                     "Error: internal libc archive '%s' not found.\n",

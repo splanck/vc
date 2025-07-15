@@ -1,5 +1,7 @@
 CC ?= gcc
-CFLAGS ?= -Wall -Wextra -Wpedantic -Wconversion -std=c99
+PROJECT_ROOT := $(CURDIR)
+CFLAGS ?= -Wall -Wextra -Wpedantic -Wconversion -std=c99 \
+    -DPROJECT_ROOT=\"$(PROJECT_ROOT)\"
 OPTFLAGS ?=
 MULTIARCH ?= $(shell $(CC) -print-multiarch 2>/dev/null || echo x86_64-linux-gnu)
 GCC_INCLUDE_DIR := $(shell $(CC) -print-file-name=include | tr -d '\n')

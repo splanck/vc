@@ -1,5 +1,6 @@
 CC ?= gcc
-CFLAGS ?= -Wall -Wextra -std=c99
+PROJECT_ROOT := $(abspath ..)
+CFLAGS ?= -Wall -Wextra -std=c99 -DPROJECT_ROOT=\"$(PROJECT_ROOT)\"
 
 SRC := src/stdio.c src/stdlib.c src/string.c src/syscalls.c
 OBJ32 := $(SRC:src/%.c=src/%.32.o)
