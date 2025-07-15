@@ -23,6 +23,7 @@
 #include "command.h"
 #include "compile_stage.h"
 #include "compile.h"
+#include "semantic_global.h"
 
 extern const char *error_current_file;
 extern const char *error_current_function;
@@ -300,6 +301,7 @@ static int run_semantic(compile_context_t *ctx, const cli_options_t *cli)
     if (cli->dump_ast || cli->dump_tokens)
         return 1;
     semantic_set_x86_64(cli->use_x86_64);
+    semantic_set_named_locals(cli->named_locals || getenv("VC_NAMED_LOCALS"));
     return compile_semantic_stage(ctx);
 }
 

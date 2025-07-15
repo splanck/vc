@@ -36,6 +36,9 @@ size_t semantic_pack_alignment = 0;
 /* total bytes of automatic storage for the current function */
 int semantic_stack_offset = 0;
 
+/* keep named locals in IR rather than stack offsets */
+int semantic_named_locals = 0;
+
 /* target bitness for constant evaluation and call conventions */
 static int semantic_x86_64 = 0;
 
@@ -52,6 +55,11 @@ int semantic_get_x86_64(void)
 void semantic_set_pack(size_t align)
 {
     semantic_pack_alignment = align;
+}
+
+void semantic_set_named_locals(int flag)
+{
+    semantic_named_locals = flag ? 1 : 0;
 }
 
 

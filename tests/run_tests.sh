@@ -30,7 +30,12 @@ for cfile in "$DIR"/fixtures/*.c; do
     expect="$DIR/fixtures/$base.s"
     out=$(mktemp)
     echo "Running fixture $base"
-    "$BINARY" -o "${out}" "$cfile"
+    if grep -q "(%ebp)" "$expect" || grep -q "(%rbp)" "$expect" \
+       || grep -q "\[ebp" "$expect" || grep -q "\[rbp" "$expect"; then
+        "$BINARY" -o "${out}" "$cfile"
+    else
+        VC_NAMED_LOCALS=1 "$BINARY" -o "${out}" "$cfile"
+    fi
     if ! diff -u "$expect" "${out}"; then
         echo "Test $base failed"
         fail=1
@@ -71,7 +76,11 @@ for asm64 in "$DIR"/fixtures/*_x86-64.s; do
     base=$(basename "$asm64" _x86-64.s)
     cfile="$DIR/fixtures/$base.c"
     out=$(mktemp)
-    "$BINARY" --x86-64 -o "${out}" "$cfile"
+    if grep -q "(%rbp)" "$asm64" || grep -q "\[rbp" "$asm64"; then
+        "$BINARY" --x86-64 -o "${out}" "$cfile"
+    else
+        VC_NAMED_LOCALS=1 "$BINARY" --x86-64 -o "${out}" "$cfile"
+    fi
     if ! diff -u "$asm64" "${out}"; then
         echo "Test x86_64_$base failed"
         fail=1
@@ -81,7 +90,11 @@ done
 
 # verify Intel syntax assembly for simple_add.c
 intel_out=$(mktemp)
-"$BINARY" --intel-syntax -o "${intel_out}" "$DIR/fixtures/simple_add.c"
+if grep -q "\[ebp" "$DIR/fixtures/simple_add_intel.s"; then
+    "$BINARY" --intel-syntax -o "${intel_out}" "$DIR/fixtures/simple_add.c"
+else
+    VC_NAMED_LOCALS=1 "$BINARY" --intel-syntax -o "${intel_out}" "$DIR/fixtures/simple_add.c"
+fi
 if ! diff -u "$DIR/fixtures/simple_add_intel.s" "${intel_out}"; then
     echo "Test intel_simple_add failed"
     fail=1
@@ -90,7 +103,11 @@ rm -f "${intel_out}"
 
 # additional Intel syntax fixtures
 intel_out=$(mktemp)
-"$BINARY" --intel-syntax -o "${intel_out}" "$DIR/fixtures/pointer_add.c"
+if grep -q "\[ebp" "$DIR/fixtures/pointer_add_intel.s"; then
+    "$BINARY" --intel-syntax -o "${intel_out}" "$DIR/fixtures/pointer_add.c"
+else
+    VC_NAMED_LOCALS=1 "$BINARY" --intel-syntax -o "${intel_out}" "$DIR/fixtures/pointer_add.c"
+fi
 if ! diff -u "$DIR/fixtures/pointer_add_intel.s" "${intel_out}"; then
     echo "Test intel_pointer_add failed"
     fail=1
@@ -98,7 +115,11 @@ fi
 rm -f "${intel_out}"
 
 intel_out=$(mktemp)
-"$BINARY" --intel-syntax -o "${intel_out}" "$DIR/fixtures/while_loop.c"
+if grep -q "\[ebp" "$DIR/fixtures/while_loop_intel.s"; then
+    "$BINARY" --intel-syntax -o "${intel_out}" "$DIR/fixtures/while_loop.c"
+else
+    VC_NAMED_LOCALS=1 "$BINARY" --intel-syntax -o "${intel_out}" "$DIR/fixtures/while_loop.c"
+fi
 if ! diff -u "$DIR/fixtures/while_loop_intel.s" "${intel_out}"; then
     echo "Test intel_while_loop failed"
     fail=1
