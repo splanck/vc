@@ -1,12 +1,17 @@
 /*
  * Linear scan register allocator.
  *
- * This allocator walks the IR once assigning every value either a
- * register or a stack slot.  A small array of physical registers forms
- * the free pool; when it is exhausted new values are "spilled" to the
- * stack.  Lifetimes are tracked by computing the last instruction that
- * references each value so that registers can be released as soon as a
- * value is no longer needed.
+ * This pass assigns each SSA value a physical register or stack slot in a
+ * single sweep over the IR.  The algorithm operates roughly as follows:
+ *   1. determine the last instruction that uses every value,
+ *   2. build a stack of available registers,
+ *   3. walk the instructions in order assigning free registers to new
+ *      values and spilling when none remain,
+ *   4. recycle registers once their value is no longer referenced.
+ *
+ * A small array of physical registers forms the free pool; values are
+ * "spilled" to the stack when it is exhausted.  Lifetimes are tracked via
+ * the last-use table so registers can be released as soon as possible.
  *
  * Each allocated location is stored in the `regalloc_t` structure where
  * non-negative entries represent a physical register and negative values
@@ -117,6 +122,45 @@ static void release_unused_regs(ir_instr_t *ins, int idx, int *last,
 }
 
 /*
+ * Check if the return register must be reserved for aggregate returns.
+ *
+ * Some functions return structures via a hidden pointer passed in the
+ * first register.  When such an instruction exists we keep that register
+ * out of the general free pool so it remains available for the return
+ * value.
+ */
+static int find_return_register(ir_builder_t *ir)
+{
+    for (ir_instr_t *it = ir->head; it; it = it->next)
+        if (it->op == IR_RETURN_AGG)
+            return 1;
+    return 0;
+}
+
+/*
+ * Scan the instruction list and assign locations to all SSA values.
+ *
+ * Registers are drawn from a small stack of free registers and spilled to
+ * the stack once none remain.  As soon as the scan passes the last
+ * reference of a value its register is released for reuse.
+ */
+static void scan_instructions(ir_builder_t *ir, int *last, size_t max_id,
+                              regalloc_t *ra, int ret_reg_active)
+{
+    int free_regs[NUM_ALLOC_REGS];
+    int free_count = 0;
+    setup_free_registers(free_regs, &free_count, ret_reg_active);
+
+    int idx = 0;
+    for (ir_instr_t *ins = ir->head; ins; ins = ins->next, idx++) {
+        assign_destination_location(ins, free_regs, &free_count, ra,
+                                    ret_reg_active);
+        release_unused_regs(ins, idx, last, max_id, ra, free_regs,
+                            &free_count);
+    }
+}
+
+/*
  * Populate `ra` with locations for every value defined in `ir`.
  *
  * Lifetimes are determined by `compute_last_use` which walks the IR once and
@@ -160,27 +204,9 @@ void regalloc_run(ir_builder_t *ir, regalloc_t *ra)
         return;
     }
 
-    int ret_reg_active = 0;
-    for (ir_instr_t *it = ir->head; it; it = it->next)
-        if (it->op == IR_RETURN_AGG) {
-            ret_reg_active = 1;
-            break;
-        }
+    int ret_reg_active = find_return_register(ir);
 
-    int free_regs[NUM_ALLOC_REGS];
-    int free_count = 0;
-    setup_free_registers(free_regs, &free_count, ret_reg_active);
-
-    int idx = 0;
-    for (ir_instr_t *ins = ir->head; ins; ins = ins->next, idx++) {
-        /* assign the destination a register or stack slot */
-        assign_destination_location(ins, free_regs, &free_count, ra,
-                                    ret_reg_active);
-
-        /* release registers whose value will not be needed again */
-        release_unused_regs(ins, idx, last, max_id, ra, free_regs,
-                           &free_count);
-    }
+    scan_instructions(ir, last, max_id, ra, ret_reg_active);
     free(last);
 }
 
