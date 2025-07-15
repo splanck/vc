@@ -19,6 +19,7 @@
 
 /* total bytes pushed for the current function call */
 size_t arg_stack_bytes = 0;
+int arg_reg_idx = 0;
 
 #define SCRATCH_REG 0
 
@@ -373,6 +374,19 @@ static void emit_arg(strbuf_t *sb, ir_instr_t *ins,
         sz = 8;
     else if (t == TYPE_LDOUBLE)
         sz = 10;
+    static const char *arg_regs[6] = {"%rdi", "%rsi", "%rdx", "%rcx", "%r8", "%r9"};
+    if (x64 && arg_reg_idx < 6 && t != TYPE_FLOAT && t != TYPE_DOUBLE && t != TYPE_LDOUBLE) {
+        const char *reg = fmt_reg(arg_regs[arg_reg_idx], syntax);
+        const char *src = loc_str(b1, ra, ins->src1, x64, syntax);
+        const char *sfx = "q";
+        if (syntax == ASM_INTEL)
+            strbuf_appendf(sb, "    mov%s %s, %s\n", sfx, reg, src);
+        else
+            strbuf_appendf(sb, "    mov%s %s, %s\n", sfx, src, reg);
+        arg_reg_idx++;
+        return;
+    }
+
     if (t == TYPE_FLOAT) {
         if (syntax == ASM_INTEL)
             strbuf_appendf(sb, "    sub %s, 4\n", sp);

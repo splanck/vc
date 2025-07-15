@@ -181,9 +181,9 @@ build_linker_args(const vector_t *objs, const vector_t *lib_dirs,
     if (libs->count > (SIZE_MAX - argc) / 2)
         goto arg_overflow;
     argc += libs->count * 2;
-    if (5 > SIZE_MAX - argc)
+    if (6 > SIZE_MAX - argc)
         goto arg_overflow;
-    argc += 5;
+    argc += 6;
 
     size_t n = argc + 1; /* plus NULL terminator */
     if (n > SIZE_MAX / sizeof(char *))
@@ -194,6 +194,7 @@ build_linker_args(const vector_t *objs, const vector_t *lib_dirs,
     size_t idx = 0;
     argv[idx++] = (char *)get_cc();
     argv[idx++] = (char *)arch_flag;
+    argv[idx++] = "-no-pie";
     for (size_t i = 0; i < objs->count; i++)
         argv[idx++] = ((char **)objs->data)[i];
     for (size_t i = 0; i < lib_dirs->count; i++) {
