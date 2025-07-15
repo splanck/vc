@@ -78,6 +78,15 @@ archive regardless of the current working directory. Additional system
 header locations can be supplied with `--vc-sysinclude=<dir>` or the
 `VC_SYSINCLUDE` environment variable.
 
+When linking, the flag automatically selects `libc/libc32.a` or
+`libc/libc64.a` based on the target bit width.  For example:
+
+```sh
+vc --link --internal-libc examples/calc.c
+```
+
+produces a runnable binary without needing any external libraries.
+
 ## Additional build steps
 
 Extra source files can be passed to the build using the `EXTRA_SRC`

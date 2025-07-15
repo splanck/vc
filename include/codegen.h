@@ -53,6 +53,12 @@ void codegen_set_debug(int flag);
 /* Toggle emission of DWARF sections */
 void codegen_set_dwarf(int flag);
 
+/* Query stack slot index for a local variable during code generation */
+int codegen_local_slot(const char *name);
+
+/* Number of local stack slots for the current function */
+int codegen_local_count(void);
+
 /*
  * These flags are global variables defined in codegen.c so that other
  * code generation modules can inspect them.

@@ -843,6 +843,16 @@ if [ "$("${libc_printf64}")" != "hi" ]; then
 fi
 rm -f "${libc_printf64}"
 
+# build and run calc example with internal libc
+calc_exe=$(mktemp)
+rm -f "${calc_exe}"
+"$BINARY" --x86-64 --link --internal-libc -o "${calc_exe}" "$DIR/../examples/calc.c"
+if ! "$calc_exe" | grep -q "Sum 1..10 = 55"; then
+    echo "Test internal_calc failed"
+    fail=1
+fi
+rm -f "${calc_exe}"
+
 # dependency generation with -MD
 dep_obj=depobj$$.o
 "$BINARY" -MD -c -I "$DIR/includes" -o "$dep_obj" "$DIR/fixtures/include_search.c"
