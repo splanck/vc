@@ -35,6 +35,7 @@ size_t semantic_pack_alignment = 0;
 
 /* total bytes of automatic storage for the current function */
 int semantic_stack_offset = 0;
+int semantic_stack_zero = 1;
 
 /* keep named locals in IR rather than stack offsets */
 int semantic_named_locals = 0;
@@ -105,6 +106,7 @@ int check_func(func_t *func, symtable_t *funcs, symtable_t *globals,
     symtable_init(&locals);
     locals.globals = globals ? globals->globals : NULL;
     semantic_stack_offset = 0;
+    semantic_stack_zero = 1;
 
     for (size_t i = 0; i < func->param_count; i++)
         symtable_add_param(&locals, func->param_names[i],
@@ -123,7 +125,7 @@ int check_func(func_t *func, symtable_t *funcs, symtable_t *globals,
         ok = check_stmt(func->body[i], &locals, funcs, &labels, ir, func->return_type,
                         NULL, NULL);
 
-    if (func_begin)
+    if (func_begin && !semantic_stack_zero)
         func_begin->imm = semantic_stack_offset;
     ir_build_func_end(ir);
 

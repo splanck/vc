@@ -187,7 +187,7 @@ static void emit_func_frame(strbuf_t *sb, ir_instr_t *ins,
         frame += (int)ins->imm;
         if (x64 && frame % 16 != 0)
             frame += 16 - (frame % 16);
-        if (frame > 0) {
+        if (frame != 0) {
             if (syntax == ASM_INTEL)
                 strbuf_appendf(sb, "    sub%s %s, %d\n", sfx, sp, frame);
             else
