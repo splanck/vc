@@ -42,7 +42,10 @@ void error_set(size_t line, size_t col, const char *file, const char *func)
  */
 void error_print(const char *msg)
 {
+    /* Use colored output only when error_use_color is true and
+     * isatty(stderr) reports a terminal. */
     int color = error_use_color && isatty(fileno(stderr));
+    /* \x1b[1;31m sets bold red text; \x1b[0m resets formatting. */
     if (color)
         fprintf(stderr, "\x1b[1;31m");
     if (error_func)
