@@ -3,6 +3,8 @@ LWstr1:
     .long 104
     .long 105
     .long 0
+.bss
+.lcomm p, 4
 .text
 main:
     pushl %ebp

@@ -25,6 +25,7 @@
 #include "codegen_mem.h"
 #include "codegen_arith.h"
 #include "codegen_branch.h"
+#include "vector.h"
 
 /*
  * Global flags controlling optional assembly output.
@@ -217,6 +218,85 @@ static int emit_global_data(FILE *out, ir_builder_t *ir, int x64)
 }
 
 /*
+ * Emit zero-initialized storage for named local variables.
+ *
+ * When stack slots are not used the IR retains variable names in memory
+ * operations.  Emit a `.lcomm` directive for each such name so that the
+ * resulting assembly has a definition for every symbol referenced.
+ */
+static int emit_local_comm(FILE *out, ir_builder_t *ir, int x64)
+{
+    vector_t names;
+    vector_init(&names, sizeof(char *));
+
+    vector_t globals;
+    vector_init(&globals, sizeof(char *));
+
+    for (ir_instr_t *ins = ir->head; ins; ins = ins->next) {
+        if (ins->name && ins->name[0]) {
+            if (strncmp(ins->name, "stack:", 6) == 0)
+                continue;
+            if (ins->op == IR_GLOB_VAR || ins->op == IR_GLOB_STRING ||
+                ins->op == IR_GLOB_WSTRING || ins->op == IR_GLOB_ARRAY ||
+                ins->op == IR_GLOB_UNION || ins->op == IR_GLOB_STRUCT ||
+                ins->op == IR_GLOB_ADDR) {
+                int exists = 0;
+                for (size_t i = 0; i < globals.count && !exists; i++)
+                    if (strcmp(((char **)globals.data)[i], ins->name) == 0)
+                        exists = 1;
+                if (!exists)
+                    vector_push(&globals, &ins->name);
+            }
+        }
+    }
+
+    for (ir_instr_t *ins = ir->head; ins; ins = ins->next) {
+        const char *name = ins->name;
+        if (!name || !name[0] || strncmp(name, "tmp", 3) == 0)
+            continue;
+        if (strncmp(name, "stack:", 6) == 0)
+            continue;
+
+        if (ins->op == IR_GLOB_VAR || ins->op == IR_GLOB_STRING ||
+            ins->op == IR_GLOB_WSTRING || ins->op == IR_GLOB_ARRAY ||
+            ins->op == IR_GLOB_UNION || ins->op == IR_GLOB_STRUCT ||
+            ins->op == IR_GLOB_ADDR || ins->op == IR_FUNC_BEGIN ||
+            ins->op == IR_FUNC_END || ins->op == IR_LABEL ||
+            ins->op == IR_BR || ins->op == IR_BCOND ||
+            ins->op == IR_CALL || ins->op == IR_CALL_PTR ||
+            ins->op == IR_CALL_NR || ins->op == IR_CALL_PTR_NR)
+            continue;
+
+        int is_global = 0;
+        for (size_t i = 0; i < globals.count && !is_global; i++)
+            if (strcmp(((char **)globals.data)[i], name) == 0)
+                is_global = 1;
+        if (is_global)
+            continue;
+
+        int exists = 0;
+        for (size_t i = 0; i < names.count && !exists; i++)
+            if (strcmp(((char **)names.data)[i], name) == 0)
+                exists = 1;
+        if (!exists)
+            vector_push(&names, &name);
+    }
+
+    int emitted = 0;
+    for (size_t i = 0; i < names.count; i++) {
+        const char *n = ((char **)names.data)[i];
+        if (!emitted)
+            fputs(".bss\n", out);
+        fprintf(out, ".lcomm %s, %d\n", n, x64 ? 8 : 4);
+        emitted = 1;
+    }
+
+    vector_free(&names);
+    vector_free(&globals);
+    return emitted;
+}
+
+/*
  * Convert the instruction stream to text and write it to `out`.
  *
  * The heavy lifting is done by `codegen_ir_to_string`, which runs the
@@ -247,9 +327,10 @@ void codegen_emit_x86(FILE *out, ir_builder_t *ir, int x64,
     if (!out)
         return;
 
-    /* Stage 1: emit global data directives */
+    /* Stage 1: emit global and local data directives */
     int has_data = emit_global_data(out, ir, x64);
-    if (has_data)
+    int has_comm = emit_local_comm(out, ir, x64);
+    if (has_data || has_comm)
         fputs(".text\n", out);
 
     /* Stage 2: emit the instruction stream */

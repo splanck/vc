@@ -1,3 +1,7 @@
+.bss
+.lcomm x, 8
+.lcomm p, 8
+.text
 main:
     pushq %rbp
     movq %rsp, %rbp

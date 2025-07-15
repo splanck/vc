@@ -1,3 +1,8 @@
+.bss
+.lcomm a, 4
+.lcomm p1, 4
+.lcomm p2, 4
+.text
 main:
     pushl %ebp
     movl %esp, %ebp
