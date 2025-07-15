@@ -28,8 +28,7 @@ type_kind_t check_number_expr(expr_t *expr, symtable_t *vars,
     errno = 0;
     long long val = strtoll(expr->data.number.value, NULL, 0);
     if (errno != 0) {
-        error_set(expr->line, expr->column, error_current_file,
-                  error_current_function);
+        error_set(&error_ctx, expr->line, expr->column, NULL, NULL);
         if (out)
             *out = (ir_value_t){0};
         return TYPE_UNKNOWN;

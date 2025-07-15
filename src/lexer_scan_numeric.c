@@ -120,8 +120,8 @@ static int parse_octal(const char *src, size_t *i,
         digits++;
     }
     if (overflow) {
-        error_set(line, column, error_current_file, error_current_function);
-        error_print("Escape sequence out of range");
+        error_set(&error_ctx,line, column, NULL, NULL);
+        error_print(&error_ctx, "Escape sequence out of range");
     }
     return value;
 }
@@ -172,8 +172,8 @@ static void read_char_const(const char *src, size_t *i, size_t *col,
     (*i)++;
     (*col)++;
     if (!src[*i]) {
-        error_set(line, column, error_current_file, error_current_function);
-        error_print("Missing closing quote");
+        error_set(&error_ctx,line, column, NULL, NULL);
+        error_print(&error_ctx, "Missing closing quote");
         append_token(tokens, TOK_UNKNOWN, "", 0, line, column);
         return;
     }
@@ -188,8 +188,8 @@ static void read_char_const(const char *src, size_t *i, size_t *col,
     (*col)++;
 
     if (src[*i] != '\'') {
-        error_set(line, column, error_current_file, error_current_function);
-        error_print("Missing closing quote");
+        error_set(&error_ctx,line, column, NULL, NULL);
+        error_print(&error_ctx, "Missing closing quote");
         append_token(tokens, TOK_UNKNOWN, "", 0, line, column);
         return;
     }
@@ -242,8 +242,8 @@ static int read_string_lit(const char *src, size_t *i, size_t *col,
         vector_free(&buf_v);
         return 1;
     } else {
-        error_set(line, column, error_current_file, error_current_function);
-        error_print("Missing closing quote");
+        error_set(&error_ctx,line, column, NULL, NULL);
+        error_print(&error_ctx, "Missing closing quote");
         vector_free(&buf_v);
         append_token(tokens, TOK_UNKNOWN, "", 0, line, column);
         return 1;

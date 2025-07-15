@@ -36,7 +36,7 @@ type_kind_t check_call_expr(expr_t *expr, symtable_t *vars,
         fsym = symtable_lookup(vars, expr->data.call.name);
         if (!fsym || fsym->type != TYPE_PTR ||
             fsym->func_ret_type == TYPE_UNKNOWN) {
-            error_set(expr->line, expr->column, error_current_file, error_current_function);
+            error_set(&error_ctx,expr->line, expr->column, NULL, NULL);
             return TYPE_UNKNOWN;
         }
         via_ptr = 1;
@@ -48,7 +48,7 @@ type_kind_t check_call_expr(expr_t *expr, symtable_t *vars,
 
     if ((!variadic && expected != expr->data.call.arg_count) ||
         (variadic && expr->data.call.arg_count < expected)) {
-        error_set(expr->line, expr->column, error_current_file, error_current_function);
+        error_set(&error_ctx,expr->line, expr->column, NULL, NULL);
         return TYPE_UNKNOWN;
     }
     ir_value_t *vals = NULL;
@@ -75,7 +75,7 @@ type_kind_t check_call_expr(expr_t *expr, symtable_t *vars,
             type_kind_t pt = ptypes[i];
             if (!(((is_intlike(pt) && is_intlike(at)) ||
                    (is_floatlike(pt) && is_floatlike(at))) || at == pt)) {
-                error_set(expr->data.call.args[i]->line, expr->data.call.args[i]->column, error_current_file, error_current_function);
+                error_set(&error_ctx,expr->data.call.args[i]->line, expr->data.call.args[i]->column, NULL, NULL);
                 free(vals);
                 free(atypes);
                 return TYPE_UNKNOWN;

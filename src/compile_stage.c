@@ -24,8 +24,7 @@
 #include "compile_stage.h"
 #include "compile.h"
 
-extern const char *error_current_file;
-extern const char *error_current_function;
+extern error_context_t error_ctx;
 
 /* Stage implementations from other compilation units */
 int compile_tokenize_impl(const char *source, const cli_options_t *cli,
@@ -77,8 +76,8 @@ static int register_function_prototypes(func_t **func_list, size_t fcount,
                 if (existing->param_types[j] != func_list[i]->param_types[j])
                     mismatch = 1;
             if (mismatch) {
-                error_set(0, 0, error_current_file, error_current_function);
-                error_print("Semantic error");
+                error_set(&error_ctx, 0, 0, NULL, NULL);
+                error_print(&error_ctx, "Semantic error");
                 return 0;
             }
             existing->is_prototype = 0;
@@ -109,7 +108,7 @@ static int check_global_decls(stmt_t **glob_list, size_t gcount,
 {
     for (size_t i = 0; i < gcount; i++) {
         if (!check_global(glob_list[i], globals, ir)) {
-            error_print("Semantic error");
+            error_print(&error_ctx, "Semantic error");
             return 0;
         }
     }
@@ -122,7 +121,7 @@ static int check_function_defs(func_t **func_list, size_t fcount,
 {
     for (size_t i = 0; i < fcount; i++) {
         if (!check_func(func_list[i], funcs, globals, ir)) {
-            error_print("Semantic error");
+            error_print(&error_ctx, "Semantic error");
             return 0;
         }
     }
@@ -239,8 +238,10 @@ static int compile_output_stage(compile_context_t *ctx, const char *output,
 static void init_compile_context(compile_context_t *ctx, const char *source,
                                  const cli_options_t *cli)
 {
-    error_current_file = source ? source : "";
-    error_current_function = NULL;
+    error_ctx.file = source ? source : "";
+    error_ctx.function = NULL;
+    error_ctx.line = 0;
+    error_ctx.column = 0;
     label_init();
     codegen_set_export(cli->link);
     codegen_set_debug(cli->debug || cli->emit_dwarf);

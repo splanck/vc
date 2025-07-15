@@ -129,8 +129,7 @@ int compute_var_layout(stmt_t *stmt, symtable_t *vars)
         } else if (STMT_VAR_DECL(stmt).tag) {
             symbol_t *utype = symtable_lookup_union(vars, STMT_VAR_DECL(stmt).tag);
             if (!utype) {
-                error_set(stmt->line, stmt->column, error_current_file,
-                          error_current_function);
+                error_set(&error_ctx,stmt->line, stmt->column, NULL, NULL);
                 return 0;
             }
             STMT_VAR_DECL(stmt).elem_size = utype->total_size;
@@ -146,8 +145,7 @@ int compute_var_layout(stmt_t *stmt, symtable_t *vars)
         } else if (STMT_VAR_DECL(stmt).tag) {
             symbol_t *stype = symtable_lookup_struct(vars, STMT_VAR_DECL(stmt).tag);
             if (!stype) {
-                error_set(stmt->line, stmt->column, error_current_file,
-                          error_current_function);
+                error_set(&error_ctx,stmt->line, stmt->column, NULL, NULL);
                 return 0;
             }
             STMT_VAR_DECL(stmt).elem_size = stype->struct_total_size;
@@ -167,8 +165,7 @@ static int emit_static_initializer(stmt_t *stmt, symbol_t *sym,
     long long cval;
     if (!eval_const_expr(STMT_VAR_DECL(stmt).init, vars,
                         semantic_get_x86_64(), &cval)) {
-        error_set(STMT_VAR_DECL(stmt).init->line, STMT_VAR_DECL(stmt).init->column,
-                  error_current_file, error_current_function);
+        error_set(&error_ctx,STMT_VAR_DECL(stmt).init->line, STMT_VAR_DECL(stmt).init->column, NULL, NULL);
         return 0;
     }
     if (STMT_VAR_DECL(stmt).type == TYPE_UNION)
@@ -196,8 +193,7 @@ static int emit_dynamic_initializer(stmt_t *stmt, symbol_t *sym,
            (is_floatlike(STMT_VAR_DECL(stmt).type) &&
             (is_floatlike(vt) || is_intlike(vt)))) ||
           vt == STMT_VAR_DECL(stmt).type)) {
-        error_set(STMT_VAR_DECL(stmt).init->line, STMT_VAR_DECL(stmt).init->column,
-                  error_current_file, error_current_function);
+        error_set(&error_ctx,STMT_VAR_DECL(stmt).init->line, STMT_VAR_DECL(stmt).init->column, NULL, NULL);
         return 0;
     }
     if (STMT_VAR_DECL(stmt).is_volatile)
@@ -218,7 +214,7 @@ static int emit_aggregate_initializer(stmt_t *stmt, symbol_t *sym,
         return handle_array_init(stmt, sym, vars, ir);
     if (STMT_VAR_DECL(stmt).type == TYPE_STRUCT)
         return handle_struct_init(stmt, sym, vars, ir);
-    error_set(stmt->line, stmt->column, error_current_file, error_current_function);
+    error_set(&error_ctx,stmt->line, stmt->column, NULL, NULL);
     return 0;
 }
 /*

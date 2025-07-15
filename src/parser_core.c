@@ -99,10 +99,10 @@ void parser_print_error(parser_t *p, const token_type_t *expected,
     char msg[256];
     int off;
     if (tok) {
-        error_set(tok->line, tok->column, error_current_file, error_current_function);
+        error_set(&error_ctx, tok->line, tok->column, NULL, NULL);
         off = snprintf(msg, sizeof(msg), "Unexpected token '%s'", tok->lexeme);
     } else {
-        error_set(0, 0, error_current_file, error_current_function);
+        error_set(&error_ctx, 0, 0, NULL, NULL);
         off = snprintf(msg, sizeof(msg), "Unexpected end of file");
     }
 
@@ -116,7 +116,7 @@ void parser_print_error(parser_t *p, const token_type_t *expected,
         }
     }
 
-    error_print(msg);
+    error_print(&error_ctx, msg);
 }
 
 /* Initialize parameter vectors */

@@ -235,9 +235,8 @@ int parse_type(parser_t *p, type_kind_t *out_type, size_t *out_size,
         }
         p->pos++;
         if (!vc_strtoul_size(num->lexeme, &arr)) {
-            error_set(num->line, num->column,
-                      error_current_file, error_current_function);
-            error_print("Integer constant out of range");
+            error_set(&error_ctx, num->line, num->column, NULL, NULL);
+            error_print(&error_ctx, "Integer constant out of range");
             p->pos = save;
             return 0;
         }

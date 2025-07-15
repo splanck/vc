@@ -48,8 +48,7 @@
 #endif
 
 /* Active diagnostic context */
-extern const char *error_current_file;
-extern const char *error_current_function;
+extern error_context_t error_ctx;
 extern char **environ;
 
 char *vc_obj_name(const char *source);

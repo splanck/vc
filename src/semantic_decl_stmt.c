@@ -45,13 +45,12 @@ static int check_enum_decl_stmt(stmt_t *stmt, symtable_t *vars)
         if (e->value) {
             if (!eval_const_expr(e->value, vars,
                                  semantic_get_x86_64(), &val)) {
-                error_set(e->value->line, e->value->column, error_current_file,
-                          error_current_function);
+                error_set(&error_ctx,e->value->line, e->value->column, NULL, NULL);
                 return 0;
             }
         }
         if (!symtable_add_enum(vars, e->name, (int)val)) {
-            error_set(stmt->line, stmt->column, error_current_file, error_current_function);
+            error_set(&error_ctx,stmt->line, stmt->column, NULL, NULL);
             return 0;
         }
         next = (int)val + 1;
@@ -68,7 +67,7 @@ static int check_struct_decl_stmt(stmt_t *stmt, symtable_t *vars)
     if (!symtable_add_struct(vars, STMT_STRUCT_DECL(stmt).tag,
                              STMT_STRUCT_DECL(stmt).members,
                              STMT_STRUCT_DECL(stmt).count)) {
-        error_set(stmt->line, stmt->column, error_current_file, error_current_function);
+        error_set(&error_ctx,stmt->line, stmt->column, NULL, NULL);
         return 0;
     }
     symbol_t *stype = symtable_lookup_struct(vars, STMT_STRUCT_DECL(stmt).tag);
@@ -85,7 +84,7 @@ static int check_union_decl_stmt(stmt_t *stmt, symtable_t *vars)
     if (!symtable_add_union(vars, STMT_UNION_DECL(stmt).tag,
                             STMT_UNION_DECL(stmt).members,
                             STMT_UNION_DECL(stmt).count)) {
-        error_set(stmt->line, stmt->column, error_current_file, error_current_function);
+        error_set(&error_ctx,stmt->line, stmt->column, NULL, NULL);
         return 0;
     }
     return 1;
@@ -99,10 +98,9 @@ static symbol_t *insert_var_symbol(stmt_t *stmt, symtable_t *vars,
         if (!eval_const_expr(STMT_VAR_DECL(stmt).align_expr, vars,
                              semantic_get_x86_64(), &aval) ||
             aval <= 0 || (aval & (aval - 1))) {
-            error_set(STMT_VAR_DECL(stmt).align_expr->line,
-                      STMT_VAR_DECL(stmt).align_expr->column,
-                      error_current_file, error_current_function);
-            error_print("Invalid alignment");
+            error_set(&error_ctx,STMT_VAR_DECL(stmt).align_expr->line,
+                      STMT_VAR_DECL(stmt).align_expr->column, NULL, NULL);
+            error_print(&error_ctx, "Invalid alignment");
             return NULL;
         }
         STMT_VAR_DECL(stmt).alignment = (size_t)aval;
@@ -143,12 +141,12 @@ static symbol_t *register_var_symbol(stmt_t *stmt, symtable_t *vars)
         return NULL;
     if (STMT_VAR_DECL(stmt).is_const && !STMT_VAR_DECL(stmt).init &&
         !STMT_VAR_DECL(stmt).init_list) {
-        error_set(stmt->line, stmt->column, error_current_file, error_current_function);
+        error_set(&error_ctx,stmt->line, stmt->column, NULL, NULL);
         return NULL;
     }
     symbol_t *sym = insert_var_symbol(stmt, vars, ir_name);
     if (!sym) {
-        error_set(stmt->line, stmt->column, error_current_file, error_current_function);
+        error_set(&error_ctx,stmt->line, stmt->column, NULL, NULL);
         return NULL;
     }
 

@@ -132,9 +132,8 @@ static int parse_typedef_decl(parser_t *p, size_t start_pos, stmt_t **out)
         }
         p->pos++;
         if (!vc_strtoul_size(num->lexeme, &arr_size)) {
-            error_set(num->line, num->column,
-                      error_current_file, error_current_function);
-            error_print("Integer constant out of range");
+            error_set(&error_ctx, num->line, num->column, NULL, NULL);
+            error_print(&error_ctx, "Integer constant out of range");
             p->pos = start_pos;
             return 0;
         }

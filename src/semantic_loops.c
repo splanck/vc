@@ -142,8 +142,7 @@ static int handle_loop_stmt(stmt_t *stmt, const char *target,
                             ir_builder_t *ir)
 {
     if (!target) {
-        error_set(stmt->line, stmt->column, error_current_file,
-                  error_current_function);
+        error_set(&error_ctx,stmt->line, stmt->column, NULL, NULL);
         return 0;
     }
     ir_build_br(ir, target);

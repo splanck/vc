@@ -52,10 +52,10 @@ static type_kind_t check_ident_expr(expr_t *expr, symtable_t *vars,
     if (!sym) {
         if (strcmp(expr->data.ident.name, "__func__") == 0) {
             if (out)
-                *out = ir_build_string(ir, error_current_function ? error_current_function : "");
+                *out = ir_build_string(ir, error_ctx.function ? error_ctx.function : "");
             return TYPE_PTR;
         }
-        error_set(expr->line, expr->column, error_current_file, error_current_function);
+        error_set(&error_ctx, expr->line, expr->column, NULL, NULL);
         if (out)
             *out = (ir_value_t){0};
         return TYPE_UNKNOWN;
@@ -96,13 +96,12 @@ static int validate_cond_operands(expr_t *expr, symtable_t *vars,
 
     if (!is_intlike(*ct) || *tt == TYPE_UNKNOWN || *ft == TYPE_UNKNOWN) {
         if (!is_intlike(*ct))
-            error_set(expr->data.cond.cond->line, expr->data.cond.cond->column,
-                      error_current_file, error_current_function);
+            error_set(&error_ctx, expr->data.cond.cond->line,
+                      expr->data.cond.cond->column, NULL, NULL);
         return 0;
     }
     if (!(is_intlike(*tt) && is_intlike(*ft))) {
-        error_set(expr->line, expr->column, error_current_file,
-                  error_current_function);
+        error_set(&error_ctx, expr->line, expr->column, NULL, NULL);
         return 0;
     }
     return 1;
@@ -203,8 +202,8 @@ static type_kind_t check_assign_expr(expr_t *expr, symtable_t *vars,
     /* Step 1: symbol lookup */
     symbol_t *sym = symtable_lookup(vars, expr->data.assign.name);
     if (!sym) {
-        error_set(expr->line, expr->column, error_current_file, error_current_function);
-        error_print("unknown identifier");
+        error_set(&error_ctx, expr->line, expr->column, NULL, NULL);
+        error_print(&error_ctx, "unknown identifier");
         if (out)
             *out = (ir_value_t){0};
         return TYPE_UNKNOWN;
@@ -212,8 +211,8 @@ static type_kind_t check_assign_expr(expr_t *expr, symtable_t *vars,
 
     /* Step 2: const protection */
     if (sym->is_const) {
-        error_set(expr->line, expr->column, error_current_file, error_current_function);
-        error_print("assignment to const");
+        error_set(&error_ctx, expr->line, expr->column, NULL, NULL);
+        error_print(&error_ctx, "assignment to const");
         if (out)
             *out = (ir_value_t){0};
         return TYPE_UNKNOWN;
@@ -222,8 +221,8 @@ static type_kind_t check_assign_expr(expr_t *expr, symtable_t *vars,
     /* Step 3: type compatibility */
     type_kind_t vt = check_expr(expr->data.assign.value, vars, funcs, ir, &val);
     if (!types_compatible(sym->type, vt)) {
-        error_set(expr->line, expr->column, error_current_file, error_current_function);
-        error_print("incompatible types in assignment");
+        error_set(&error_ctx, expr->line, expr->column, NULL, NULL);
+        error_print(&error_ctx, "incompatible types in assignment");
         if (out)
             *out = (ir_value_t){0};
         return TYPE_UNKNOWN;
@@ -376,8 +375,7 @@ static type_kind_t check_offsetof_expr(expr_t *expr, symtable_t *vars,
     else if (expr->data.offsetof_expr.type == TYPE_UNION)
         sym = symtable_lookup_union(vars, expr->data.offsetof_expr.tag);
     if (!sym || expr->data.offsetof_expr.member_count == 0) {
-        error_set(expr->line, expr->column, error_current_file,
-                  error_current_function);
+        error_set(&error_ctx, expr->line, expr->column, NULL, NULL);
         return TYPE_UNKNOWN;
     }
     size_t off = 0;
@@ -398,8 +396,7 @@ static type_kind_t check_offsetof_expr(expr_t *expr, symtable_t *vars,
             }
     }
     if (!found) {
-        error_set(expr->line, expr->column, error_current_file,
-                  error_current_function);
+        error_set(&error_ctx, expr->line, expr->column, NULL, NULL);
         return TYPE_UNKNOWN;
     }
     if (out)
@@ -455,7 +452,7 @@ type_kind_t check_expr(expr_t *expr, symtable_t *vars, symtable_t *funcs,
             *out = (ir_value_t){0};
         return TYPE_UNKNOWN;
     }
-    ir_builder_set_loc(ir, error_current_file, expr->line, expr->column);
+    ir_builder_set_loc(ir, error_ctx.file, expr->line, expr->column);
     switch (expr->kind) {
     case EXPR_NUMBER:
         return check_number_expr(expr, vars, funcs, ir, out);
@@ -496,7 +493,7 @@ type_kind_t check_expr(expr_t *expr, symtable_t *vars, symtable_t *funcs,
     case EXPR_CALL:
         return check_call_expr(expr, vars, funcs, ir, out);
     }
-    error_set(expr->line, expr->column, error_current_file, error_current_function);
+    error_set(&error_ctx, expr->line, expr->column, NULL, NULL);
     if (out)
         *out = (ir_value_t){0};
     return TYPE_UNKNOWN;

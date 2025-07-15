@@ -133,7 +133,8 @@ static char **emit_case_branches(stmt_t *stmt, symtable_t *vars,
                 free(labels[j]);
             free(labels);
             free(values);
-            error_set(STMT_SWITCH(stmt).cases[i].expr->line, STMT_SWITCH(stmt).cases[i].expr->column, error_current_file, error_current_function);
+            error_set(&error_ctx, STMT_SWITCH(stmt).cases[i].expr->line,
+                      STMT_SWITCH(stmt).cases[i].expr->column, NULL, NULL);
             return NULL;
         }
         for (size_t j = 0; j < i; j++) {
@@ -142,7 +143,8 @@ static char **emit_case_branches(stmt_t *stmt, symtable_t *vars,
                     free(labels[k]);
                 free(labels);
                 free(values);
-                error_set(STMT_SWITCH(stmt).cases[i].expr->line, STMT_SWITCH(stmt).cases[i].expr->column, error_current_file, error_current_function);
+                error_set(&error_ctx, STMT_SWITCH(stmt).cases[i].expr->line,
+                          STMT_SWITCH(stmt).cases[i].expr->column, NULL, NULL);
                 return NULL;
             }
         }

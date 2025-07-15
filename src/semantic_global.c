@@ -67,17 +67,17 @@ int check_func(func_t *func, symtable_t *funcs, symtable_t *globals,
     if (!func)
         return 0;
 
-    error_current_function = func->name;
+    error_ctx.function = func->name;
     preproc_set_function(&func_ctx, func->name);
 
     symbol_t *decl = symtable_lookup(funcs, func->name);
     if (!decl) {
-        error_set(0, 0, error_current_file, error_current_function);
+        error_set(&error_ctx, 0, 0, NULL, NULL);
         return 0;
     }
     if (decl->is_inline && semantic_inline_already_emitted(func->name)) {
         preproc_set_function(&func_ctx, NULL);
-        error_current_function = NULL;
+        error_ctx.function = NULL;
         return 1;
     }
 
@@ -89,7 +89,7 @@ int check_func(func_t *func, symtable_t *funcs, symtable_t *globals,
         if (decl->param_types[i] != func->param_types[i])
             mismatch = 1;
     if (mismatch) {
-        error_set(0, 0, error_current_file, error_current_function);
+        error_set(&error_ctx, 0, 0, NULL, NULL);
         return 0;
     }
 
@@ -123,13 +123,13 @@ int check_func(func_t *func, symtable_t *funcs, symtable_t *globals,
     locals.globals = NULL;
     symtable_free(&locals);
     if (decl->is_inline && !semantic_mark_inline_emitted(func->name)) {
-        error_set(0, 0, error_current_file, error_current_function);
+        error_set(&error_ctx, 0, 0, NULL, NULL);
         preproc_set_function(&func_ctx, NULL);
-        error_current_function = NULL;
+        error_ctx.function = NULL;
         return 0;
     }
     preproc_set_function(&func_ctx, NULL);
-    error_current_function = NULL;
+    error_ctx.function = NULL;
     return ok;
 }
 
@@ -147,12 +147,12 @@ static int check_enum_decl_global(stmt_t *decl, symtable_t *globals)
         if (e->value) {
             if (!eval_const_expr(e->value, globals,
                                  semantic_get_x86_64(), &val)) {
-                error_set(e->value->line, e->value->column, error_current_file, error_current_function);
+                error_set(&error_ctx, e->value->line, e->value->column, NULL, NULL);
                 return 0;
             }
         }
         if (!symtable_add_enum_global(globals, e->name, (int)val)) {
-            error_set(decl->line, decl->column, error_current_file, error_current_function);
+            error_set(&error_ctx, decl->line, decl->column, NULL, NULL);
             return 0;
         }
         next = (int)val + 1;
@@ -174,7 +174,7 @@ static int check_struct_decl_global(stmt_t *decl, symtable_t *globals)
     if (!symtable_add_struct_global(globals, STMT_STRUCT_DECL(decl).tag,
                                     STMT_STRUCT_DECL(decl).members,
                                     STMT_STRUCT_DECL(decl).count)) {
-        error_set(decl->line, decl->column, error_current_file, error_current_function);
+        error_set(&error_ctx, decl->line, decl->column, NULL, NULL);
         return 0;
     }
     symbol_t *stype =
@@ -195,7 +195,7 @@ static int check_union_decl_global(stmt_t *decl, symtable_t *globals)
     if (!symtable_add_union_global(globals, STMT_UNION_DECL(decl).tag,
                                    STMT_UNION_DECL(decl).members,
                                    STMT_UNION_DECL(decl).count)) {
-        error_set(decl->line, decl->column, error_current_file, error_current_function);
+        error_set(&error_ctx, decl->line, decl->column, NULL, NULL);
         return 0;
     }
     return 1;
@@ -207,13 +207,13 @@ static int check_static_assert_stmt(stmt_t *stmt, symtable_t *globals)
     long long val;
     if (!eval_const_expr(STMT_STATIC_ASSERT(stmt).expr, globals,
                          semantic_get_x86_64(), &val)) {
-        error_set(STMT_STATIC_ASSERT(stmt).expr->line, STMT_STATIC_ASSERT(stmt).expr->column,
-                  error_current_file, error_current_function);
+        error_set(&error_ctx, STMT_STATIC_ASSERT(stmt).expr->line,
+                  STMT_STATIC_ASSERT(stmt).expr->column, NULL, NULL);
         return 0;
     }
     if (val == 0) {
-        error_set(stmt->line, stmt->column, error_current_file, error_current_function);
-        error_print(STMT_STATIC_ASSERT(stmt).message);
+        error_set(&error_ctx, stmt->line, stmt->column, NULL, NULL);
+        error_print(&error_ctx, STMT_STATIC_ASSERT(stmt).message);
         return 0;
     }
     return 1;
@@ -249,10 +249,11 @@ static symbol_t *register_global_symbol(stmt_t *decl, symtable_t *globals)
         if (!eval_const_expr(STMT_VAR_DECL(decl).align_expr, globals,
                              semantic_get_x86_64(), &aval) ||
             aval <= 0 || (aval & (aval - 1))) {
-            error_set(STMT_VAR_DECL(decl).align_expr->line,
+            error_set(&error_ctx,
+                      STMT_VAR_DECL(decl).align_expr->line,
                       STMT_VAR_DECL(decl).align_expr->column,
-                      error_current_file, error_current_function);
-            error_print("Invalid alignment");
+                      NULL, NULL);
+            error_print(&error_ctx, "Invalid alignment");
             return NULL;
         }
         STMT_VAR_DECL(decl).alignment = (size_t)aval;
@@ -268,7 +269,7 @@ static symbol_t *register_global_symbol(stmt_t *decl, symtable_t *globals)
                              STMT_VAR_DECL(decl).is_const,
                              STMT_VAR_DECL(decl).is_volatile,
                              STMT_VAR_DECL(decl).is_restrict)) {
-        error_set(decl->line, decl->column, error_current_file, error_current_function);
+        error_set(&error_ctx, decl->line, decl->column, NULL, NULL);
         return NULL;
     }
 
@@ -341,7 +342,7 @@ static int emit_global_initializer(stmt_t *decl, symbol_t *sym,
             free(vals);
             return 1;
         }
-        error_set(decl->line, decl->column, error_current_file, error_current_function);
+        error_set(&error_ctx, decl->line, decl->column, NULL, NULL);
         return 0;
     }
 
@@ -359,7 +360,8 @@ static int emit_global_initializer(stmt_t *decl, symbol_t *sym,
     if (STMT_VAR_DECL(decl).init) {
         if (!eval_const_expr(STMT_VAR_DECL(decl).init, globals,
                              semantic_get_x86_64(), &value)) {
-            error_set(STMT_VAR_DECL(decl).init->line, STMT_VAR_DECL(decl).init->column, error_current_file, error_current_function);
+            error_set(&error_ctx, STMT_VAR_DECL(decl).init->line,
+                      STMT_VAR_DECL(decl).init->column, NULL, NULL);
             return 0;
         }
     }
@@ -419,7 +421,7 @@ int check_global(stmt_t *decl, symtable_t *globals, ir_builder_t *ir)
                                          STMT_TYPEDEF(decl).type,
                                          STMT_TYPEDEF(decl).array_size,
                                          STMT_TYPEDEF(decl).elem_size)) {
-            error_set(decl->line, decl->column, error_current_file, error_current_function);
+            error_set(&error_ctx, decl->line, decl->column, NULL, NULL);
             return 0;
         }
         return 1;

@@ -15,7 +15,7 @@ static int check_typedef_stmt(stmt_t *stmt, symtable_t *vars)
                               STMT_TYPEDEF(stmt).type,
                               STMT_TYPEDEF(stmt).array_size,
                               STMT_TYPEDEF(stmt).elem_size)) {
-        error_set(stmt->line, stmt->column, error_current_file, error_current_function);
+        error_set(&error_ctx, stmt->line, stmt->column, NULL, NULL);
         return 0;
     }
     return 1;

@@ -10,14 +10,14 @@ static int validate_struct_return(stmt_t *stmt, symtable_t *vars,
                                   type_kind_t func_ret_type)
 {
     if (expr_type != func_ret_type) {
-        error_set(STMT_RET(stmt).expr->line, STMT_RET(stmt).expr->column,
-                  error_current_file, error_current_function);
+        error_set(&error_ctx, STMT_RET(stmt).expr->line,
+                  STMT_RET(stmt).expr->column, NULL, NULL);
         return 0;
     }
 
     symbol_t *func_sym = symtable_lookup(funcs,
-                                         error_current_function ?
-                                         error_current_function : "");
+                                         error_ctx.function ?
+                                         error_ctx.function : "");
     size_t expected = func_sym ? func_sym->ret_struct_size : 0;
     size_t actual = 0;
 
@@ -37,8 +37,8 @@ static int validate_struct_return(stmt_t *stmt, symtable_t *vars,
     }
 
     if (expected && actual && expected != actual) {
-        error_set(STMT_RET(stmt).expr->line, STMT_RET(stmt).expr->column,
-                  error_current_file, error_current_function);
+        error_set(&error_ctx, STMT_RET(stmt).expr->line,
+                  STMT_RET(stmt).expr->column, NULL, NULL);
         return 0;
     }
 
@@ -51,7 +51,7 @@ static int handle_return_stmt(stmt_t *stmt, symtable_t *vars,
 {
     if (!STMT_RET(stmt).expr) {
         if (func_ret_type != TYPE_VOID) {
-            error_set(stmt->line, stmt->column, error_current_file, error_current_function);
+            error_set(&error_ctx, stmt->line, stmt->column, NULL, NULL);
             return 0;
         }
         ir_value_t zero = ir_build_const(ir, 0);
@@ -62,8 +62,8 @@ static int handle_return_stmt(stmt_t *stmt, symtable_t *vars,
     ir_value_t val;
     type_kind_t vt = check_expr(STMT_RET(stmt).expr, vars, funcs, ir, &val);
     if (vt == TYPE_UNKNOWN) {
-        error_set(STMT_RET(stmt).expr->line, STMT_RET(stmt).expr->column,
-                  error_current_file, error_current_function);
+        error_set(&error_ctx, STMT_RET(stmt).expr->line,
+                  STMT_RET(stmt).expr->column, NULL, NULL);
         return 0;
     }
 

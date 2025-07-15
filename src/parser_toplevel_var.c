@@ -32,9 +32,9 @@ static int parse_array_size(parser_t *p, type_kind_t *type, size_t *arr_size,
             }
             if ((*size_expr)->kind == EXPR_NUMBER) {
                 if (!vc_strtoul_size((*size_expr)->data.number.value, arr_size)) {
-                    error_set((*size_expr)->line, (*size_expr)->column,
-                              error_current_file, error_current_function);
-                    error_print("Integer constant out of range");
+                    error_set(&error_ctx, (*size_expr)->line, (*size_expr)->column,
+                              NULL, NULL);
+                    error_print(&error_ctx, "Integer constant out of range");
                     ast_free_expr(*size_expr);
                     *size_expr = NULL;
                     p->pos = start;

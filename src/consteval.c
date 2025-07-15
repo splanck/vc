@@ -31,8 +31,8 @@ static int eval_alignof(expr_t *expr, int use_x86_64, long long *out);
 /* Report a constant overflow error and return 0 */
 static int report_overflow(expr_t *expr)
 {
-    error_set(expr->line, expr->column, error_current_file, error_current_function);
-    error_print("Constant overflow");
+    error_set(&error_ctx, expr->line, expr->column, NULL, NULL);
+    error_print(&error_ctx, "Constant overflow");
     return 0;
 }
 

@@ -39,17 +39,17 @@ static int validate_array_entry(init_entry_t *ent, size_t array_size,
         if (!eval_const_expr(ent->index, vars,
                              semantic_get_x86_64(), &cidx) || cidx < 0 ||
             (size_t)cidx >= array_size) {
-            error_set(ent->index->line, ent->index->column, error_current_file, error_current_function);
+            error_set(&error_ctx, ent->index->line, ent->index->column, NULL, NULL);
             return 0;
         }
         i = (size_t)cidx;
         *cur = i;
     } else if (ent->kind == INIT_FIELD) {
-        error_set(line, column, error_current_file, error_current_function);
+        error_set(&error_ctx, line, column, NULL, NULL);
         return 0;
     }
     if (i >= array_size) {
-        error_set(line, column, error_current_file, error_current_function);
+        error_set(&error_ctx, line, column, NULL, NULL);
         return 0;
     }
     *idx = i;
@@ -77,16 +77,16 @@ static int resolve_struct_field(init_entry_t *ent, symbol_t *sym,
             }
         }
         if (!found) {
-            error_set(line, column, error_current_file, error_current_function);
+            error_set(&error_ctx, line, column, NULL, NULL);
             return 0;
         }
         *cur = i;
     } else if (ent->kind != INIT_SIMPLE) {
-        error_set(line, column, error_current_file, error_current_function);
+        error_set(&error_ctx, line, column, NULL, NULL);
         return 0;
     }
     if (i >= sym->struct_member_count) {
-        error_set(line, column, error_current_file, error_current_function);
+        error_set(&error_ctx, line, column, NULL, NULL);
         return 0;
     }
     *idx = i;
@@ -107,7 +107,7 @@ int expand_array_initializer(init_entry_t *entries, size_t count,
     if (!out_vals)
         return 0;
     if (array_size < count) {
-        error_set(line, column, error_current_file, error_current_function);
+        error_set(&error_ctx, line, column, NULL, NULL);
         return 0;
     }
     long long *vals = calloc(array_size, sizeof(long long));
@@ -123,7 +123,7 @@ int expand_array_initializer(init_entry_t *entries, size_t count,
         long long val;
         if (!eval_const_expr(ent->value, vars,
                              semantic_get_x86_64(), &val)) {
-            error_set(ent->value->line, ent->value->column, error_current_file, error_current_function);
+            error_set(&error_ctx, ent->value->line, ent->value->column, NULL, NULL);
             return cleanup_and_return(vals);
         }
         vals[idx] = val;
@@ -144,7 +144,7 @@ int expand_struct_initializer(init_entry_t *entries, size_t count,
                               long long **out_vals)
 {
     if (!out_vals || !sym || !sym->struct_member_count) {
-        error_set(line, column, error_current_file, error_current_function);
+        error_set(&error_ctx, line, column, NULL, NULL);
         return 0;
     }
     long long *vals = calloc(sym->struct_member_count, sizeof(long long));
@@ -159,7 +159,7 @@ int expand_struct_initializer(init_entry_t *entries, size_t count,
         long long val;
         if (!eval_const_expr(ent->value, vars,
                              semantic_get_x86_64(), &val)) {
-            error_set(ent->value->line, ent->value->column, error_current_file, error_current_function);
+            error_set(&error_ctx, ent->value->line, ent->value->column, NULL, NULL);
             return cleanup_and_return(vals);
         }
         vals[idx] = val;

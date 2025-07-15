@@ -35,9 +35,8 @@ static int parse_member_array(parser_t *p, int is_union, type_kind_t *type,
         return 0;
     p->pos++;
     if (!vc_strtoul_size(num->lexeme, arr_size)) {
-        error_set(num->line, num->column,
-                  error_current_file, error_current_function);
-        error_print("Integer constant out of range");
+        error_set(&error_ctx, num->line, num->column, NULL, NULL);
+        error_print(&error_ctx, "Integer constant out of range");
         return 0;
     }
     if (!match(p, TOK_RBRACKET))
@@ -60,9 +59,8 @@ static int parse_member_bitfield(parser_t *p, type_kind_t type,
         return 0;
     p->pos++;
     if (!vc_strtoul_unsigned(num->lexeme, bit_width)) {
-        error_set(num->line, num->column,
-                  error_current_file, error_current_function);
-        error_print("Integer constant out of range");
+        error_set(&error_ctx, num->line, num->column, NULL, NULL);
+        error_print(&error_ctx, "Integer constant out of range");
         return 0;
     }
     return 1;

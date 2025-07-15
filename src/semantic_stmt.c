@@ -121,7 +121,7 @@ int check_stmt(stmt_t *stmt, symtable_t *vars, symtable_t *funcs,
     label_table_t *labels = (label_table_t *)label_tab;
     if (!stmt)
         return 0;
-    ir_builder_set_loc(ir, error_current_file, stmt->line, stmt->column);
+    ir_builder_set_loc(ir, error_ctx.file, stmt->line, stmt->column);
     if ((size_t)stmt->kind >= sizeof(stmt_handlers) / sizeof(stmt_handlers[0]))
         return 0;
     stmt_handler_fn fn = stmt_handlers[stmt->kind];
@@ -157,9 +157,8 @@ void warn_unreachable_function(func_t *func, symtable_t *funcs)
             if (!(s->kind == STMT_LABEL && end_label &&
                   strcmp(STMT_LABEL(s).name, end_label) == 0) &&
                 !semantic_suppress_warnings) {
-                error_set(s->line, s->column, error_current_file,
-                          error_current_function);
-                error_print("warning: unreachable statement");
+                error_set(&error_ctx, s->line, s->column, NULL, NULL);
+                error_print(&error_ctx, "warning: unreachable statement");
             }
         }
         if (s->kind == STMT_RETURN)
@@ -178,9 +177,8 @@ void warn_unreachable_function(func_t *func, symtable_t *funcs)
                     i + 1 < func->body_count &&
                     !(func->body[i+1]->kind == STMT_LABEL && end_label &&
                       strcmp(STMT_LABEL(func->body[i+1]).name, end_label) == 0)) {
-                    error_set(s->line, s->column, error_current_file,
-                              error_current_function);
-                    error_print("warning: non-returning call without terminator");
+                    error_set(&error_ctx, s->line, s->column, NULL, NULL);
+                    error_print(&error_ctx, "warning: non-returning call without terminator");
                 }
                 reachable = 0;
             }

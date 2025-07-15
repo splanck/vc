@@ -41,8 +41,8 @@ const char *label_format(const char *prefix, int id, char buf[32])
 {
     int n = snprintf(buf, 32, "%s%d", prefix, id);
     if (n < 0 || n >= 32) {
-        error_set(0, 0, error_current_file, error_current_function);
-        error_print("Generated label name too long");
+        error_set(&error_ctx,0, 0, NULL, NULL);
+        error_print(&error_ctx, "Generated label name too long");
         buf[31] = '\0';
         buf[0] = '\0';
         return NULL;
@@ -56,8 +56,8 @@ const char *label_format_suffix(const char *prefix, int id, const char *suffix,
 {
     int n = snprintf(buf, 32, "%s%d%s", prefix, id, suffix);
     if (n < 0 || n >= 32) {
-        error_set(0, 0, error_current_file, error_current_function);
-        error_print("Generated label name too long");
+        error_set(&error_ctx,0, 0, NULL, NULL);
+        error_print(&error_ctx, "Generated label name too long");
         buf[31] = '\0';
         buf[0] = '\0';
         return NULL;

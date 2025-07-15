@@ -91,8 +91,7 @@ int compute_union_layout(stmt_t *decl, symtable_t *globals)
     } else if (STMT_VAR_DECL(decl).tag) {
         symbol_t *utype = symtable_lookup_union(globals, STMT_VAR_DECL(decl).tag);
         if (!utype) {
-            error_set(decl->line, decl->column, error_current_file,
-                      error_current_function);
+            error_set(&error_ctx,decl->line, decl->column, NULL, NULL);
             return 0;
         }
         STMT_VAR_DECL(decl).elem_size = utype->total_size;
@@ -110,8 +109,7 @@ int compute_struct_layout(stmt_t *decl, symtable_t *globals)
     } else if (STMT_VAR_DECL(decl).tag) {
         symbol_t *stype = symtable_lookup_struct(globals, STMT_VAR_DECL(decl).tag);
         if (!stype) {
-            error_set(decl->line, decl->column, error_current_file,
-                      error_current_function);
+            error_set(&error_ctx,decl->line, decl->column, NULL, NULL);
             return 0;
         }
         STMT_VAR_DECL(decl).elem_size = stype->struct_total_size;

@@ -72,8 +72,8 @@ ir_value_t ir_build_wstring(ir_builder_t *b, const char *str)
     ins->dest = alloc_value_id(b);
     size_t len = strlen(str ? str : "");
     if (len + 1 > SIZE_MAX / sizeof(long long)) {
-        error_set(b->cur_line, b->cur_column, b->cur_file, error_current_function);
-        error_print("wide string literal too large");
+        error_set(&error_ctx, b->cur_line, b->cur_column, b->cur_file, error_ctx.function);
+        error_print(&error_ctx, "wide string literal too large");
         remove_instr(b, ins);
         return (ir_value_t){0};
     }

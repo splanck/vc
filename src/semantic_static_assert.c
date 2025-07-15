@@ -10,13 +10,12 @@ static int check_static_assert_stmt(stmt_t *stmt, symtable_t *vars)
     long long val;
     if (!eval_const_expr(STMT_STATIC_ASSERT(stmt).expr, vars,
                          semantic_get_x86_64(), &val)) {
-        error_set(STMT_STATIC_ASSERT(stmt).expr->line, STMT_STATIC_ASSERT(stmt).expr->column,
-                  error_current_file, error_current_function);
+        error_set(&error_ctx,STMT_STATIC_ASSERT(stmt).expr->line, STMT_STATIC_ASSERT(stmt).expr->column, NULL, NULL);
         return 0;
     }
     if (val == 0) {
-        error_set(stmt->line, stmt->column, error_current_file, error_current_function);
-        error_print(STMT_STATIC_ASSERT(stmt).message);
+        error_set(&error_ctx,stmt->line, stmt->column, NULL, NULL);
+        error_print(&error_ctx, STMT_STATIC_ASSERT(stmt).message);
         return 0;
     }
     return 1;
