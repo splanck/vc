@@ -5,9 +5,10 @@ Lstr1:
 foo:
     pushl %ebp
     movl %esp, %ebp
+    subl $4, %esp
     movl $Lstr1, %eax
-    movl %eax, p
-    movl p, %eax
+    movl %eax, -4(%ebp)
+    movl -4(%ebp), %eax
     movl $1, %ebx
     movl %ebx, %ecx
     imull $1, %ecx

@@ -2,10 +2,10 @@ main:
     pushl %ebp
     movl %esp, %ebp
     movl $1, %eax
-    movl %eax, a
+    movl %eax, -0(%ebp)
     movl $2, %eax
-    movl %eax, b
-    movl $3, %eax
+    movl %eax, -0(%ebp)
+    movl $4, %eax
     movl %eax, %eax
     ret
     movl %ebp, %esp

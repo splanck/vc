@@ -1,8 +1,9 @@
 main:
     pushl %ebp
     movl %esp, %ebp
+    subl $4, %esp
     movl $97, %eax
-    movl %eax, c
+    movl %eax, -4(%ebp)
     movl $97, %eax
     movl %eax, %eax
     ret
