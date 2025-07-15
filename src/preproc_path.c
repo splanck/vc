@@ -415,6 +415,7 @@ int collect_include_dirs(vector_t *search_dirs,
     }
 
     if (sysroot && *sysroot) {
+        vector_t *dest = internal_libc ? &extra_sys_dirs : search_dirs;
         for (size_t i = 0; std_include_dirs[i]; i++) {
             const char *base = std_include_dirs[i];
             size_t root_len = strlen(sysroot);
@@ -425,14 +426,18 @@ int collect_include_dirs(vector_t *search_dirs,
             char *dup = malloc(len + 1);
             if (!dup) {
                 free_string_vector(search_dirs);
+                if (dest == &extra_sys_dirs)
+                    free_string_vector(&extra_sys_dirs);
                 return 0;
             }
             memcpy(dup, sysroot, root_len);
             dup[root_len] = '\0';
             strcat(dup, base);
-            if (!vector_push(search_dirs, &dup)) {
+            if (!vector_push(dest, &dup)) {
                 free(dup);
                 free_string_vector(search_dirs);
+                if (dest == &extra_sys_dirs)
+                    free_string_vector(&extra_sys_dirs);
                 return 0;
             }
         }
