@@ -30,7 +30,7 @@ ir_value_t ir_build_call_ptr_nr(ir_builder_t *b, ir_value_t func,
                                 size_t arg_count);
 
 /* Mark the start of a function with IR_FUNC_BEGIN. */
-void ir_build_func_begin(ir_builder_t *b, const char *name);
+ir_instr_t *ir_build_func_begin(ir_builder_t *b, const char *name);
 
 /* Mark the end of the current function with IR_FUNC_END. */
 void ir_build_func_end(ir_builder_t *b);

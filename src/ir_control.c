@@ -86,17 +86,19 @@ ir_value_t ir_build_call_ptr_nr(ir_builder_t *b, ir_value_t func, size_t arg_cou
     return (ir_value_t){0};
 }
 
-void ir_build_func_begin(ir_builder_t *b, const char *name)
+ir_instr_t *ir_build_func_begin(ir_builder_t *b, const char *name)
 {
     ir_instr_t *ins = append_instr(b);
     if (!ins)
-        return;
+        return NULL;
     ins->op = IR_FUNC_BEGIN;
     ins->name = vc_strdup(name ? name : "");
     if (!ins->name) {
         remove_instr(b, ins);
-        return;
+        return NULL;
     }
+    ins->imm = 0;
+    return ins;
 }
 
 void ir_build_func_end(ir_builder_t *b)

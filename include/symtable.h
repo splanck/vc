@@ -21,6 +21,7 @@ typedef struct symbol {
     size_t array_size;
     size_t elem_size;
     size_t alignment;
+    int stack_offset;       /* offset from frame pointer for locals */
     ir_value_t vla_addr; /* base pointer for variable-length arrays */
     ir_value_t vla_size; /* runtime element count */
     int enum_value;

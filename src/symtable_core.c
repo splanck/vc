@@ -45,6 +45,7 @@ symbol_t *symtable_create_symbol(const char *name, const char *ir_name)
     sym->alias_type = TYPE_UNKNOWN;
     sym->elem_size = 0;
     sym->alignment = 0;
+    sym->stack_offset = 0;
     sym->members = NULL;
     sym->member_count = 0;
     sym->active_member = NULL;
