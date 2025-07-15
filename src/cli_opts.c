@@ -200,6 +200,69 @@ static int handle_std(const char *arg, const char *prog, cli_options_t *opts)
     return set_standard(opts, arg);
 }
 
+/* Handle debug related flags
+ * --debug sets opts->debug
+ * --emit-dwarf sets opts->emit_dwarf
+ */
+static int handle_debug_flags(int opt, cli_options_t *opts)
+{
+    switch (opt) {
+    case CLI_OPT_DEBUG:
+        opts->debug = true;
+        return 0;
+    case CLI_OPT_EMIT_DWARF:
+        opts->emit_dwarf = true;
+        return 0;
+    default:
+        return -1;
+    }
+}
+
+/* Handle output dump flags
+ * -S/--dump-asm   sets opts->dump_asm
+ * --dump-ast      sets opts->dump_ast
+ * --dump-ir       sets opts->dump_ir
+ * --dump-tokens   sets opts->dump_tokens
+ */
+static int handle_dump_flags(int opt, cli_options_t *opts)
+{
+    switch (opt) {
+    case 'S':
+    case CLI_OPT_DUMP_ASM_LONG:
+        opts->dump_asm = true;
+        return 0;
+    case CLI_OPT_DUMP_AST:
+        opts->dump_ast = true;
+        return 0;
+    case CLI_OPT_DUMP_IR:
+        opts->dump_ir = true;
+        return 0;
+    case CLI_OPT_DUMP_TOKENS:
+        opts->dump_tokens = true;
+        return 0;
+    default:
+        return -1;
+    }
+}
+
+/* Simple boolean flags whose values are set via a table */
+struct flag_entry {
+    int opt;
+    void (*set)(cli_options_t *opts);
+};
+
+static void set_compile(cli_options_t *opts) { opts->compile = true; }
+static void set_link(cli_options_t *opts) { opts->link = true; }
+static void set_x86(cli_options_t *opts) { opts->use_x86_64 = true; }
+static void set_intel(cli_options_t *opts) { opts->asm_syntax = ASM_INTEL; }
+static void set_preprocess(cli_options_t *opts) { opts->preprocess = true; }
+static void set_no_color(cli_options_t *opts) { opts->color_diag = false; }
+static void set_dep_only(cli_options_t *opts) { opts->dep_only = true; }
+static void set_dep(cli_options_t *opts) { opts->deps = true; }
+static void set_no_warn(cli_options_t *opts) { opts->warn_unreachable = false; }
+static void set_verbose(cli_options_t *opts) { opts->verbose_includes = true; }
+
+
 int parse_optimization_opts(int opt, const char *arg, cli_options_t *opts)
 {
     switch (opt) {
@@ -254,6 +317,31 @@ int parse_io_paths(int opt, const char *arg, cli_options_t *opts)
 int parse_misc_opts(int opt, const char *arg, const char *prog,
                     cli_options_t *opts)
 {
+    static const struct flag_entry table[] = {
+        { 'c', set_compile },
+        { CLI_OPT_LINK, set_link },
+        { CLI_OPT_X86_64, set_x86 },
+        { CLI_OPT_INTEL_SYNTAX, set_intel },
+        { 'E', set_preprocess },
+        { CLI_OPT_NO_COLOR, set_no_color },
+        { CLI_OPT_DEP_ONLY, set_dep_only },
+        { CLI_OPT_DEP, set_dep },
+        { CLI_OPT_NO_WARN_UNREACHABLE, set_no_warn },
+        { CLI_OPT_VERBOSE_INCLUDES, set_verbose },
+    };
+
+    for (size_t i = 0; i < sizeof(table) / sizeof(table[0]); i++) {
+        if (table[i].opt == opt) {
+            table[i].set(opts);
+            return 0;
+        }
+    }
+
+    if (handle_dump_flags(opt, opts) == 0)
+        return 0;
+    if (handle_debug_flags(opt, opts) == 0)
+        return 0;
+
     switch (opt) {
     case 'h':
         return handle_help(arg, prog, opts);
@@ -265,55 +353,6 @@ int parse_misc_opts(int opt, const char *arg, const char *prog,
     case 'U':
     case CLI_OPT_UNDEFINE:
         return add_undef_opt(arg, prog, opts);
-    case 'c':
-        opts->compile = true;
-        return 0;
-    case CLI_OPT_LINK:
-        opts->link = true;
-        return 0;
-    case CLI_OPT_X86_64:
-        opts->use_x86_64 = true;
-        return 0;
-    case CLI_OPT_INTEL_SYNTAX:
-        opts->asm_syntax = ASM_INTEL;
-        return 0;
-    case 'S':
-    case CLI_OPT_DUMP_ASM_LONG:
-        opts->dump_asm = true;
-        return 0;
-    case CLI_OPT_DUMP_AST:
-        opts->dump_ast = true;
-        return 0;
-    case CLI_OPT_DUMP_IR:
-        opts->dump_ir = true;
-        return 0;
-    case CLI_OPT_DUMP_TOKENS:
-        opts->dump_tokens = true;
-        return 0;
-    case CLI_OPT_DEBUG:
-        opts->debug = true;
-        return 0;
-    case 'E':
-        opts->preprocess = true;
-        return 0;
-    case CLI_OPT_NO_COLOR:
-        opts->color_diag = false;
-        return 0;
-    case CLI_OPT_DEP_ONLY:
-        opts->dep_only = true;
-        return 0;
-    case CLI_OPT_DEP:
-        opts->deps = true;
-        return 0;
-    case CLI_OPT_NO_WARN_UNREACHABLE:
-        opts->warn_unreachable = false;
-        return 0;
-    case CLI_OPT_EMIT_DWARF:
-        opts->emit_dwarf = true;
-        return 0;
-    case CLI_OPT_VERBOSE_INCLUDES:
-        opts->verbose_includes = true;
-        return 0;
     case 'f':
         if (strncmp(arg, "max-include-depth=", 18) == 0)
             return set_max_depth(opts, arg + 18);
