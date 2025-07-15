@@ -107,6 +107,16 @@ executed from the repository root with:
 tests/run.sh
 ```
 
+Before running the suite ensure the bundled libc archives are available. Build
+them once with:
+
+```sh
+make libc
+```
+
+The helper script `start.sh` performs this step automatically before invoking
+the tests.
+
 This script builds the compiler, compiles the unit test harness for the lexer
 and parser, and then runs both the unit tests and the integration tests found
 under `tests/`. It returns a non-zero status if any test fails.
