@@ -1,5 +1,6 @@
 #include <stddef.h>
 #include "string.h"
+#include "../internal/_vc_syscalls.h"
 
 size_t strlen(const char *s)
 {
