@@ -50,6 +50,10 @@ int write_startup_asm(int use_x86_64, asm_syntax_t syntax,
             rc = fputs(
                 "global _start\n"
                 "_start:\n"
+                "    mov rbx, rsp\n"
+                "    mov rdi, [rbx]\n"
+                "    lea rsi, [rbx+8]\n"
+                "    lea rdx, [rsi+rdi*8+8]\n"
                 "    and rsp, -16\n"
                 "    lea rbp, [rel after_main]\n"
                 "    call main\n"
@@ -59,13 +63,31 @@ int write_startup_asm(int use_x86_64, asm_syntax_t syntax,
                 "    syscall\n",
                 stub);
         } else {
-            rc = fputs("global _start\n_start:\n    call main\n    mov ebx, eax\n    mov eax, 1\n    int 0x80\n", stub);
+            rc = fputs(
+                "global _start\n"
+                "_start:\n"
+                "    pop eax\n"
+                "    mov ecx, esp\n"
+                "    lea edx, [ecx+eax*4+4]\n"
+                "    and esp, -16\n"
+                "    push edx\n"
+                "    push ecx\n"
+                "    push eax\n"
+                "    call main\n"
+                "    mov ebx, eax\n"
+                "    mov eax, 1\n"
+                "    int 0x80\n",
+                stub);
         }
     } else {
         if (use_x86_64) {
             rc = fputs(
                 ".globl _start\n"
                 "_start:\n"
+                "    mov %rsp, %rbx\n"
+                "    mov (%rbx), %rdi\n"
+                "    lea 8(%rbx), %rsi\n"
+                "    lea 8(%rsi,%rdi,8), %rdx\n"
                 "    and $-16, %rsp\n"
                 "    lea after_main(%rip), %rbp\n"
                 "    call main\n"
@@ -75,7 +97,21 @@ int write_startup_asm(int use_x86_64, asm_syntax_t syntax,
                 "    syscall\n",
                 stub);
         } else {
-            rc = fputs(".globl _start\n_start:\n    call main\n    mov %eax, %ebx\n    mov $1, %eax\n    int $0x80\n", stub);
+            rc = fputs(
+                ".globl _start\n"
+                "_start:\n"
+                "    pop %eax\n"
+                "    mov %esp, %ecx\n"
+                "    lea 4(%ecx,%eax,4), %edx\n"
+                "    and $-16, %esp\n"
+                "    push %edx\n"
+                "    push %ecx\n"
+                "    push %eax\n"
+                "    call main\n"
+                "    mov %eax, %ebx\n"
+                "    mov $1, %eax\n"
+                "    int $0x80\n",
+                stub);
         }
     }
     if (rc == EOF) {
