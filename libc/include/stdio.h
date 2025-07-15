@@ -13,5 +13,15 @@
 int puts(const char *s);
 int printf(const char *format, ...);
 
+typedef struct FILE {
+    int fd;
+} FILE;
+
+FILE *fopen(const char *path, const char *mode);
+int fclose(FILE *stream);
+int fprintf(FILE *stream, const char *format, ...);
+char *fgets(char *s, int size, FILE *stream);
+void perror(const char *msg);
+
 
 #endif /* VC_STDIO_H */

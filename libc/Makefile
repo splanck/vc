@@ -6,7 +6,7 @@ CFLAGS ?= -Wall -Wextra -std=c99 -DPROJECT_ROOT=\"$(PROJECT_ROOT)\"
 CAN_COMPILE_32 := $(shell $(CC) -m32 -xc /dev/null -o /dev/null \
     >/dev/null 2>&1 && echo yes || echo no)
 
-SRC := src/stdio.c src/stdlib.c src/string.c src/syscalls.c
+SRC := src/stdio.c src/stdlib.c src/string.c src/syscalls.c src/file.c
 OBJ32 := $(SRC:src/%.c=src/%.32.o)
 OBJ64 := $(SRC:src/%.c=src/%.64.o)
 

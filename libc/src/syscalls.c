@@ -23,6 +23,21 @@ long _vc_write(int fd, const void *buf, unsigned long count)
     SYSCALL_INVOKE(VC_SYS_WRITE, fd, buf, count);
 }
 
+long _vc_read(int fd, void *buf, unsigned long count)
+{
+    SYSCALL_INVOKE(VC_SYS_READ, fd, buf, count);
+}
+
+long _vc_open(const char *path, int flags, int mode)
+{
+    SYSCALL_INVOKE(VC_SYS_OPEN, path, flags, mode);
+}
+
+long _vc_close(int fd)
+{
+    SYSCALL_INVOKE(VC_SYS_CLOSE, fd, 0, 0);
+}
+
 __attribute__((noreturn, naked)) void _vc_exit(int status)
 {
 #ifdef __x86_64__
