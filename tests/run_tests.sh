@@ -15,6 +15,9 @@ fi
 fail=0
 # ensure internal libc archive is available for tests
 make -s -C "$DIR/../libc" >/dev/null
+# ensure host headers are not used
+NO_SYSROOT="$DIR/empty_sysroot"
+export VCFLAGS="--sysroot=$NO_SYSROOT"
 # compile each fixture, including vla.c which exercises
 # variable length array support
 for cfile in "$DIR"/fixtures/*.c; do
@@ -167,7 +170,7 @@ rm -f "$err"
 
 # verify VCFLAGS options are parsed
 vcflags_out=$(mktemp)
-VCFLAGS="--x86-64" "$BINARY" -o "${vcflags_out}" "$DIR/fixtures/simple_add.c"
+VCFLAGS="--x86-64 --sysroot=$NO_SYSROOT" "$BINARY" -o "${vcflags_out}" "$DIR/fixtures/simple_add.c"
 if ! diff -u "$DIR/fixtures/simple_add_x86-64.s" "${vcflags_out}"; then
     echo "Test vcflags_x86_64 failed"
     fail=1
@@ -175,7 +178,7 @@ fi
 rm -f "${vcflags_out}"
 
 vcflags_out=$(mktemp)
-VCFLAGS="--intel-syntax" "$BINARY" -o "${vcflags_out}" "$DIR/fixtures/pointer_add.c"
+VCFLAGS="--intel-syntax --sysroot=$NO_SYSROOT" "$BINARY" -o "${vcflags_out}" "$DIR/fixtures/pointer_add.c"
 if ! diff -u "$DIR/fixtures/pointer_add_intel.s" "${vcflags_out}"; then
     echo "Test vcflags_intel failed"
     fail=1
