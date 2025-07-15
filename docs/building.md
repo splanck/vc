@@ -72,8 +72,9 @@ make libc32
 make libc64
 ```
 
-Invoke the compiler with `--internal-libc` to search `libc/include` before
-system directories and link the appropriate archive. Additional system
+Invoke the compiler with `--internal-libc` to search the bundled
+`libc/include` directory before system paths and link the matching
+archive regardless of the current working directory. Additional system
 header locations can be supplied with `--vc-sysinclude=<dir>` or the
 `VC_SYSINCLUDE` environment variable.
 

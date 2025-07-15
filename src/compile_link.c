@@ -287,9 +287,11 @@ static int build_and_link_objects(vector_t *objs, const cli_options_t *cli)
     }
 
     if (cli->internal_libc && !disable_stdlib) {
-        const char *dir = "libc";
+        const char *dir = PROJECT_ROOT "/libc";
         const char *libname = cli->use_x86_64 ? "c64" : "c32";
-        const char *archive = cli->use_x86_64 ? "libc/libc64.a" : "libc/libc32.a";
+        const char *archive = cli->use_x86_64 ?
+                             PROJECT_ROOT "/libc/libc64.a" :
+                             PROJECT_ROOT "/libc/libc32.a";
 
         if (access(archive, F_OK) != 0) {
             fprintf(stderr, "vc: internal libc archive '%s' not found\n", archive);
