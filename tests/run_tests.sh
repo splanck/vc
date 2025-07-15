@@ -30,8 +30,7 @@ for cfile in "$DIR"/fixtures/*.c; do
     expect="$DIR/fixtures/$base.s"
     out=$(mktemp)
     echo "Running fixture $base"
-    if grep -q "(%ebp)" "$expect" || grep -q "(%rbp)" "$expect" \
-       || grep -q "\[ebp" "$expect" || grep -q "\[rbp" "$expect"; then
+    if grep -Eq '\-[0-9]+\(%(e|r)bp\)|\[(e|r)bp-' "$expect"; then
         "$BINARY" -o "${out}" "$cfile"
     else
         VC_NAMED_LOCALS=1 "$BINARY" -o "${out}" "$cfile"
@@ -50,8 +49,7 @@ for cfile in "$DIR"/fixtures/struct_*.c; do
     expect="$DIR/fixtures/$base.s"
     out=$(mktemp)
     echo "Running fixture $base"
-    if grep -q "(%ebp)" "$expect" || grep -q "(%rbp)" "$expect" \
-       || grep -q "\[ebp" "$expect" || grep -q "\[rbp" "$expect"; then
+    if grep -Eq '\-[0-9]+\(%(e|r)bp\)|\[(e|r)bp-' "$expect"; then
         "$BINARY" -o "${out}" "$cfile"
     else
         VC_NAMED_LOCALS=1 "$BINARY" -o "${out}" "$cfile"
@@ -68,8 +66,7 @@ for o0asm in "$DIR"/fixtures/*_O0.s; do
     base=$(basename "$o0asm" _O0.s)
     cfile="$DIR/fixtures/$base.c"
     out=$(mktemp)
-    if grep -q "(%ebp)" "$o0asm" || grep -q "(%rbp)" "$o0asm" \
-       || grep -q "\[ebp" "$o0asm" || grep -q "\[rbp" "$o0asm"; then
+    if grep -Eq '\-[0-9]+\(%(e|r)bp\)|\[(e|r)bp-' "$o0asm"; then
         "$BINARY" -O0 -o "${out}" "$cfile"
     else
         VC_NAMED_LOCALS=1 "$BINARY" -O0 -o "${out}" "$cfile"
@@ -86,7 +83,7 @@ for asm64 in "$DIR"/fixtures/*_x86-64.s; do
     base=$(basename "$asm64" _x86-64.s)
     cfile="$DIR/fixtures/$base.c"
     out=$(mktemp)
-    if grep -q "(%rbp)" "$asm64" || grep -q "\[rbp" "$asm64"; then
+    if grep -Eq '\-[0-9]+\(%(e|r)bp\)|\[(e|r)bp-' "$asm64"; then
         "$BINARY" --x86-64 -o "${out}" "$cfile"
     else
         VC_NAMED_LOCALS=1 "$BINARY" --x86-64 -o "${out}" "$cfile"
@@ -100,7 +97,7 @@ done
 
 # verify Intel syntax assembly for simple_add.c
 intel_out=$(mktemp)
-if grep -q "\[ebp" "$DIR/fixtures/simple_add_intel.s"; then
+if grep -Eq '\-[0-9]+\(%(e|r)bp\)|\[(e|r)bp-' "$DIR/fixtures/simple_add_intel.s"; then
     "$BINARY" --intel-syntax -o "${intel_out}" "$DIR/fixtures/simple_add.c"
 else
     VC_NAMED_LOCALS=1 "$BINARY" --intel-syntax -o "${intel_out}" "$DIR/fixtures/simple_add.c"
@@ -113,7 +110,7 @@ rm -f "${intel_out}"
 
 # additional Intel syntax fixtures
 intel_out=$(mktemp)
-if grep -q "\[ebp" "$DIR/fixtures/pointer_add_intel.s"; then
+if grep -Eq '\-[0-9]+\(%(e|r)bp\)|\[(e|r)bp-' "$DIR/fixtures/pointer_add_intel.s"; then
     "$BINARY" --intel-syntax -o "${intel_out}" "$DIR/fixtures/pointer_add.c"
 else
     VC_NAMED_LOCALS=1 "$BINARY" --intel-syntax -o "${intel_out}" "$DIR/fixtures/pointer_add.c"
@@ -125,7 +122,7 @@ fi
 rm -f "${intel_out}"
 
 intel_out=$(mktemp)
-if grep -q "\[ebp" "$DIR/fixtures/while_loop_intel.s"; then
+if grep -Eq '\-[0-9]+\(%(e|r)bp\)|\[(e|r)bp-' "$DIR/fixtures/while_loop_intel.s"; then
     "$BINARY" --intel-syntax -o "${intel_out}" "$DIR/fixtures/while_loop.c"
 else
     VC_NAMED_LOCALS=1 "$BINARY" --intel-syntax -o "${intel_out}" "$DIR/fixtures/while_loop.c"
