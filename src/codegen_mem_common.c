@@ -6,8 +6,6 @@ size_t arg_stack_bytes = 0;
 int arg_reg_idx = 0;
 
 /* Architecture specific memory emitters. */
-typedef void (*mem_emit_fn)(strbuf_t *, ir_instr_t *, regalloc_t *, int,
-                            asm_syntax_t);
 extern mem_emit_fn mem_emitters[];
 
 /*
