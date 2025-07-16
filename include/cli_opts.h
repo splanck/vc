@@ -7,5 +7,7 @@ int parse_optimization_opts(int opt, const char *arg, cli_options_t *opts);
 int parse_io_paths(int opt, const char *arg, cli_options_t *opts);
 int parse_misc_opts(int opt, const char *arg, const char *prog, cli_options_t *opts);
 int finalize_options(int argc, char **argv, const char *prog, cli_options_t *opts);
+int setup_internal_libc_paths(cli_options_t *opts, const char *prog,
+                              char *archive_out, size_t out_len);
 
 #endif /* VC_CLI_OPTS_H */

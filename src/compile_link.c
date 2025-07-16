@@ -18,6 +18,7 @@
 #include "compile.h"
 #include "startup.h"
 #include "cli.h"
+#include "cli_opts.h"
 #include "compile_helpers.h"
 
 /*
@@ -337,46 +338,23 @@ static int build_and_link_objects(vector_t *objs, const cli_options_t *cli)
     }
 
     if (cli->internal_libc && !disable_stdlib) {
-        const char *inc = (cli->vc_sysinclude && *cli->vc_sysinclude)
-                             ? cli->vc_sysinclude
-                             : PROJECT_ROOT "/libc/include";
-        char base[PATH_MAX];
-        snprintf(base, sizeof(base), "%s", inc);
-        char *slash = strrchr(base, '/');
+        char archive[PATH_MAX];
+        if (setup_internal_libc_paths((cli_options_t *)cli, NULL, archive,
+                                      sizeof(archive)) != 0) {
+            vector_free(&lib_dirs);
+            vector_free(&libs);
+            free_string_vector(&dup_dirs);
+            return 0;
+        }
+
+        char libdir[PATH_MAX];
+        snprintf(libdir, sizeof(libdir), "%s", archive);
+        char *slash = strrchr(libdir, '/');
         if (slash)
             *slash = '\0';
         const char *libname = cli->use_x86_64 ? "c64" : "c32";
-        char archive[PATH_MAX];
-        int n = snprintf(archive, sizeof(archive), "%s/lib%s.a", base,
-                         cli->use_x86_64 ? "c64" : "c32");
-        if (n < 0) {
-            fprintf(stderr,
-                    "vc: failed to format internal libc archive path\n");
-            vector_free(&lib_dirs);
-            vector_free(&libs);
-            free_string_vector(&dup_dirs);
-            return 0;
-        }
-        if (n >= (int)sizeof(archive)) {
-            fprintf(stderr, "vc: internal libc archive path too long\n");
-            vector_free(&lib_dirs);
-            vector_free(&libs);
-            free_string_vector(&dup_dirs);
-            return 0;
-        }
 
-        if (access(archive, F_OK) != 0) {
-            const char *make_target = cli->use_x86_64 ? "libc64" : "libc32";
-            fprintf(stderr,
-                    "vc: internal libc archive '%s' not found. Build it with 'make %s'\n",
-                    archive, make_target);
-            vector_free(&lib_dirs);
-            vector_free(&libs);
-            free_string_vector(&dup_dirs);
-            return 0;
-        }
-
-        char *dir_dup = vc_strdup(base);
+        char *dir_dup = vc_strdup(libdir);
         if (!dir_dup) {
             vc_oom();
             vector_free(&lib_dirs);
