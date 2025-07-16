@@ -427,9 +427,10 @@ int finalize_options(int argc, char **argv, const char *prog,
         preproc_set_internal_libc_dir(opts->vc_sysinclude);
 
         const char *dir = opts->vc_sysinclude;
+        int ret;
         char hdr[PATH_MAX];
-        snprintf(hdr, sizeof(hdr), "%s/stdio.h", dir);
-        if (access(hdr, F_OK) != 0) {
+        ret = snprintf(hdr, sizeof(hdr), "%s/stdio.h", dir);
+        if (ret < 0 || ret >= (int)sizeof(hdr) || access(hdr, F_OK) != 0) {
             fprintf(stderr,
                     "Error: internal libc header '%s' not found.\n",
                     hdr);
@@ -438,7 +439,12 @@ int finalize_options(int argc, char **argv, const char *prog,
         }
 
         char libdir[PATH_MAX];
-        snprintf(libdir, sizeof(libdir), "%s", dir);
+        ret = snprintf(libdir, sizeof(libdir), "%s", dir);
+        if (ret < 0 || ret >= (int)sizeof(libdir)) {
+            fprintf(stderr, "Error: internal libc archive path too long.\n");
+            cli_free_opts(opts);
+            return 1;
+        }
         char *slash = strrchr(libdir, '/');
         if (slash)
             *slash = '\0';
