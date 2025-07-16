@@ -30,6 +30,12 @@ int main(void)
     unsetenv("CPATH");
     unsetenv("C_INCLUDE_PATH");
 
+    char tmpdir[] = "/tmp/vc_intlibXXXXXX";
+    char *idir = mkdtemp(tmpdir);
+    ASSERT(idir != NULL);
+    setenv("VC_SYSINCLUDE", idir, 1);
+    preproc_set_internal_libc_dir(idir);
+
     vector_t empty; vector_init(&empty, sizeof(char *));
     FILE *tmp = tmpfile();
     if (!tmp) {
@@ -40,7 +46,24 @@ int main(void)
     dup2(fileno(tmp), fileno(stderr));
 
     vector_t dirs;
-    ASSERT(collect_include_dirs(&dirs, &empty, "/tmp/sysroot", NULL, false));
+    ASSERT(collect_include_dirs(&dirs, &empty, "/tmp/sysroot", NULL, true));
+
+    FILE *list = tmpfile();
+    ASSERT(list != NULL);
+    print_include_search_dirs(list, '<', NULL, &dirs, 0);
+    fflush(list);
+    fseek(list, 0, SEEK_SET);
+    char lbuf[512];
+    size_t ln = fread(lbuf, 1, sizeof(lbuf) - 1, list);
+    lbuf[ln] = '\0';
+    fclose(list);
+    int count = 0;
+    const char *p = lbuf;
+    while ((p = strstr(p, idir))) {
+        count++;
+        p += strlen(idir);
+    }
+    ASSERT(count == 1);
 
     fflush(stderr);
     fseek(tmp, 0, SEEK_SET);
@@ -55,6 +78,8 @@ int main(void)
     free_string_vector(&dirs);
     vector_free(&empty);
     preproc_path_cleanup();
+    unsetenv("VC_SYSINCLUDE");
+    rmdir(idir);
 
     ASSERT(strstr(buf, "system headers could not be located") != NULL);
 
