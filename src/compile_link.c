@@ -38,12 +38,16 @@ vc_obj_name(const char *source)
         return NULL;
 
     memcpy(obj, base, len);
-    strcpy(obj + len, ".o");
+    memcpy(obj + len, ".o", 3);
     return obj;
 }
 
 /* Return a dependency file name derived from TARGET */
+#ifdef UNIT_TESTING
+char *vc_dep_name(const char *target)
+#else
 static char *vc_dep_name(const char *target)
+#endif
 {
     const char *base = strrchr(target, '/');
     base = base ? base + 1 : target;
@@ -53,7 +57,7 @@ static char *vc_dep_name(const char *target)
     if (!dep)
         return NULL;
     memcpy(dep, base, len);
-    strcpy(dep + len, ".d");
+    memcpy(dep + len, ".d", 3);
     return dep;
 }
 

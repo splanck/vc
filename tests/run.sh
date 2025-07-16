@@ -454,6 +454,11 @@ cc -Iinclude -Wall -Wextra -std=c99 -DUNIT_TESTING -Dcompile_unit=test_compile_u
 cc -Iinclude -Wall -Wextra -std=c99 -c "$DIR/unit/test_compile_obj_fail.c" -o "$DIR/test_compile_obj_fail.o"
 cc -Wl,--gc-sections -o "$DIR/compile_obj_fail" compile_obj_fail.o compile_link_obj_fail.o "$DIR/test_compile_obj_fail.o"
 rm -f compile_obj_fail.o compile_link_obj_fail.o "$DIR/test_compile_obj_fail.o"
+# build object/dependency name long filename test
+cc -Iinclude -Wall -Wextra -std=c99 -DUNIT_TESTING -ffunction-sections -fdata-sections -c src/compile_link.c -o compile_link_names.o
+cc -Iinclude -Wall -Wextra -std=c99 -c "$DIR/unit/test_vc_names.c" -o "$DIR/test_vc_names.o"
+cc -Wl,--gc-sections -o "$DIR/vc_names_tests" compile_link_names.o "$DIR/test_vc_names.o"
+rm -f compile_link_names.o "$DIR/test_vc_names.o"
 # build constant folding tests
 cc -Iinclude -Wall -Wextra -std=c99 -Dmalloc=test_malloc -Dcalloc=test_calloc -Dfree=test_free -c src/ir_core.c -o ir_fold.o
 cc -Iinclude -Wall -Wextra -std=c99 -Dmalloc=test_malloc -Dcalloc=test_calloc -Dfree=test_free -c src/util.c -o util_fold.o
@@ -523,6 +528,7 @@ rm -f ir_licm.o util_licm.o label_licm.o error_licm.o opt_main_licm.o \
 "$DIR/append_env_paths_semicolon"
 "$DIR/temp_file_tests"
 "$DIR/compile_obj_fail"
+"$DIR/vc_names_tests"
 "$DIR/preproc_alloc_tests"
 "$DIR/add_macro_fail_tests"
 "$DIR/text_line_fail"
