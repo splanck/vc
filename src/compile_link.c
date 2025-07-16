@@ -300,14 +300,17 @@ static int build_and_link_objects(vector_t *objs, const cli_options_t *cli)
 
     vector_t lib_dirs;
     vector_t libs;
+    vector_t dup_dirs; /* track heap allocations for internal libc */
     vector_init(&lib_dirs, sizeof(char *));
     vector_init(&libs, sizeof(char *));
+    vector_init(&dup_dirs, sizeof(char *));
     for (size_t i = 0; i < cli->lib_dirs.count; i++) {
         char *dir = ((char **)cli->lib_dirs.data)[i];
         if (!vector_push(&lib_dirs, &dir)) {
             vc_oom();
             vector_free(&lib_dirs);
             vector_free(&libs);
+            free_string_vector(&dup_dirs);
             return 0;
         }
     }
@@ -317,6 +320,7 @@ static int build_and_link_objects(vector_t *objs, const cli_options_t *cli)
             vc_oom();
             vector_free(&lib_dirs);
             vector_free(&libs);
+            free_string_vector(&dup_dirs);
             return 0;
         }
     }
@@ -339,12 +343,14 @@ static int build_and_link_objects(vector_t *objs, const cli_options_t *cli)
                     "vc: failed to format internal libc archive path\n");
             vector_free(&lib_dirs);
             vector_free(&libs);
+            free_string_vector(&dup_dirs);
             return 0;
         }
         if (n >= (int)sizeof(archive)) {
             fprintf(stderr, "vc: internal libc archive path too long\n");
             vector_free(&lib_dirs);
             vector_free(&libs);
+            free_string_vector(&dup_dirs);
             return 0;
         }
 
@@ -355,21 +361,32 @@ static int build_and_link_objects(vector_t *objs, const cli_options_t *cli)
                     archive, make_target);
             vector_free(&lib_dirs);
             vector_free(&libs);
+            free_string_vector(&dup_dirs);
             return 0;
         }
 
         char *dir_dup = vc_strdup(base);
-        if (!dir_dup || !vector_push(&lib_dirs, &dir_dup)) {
+        if (!dir_dup) {
+            vc_oom();
+            vector_free(&lib_dirs);
+            vector_free(&libs);
+            free_string_vector(&dup_dirs);
+            return 0;
+        }
+        if (!vector_push(&lib_dirs, &dir_dup) ||
+            !vector_push(&dup_dirs, &dir_dup)) {
             free(dir_dup);
             vc_oom();
             vector_free(&lib_dirs);
             vector_free(&libs);
+            free_string_vector(&dup_dirs);
             return 0;
         }
         if (!vector_push(&libs, &libname)) {
             vc_oom();
             vector_free(&lib_dirs);
             vector_free(&libs);
+            free_string_vector(&dup_dirs);
             return 0;
         }
     }
@@ -378,6 +395,7 @@ static int build_and_link_objects(vector_t *objs, const cli_options_t *cli)
                           cli->output, cli->use_x86_64);
     vector_free(&lib_dirs);
     vector_free(&libs);
+    free_string_vector(&dup_dirs);
     return ok;
 }
 
