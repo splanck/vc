@@ -34,7 +34,7 @@ vc_obj_name(const char *source)
     size_t len = dot ? (size_t)(dot - base) : strlen(base);
 
     if (len > SIZE_MAX - 3) {
-        fprintf(stderr, "vc: object filename too long\n");
+        errno = ENAMETOOLONG;
         return NULL;
     }
 
@@ -60,7 +60,7 @@ static char *vc_dep_name(const char *target)
     size_t len = dot ? (size_t)(dot - base) : strlen(base);
 
     if (len > SIZE_MAX - 3) {
-        fprintf(stderr, "vc: dependency filename too long\n");
+        errno = ENAMETOOLONG;
         return NULL;
     }
 
