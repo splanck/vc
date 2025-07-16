@@ -137,10 +137,10 @@ rm -f strbuf_eintr_impl.o util_eintr.o "$DIR/test_waitpid_retry.o"
 # build append_env_paths tests
 cc -Iinclude -Wall -Wextra -std=c99 \
     -o "$DIR/append_env_paths_colon" "$DIR/unit/test_append_env_paths_colon.c" \
-    src/preproc_path.c src/vector.c src/util.c
+    src/include_path_cache.c src/preproc_path.c src/vector.c src/util.c
 cc -Iinclude -Wall -Wextra -std=c99 -D_WIN32 \
     -o "$DIR/append_env_paths_semicolon" "$DIR/unit/test_append_env_paths_semicolon.c" \
-    src/preproc_path.c src/vector.c src/util.c
+    src/include_path_cache.c src/preproc_path.c src/vector.c src/util.c
 # build invalid macro parse test
 cc -Iinclude -Wall -Wextra -std=c99 -c "$DIR/unit/test_invalid_macro.c" -o "$DIR/test_invalid_macro.o"
 cc -Iinclude -Wall -Wextra -std=c99 -c src/vector.c -o vector_invalid.o
@@ -202,7 +202,7 @@ cc -Iinclude -Wall -Wextra -std=c99 \
     src/preproc_file.c src/preproc_directives.c src/preproc_file_io.c \
     src/preproc_expand.c src/preproc_table.c src/preproc_builtin.c \
     src/preproc_args.c src/preproc_cond.c src/preproc_expr.c \
-    src/preproc_include.c src/preproc_includes.c src/preproc_path.c \
+    src/preproc_include.c src/preproc_includes.c src/include_path_cache.c src/preproc_path.c \
     src/vector.c src/strbuf.c src/util.c src/error.c
 cc -Iinclude -Wall -Wextra -std=c99 \
     -DMULTIARCH="${MULTIARCH}" -DGCC_INCLUDE_DIR="${GCC_INCLUDE_DIR}" \
@@ -210,119 +210,119 @@ cc -Iinclude -Wall -Wextra -std=c99 \
     src/preproc_file.c src/preproc_directives.c src/preproc_file_io.c \
     src/preproc_expand.c src/preproc_table.c src/preproc_builtin.c \
     src/preproc_args.c src/preproc_cond.c src/preproc_expr.c \
-    src/preproc_include.c src/preproc_includes.c src/preproc_path.c \
+    src/preproc_include.c src/preproc_includes.c src/include_path_cache.c src/preproc_path.c \
     src/vector.c src/strbuf.c src/util.c src/error.c
 cc -Iinclude -Wall -Wextra -std=c99 \
     -o "$DIR/preproc_multi_stdheaders" "$DIR/unit/test_preproc_multi_stdheaders.c" \
     src/preproc_file.c src/preproc_directives.c src/preproc_file_io.c \
     src/preproc_expand.c src/preproc_table.c src/preproc_builtin.c \
     src/preproc_args.c src/preproc_cond.c src/preproc_expr.c \
-    src/preproc_include.c src/preproc_includes.c src/preproc_path.c \
+    src/preproc_include.c src/preproc_includes.c src/include_path_cache.c src/preproc_path.c \
     src/vector.c src/strbuf.c src/util.c src/error.c
 cc -Iinclude -Wall -Wextra -std=c99 \
     -o "$DIR/preproc_has_include" "$DIR/unit/test_preproc_has_include.c" \
     src/preproc_file.c src/preproc_directives.c src/preproc_file_io.c \
     src/preproc_expand.c src/preproc_table.c src/preproc_builtin.c \
     src/preproc_args.c src/preproc_cond.c src/preproc_expr.c \
-    src/preproc_include.c src/preproc_includes.c src/preproc_path.c \
+    src/preproc_include.c src/preproc_includes.c src/include_path_cache.c src/preproc_path.c \
     src/vector.c src/strbuf.c src/util.c src/error.c
 cc -Iinclude -Wall -Wextra -std=c99 \
     -o "$DIR/preproc_has_include_macro" "$DIR/unit/test_preproc_has_include_macro.c" \
     src/preproc_file.c src/preproc_directives.c src/preproc_file_io.c \
     src/preproc_expand.c src/preproc_table.c src/preproc_builtin.c \
     src/preproc_args.c src/preproc_cond.c src/preproc_expr.c \
-    src/preproc_include.c src/preproc_includes.c src/preproc_path.c \
+    src/preproc_include.c src/preproc_includes.c src/include_path_cache.c src/preproc_path.c \
     src/vector.c src/strbuf.c src/util.c src/error.c
 cc -Iinclude -Wall -Wextra -std=c99 \
     -o "$DIR/preproc_include_comment" "$DIR/unit/test_preproc_include_comment.c" \
     src/preproc_file.c src/preproc_directives.c src/preproc_file_io.c \
     src/preproc_expand.c src/preproc_table.c src/preproc_builtin.c \
     src/preproc_args.c src/preproc_cond.c src/preproc_expr.c \
-    src/preproc_include.c src/preproc_includes.c src/preproc_path.c \
+    src/preproc_include.c src/preproc_includes.c src/include_path_cache.c src/preproc_path.c \
     src/vector.c src/strbuf.c src/util.c src/error.c
 cc -Iinclude -Wall -Wextra -std=c99 \
     -o "$DIR/preproc_ifmacro" "$DIR/unit/test_preproc_ifmacro.c" \
     src/preproc_file.c src/preproc_directives.c src/preproc_file_io.c \
     src/preproc_expand.c src/preproc_table.c src/preproc_builtin.c \
     src/preproc_args.c src/preproc_cond.c src/preproc_expr.c \
-    src/preproc_include.c src/preproc_includes.c src/preproc_path.c \
+    src/preproc_include.c src/preproc_includes.c src/include_path_cache.c src/preproc_path.c \
     src/vector.c src/strbuf.c src/util.c src/error.c
 cc -Iinclude -Wall -Wextra -std=c99 \
     -o "$DIR/preproc_line" "$DIR/unit/test_preproc_line.c" \
     src/preproc_file.c src/preproc_directives.c src/preproc_file_io.c \
     src/preproc_expand.c src/preproc_table.c src/preproc_builtin.c \
     src/preproc_args.c src/preproc_cond.c src/preproc_expr.c \
-    src/preproc_include.c src/preproc_includes.c src/preproc_path.c \
+    src/preproc_include.c src/preproc_includes.c src/include_path_cache.c src/preproc_path.c \
     src/vector.c src/strbuf.c src/util.c src/error.c
 cc -Iinclude -Wall -Wextra -std=c99 \
     -o "$DIR/preproc_line_macro" "$DIR/unit/test_preproc_line_macro.c" \
     src/preproc_file.c src/preproc_directives.c src/preproc_file_io.c \
     src/preproc_expand.c src/preproc_table.c src/preproc_builtin.c \
     src/preproc_args.c src/preproc_cond.c src/preproc_expr.c \
-    src/preproc_include.c src/preproc_includes.c src/preproc_path.c \
+    src/preproc_include.c src/preproc_includes.c src/include_path_cache.c src/preproc_path.c \
     src/vector.c src/strbuf.c src/util.c src/error.c
 cc -Iinclude -Wall -Wextra -std=c99 \
     -o "$DIR/preproc_line_decrease" "$DIR/unit/test_preproc_line_decrease.c" \
     src/preproc_file.c src/preproc_directives.c src/preproc_file_io.c \
     src/preproc_expand.c src/preproc_table.c src/preproc_builtin.c \
     src/preproc_args.c src/preproc_cond.c src/preproc_expr.c \
-    src/preproc_include.c src/preproc_includes.c src/preproc_path.c \
+    src/preproc_include.c src/preproc_includes.c src/include_path_cache.c src/preproc_path.c \
     src/vector.c src/strbuf.c src/util.c src/error.c
 cc -Iinclude -Wall -Wextra -std=c99 \
     -o "$DIR/gcc_line_marker" "$DIR/unit/test_gcc_line_marker.c" \
     src/preproc_file.c src/preproc_directives.c src/preproc_file_io.c \
     src/preproc_expand.c src/preproc_table.c src/preproc_builtin.c \
     src/preproc_args.c src/preproc_cond.c src/preproc_expr.c \
-    src/preproc_include.c src/preproc_includes.c src/preproc_path.c \
+    src/preproc_include.c src/preproc_includes.c src/include_path_cache.c src/preproc_path.c \
     src/vector.c src/strbuf.c src/util.c src/error.c
 cc -Iinclude -Wall -Wextra -std=c99 \
     -o "$DIR/preproc_hash_noop" "$DIR/unit/test_preproc_hash_noop.c" \
     src/preproc_file.c src/preproc_directives.c src/preproc_file_io.c \
     src/preproc_expand.c src/preproc_table.c src/preproc_builtin.c \
     src/preproc_args.c src/preproc_cond.c src/preproc_expr.c \
-    src/preproc_include.c src/preproc_includes.c src/preproc_path.c \
+    src/preproc_include.c src/preproc_includes.c src/include_path_cache.c src/preproc_path.c \
     src/vector.c src/strbuf.c src/util.c src/error.c
 cc -Iinclude -Wall -Wextra -std=c99 \
     -o "$DIR/preproc_crlf" "$DIR/unit/test_preproc_crlf.c" \
     src/preproc_file.c src/preproc_directives.c src/preproc_file_io.c \
     src/preproc_expand.c src/preproc_table.c src/preproc_builtin.c \
     src/preproc_args.c src/preproc_cond.c src/preproc_expr.c \
-    src/preproc_include.c src/preproc_includes.c src/preproc_path.c \
+    src/preproc_include.c src/preproc_includes.c src/include_path_cache.c src/preproc_path.c \
     src/vector.c src/strbuf.c src/util.c src/error.c
 cc -Iinclude -Wall -Wextra -std=c99 \
     -o "$DIR/preproc_pack_macro" "$DIR/unit/test_preproc_pack_macro.c" \
     src/preproc_file.c src/preproc_directives.c src/preproc_file_io.c \
     src/preproc_expand.c src/preproc_table.c src/preproc_builtin.c \
     src/preproc_args.c src/preproc_cond.c src/preproc_expr.c \
-    src/preproc_include.c src/preproc_includes.c src/preproc_path.c \
+    src/preproc_include.c src/preproc_includes.c src/include_path_cache.c src/preproc_path.c \
     src/vector.c src/strbuf.c src/util.c src/error.c
 cc -Iinclude -Wall -Wextra -std=c99 \
     -o "$DIR/preproc_pack_push" "$DIR/unit/test_preproc_pack_push.c" \
     src/preproc_file.c src/preproc_directives.c src/preproc_file_io.c \
     src/preproc_expand.c src/preproc_table.c src/preproc_builtin.c \
     src/preproc_args.c src/preproc_cond.c src/preproc_expr.c \
-    src/preproc_include.c src/preproc_includes.c src/preproc_path.c \
+    src/preproc_include.c src/preproc_includes.c src/include_path_cache.c src/preproc_path.c \
     src/vector.c src/strbuf.c src/util.c src/error.c
 cc -Iinclude -Wall -Wextra -std=c99 \
     -o "$DIR/preproc_pragma_macro" "$DIR/unit/test_preproc_pragma_macro.c" \
     src/preproc_file.c src/preproc_directives.c src/preproc_file_io.c \
     src/preproc_expand.c src/preproc_table.c src/preproc_builtin.c \
     src/preproc_args.c src/preproc_cond.c src/preproc_expr.c \
-    src/preproc_include.c src/preproc_includes.c src/preproc_path.c \
+    src/preproc_include.c src/preproc_includes.c src/include_path_cache.c src/preproc_path.c \
     src/vector.c src/strbuf.c src/util.c src/error.c
 cc -Iinclude -Wall -Wextra -std=c99 \
     -o "$DIR/preproc_defined_macro" "$DIR/unit/test_preproc_defined_macro.c" \
     src/preproc_file.c src/preproc_directives.c src/preproc_file_io.c \
     src/preproc_expand.c src/preproc_table.c src/preproc_builtin.c \
     src/preproc_args.c src/preproc_cond.c src/preproc_expr.c \
-    src/preproc_include.c src/preproc_includes.c src/preproc_path.c \
+    src/preproc_include.c src/preproc_includes.c src/include_path_cache.c src/preproc_path.c \
     src/vector.c src/strbuf.c src/util.c src/error.c
 cc -Iinclude -Wall -Wextra -std=c99 \
     -o "$DIR/preproc_unterm_comment" "$DIR/unit/test_preproc_unterm_comment.c" \
     src/preproc_file.c src/preproc_directives.c src/preproc_file_io.c \
     src/preproc_expand.c src/preproc_table.c src/preproc_builtin.c \
     src/preproc_args.c src/preproc_cond.c src/preproc_expr.c \
-    src/preproc_include.c src/preproc_includes.c src/preproc_path.c \
+    src/preproc_include.c src/preproc_includes.c src/include_path_cache.c src/preproc_path.c \
     src/vector.c src/strbuf.c src/util.c src/error.c
 cc -Iinclude -Wall -Wextra -std=c99 \
     -DMULTIARCH="${MULTIARCH}" -DGCC_INCLUDE_DIR="${GCC_INCLUDE_DIR}" \
@@ -330,14 +330,14 @@ cc -Iinclude -Wall -Wextra -std=c99 \
     src/preproc_file.c src/preproc_directives.c src/preproc_file_io.c \
     src/preproc_expand.c src/preproc_table.c src/preproc_builtin.c \
     src/preproc_args.c src/preproc_cond.c src/preproc_expr.c \
-    src/preproc_include.c src/preproc_includes.c src/preproc_path.c \
+    src/preproc_include.c src/preproc_includes.c src/include_path_cache.c src/preproc_path.c \
     src/vector.c src/strbuf.c src/util.c src/error.c
 cc -Iinclude -Wall -Wextra -std=c99 \
     -o "$DIR/preproc_pragma_unknown" "$DIR/unit/test_preproc_pragma_unknown.c" \
     src/preproc_file.c src/preproc_directives.c src/preproc_file_io.c \
     src/preproc_expand.c src/preproc_table.c src/preproc_builtin.c \
     src/preproc_args.c src/preproc_cond.c src/preproc_expr.c \
-    src/preproc_include.c src/preproc_includes.c src/preproc_path.c \
+    src/preproc_include.c src/preproc_includes.c src/include_path_cache.c src/preproc_path.c \
     src/vector.c src/strbuf.c src/util.c src/error.c
 cc -Iinclude -Wall -Wextra -std=c99 \
     -DMULTIARCH="${MULTIARCH}" -DGCC_INCLUDE_DIR="${GCC_INCLUDE_DIR}" \
@@ -345,21 +345,21 @@ cc -Iinclude -Wall -Wextra -std=c99 \
     src/preproc_file.c src/preproc_directives.c src/preproc_file_io.c \
     src/preproc_expand.c src/preproc_table.c src/preproc_builtin.c \
     src/preproc_args.c src/preproc_cond.c src/preproc_expr.c \
-    src/preproc_include.c src/preproc_includes.c src/preproc_path.c \
+    src/preproc_include.c src/preproc_includes.c src/include_path_cache.c src/preproc_path.c \
     src/vector.c src/strbuf.c src/util.c src/error.c
 cc -Iinclude -Wall -Wextra -std=c99 \
     -o "$DIR/preproc_charlit" "$DIR/unit/test_preproc_charlit.c" \
     src/preproc_file.c src/preproc_directives.c src/preproc_file_io.c \
     src/preproc_expand.c src/preproc_table.c src/preproc_builtin.c \
     src/preproc_args.c src/preproc_cond.c src/preproc_expr.c \
-    src/preproc_include.c src/preproc_includes.c src/preproc_path.c \
+    src/preproc_include.c src/preproc_includes.c src/include_path_cache.c src/preproc_path.c \
     src/vector.c src/strbuf.c src/util.c src/error.c
 cc -Iinclude -Wall -Wextra -std=c99 \
     -o "$DIR/preproc_token_paste" "$DIR/unit/test_preproc_token_paste.c" \
     src/preproc_file.c src/preproc_directives.c src/preproc_file_io.c \
     src/preproc_expand.c src/preproc_table.c src/preproc_builtin.c \
     src/preproc_args.c src/preproc_cond.c src/preproc_expr.c \
-    src/preproc_include.c src/preproc_includes.c src/preproc_path.c \
+    src/preproc_include.c src/preproc_includes.c src/include_path_cache.c src/preproc_path.c \
     src/vector.c src/strbuf.c src/util.c src/error.c
 cc -Iinclude -Wall -Wextra -std=c99 \
     -DMULTIARCH="${MULTIARCH}" -DGCC_INCLUDE_DIR="${GCC_INCLUDE_DIR}" \
@@ -367,57 +367,65 @@ cc -Iinclude -Wall -Wextra -std=c99 \
     src/preproc_file.c src/preproc_directives.c src/preproc_file_io.c \
     src/preproc_expand.c src/preproc_table.c src/preproc_builtin.c \
     src/preproc_args.c src/preproc_cond.c src/preproc_expr.c \
-    src/preproc_include.c src/preproc_includes.c src/preproc_path.c \
+    src/preproc_include.c src/preproc_includes.c src/include_path_cache.c src/preproc_path.c \
     src/vector.c src/strbuf.c src/util.c src/error.c
 cc -Iinclude -Wall -Wextra -std=c99 \
     -o "$DIR/preproc_independent" "$DIR/unit/test_preproc_independent.c" \
     src/preproc_file.c src/preproc_directives.c src/preproc_file_io.c \
     src/preproc_expand.c src/preproc_table.c src/preproc_builtin.c \
     src/preproc_args.c src/preproc_cond.c src/preproc_expr.c \
-    src/preproc_include.c src/preproc_includes.c src/preproc_path.c \
+    src/preproc_include.c src/preproc_includes.c src/include_path_cache.c src/preproc_path.c \
     src/vector.c src/strbuf.c src/util.c src/error.c
 cc -Iinclude -Wall -Wextra -std=c99 \
     -o "$DIR/preproc_counter_reset" "$DIR/unit/test_preproc_counter_reset.c" \
     src/preproc_file.c src/preproc_directives.c src/preproc_file_io.c \
     src/preproc_expand.c src/preproc_table.c src/preproc_builtin.c \
     src/preproc_args.c src/preproc_cond.c src/preproc_expr.c \
-    src/preproc_include.c src/preproc_includes.c src/preproc_path.c \
+    src/preproc_include.c src/preproc_includes.c src/include_path_cache.c src/preproc_path.c \
     src/vector.c src/strbuf.c src/util.c src/error.c
 cc -Iinclude -Wall -Wextra -std=c99 \
     -o "$DIR/preproc_errwarn" "$DIR/unit/test_preproc_errwarn.c" \
     src/preproc_file.c src/preproc_directives.c src/preproc_file_io.c \
     src/preproc_expand.c src/preproc_table.c src/preproc_builtin.c \
     src/preproc_args.c src/preproc_cond.c src/preproc_expr.c \
-    src/preproc_include.c src/preproc_includes.c src/preproc_path.c \
+    src/preproc_include.c src/preproc_includes.c src/include_path_cache.c src/preproc_path.c \
     src/vector.c src/strbuf.c src/util.c src/error.c
 cc -Iinclude -Wall -Wextra -std=c99 \
     -o "$DIR/preproc_expand_size" "$DIR/unit/test_preproc_expand_size.c" \
     src/preproc_file.c src/preproc_directives.c src/preproc_file_io.c \
     src/preproc_expand.c src/preproc_table.c src/preproc_builtin.c \
     src/preproc_args.c src/preproc_cond.c src/preproc_expr.c \
-    src/preproc_include.c src/preproc_includes.c src/preproc_path.c \
+    src/preproc_include.c src/preproc_includes.c src/include_path_cache.c src/preproc_path.c \
     src/vector.c src/strbuf.c src/util.c src/error.c
 cc -Iinclude -Wall -Wextra -std=c99 \
     -o "$DIR/preproc_system_header" "$DIR/unit/test_preproc_system_header.c" \
     src/preproc_file.c src/preproc_directives.c src/preproc_file_io.c \
     src/preproc_expand.c src/preproc_table.c src/preproc_builtin.c \
     src/preproc_args.c src/preproc_cond.c src/preproc_expr.c \
-    src/preproc_include.c src/preproc_includes.c src/preproc_path.c \
+    src/preproc_include.c src/preproc_includes.c src/include_path_cache.c src/preproc_path.c \
     src/vector.c src/strbuf.c src/util.c src/error.c
 cc -Iinclude -Wall -Wextra -std=c99 \
     -DMULTIARCH="${MULTIARCH}" -DGCC_INCLUDE_DIR="${GCC_INCLUDE_DIR}" \
     -o "$DIR/collect_include_sysroot" "$DIR/unit/test_collect_include_sysroot.c" \
-    src/preproc_path.c src/vector.c src/util.c
+    src/include_path_cache.c src/include_path_cache.c src/preproc_path.c src/vector.c src/util.c
 cc -Iinclude -Wall -Wextra -std=c99 \
     -DMULTIARCH="${MULTIARCH}" -DGCC_INCLUDE_DIR="${GCC_INCLUDE_DIR}" \
     -o "$DIR/internal_libc_sysroot" "$DIR/unit/test_internal_libc_sysroot.c" \
-    src/preproc_path.c src/vector.c src/util.c
+    src/include_path_cache.c src/include_path_cache.c src/preproc_path.c src/vector.c src/util.c
+cc -Iinclude -Wall -Wextra -std=c99 \
+    -DMULTIARCH="${MULTIARCH}" -DGCC_INCLUDE_DIR="${GCC_INCLUDE_DIR}" \
+    -o "$DIR/vc_sysinclude" "$DIR/unit/test_vc_sysinclude.c" \
+    src/include_path_cache.c src/include_path_cache.c src/preproc_path.c src/vector.c src/util.c
+cc -Iinclude -Wall -Wextra -std=c99 -D_WIN32 \
+    -DMULTIARCH="${MULTIARCH}" -DGCC_INCLUDE_DIR="${GCC_INCLUDE_DIR}" \
+    -o "$DIR/vc_sysinclude_win" "$DIR/unit/test_vc_sysinclude.c" \
+    src/include_path_cache.c src/include_path_cache.c src/preproc_path.c src/vector.c src/util.c
 cc -Iinclude -Wall -Wextra -std=c99 -Dpopen=test_popen -DUNIT_TESTING -DNO_VECTOR_FREE_STUB \
     -o "$DIR/preproc_popen_fail" "$DIR/unit/test_preproc_popen_fail.c" \
-    src/preproc_path.c src/vector.c src/util.c
+    src/include_path_cache.c src/include_path_cache.c src/preproc_path.c src/vector.c src/util.c
 cc -Iinclude -Wall -Wextra -std=c99 -Dpopen=test_popen -DUNIT_TESTING -DNO_VECTOR_FREE_STUB \
     -o "$DIR/preproc_sysheaders_fail" "$DIR/unit/test_preproc_sysheaders_fail.c" \
-    src/preproc_path.c src/vector.c src/util.c
+    src/include_path_cache.c src/include_path_cache.c src/preproc_path.c src/vector.c src/util.c
 # build create_temp_file path length regression test
 cc -Iinclude -Wall -Wextra -std=c99 -DUNIT_TESTING -ffunction-sections -fdata-sections -c src/compile.c -o compile_temp.o
 cc -Iinclude -Wall -Wextra -std=c99 -c "$DIR/unit/test_temp_file.c" -o "$DIR/test_temp_file.o"
@@ -537,6 +545,8 @@ rm -f ir_licm.o util_licm.o label_licm.o error_licm.o opt_main_licm.o \
 "$DIR/preproc_system_header"
 "$DIR/collect_include_sysroot"
 "$DIR/internal_libc_sysroot"
+"$DIR/vc_sysinclude"
+"$DIR/vc_sysinclude_win"
 "$DIR/preproc_sysheaders_fail"
 "$DIR/preproc_popen_fail"
 "$DIR/invalid_macro_tests"
