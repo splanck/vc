@@ -1,116 +1,15 @@
-/*
- * Tiny expression parser used by the preprocessor.
- *
- * This module implements a very small recursive descent parser for the
- * arithmetic used in `#if` and related directives.  The grammar supports the
- * `defined` operator, integer constants and a subset of the C operators used in
- * glibc headers.  Supported operators include unary `!` and `~`, the
- * arithmetic `+`, `-`, `*`, `/`, `%`, bit shifts `<<` and `>>`, comparisons,
- * bitwise `&`, `|`, `^` as well as the logical `&&` and `||` operators.
- * Expressions are evaluated to an integer result used to control
- * conditional blocks during preprocessing.
- *
- * Part of vc under the BSD 2-Clause license.
- * See LICENSE for details.
- */
-
 #include <ctype.h>
 #include <stdlib.h>
 #include <errno.h>
-#include <stdio.h>
-#include "preproc_expr.h"
 #include <string.h>
-#include "util.h"
 #include <limits.h>
+#include "util.h"
+#include "strbuf.h"
+#include "preproc_expr_parse.h"
+#include "preproc_expr_lex.h"
 #include "preproc_path.h"
 #include "preproc_file_io.h"
 #include "preproc_utils.h"
-
-/* Parser context */
-typedef struct {
-    const char *s;
-    vector_t *macros;
-    const char *dir;
-    const vector_t *incdirs;
-    vector_t *stack;
-    int error;
-} expr_ctx_t;
-
-
-/* Return the numeric value of a hexadecimal digit or -1 if invalid */
-static int hex_digit_value(char c)
-{
-    if (c >= '0' && c <= '9')
-        return c - '0';
-    if (c >= 'a' && c <= 'f')
-        return c - 'a' + 10;
-    if (c >= 'A' && c <= 'F')
-        return c - 'A' + 10;
-    return -1;
-}
-
-/* Return the numeric value of an octal digit or -1 if invalid */
-static int oct_digit_value(char c)
-{
-    if (c >= '0' && c <= '7')
-        return c - '0';
-    return -1;
-}
-
-
-/* Parse an identifier token from the input and return a new string */
-static char *parse_ident(expr_ctx_t *ctx)
-{
-    ctx->s = skip_ws((char *)ctx->s);
-    if (!isalpha((unsigned char)*ctx->s) && *ctx->s != '_')
-        return NULL;
-    const char *start = ctx->s;
-    size_t len = 1;
-    ctx->s++;
-    while (isalnum((unsigned char)*ctx->s) || *ctx->s == '_') {
-        ctx->s++;
-        len++;
-    }
-    return vc_strndup(start, len);
-}
-
-static long long parse_expr(expr_ctx_t *ctx);
-static long long parse_conditional(expr_ctx_t *ctx);
-
-/* Parse a header name argument used by __has_include */
-static char *parse_header_name(expr_ctx_t *ctx, char *endc)
-{
-    ctx->s = skip_ws((char *)ctx->s);
-    if (*ctx->s == '"') {
-        *endc = '"';
-        ctx->s++;
-        const char *start = ctx->s;
-        while (*ctx->s && *ctx->s != '"')
-            ctx->s++;
-        if (*ctx->s != '"') {
-            ctx->error = 1;
-            return NULL;
-        }
-        char *name = vc_strndup(start, (size_t)(ctx->s - start));
-        ctx->s++;
-        return name;
-    } else if (*ctx->s == '<') {
-        *endc = '>';
-        ctx->s++;
-        const char *start = ctx->s;
-        while (*ctx->s && *ctx->s != '>')
-            ctx->s++;
-        if (*ctx->s != '>') {
-            ctx->error = 1;
-            return NULL;
-        }
-        char *name = vc_strndup(start, (size_t)(ctx->s - start));
-        ctx->s++;
-        return name;
-    }
-    ctx->error = 1;
-    return NULL;
-}
 
 static long long parse_has_include(expr_ctx_t *ctx, int is_next)
 {
@@ -122,7 +21,6 @@ static long long parse_has_include(expr_ctx_t *ctx, int is_next)
     }
     ctx->s++;
 
-    /* extract the token between parentheses */
     const char *start = ctx->s;
     while (*ctx->s && *ctx->s != ')')
         ctx->s++;
@@ -139,7 +37,6 @@ static long long parse_has_include(expr_ctx_t *ctx, int is_next)
         return 0;
     }
 
-    /* expand macros inside the argument */
     strbuf_t exp;
     strbuf_init(&exp);
     preproc_context_t dummy = {0};
@@ -151,11 +48,10 @@ static long long parse_has_include(expr_ctx_t *ctx, int is_next)
     }
     free(tok);
 
-    /* parse the expanded token as a header name */
     expr_ctx_t tmp = { exp.data ? exp.data : "", ctx->macros, ctx->dir,
                        ctx->incdirs, ctx->stack, 0 };
     char endc = '"';
-    char *fname = parse_header_name(&tmp, &endc);
+    char *fname = expr_parse_header_name(&tmp, &endc);
     if (tmp.error) {
         ctx->error = 1;
         strbuf_free(&exp);
@@ -185,56 +81,7 @@ static long long parse_has_include(expr_ctx_t *ctx, int is_next)
     free(fname);
     return found;
 }
-/*
- * Parse escape sequences in character literals. Hex escapes consume up to two
- * digits while octal escapes read at most three. Values beyond 255 are
- * clamped to avoid overflow. Invalid digits terminate the sequence without
- * raising an error.
- */
-static int parse_char_escape(const char **s)
-{
-    char c = **s;
-    if (c == 'n') { (*s)++; return '\n'; }
-    if (c == 't') { (*s)++; return '\t'; }
-    if (c == 'r') { (*s)++; return '\r'; }
-    if (c == 'b') { (*s)++; return '\b'; }
-    if (c == 'f') { (*s)++; return '\f'; }
-    if (c == 'v') { (*s)++; return '\v'; }
-    if (c == '\\') { (*s)++; return '\\'; }
-    if (c == '\'') { (*s)++; return '\''; }
-    if (c == '"') { (*s)++; return '"'; }
-    if (c == 'x') {
-        (*s)++; int val = 0; int digits = 0; int d;
-        while (digits < 2 && (d = hex_digit_value(**s)) != -1) {
-            val = val * 16 + d;
-            (*s)++; digits++;
-        }
-        return val;
-    }
-    if (c >= '0' && c <= '7') {
-        int val = 0, digits = 0, d, next;
-        while (digits < 3 && (d = oct_digit_value(**s)) != -1) {
-            next = val * 8 + d;
-            if (next > 255) {
-                val = 255;
-                /* consume remaining digits but ignore value */
-                while (digits < 3 && oct_digit_value(**s) != -1) {
-                    (*s)++; digits++;
-                }
-                return val;
-            }
-            val = next;
-            (*s)++; digits++;
-        }
-        return val;
-    }
-    (*s)++; return (unsigned char)c;
-}
 
-/*
- * Parse a primary expression: literals, parentheses or defined().
- * Returns the integer value of the parsed expression.
- */
 static long long parse_primary(expr_ctx_t *ctx)
 {
     ctx->s = skip_ws((char *)ctx->s);
@@ -248,7 +95,7 @@ static long long parse_primary(expr_ctx_t *ctx)
         ctx->s = skip_ws((char *)ctx->s);
         if (*ctx->s == '(') {
             ctx->s++;
-            char *id = parse_ident(ctx);
+            char *id = expr_parse_ident(ctx);
             ctx->s = skip_ws((char *)ctx->s);
             if (*ctx->s == ')')
                 ctx->s++;
@@ -258,7 +105,7 @@ static long long parse_primary(expr_ctx_t *ctx)
             free(id);
             return val;
         } else {
-            char *id = parse_ident(ctx);
+            char *id = expr_parse_ident(ctx);
             long long val = id ? is_macro_defined(ctx->macros, id) : 0;
             free(id);
             return val;
@@ -277,7 +124,7 @@ static long long parse_primary(expr_ctx_t *ctx)
         int value = 0;
         if (*ctx->s == '\\') {
             ctx->s++;
-            value = parse_char_escape(&ctx->s);
+            value = expr_parse_char_escape(&ctx->s);
         } else if (*ctx->s) {
             value = (unsigned char)*ctx->s++;
         } else {
@@ -301,19 +148,12 @@ static long long parse_primary(expr_ctx_t *ctx)
             ctx->s++;
         return val;
     } else {
-        char *id = parse_ident(ctx);
+        char *id = expr_parse_ident(ctx);
         free(id);
         return 0;
     }
 }
 
-/*
- * Unary operators '!', '~', '+', and '-'.
- *
- * Supporting '+' and '-' here ensures that literals with a leading
- * sign are parsed correctly.  Without this a leading '-' would be
- * treated as a binary operator with an implicit left operand of zero.
- */
 static long long parse_unary(expr_ctx_t *ctx)
 {
     ctx->s = skip_ws((char *)ctx->s);
@@ -333,7 +173,6 @@ static long long parse_unary(expr_ctx_t *ctx)
     return parse_primary(ctx);
 }
 
-/* Multiplicative */
 static long long parse_mul(expr_ctx_t *ctx)
 {
     long long val = parse_unary(ctx);
@@ -351,7 +190,6 @@ static long long parse_mul(expr_ctx_t *ctx)
     return val;
 }
 
-/* Additive */
 static long long parse_add(expr_ctx_t *ctx)
 {
     long long val = parse_mul(ctx);
@@ -368,7 +206,6 @@ static long long parse_add(expr_ctx_t *ctx)
     return val;
 }
 
-/* Shifts */
 static long long parse_shift(expr_ctx_t *ctx)
 {
     long long val = parse_add(ctx);
@@ -386,7 +223,6 @@ static long long parse_shift(expr_ctx_t *ctx)
     return val;
 }
 
-/* Relational */
 static long long parse_rel(expr_ctx_t *ctx)
 {
     long long val = parse_shift(ctx);
@@ -416,7 +252,6 @@ static long long parse_rel(expr_ctx_t *ctx)
     return val;
 }
 
-/* Equality */
 static long long parse_eq(expr_ctx_t *ctx)
 {
     long long val = parse_rel(ctx);
@@ -438,7 +273,6 @@ static long long parse_eq(expr_ctx_t *ctx)
     return val;
 }
 
-/* Bitwise AND */
 static long long parse_band(expr_ctx_t *ctx)
 {
     long long val = parse_eq(ctx);
@@ -452,7 +286,6 @@ static long long parse_band(expr_ctx_t *ctx)
     return val;
 }
 
-/* Bitwise XOR */
 static long long parse_xor(expr_ctx_t *ctx)
 {
     long long val = parse_band(ctx);
@@ -466,7 +299,6 @@ static long long parse_xor(expr_ctx_t *ctx)
     return val;
 }
 
-/* Bitwise OR */
 static long long parse_bor(expr_ctx_t *ctx)
 {
     long long val = parse_xor(ctx);
@@ -480,7 +312,6 @@ static long long parse_bor(expr_ctx_t *ctx)
     return val;
 }
 
-/* Logical AND */
 static long long parse_and(expr_ctx_t *ctx)
 {
     long long val = parse_bor(ctx);
@@ -494,7 +325,6 @@ static long long parse_and(expr_ctx_t *ctx)
     return val;
 }
 
-/* Logical OR */
 static long long parse_or(expr_ctx_t *ctx)
 {
     long long val = parse_and(ctx);
@@ -508,8 +338,7 @@ static long long parse_or(expr_ctx_t *ctx)
     return val;
 }
 
-/* Conditional operator */
-static long long parse_conditional(expr_ctx_t *ctx)
+long long parse_conditional(expr_ctx_t *ctx)
 {
     long long val = parse_or(ctx);
     ctx->s = skip_ws((char *)ctx->s);
@@ -525,38 +354,8 @@ static long long parse_conditional(expr_ctx_t *ctx)
     return val;
 }
 
-/* Entry point of the recursive descent parser */
-static long long parse_expr(expr_ctx_t *ctx)
+long long parse_expr(expr_ctx_t *ctx)
 {
     return parse_conditional(ctx);
-}
-
-/* Public wrapper used by the preprocessor to evaluate expressions */
-static long long eval_internal(const char *s, vector_t *macros,
-                               const char *dir, const vector_t *incdirs,
-                               vector_t *stack)
-{
-    expr_ctx_t ctx = { s, macros, dir, incdirs, stack, 0 };
-    long long val = parse_expr(&ctx);
-    ctx.s = skip_ws((char *)ctx.s);
-    if (*ctx.s != '\0')
-        ctx.error = 1;
-    if (ctx.error) {
-        fprintf(stderr, "Invalid preprocessor expression\n");
-        return 0;
-    }
-    return val;
-}
-
-long long eval_expr_full(const char *s, vector_t *macros,
-                         const char *dir, const vector_t *incdirs,
-                         vector_t *stack)
-{
-    return eval_internal(s, macros, dir, incdirs, stack);
-}
-
-long long eval_expr(const char *s, vector_t *macros)
-{
-    return eval_internal(s, macros, NULL, NULL, NULL);
 }
 
