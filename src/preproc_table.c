@@ -130,12 +130,14 @@ static char *parse_macro_params(char *p, vector_t *out, int *variadic)
             p++;
         if (*p == ')') {
             char *plist = vc_strndup(start, (size_t)(p - start));
-            if (!tokenize_param_list(plist, out)) {
-                free(plist);
+            if (!plist)
+                return NULL;
+            int ok = tokenize_param_list(plist, out);
+            free(plist);
+            if (!ok) {
                 free_param_vector(out);
                 return NULL;
             }
-            free(plist);
             p++;
         } else {
             p = start - 1;
