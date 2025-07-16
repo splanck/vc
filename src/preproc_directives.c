@@ -14,6 +14,9 @@
 #include "preproc_include.h"
 #include "preproc_includes.h"
 #include "preproc_builtin.h"
+#include "preproc_path.h"
+#include "preproc_file_io.h"
+#include "semantic_global.h"
 #include "util.h"
 #include "vector.h"
 #include "strbuf.h"
@@ -69,22 +72,6 @@ static void strip_comments(char *s, int *in_comment)
 
 
 
-/* Return 1 if all conditional states on the stack are active */
-static int stack_active(vector_t *conds)
-{
-    for (size_t i = 0; i < conds->count; i++) {
-        cond_state_t *c = &((cond_state_t *)conds->data)[i];
-        if (!c->taking)
-            return 0;
-    }
-    return 1;
-}
-
-/* Wrapper used by directive handlers */
-static int is_active(vector_t *conds)
-{
-    return stack_active(conds);
-}
 
 
 /* forward declaration for recursive include handling */
@@ -191,6 +178,117 @@ static int handle_warning_directive(char *line, const char *dir,
         fprintf(stderr, "%s:%zu: %s\n", file, preproc_get_line(ctx),
                 *msg ? msg : "preprocessor warning");
     }
+    return 1;
+}
+
+int handle_pragma_directive(char *line, const char *dir, vector_t *macros,
+                            vector_t *conds, strbuf_t *out,
+                            const vector_t *incdirs, vector_t *stack,
+                            preproc_context_t *ctx)
+{
+    (void)dir; (void)incdirs;
+    char *arg = line + 7; /* skip '#pragma' */
+    arg = skip_ws(arg);
+    strbuf_t exp;
+    strbuf_init(&exp);
+    if (!expand_line(arg, macros, &exp, 0, 0, ctx)) {
+        strbuf_free(&exp);
+        return 0;
+    }
+    if (strcmp(arg, exp.data ? exp.data : "") != 0) {
+        strbuf_t tmp;
+        strbuf_init(&tmp);
+        strbuf_appendf(&tmp, "#pragma %s", exp.data ? exp.data : "");
+        char *dup = vc_strdup(tmp.data ? tmp.data : "");
+        strbuf_free(&tmp);
+        if (!dup) {
+            strbuf_free(&exp);
+            vc_oom();
+            return 0;
+        }
+        strbuf_free(&exp);
+        int r = process_line(dup, dir, macros, conds, out, incdirs, stack, ctx);
+        free(dup);
+        return r;
+    }
+    char *p = exp.data;
+    p = skip_ws(p);
+    if (strncmp(p, "once", 4) == 0) {
+        p += 4;
+        p = skip_ws(p);
+        if (*p == '\0' && stack->count) {
+            const include_entry_t *e =
+                &((include_entry_t *)stack->data)[stack->count - 1];
+            const char *cur = e->path;
+            if (!pragma_once_add(ctx, cur)) {
+                strbuf_free(&exp);
+                return 0;
+            }
+        }
+        strbuf_free(&exp);
+        (void)conds;
+        return 1;
+    } else if (strncmp(p, "pack", 4) == 0) {
+        p += 4;
+        p = skip_ws(p);
+        if (strncmp(p, "(push", 5) == 0) {
+            p += 5;
+            p = skip_ws(p);
+            if (*p == ')') {
+                vector_push(&ctx->pack_stack, &ctx->pack_alignment);
+            } else {
+                if (*p == ',')
+                    p++;
+                p = skip_ws(p);
+                errno = 0;
+                char *end;
+                long val = strtol(p, &end, 10);
+                if (errno == 0 && end != p) {
+                    p = end;
+                    p = skip_ws(p);
+                    if (*p == ')') {
+                        vector_push(&ctx->pack_stack, &ctx->pack_alignment);
+                        ctx->pack_alignment = (size_t)val;
+                        semantic_set_pack(ctx->pack_alignment);
+                    }
+                }
+            }
+        } else if (strncmp(p, "(pop)", 5) == 0) {
+            if (ctx->pack_stack.count) {
+                ctx->pack_alignment =
+                    ((size_t *)ctx->pack_stack.data)[ctx->pack_stack.count - 1];
+                ctx->pack_stack.count--;
+            } else {
+                ctx->pack_alignment = 0;
+            }
+            semantic_set_pack(ctx->pack_alignment);
+        }
+        strbuf_free(&exp);
+        (void)stack;
+        return 1;
+    } else if (strncmp(p, "system_header", 13) == 0) {
+        ctx->system_header = 1;
+        strbuf_free(&exp);
+        (void)conds; (void)stack;
+        return 1;
+    } else if (strncmp(p, "GCC", 3) == 0) {
+        p += 3;
+        p = skip_ws(p);
+        if (strncmp(p, "system_header", 13) == 0) {
+            ctx->system_header = 1;
+            strbuf_free(&exp);
+            (void)conds; (void)stack;
+            return 1;
+        }
+    }
+    if (is_active(conds)) {
+        if (strbuf_appendf(out, "#pragma %s\n", exp.data ? exp.data : "") < 0) {
+            strbuf_free(&exp);
+            return 0;
+        }
+    }
+    strbuf_free(&exp);
+    (void)stack;
     return 1;
 }
 

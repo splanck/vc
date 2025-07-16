@@ -83,22 +83,6 @@ void remove_macro(vector_t *macros, const char *name)
 }
 
 
-/* Return 1 if all conditional states on the stack are active */
-static int stack_active(vector_t *conds)
-{
-    for (size_t i = 0; i < conds->count; i++) {
-        cond_state_t *c = &((cond_state_t *)conds->data)[i];
-        if (!c->taking)
-            return 0;
-    }
-    return 1;
-}
-
-/* Wrapper used by directive handlers */
-static int is_active(vector_t *conds)
-{
-    return stack_active(conds);
-}
 
 /* Free a vector of parameter names */
 static void free_param_vector(vector_t *v)
