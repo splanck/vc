@@ -39,6 +39,7 @@
 #include "compile.h"
 #include "compile_stage.h"
 #include "startup.h"
+#include "compile_helpers.h"
 
 /* Use binary mode for temporary files on platforms that require it */
 #if defined(_WIN32)
@@ -51,7 +52,6 @@
 extern const char *error_current_file;
 extern const char *error_current_function;
 
-char *vc_obj_name(const char *source);
 
 
 

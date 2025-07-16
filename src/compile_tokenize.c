@@ -14,6 +14,7 @@
 #include "strbuf.h"
 #include "semantic_global.h"
 #include "semantic_stmt.h"
+#include "compile_helpers.h"
 
 /* Use binary mode for temporary files on platforms that require it */
 #if defined(_WIN32)
@@ -22,8 +23,6 @@
 # define TEMP_FOPEN_MODE "w"
 #endif
 
-int create_temp_file(const cli_options_t *cli, const char *prefix,
-                     char **out_path);
 
 /* Table mapping token types to printable names */
 static const char *tok_names[] = {

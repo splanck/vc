@@ -15,6 +15,7 @@
 #include "cli.h"
 #include "command.h"
 #include "startup.h"
+#include "compile_helpers.h"
 
 /* Use binary mode for temporary files on platforms that require it */
 #if defined(_WIN32)
@@ -23,10 +24,6 @@
 # define TEMP_FOPEN_MODE "w"
 #endif
 
-int create_temp_file(const cli_options_t *cli, const char *prefix,
-                     char **out_path);
-const char *get_cc(void);
-const char *get_as(int intel);
 
 /* Write the entry stub assembly to a temporary file. */
 int write_startup_asm(int use_x86_64, asm_syntax_t syntax,
