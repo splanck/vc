@@ -15,7 +15,7 @@ CORE_SRC = src/main.c src/compile.c src/compile_stage.c src/compile_link.c src/c
            src/semantic_arith.c src/semantic_mem.c src/semantic_call.c \
            src/semantic_loops.c src/semantic_control.c src/semantic_init.c src/semantic_var.c src/semantic_stmt.c \
            src/semantic_block.c src/semantic_decl.c src/semantic_decl_stmt.c src/semantic_expr_stmt.c src/semantic_label.c src/semantic_return.c src/semantic_static_assert.c \
-           src/semantic_layout.c src/semantic_inline.c src/semantic_global.c src/consteval.c src/error.c src/ir_core.c src/ir_const.c src/ir_memory.c src/ir_control.c src/ir_global.c \
+           src/semantic_layout.c src/semantic_inline.c src/semantic_decl_global.c src/semantic_func_ir.c src/consteval.c src/error.c src/ir_core.c src/ir_const.c src/ir_memory.c src/ir_control.c src/ir_global.c \
            src/codegen.c src/codegen_mem_common.c src/codegen_mem_x86.c src/codegen_load.c src/codegen_store.c src/codegen_arith_int.c src/codegen_arith_float.c src/codegen_branch.c \
            src/codegen_float.c src/codegen_complex.c src/codegen_x86.c \
            src/regalloc.c src/regalloc_x86.c src/strbuf.c src/util.c src/vector.c src/ir_dump.c src/ir_builder.c src/ast_dump.c src/label.c \
@@ -236,13 +236,15 @@ src/semantic_return.o: src/semantic_return.c $(HDR)
 src/semantic_static_assert.o: src/semantic_static_assert.c $(HDR)
 	$(CC) $(CFLAGS) $(OPTFLAGS) -Iinclude -c src/semantic_static_assert.c -o src/semantic_static_assert.o
 src/semantic_layout.o: src/semantic_layout.c $(HDR)
-	        $(CC) $(CFLAGS) $(OPTFLAGS) -Iinclude -c src/semantic_layout.c -o src/semantic_layout.o
+	$(CC) $(CFLAGS) $(OPTFLAGS) -Iinclude -c src/semantic_layout.c -o src/semantic_layout.o
 src/semantic_inline.o: src/semantic_inline.c $(HDR)
-		$(CC) $(CFLAGS) $(OPTFLAGS) -Iinclude -c src/semantic_inline.c -o src/semantic_inline.o
+	$(CC) $(CFLAGS) $(OPTFLAGS) -Iinclude -c src/semantic_inline.c -o src/semantic_inline.o
 
 
-src/semantic_global.o: src/semantic_global.c $(HDR)
-	$(CC) $(CFLAGS) $(OPTFLAGS) -Iinclude -c src/semantic_global.c -o src/semantic_global.o
+src/semantic_decl_global.o: src/semantic_decl_global.c $(HDR)
+	$(CC) $(CFLAGS) $(OPTFLAGS) -Iinclude -c src/semantic_decl_global.c -o src/semantic_decl_global.o
+src/semantic_func_ir.o: src/semantic_func_ir.c $(HDR)
+	$(CC) $(CFLAGS) $(OPTFLAGS) -Iinclude -c src/semantic_func_ir.c -o src/semantic_func_ir.o
 
 src/consteval.o: src/consteval.c $(HDR)
 	$(CC) $(CFLAGS) $(OPTFLAGS) -Iinclude -c src/consteval.c -o src/consteval.o
