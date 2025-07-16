@@ -73,8 +73,10 @@ int create_temp_file(const cli_options_t *cli, const char *prefix,
 
     int fd = open_temp_file(tmpl);
     if (fd < 0) {
+        int err = errno;
         free(tmpl);
         *out_path = NULL;
+        errno = err;
         return -1;
     }
 
