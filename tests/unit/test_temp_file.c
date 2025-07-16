@@ -18,6 +18,7 @@
 int create_temp_file(const cli_options_t *cli, const char *prefix, char **out_path);
 
 static int force_snprintf_overflow;
+static int force_snprintf_error;
 
 int snprintf(char *str, size_t size, const char *fmt, ...)
 {
@@ -25,6 +26,11 @@ int snprintf(char *str, size_t size, const char *fmt, ...)
         (void)str; (void)fmt;
         /* return a value indicating truncation */
         return (int)(size + 1);
+    }
+    if (force_snprintf_error) {
+        (void)str; (void)size; (void)fmt;
+        errno = ENOSYS;
+        return -1;
     }
     va_list ap;
     va_start(ap, fmt);
@@ -100,6 +106,21 @@ static void test_snprintf_overflow(void)
     force_snprintf_overflow = 0;
 }
 
+static void test_snprintf_error(void)
+{
+    force_snprintf_error = 1;
+    cli_options_t cli;
+    memset(&cli, 0, sizeof(cli));
+    const char *prefix = "vc";
+    char *path = (char *)0x1;
+    errno = 0;
+    int fd = create_temp_file(&cli, prefix, &path);
+    ASSERT(fd < 0);
+    ASSERT(errno == ENOSYS);
+    ASSERT(path == NULL);
+    force_snprintf_error = 0;
+}
+
 static void test_tmpdir(void)
 {
     const char *tmpdir = "./tmp_test_dir";
@@ -146,6 +167,7 @@ int main(void)
     test_reject_long_path();
     test_reject_pathmax_dir();
     test_snprintf_overflow();
+    test_snprintf_error();
     test_tmpdir();
     test_tmpdir_mkdtemp();
     if (failures == 0)
