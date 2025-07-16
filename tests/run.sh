@@ -71,7 +71,8 @@ $CC -Iinclude -Wall -Wextra -std=c99 -c src/ast_clone.c -o ast_clone_fail.o
 $CC -Iinclude -Wall -Wextra -std=c99 -c src/ast_expr.c -o ast_expr_fail.o
 $CC -Iinclude -Wall -Wextra -std=c99 -c src/ast_stmt_create.c -o ast_stmt_create_fail.o
 $CC -Iinclude -Wall -Wextra -std=c99 -c src/ast_stmt_free.c -o ast_stmt_free_fail.o
-$CC -Iinclude -Wall -Wextra -std=c99 -c src/lexer.c -o lexer_alloc.o
+$CC -Iinclude -Wall -Wextra -std=c99 -Dvector_push=test_vector_push \
+    -c src/lexer.c -o lexer_alloc.o
 $CC -Iinclude -Wall -Wextra -std=c99 -c src/vector.c -o vector_alloc.o
 $CC -Iinclude -Wall -Wextra -std=c99 -DUNIT_TESTING -c src/util.c -o util_alloc.o
 $CC -Iinclude -Wall -Wextra -std=c99 -c src/error.c -o error_alloc.o

@@ -53,20 +53,21 @@ static const punct_entry_t punct_table[] = {
  */
 
 /* Helper to create and append a token to the vector */
-void append_token(vector_t *vec, token_type_t type, const char *lexeme,
-                         size_t len, size_t line, size_t column)
+int append_token(vector_t *vec, token_type_t type, const char *lexeme,
+                 size_t len, size_t line, size_t column)
 {
     char *text = vc_strndup(lexeme, len);
     if (!text) {
         vc_oom();
-        exit(1);
+        return 0;
     }
     token_t tok = { type, text, line, column };
     if (!vector_push(vec, &tok)) {
         free(text);
         vc_oom();
-        exit(1);
+        return 0;
     }
+    return 1;
 }
 
 /* Parse a line marker of the form '# <num> "file"' and update counters */
@@ -152,7 +153,7 @@ static void skip_whitespace(const char *src, size_t *i, size_t *line,
 }
 
 /* Convert punctuation characters to tokens */
-static void read_punct(char c, vector_t *tokens, size_t line, size_t column)
+static int read_punct(char c, vector_t *tokens, size_t line, size_t column)
 {
     token_type_t type = TOK_UNKNOWN;
     switch (c) {
@@ -180,7 +181,7 @@ static void read_punct(char c, vector_t *tokens, size_t line, size_t column)
     case ':': type = TOK_COLON; break;
     default: type = TOK_UNKNOWN; break;
     }
-    append_token(tokens, type, &c, 1, line, column);
+    return append_token(tokens, type, &c, 1, line, column);
 }
 
 
@@ -191,7 +192,8 @@ static int scan_punct_table(const char *src, size_t *i, size_t *col,
         const punct_entry_t *entry = &punct_table[p];
         size_t len = strlen(entry->op);
         if (strncmp(src + *i, entry->op, len) == 0) {
-            append_token(tokens, entry->tok, entry->op, len, line, *col);
+            if (!append_token(tokens, entry->tok, entry->op, len, line, *col))
+                return -1;
             *i += len;
             *col += len;
             return 1;
@@ -231,10 +233,12 @@ static int scan_char_tokens(const char *src, size_t *i, size_t *col,
 static int scan_punctuation(const char *src, size_t *i, size_t *col,
                             vector_t *tokens, size_t line)
 {
-    if (scan_punct_table(src, i, col, tokens, line))
-        return 1;
+    int res = scan_punct_table(src, i, col, tokens, line);
+    if (res)
+        return res;
     char c = src[*i];
-    read_punct(c, tokens, line, *col);
+    if (!read_punct(c, tokens, line, *col))
+        return -1;
     (*i)++; (*col)++;
     return 1;
 }
@@ -321,7 +325,8 @@ token_t *lexer_tokenize(const char *src, size_t *out_count)
     }
 
     /* add explicit EOF marker after the last real token */
-    append_token(&vec, TOK_EOF, "", 0, line, col);
+    if (!append_token(&vec, TOK_EOF, "", 0, line, col))
+        return cleanup_error_tokens(&vec);
     if (out_count)
         *out_count = vec.count;
     return (token_t *)vec.data;

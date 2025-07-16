@@ -9,8 +9,8 @@
 
 /* Numeric and character/string scanning helpers */
 
-static void read_number(const char *src, size_t *i, size_t *col,
-                        vector_t *tokens, size_t line)
+static int read_number(const char *src, size_t *i, size_t *col,
+                       vector_t *tokens, size_t line)
 {
     size_t start = *i;
     int is_float = 0;
@@ -56,8 +56,10 @@ static void read_number(const char *src, size_t *i, size_t *col,
 
     size_t len = *i - start;
     (void)is_float;
-    append_token(tokens, type, src + start, len, line, *col);
+    if (!append_token(tokens, type, src + start, len, line, *col))
+        return 0;
     *col += len;
+    return 1;
 }
 
 typedef struct {
@@ -164,9 +166,9 @@ static int unescape_char(const char *src, size_t *i,
     return c;
 }
 
-static void read_char_const(const char *src, size_t *i, size_t *col,
-                            vector_t *tokens, size_t line,
-                            token_type_t tok_type)
+static int read_char_const(const char *src, size_t *i, size_t *col,
+                           vector_t *tokens, size_t line,
+                           token_type_t tok_type)
 {
     size_t column = *col;
     (*i)++;
@@ -174,8 +176,9 @@ static void read_char_const(const char *src, size_t *i, size_t *col,
     if (!src[*i]) {
         error_set(line, column, error_current_file, error_current_function);
         error_print("Missing closing quote");
-        append_token(tokens, TOK_UNKNOWN, "", 0, line, column);
-        return;
+        if (!append_token(tokens, TOK_UNKNOWN, "", 0, line, column))
+            return 0;
+        return 1;
     }
 
     unsigned char value = (unsigned char)src[*i];
@@ -190,15 +193,18 @@ static void read_char_const(const char *src, size_t *i, size_t *col,
     if (src[*i] != '\'') {
         error_set(line, column, error_current_file, error_current_function);
         error_print("Missing closing quote");
-        append_token(tokens, TOK_UNKNOWN, "", 0, line, column);
-        return;
+        if (!append_token(tokens, TOK_UNKNOWN, "", 0, line, column))
+            return 0;
+        return 1;
     }
 
     (*i)++;
     (*col)++;
 
     char buf[2] = {(char)value, '\0'};
-    append_token(tokens, tok_type, buf, 1, line, column);
+    if (!append_token(tokens, tok_type, buf, 1, line, column))
+        return 0;
+    return 1;
 }
 
 static int read_string_lit(const char *src, size_t *i, size_t *col,
@@ -237,15 +243,19 @@ static int read_string_lit(const char *src, size_t *i, size_t *col,
         (*i)++;
         (*col)++;
 
-        append_token(tokens, tok_type, buf_v.data, buf_v.count - 1,
-                     line, column);
+        if (!append_token(tokens, tok_type, buf_v.data, buf_v.count - 1,
+                          line, column)) {
+            vector_free(&buf_v);
+            return 0;
+        }
         vector_free(&buf_v);
         return 1;
     } else {
         error_set(line, column, error_current_file, error_current_function);
         error_print("Missing closing quote");
         vector_free(&buf_v);
-        append_token(tokens, TOK_UNKNOWN, "", 0, line, column);
+        if (!append_token(tokens, TOK_UNKNOWN, "", 0, line, column))
+            return 0;
         return 1;
     }
 }
@@ -255,7 +265,8 @@ int scan_number(const char *src, size_t *i, size_t *col,
 {
     if (!isdigit((unsigned char)src[*i]))
         return 0;
-    read_number(src, i, col, tokens, line);
+    if (!read_number(src, i, col, tokens, line))
+        return -1;
     return 1;
 }
 
@@ -274,7 +285,8 @@ int scan_char(const char *src, size_t *i, size_t *col,
 {
     if (src[*i] != '\'')
         return 0;
-    read_char_const(src, i, col, tokens, line, TOK_CHAR);
+    if (!read_char_const(src, i, col, tokens, line, TOK_CHAR))
+        return -1;
     return 1;
 }
 
@@ -295,7 +307,8 @@ int scan_wchar(const char *src, size_t *i, size_t *col,
     if (src[*i] != 'L' || src[*i + 1] != '\'')
         return 0;
     (*i)++; (*col)++;
-    read_char_const(src, i, col, tokens, line, TOK_WIDE_CHAR);
+    if (!read_char_const(src, i, col, tokens, line, TOK_WIDE_CHAR))
+        return -1;
     return 1;
 }
 
