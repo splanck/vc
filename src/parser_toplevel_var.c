@@ -143,13 +143,18 @@ int parse_global_var_init(parser_t *p, const char *name, type_kind_t type,
         goto fail;
     }
 
+    stmt_t *decl = ast_make_var_decl(name, type, arr_size, size_expr,
+                                     NULL, elem_size, is_static, is_register,
+                                     is_extern, is_const, is_volatile,
+                                     is_restrict, init, init_list,
+                                     init_count, tag, NULL, 0,
+                                     line, column);
+    if (!decl) {
+        p->pos = start;
+        return 0;
+    }
     if (out_global)
-        *out_global = ast_make_var_decl(name, type, arr_size, size_expr,
-                                        NULL, elem_size, is_static, is_register,
-                                        is_extern, is_const, is_volatile,
-                                        is_restrict, init, init_list,
-                                        init_count, tag, NULL, 0,
-                                        line, column);
+        *out_global = decl;
     return 1;
 
 fail:
