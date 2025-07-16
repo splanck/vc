@@ -11,6 +11,7 @@ if [ ! -f libc/libc32.a ] || [ ! -f libc/libc64.a ]; then
     make libc
 fi
 # build unit test binary
+cc -Iinclude -Wall -Wextra -std=c99 -DUNIT_TESTING -DNO_VECTOR_FREE_STUB -c src/util.c -o util_unit.o
 cc -Iinclude -Wall -Wextra -std=c99 \
     -o "$DIR/unit_tests" "$DIR/unit/test_lexer_parser.c" \
     src/parser_core.c src/parser_init.c src/parser_decl_var.c \
@@ -19,12 +20,12 @@ cc -Iinclude -Wall -Wextra -std=c99 \
     src/parser_expr_primary.c src/parser_expr_binary.c \
     src/parser_stmt.c src/parser_types.c src/symtable_core.c \
     src/symtable_globals.c src/symtable_struct.c src/ast_clone.c \
-    src/ast_expr.c src/ast_stmt_create.c src/ast_stmt_free.c src/lexer.c src/util.c \
+    src/ast_expr.c src/ast_stmt_create.c src/ast_stmt_free.c src/lexer.c util_unit.o \
     src/vector.c src/error.c src/token_names.c src/parser_toplevel_func.c \
     src/parser_toplevel_var.c src/parser_expr_ops.c src/parser_expr_literal.c \
     src/lexer_ident.c src/lexer_scan_numeric.c src/ast_expr_binary.c \
-    src/ast_expr_control.c src/ast_expr_literal.c src/ast_expr_type.c \
-    src/preproc_table.c
+    src/ast_expr_control.c src/ast_expr_literal.c src/ast_expr_type.c
+rm -f util_unit.o
 # build cli unit test binary with vector_push wrapper
 cc -Iinclude -Wall -Wextra -std=c99 -Dvector_push=test_vector_push -c src/cli.c -o cli_test.o
 cc -Iinclude -Wall -Wextra -std=c99 -c src/cli_env.c -o cli_env_test.o
