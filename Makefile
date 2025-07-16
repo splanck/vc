@@ -8,7 +8,7 @@ GCC_INCLUDE_DIR := $(shell $(CC) -print-file-name=include | tr -d '\n')
 BIN = vc
 # The resulting binary accepts -c/--compile to assemble objects using cc
 # Core compiler sources
-CORE_SRC = src/main.c src/compile.c src/compile_stage.c src/compile_link.c src/compile_tokenize.c src/compile_parse.c src/compile_output.c src/startup.c src/command.c src/cli.c src/cli_env.c src/cli_opts.c src/lexer.c src/lexer_ident.c src/lexer_scan_numeric.c src/ast_expr.c src/ast_expr_binary.c src/ast_expr_literal.c src/ast_expr_control.c src/ast_expr_type.c src/ast_stmt_create.c src/ast_stmt_free.c src/ast_clone.c src/parser_core.c src/parser_toplevel.c src/parser_toplevel_func.c src/parser_toplevel_var.c src/symtable_core.c src/symtable_globals.c src/symtable_struct.c src/parser_expr.c src/parser_expr_primary.c src/parser_expr_binary.c src/parser_expr_ops.c src/parser_expr_literal.c src/parser_init.c \
+CORE_SRC = src/main.c src/compile.c src/compile_stage.c src/compile_link.c src/compile_tokenize.c src/compile_parse.c src/compile_output.c src/startup.c src/command.c src/cli_opts_parse.c src/cli_opts_env.c src/cli_opts.c src/lexer.c src/lexer_ident.c src/lexer_scan_numeric.c src/ast_expr.c src/ast_expr_binary.c src/ast_expr_literal.c src/ast_expr_control.c src/ast_expr_type.c src/ast_stmt_create.c src/ast_stmt_free.c src/ast_clone.c src/parser_core.c src/parser_toplevel.c src/parser_toplevel_func.c src/parser_toplevel_var.c src/symtable_core.c src/symtable_globals.c src/symtable_struct.c src/parser_expr.c src/parser_expr_primary.c src/parser_expr_binary.c src/parser_expr_ops.c src/parser_expr_literal.c src/parser_init.c \
            src/parser_decl_var.c src/parser_decl_struct.c src/parser_decl_enum.c \
            src/parser_flow.c src/parser_stmt.c src/parser_types.c \
            src/semantic_expr.c src/semantic_expr_const.c src/semantic_expr_cast.c \
@@ -92,10 +92,10 @@ src/startup.o: src/startup.c $(HDR)
 	$(CC) $(CFLAGS) $(OPTFLAGS) -Iinclude -c src/startup.c -o src/startup.o
 
 
-src/cli.o: src/cli.c $(HDR)
-	$(CC) $(CFLAGS) $(OPTFLAGS) -Iinclude -c src/cli.c -o src/cli.o
-src/cli_env.o: src/cli_env.c $(HDR)
-	$(CC) $(CFLAGS) $(OPTFLAGS) -Iinclude -c src/cli_env.c -o src/cli_env.o
+src/cli_opts_parse.o: src/cli_opts_parse.c $(HDR)
+	$(CC) $(CFLAGS) $(OPTFLAGS) -Iinclude -c src/cli_opts_parse.c -o src/cli_opts_parse.o
+src/cli_opts_env.o: src/cli_opts_env.c $(HDR)
+	$(CC) $(CFLAGS) $(OPTFLAGS) -Iinclude -c src/cli_opts_env.c -o src/cli_opts_env.o
 src/cli_opts.o: src/cli_opts.c $(HDR)
 	$(CC) $(CFLAGS) $(OPTFLAGS) -Iinclude -c src/cli_opts.c -o src/cli_opts.o
 

@@ -64,14 +64,6 @@ void print_usage(const char *prog)
     }
 }
 
-static int push_source(cli_options_t *opts, const char *src)
-{
-    if (!vector_push(&opts->sources, &src)) {
-        vc_oom();
-        return -1;
-    }
-    return 0;
-}
 
 static int add_include_dir(cli_options_t *opts, const char *dir)
 {
@@ -369,89 +361,4 @@ int parse_misc_opts(int opt, const char *arg, const char *prog,
     }
 }
 
-int finalize_options(int argc, char **argv, const char *prog,
-                     cli_options_t *opts)
-{
-    if (optind >= argc) {
-        fprintf(stderr, "Error: no source file specified.\n");
-        print_usage(prog);
-        cli_free_opts(opts);
-        return 1;
-    }
-
-    for (int i = optind; i < argc; i++) {
-        if (push_source(opts, argv[i])) {
-            cli_free_opts(opts);
-            return 1;
-        }
-    }
-
-    if (!opts->output && !opts->dump_asm && !opts->dump_ir &&
-        !opts->dump_tokens && !opts->dump_ast && !opts->preprocess &&
-        !opts->dep_only) {
-        fprintf(stderr, "Error: no output path specified.\n");
-        print_usage(prog);
-        cli_free_opts(opts);
-        return 1;
-    }
-
-    if (opts->internal_libc) {
-        if (!opts->vc_sysinclude || !*opts->vc_sysinclude) {
-            char tmp[PATH_MAX];
-            snprintf(tmp, sizeof(tmp), "%s", prog);
-            char *slash = strrchr(tmp, '/');
-            if (slash)
-                *slash = '\0';
-            else
-                strcpy(tmp, ".");
-            size_t dirlen = strlen(tmp);
-            if (dirlen + strlen("/libc/include") >= PATH_MAX) {
-                fprintf(stderr, "Error: internal libc path too long.\n");
-                cli_free_opts(opts);
-                return 1;
-            }
-            strcat(tmp, "/libc/include");
-            opts->vc_sysinclude = vc_strdup(tmp);
-            if (!opts->vc_sysinclude) {
-                vc_oom();
-                cli_free_opts(opts);
-                return 1;
-            }
-        }
-        preproc_set_internal_libc_dir(opts->vc_sysinclude);
-
-        const char *dir = opts->vc_sysinclude;
-        char hdr[PATH_MAX];
-        snprintf(hdr, sizeof(hdr), "%s/stdio.h", dir);
-        if (access(hdr, F_OK) != 0) {
-            fprintf(stderr,
-                    "Error: internal libc header '%s' not found.\n",
-                    hdr);
-            cli_free_opts(opts);
-            return 1;
-        }
-
-        char libdir[PATH_MAX];
-        snprintf(libdir, sizeof(libdir), "%s", dir);
-        char *slash = strrchr(libdir, '/');
-        if (slash)
-            *slash = '\0';
-        const char *libname = opts->use_x86_64 ? "libc64.a" : "libc32.a";
-        char archive[PATH_MAX];
-        if (snprintf(archive, sizeof(archive), "%s/%s", libdir, libname) >= (int)sizeof(archive)) {
-            fprintf(stderr, "Error: internal libc archive path too long.\n");
-            cli_free_opts(opts);
-            return 1;
-        }
-        if (access(archive, F_OK) != 0) {
-            fprintf(stderr,
-                    "Error: internal libc archive '%s' not found.\n",
-                    archive);
-            cli_free_opts(opts);
-            return 1;
-        }
-    }
-
-    return 0;
-}
 

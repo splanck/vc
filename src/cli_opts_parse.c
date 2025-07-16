@@ -11,7 +11,7 @@
 
 #include "cli.h"
 #include "util.h"
-#include "cli_env.h"
+#include "cli_opts_env.h"
 #include "cli_opts.h"
 #include "preproc_file.h"
 
@@ -80,6 +80,15 @@ static int cleanup_parse_error(cli_options_t *opts, char **vcflags_argv,
     free(vcflags_argv);
     free(vcflags_buf);
     return 1;
+}
+
+static int push_source(cli_options_t *opts, const char *src)
+{
+    if (!vector_push(&opts->sources, &src)) {
+        vc_oom();
+        return -1;
+    }
+    return 0;
 }
 
 int cli_parse_args(int argc, char **argv, cli_options_t *opts)
@@ -165,5 +174,41 @@ int cli_parse_args(int argc, char **argv, cli_options_t *opts)
     free(vcflags_argv);
     free(vcflags_buf);
     return ret;
+}
+
+int finalize_options(int argc, char **argv, const char *prog,
+                     cli_options_t *opts)
+{
+    if (optind >= argc) {
+        fprintf(stderr, "Error: no source file specified.\n");
+        print_usage(prog);
+        cli_free_opts(opts);
+        return 1;
+    }
+
+    for (int i = optind; i < argc; i++) {
+        if (push_source(opts, argv[i])) {
+            cli_free_opts(opts);
+            return 1;
+        }
+    }
+
+    if (!opts->output && !opts->dump_asm && !opts->dump_ir &&
+        !opts->dump_tokens && !opts->dump_ast && !opts->preprocess &&
+        !opts->dep_only) {
+        fprintf(stderr, "Error: no output path specified.\n");
+        print_usage(prog);
+        cli_free_opts(opts);
+        return 1;
+    }
+
+    if (opts->internal_libc) {
+        if (cli_setup_internal_libc(opts, prog)) {
+            cli_free_opts(opts);
+            return 1;
+        }
+    }
+
+    return 0;
 }
 
