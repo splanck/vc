@@ -15,6 +15,7 @@ int printf(const char *format, ...);
 
 struct FILE_struct {
     int fd;
+    int err;
 };
 #define FILE struct FILE_struct
 
