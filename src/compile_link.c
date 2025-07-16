@@ -332,8 +332,16 @@ static int build_and_link_objects(vector_t *objs, const cli_options_t *cli)
             *slash = '\0';
         const char *libname = cli->use_x86_64 ? "c64" : "c32";
         char archive[PATH_MAX];
-        if (snprintf(archive, sizeof(archive), "%s/lib%s.a", base,
-                     cli->use_x86_64 ? "c64" : "c32") >= (int)sizeof(archive)) {
+        int n = snprintf(archive, sizeof(archive), "%s/lib%s.a", base,
+                         cli->use_x86_64 ? "c64" : "c32");
+        if (n < 0) {
+            fprintf(stderr,
+                    "vc: failed to format internal libc archive path\n");
+            vector_free(&lib_dirs);
+            vector_free(&libs);
+            return 0;
+        }
+        if (n >= (int)sizeof(archive)) {
             fprintf(stderr, "vc: internal libc archive path too long\n");
             vector_free(&lib_dirs);
             vector_free(&libs);
