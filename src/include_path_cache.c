@@ -58,7 +58,10 @@ static const char *get_multiarch_dir(void)
                 perror("fgets");
                 gcc_query_failed = 1;
             }
-            pclose(fp);
+            if (pclose(fp) == -1) {
+                perror("pclose");
+                gcc_query_failed = 1;
+            }
         }
         if (!multiarch_cached) {
 #ifdef MULTIARCH
@@ -97,7 +100,10 @@ static const char *get_gcc_include_dir(void)
                 perror("fgets");
                 gcc_query_failed = 1;
             }
-            pclose(fp);
+            if (pclose(fp) == -1) {
+                perror("pclose");
+                gcc_query_failed = 1;
+            }
         }
         if (!gcc_include_cached) {
 #if defined(__linux__)
