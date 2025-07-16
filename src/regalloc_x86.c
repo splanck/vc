@@ -11,6 +11,9 @@
  */
 
 #include "regalloc_x86.h"
+#include <stdbool.h>
+#include <stdio.h>
+#include <assert.h>
 
 /* Current register naming mode: 0 for 32-bit, 1 for 64-bit. */
 static int use_x86_64 = 0;
@@ -29,6 +32,7 @@ static const char *xmm_regs[NUM_XMM_REGS] = {
 };
 static int xmm_free_stack[NUM_XMM_REGS];
 static int xmm_free_count = 0;
+static bool xmm_free_flags[NUM_XMM_REGS];
 
 /* register names for 64-bit mode */
 static const char *phys_regs_64[REGALLOC_NUM_REGS] = {
@@ -72,8 +76,10 @@ const char *regalloc_xmm_name(int idx)
 void regalloc_xmm_reset(void)
 {
     xmm_free_count = NUM_XMM_REGS;
-    for (int i = 0; i < NUM_XMM_REGS; i++)
+    for (int i = 0; i < NUM_XMM_REGS; i++) {
         xmm_free_stack[i] = NUM_XMM_REGS - 1 - i;
+        xmm_free_flags[i] = true;
+    }
 }
 
 /* Acquire one free XMM register or return -1 if none available. */
@@ -81,14 +87,26 @@ int regalloc_xmm_acquire(void)
 {
     if (xmm_free_count == 0)
         return -1;
-    return xmm_free_stack[--xmm_free_count];
+    int reg = xmm_free_stack[--xmm_free_count];
+    if (!xmm_free_flags[reg]) {
+        fprintf(stderr, "regalloc_xmm_acquire: register %d not free\n", reg);
+        assert(xmm_free_flags[reg]);
+    }
+    xmm_free_flags[reg] = false;
+    return reg;
 }
 
 /* Release a previously acquired XMM register. */
 void regalloc_xmm_release(int reg)
 {
-    if (reg < 0 || reg >= NUM_XMM_REGS || xmm_free_count >= NUM_XMM_REGS)
+    if (reg < 0 || reg >= NUM_XMM_REGS)
         return;
+    if (xmm_free_flags[reg]) {
+        fprintf(stderr, "regalloc_xmm_release: register %d already free\n", reg);
+        return;
+    }
+    assert(xmm_free_count < NUM_XMM_REGS);
+    xmm_free_flags[reg] = true;
     xmm_free_stack[xmm_free_count++] = reg;
 }
 
