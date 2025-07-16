@@ -61,6 +61,7 @@ static const char *get_multiarch_dir(void)
             if (pclose(fp) == -1) {
                 perror("pclose");
                 gcc_query_failed = 1;
+                return NULL;
             }
         }
         if (!multiarch_cached) {
@@ -103,6 +104,7 @@ static const char *get_gcc_include_dir(void)
             if (pclose(fp) == -1) {
                 perror("pclose");
                 gcc_query_failed = 1;
+                return NULL;
             }
         }
         if (!gcc_include_cached) {
@@ -131,13 +133,40 @@ static void init_std_include_dirs(void)
         return;
 #if defined(__linux__)
     const char *multi = get_multiarch_dir();
+    if (!multi) {
+#ifdef MULTIARCH
+        multi = MULTIARCH;
+#else
+        multi = MULTIARCH_FALLBACK;
+#endif
+    }
     size_t len = strlen("/usr/include/") + strlen(multi);
     char *path = vc_alloc_or_exit(len + 1);
     snprintf(path, len + 1, "/usr/include/%s", multi);
     std_include_dirs[0] = path;
-    std_include_dirs[1] = get_gcc_include_dir();
+    const char *gccdir = get_gcc_include_dir();
+    if (!gccdir) {
+#if !defined(GCC_INCLUDE_DIR)
+        len = strlen("/usr/lib/gcc/") + strlen(multi) + strlen("/include");
+        gcc_include_cached = vc_alloc_or_exit(len + 1);
+        snprintf(gcc_include_cached, len + 1, "/usr/lib/gcc/%s/include", multi);
+        gccdir = gcc_include_cached;
+#else
+        gccdir = GCC_INCLUDE_DIR;
+#endif
+    }
+    std_include_dirs[1] = gccdir;
 #elif defined(__NetBSD__) || defined(__FreeBSD__)
-    std_include_dirs[0] = get_gcc_include_dir();
+    const char *gccdir = get_gcc_include_dir();
+    if (!gccdir) {
+#if !defined(GCC_INCLUDE_DIR)
+        gcc_include_cached = vc_strdup("/usr/lib/gcc/include");
+        gccdir = gcc_include_cached;
+#else
+        gccdir = GCC_INCLUDE_DIR;
+#endif
+    }
+    std_include_dirs[0] = gccdir;
 #endif
     std_dirs_initialized = 1;
 }
