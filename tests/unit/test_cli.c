@@ -174,6 +174,20 @@ static void test_internal_libc_leak(void)
     ASSERT(allocs == 0);
 }
 
+static void test_vcflags_quotes(void)
+{
+    cli_options_t opts;
+    setenv("VCFLAGS", "--intel-syntax --output 'out file.s'", 1);
+    char *argv[] = {"vc", "file.c", NULL};
+    int ret = cli_parse_args(2, argv, &opts);
+    unsetenv("VCFLAGS");
+    ASSERT(ret == 0);
+    ASSERT(opts.asm_syntax == ASM_INTEL);
+    ASSERT(strcmp(opts.output, "out file.s") == 0);
+    cli_free_opts(&opts);
+    ASSERT(allocs == 0);
+}
+
 int main(void)
 {
     test_parse_success();
@@ -182,6 +196,7 @@ int main(void)
     test_dump_tokens_option();
     test_verbose_includes_option();
     test_internal_libc_leak();
+    test_vcflags_quotes();
     test_parse_failure();
     if (failures == 0)
         printf("All cli tests passed\n");
