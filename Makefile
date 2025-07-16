@@ -41,7 +41,7 @@ INCLUDEDIR ?= $(PREFIX)/include/vc
 MANDIR ?= $(PREFIX)/share/man
 LIBC_MAKE = $(MAKE) -C libc
 
-all: test
+all: $(BIN) libc
 
 test: $(BIN) libc
 	./tests/run_tests.sh
