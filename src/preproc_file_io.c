@@ -132,11 +132,20 @@ static char *read_file_lines_internal(const char *path, char ***out_lines)
             continue;
         }
 
+        if (len == SIZE_MAX) {
+            fprintf(stderr, "vc: file too large\n");
+            fclose(f);
+            free(text);
+            return NULL;
+        }
         if (len + 1 >= cap) {
-            if (cap > SIZE_MAX / 2)
-                cap = cap + 1;
-            else
-                cap *= 2;
+            if (cap > SIZE_MAX / 2) {
+                fprintf(stderr, "vc: file too large\n");
+                fclose(f);
+                free(text);
+                return NULL;
+            }
+            cap *= 2;
             text = vc_realloc_or_exit(text, cap);
         }
         text[len++] = (char)c;
