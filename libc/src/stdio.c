@@ -7,19 +7,32 @@
 int puts(const char *s)
 {
     size_t len = strlen(s);
-    _vc_write(1, s, len);
-    _vc_write(1, "\n", 1);
+    long ret = _vc_write(1, s, len);
+    if (ret < (long)len) {
+        perror("write");
+        return -1;
+    }
+    ret = _vc_write(1, "\n", 1);
+    if (ret < 1) {
+        perror("write");
+        return -1;
+    }
     return (int)(len + 1);
 }
 
-static void flush_buf(const char *buf, size_t *pos, int *total)
+static int flush_buf(const char *buf, size_t *pos, int *total)
 {
     if (*pos > 0) {
-        _vc_write(1, buf, *pos);
+        long ret = _vc_write(1, buf, *pos);
+        if (ret < (long)(*pos)) {
+            perror("write");
+            return -1;
+        }
         if (total)
             *total += (int)(*pos);
         *pos = 0;
     }
+    return 0;
 }
 
 int printf(const char *fmt, ...)
@@ -33,8 +46,10 @@ int printf(const char *fmt, ...)
     for (const char *p = fmt; *p; ++p) {
         if (*p != '%') {
             out[pos++] = *p;
-            if (pos == sizeof(out))
-                flush_buf(out, &pos, &written);
+            if (pos == sizeof(out)) {
+                if (flush_buf(out, &pos, &written) < 0)
+                    return -1;
+            }
             continue;
         }
 
@@ -42,17 +57,25 @@ int printf(const char *fmt, ...)
         p++;
         if (*p == '%') {
             out[pos++] = '%';
-            if (pos == sizeof(out))
-                flush_buf(out, &pos, &written);
+            if (pos == sizeof(out)) {
+                if (flush_buf(out, &pos, &written) < 0)
+                    return -1;
+            }
             continue;
         }
 
-        flush_buf(out, &pos, &written);
+        if (flush_buf(out, &pos, &written) < 0)
+            return -1;
 
         if (*p == 's') {
             const char *s = va_arg(ap, const char *);
             size_t len = strlen(s);
-            _vc_write(1, s, len);
+            long ret = _vc_write(1, s, len);
+            if (ret < (long)len) {
+                perror("write");
+                va_end(ap);
+                return -1;
+            }
             written += (int)len;
         } else if (*p == 'd') {
             int n = va_arg(ap, int);
@@ -70,20 +93,36 @@ int printf(const char *fmt, ...)
                     *--q = '-';
             }
             size_t len = num + sizeof(num) - q;
-            _vc_write(1, q, len);
+            long ret2 = _vc_write(1, q, len);
+            if (ret2 < (long)len) {
+                perror("write");
+                va_end(ap);
+                return -1;
+            }
             written += (int)len;
         } else {
             /* unsupported specifier, print it literally */
             out[pos++] = '%';
-            if (pos == sizeof(out))
-                flush_buf(out, &pos, &written);
+            if (pos == sizeof(out)) {
+                if (flush_buf(out, &pos, &written) < 0) {
+                    va_end(ap);
+                    return -1;
+                }
+            }
             out[pos++] = *p;
-            if (pos == sizeof(out))
-                flush_buf(out, &pos, &written);
+            if (pos == sizeof(out)) {
+                if (flush_buf(out, &pos, &written) < 0) {
+                    va_end(ap);
+                    return -1;
+                }
+            }
         }
     }
 
-    flush_buf(out, &pos, &written);
+    if (flush_buf(out, &pos, &written) < 0) {
+        va_end(ap);
+        return -1;
+    }
     va_end(ap);
     return written;
 }
