@@ -16,7 +16,12 @@ if [ $CAN_COMPILE_32 -ne 0 ]; then
 fi
 
 # build internal libc quietly
-make -s -C "$DIR/../libc" >/dev/null
+if [ $CAN_COMPILE_32 -ne 0 ]; then
+    # only build the 64-bit archive when 32-bit compilation is unavailable
+    make -s -C "$DIR/../libc" libc64 >/dev/null
+else
+    make -s -C "$DIR/../libc" >/dev/null
+fi
 
 fail=0
 for src in "$EX_DIR"/*.c; do
