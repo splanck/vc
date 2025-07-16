@@ -7,8 +7,8 @@
  * See LICENSE for details.
  */
 
-#ifndef VC_SEMANTIC_ARITH_H
-#define VC_SEMANTIC_ARITH_H
+#ifndef VC_SEMANTIC_EXPR_OPS_H
+#define VC_SEMANTIC_EXPR_OPS_H
 
 #include "ast_expr.h"
 #include "ir_core.h"
@@ -27,4 +27,12 @@ type_kind_t check_binary_expr(expr_t *expr, symtable_t *vars,
                               symtable_t *funcs, ir_builder_t *ir,
                               ir_value_t *out);
 
-#endif /* VC_SEMANTIC_ARITH_H */
+/* Cast expressions */
+type_kind_t check_cast_expr(expr_t *expr, symtable_t *vars,
+                            symtable_t *funcs, ir_builder_t *ir,
+                            ir_value_t *out);
+
+/* Helper returning the IR op for a binary operator */
+ir_op_t ir_op_for_binop(binop_t op);
+
+#endif /* VC_SEMANTIC_EXPR_OPS_H */

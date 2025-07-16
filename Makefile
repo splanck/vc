@@ -11,8 +11,8 @@ BIN = vc
 CORE_SRC = src/main.c src/compile.c src/compile_stage.c src/compile_link.c src/compile_tokenize.c src/compile_parse.c src/compile_output.c src/compile_optimize.c src/startup.c src/command.c src/cli.c src/cli_env.c src/cli_opts.c src/lexer.c src/lexer_ident.c src/lexer_scan_numeric.c src/ast_expr.c src/ast_expr_binary.c src/ast_expr_literal.c src/ast_expr_control.c src/ast_expr_type.c src/ast_stmt_create.c src/ast_stmt_free.c src/ast_clone.c src/parser_core.c src/parser_toplevel.c src/parser_toplevel_func.c src/parser_toplevel_var.c src/symtable_core.c src/symtable_globals.c src/symtable_struct.c src/parser_expr.c src/parser_expr_primary.c src/parser_expr_binary.c src/parser_expr_ops.c src/parser_expr_literal.c src/parser_init.c \
            src/parser_decl_var.c src/parser_decl_struct.c src/parser_decl_enum.c \
            src/parser_flow.c src/parser_stmt.c src/parser_types.c \
-           src/semantic_expr.c src/semantic_expr_const.c src/semantic_expr_cast.c \
-           src/semantic_arith.c src/semantic_mem.c src/semantic_call.c \
+           src/semantic_expr.c src/semantic_expr_const.c src/semantic_expr_ops.c src/semantic_expr_ir.c \
+           src/semantic_mem.c src/semantic_call.c \
            src/semantic_loops.c src/semantic_control.c src/semantic_init.c src/semantic_var.c src/semantic_stmt.c \
            src/semantic_block.c src/semantic_decl.c src/semantic_decl_stmt.c src/semantic_expr_stmt.c src/semantic_label.c src/semantic_return.c src/semantic_static_assert.c \
            src/semantic_layout.c src/semantic_inline.c src/semantic_decl_global.c src/semantic_func_ir.c src/consteval.c src/error.c src/ir_core.c src/ir_const.c src/ir_memory.c src/ir_control.c src/ir_global.c \
@@ -31,7 +31,7 @@ EXTRA_SRC ?=
 # Final source list
 SRC = $(CORE_SRC) $(OPT_SRC) $(EXTRA_SRC)
 OBJ := $(SRC:.c=.o)
-HDR = include/token.h include/token_names.h include/ast.h include/ast_clone.h include/ast_expr.h include/ast_stmt.h include/parser.h include/symtable.h include/semantic.h     include/consteval.h include/semantic_expr.h include/semantic_arith.h include/semantic_mem.h include/semantic_call.h include/semantic_loops.h include/semantic_control.h include/semantic_stmt.h include/semantic_decl_stmt.h include/semantic_inline.h include/semantic_var.h include/semantic_layout.h include/semantic_init.h include/semantic_global.h \
+HDR = include/token.h include/token_names.h include/ast.h include/ast_clone.h include/ast_expr.h include/ast_stmt.h include/parser.h include/symtable.h include/semantic.h     include/consteval.h include/semantic_expr.h include/semantic_expr_ops.h include/semantic_mem.h include/semantic_call.h include/semantic_loops.h include/semantic_control.h include/semantic_stmt.h include/semantic_decl_stmt.h include/semantic_inline.h include/semantic_var.h include/semantic_layout.h include/semantic_init.h include/semantic_global.h \
     include/ir_core.h include/ir_const.h include/ir_memory.h include/ir_control.h include/ir_builder.h include/ir_global.h include/ir_dump.h include/ast_dump.h include/opt.h include/codegen.h include/codegen_mem.h include/codegen_loadstore.h include/codegen_arith.h include/codegen_arith_int.h include/codegen_arith_float.h include/codegen_branch.h include/strbuf.h \
     include/util.h include/command.h include/cli.h include/vector.h include/regalloc_x86.h include/label.h include/error.h include/lexer_internal.h \
     include/opt_inline_helpers.h \
@@ -195,11 +195,11 @@ src/semantic_expr.o: src/semantic_expr.c $(HDR)
 src/semantic_expr_const.o: src/semantic_expr_const.c $(HDR)
 	$(CC) $(CFLAGS) $(OPTFLAGS) -Iinclude -c src/semantic_expr_const.c -o src/semantic_expr_const.o
 	
-src/semantic_expr_cast.o: src/semantic_expr_cast.c $(HDR)
-	$(CC) $(CFLAGS) $(OPTFLAGS) -Iinclude -c src/semantic_expr_cast.c -o src/semantic_expr_cast.o
+src/semantic_expr_ops.o: src/semantic_expr_ops.c $(HDR)
+	$(CC) $(CFLAGS) $(OPTFLAGS) -Iinclude -c src/semantic_expr_ops.c -o src/semantic_expr_ops.o
 
-src/semantic_arith.o: src/semantic_arith.c $(HDR)
-	$(CC) $(CFLAGS) $(OPTFLAGS) -Iinclude -c src/semantic_arith.c -o src/semantic_arith.o
+src/semantic_expr_ir.o: src/semantic_expr_ir.c $(HDR)
+	$(CC) $(CFLAGS) $(OPTFLAGS) -Iinclude -c src/semantic_expr_ir.c -o src/semantic_expr_ir.o
 
 src/semantic_mem.o: src/semantic_mem.c $(HDR)
 	$(CC) $(CFLAGS) $(OPTFLAGS) -Iinclude -c src/semantic_mem.c -o src/semantic_mem.o

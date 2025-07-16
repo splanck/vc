@@ -11,7 +11,7 @@
 #include <string.h>
 #include <stdio.h>
 #include "semantic_expr.h"
-#include "semantic_arith.h"
+#include "semantic_expr_ops.h"
 #include "semantic_mem.h"
 #include "semantic_call.h"
 #include "consteval.h"
