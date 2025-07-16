@@ -29,12 +29,7 @@ for src in "$DIR"/*.c; do
 
     echo "Building $exe"
 
-    opts="--link $ARCH_OPT"
-    if [ "$base" = "file_io" ]; then
-        opts="$opts --internal-libc"
-    else
-        opts="$opts --internal-libc"
-    fi
+    opts="--link $ARCH_OPT --internal-libc"
 
     "$VC" $opts -o "$exe" "$src" >"$exe.log" 2>&1
     if [ $? -eq 0 ]; then
