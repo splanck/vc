@@ -20,7 +20,11 @@ cc -Iinclude -Wall -Wextra -std=c99 \
     src/parser_stmt.c src/parser_types.c src/symtable_core.c \
     src/symtable_globals.c src/symtable_struct.c src/ast_clone.c \
     src/ast_expr.c src/ast_stmt_create.c src/ast_stmt_free.c src/lexer.c src/util.c \
-    src/vector.c src/error.c
+    src/vector.c src/error.c src/token_names.c src/parser_toplevel_func.c \
+    src/parser_toplevel_var.c src/parser_expr_ops.c src/parser_expr_literal.c \
+    src/lexer_ident.c src/lexer_scan_numeric.c src/ast_expr_binary.c \
+    src/ast_expr_control.c src/ast_expr_literal.c src/ast_expr_type.c \
+    src/preproc_table.c
 # build cli unit test binary with vector_push wrapper
 cc -Iinclude -Wall -Wextra -std=c99 -Dvector_push=test_vector_push -c src/cli.c -o cli_test.o
 cc -Iinclude -Wall -Wextra -std=c99 -c src/cli_env.c -o cli_env_test.o
