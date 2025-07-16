@@ -86,6 +86,11 @@ on LP64 systems.
 If the selected archive is missing the compiler prints an error similar to
 `vc: internal libc archive 'libc/libc64.a' not found. Build it with 'make libc64'`.
 
+The bundled libc is intentionally single-threaded. It does not implement
+`pthread` primitives and provides a stub `pthread_create` that aborts at
+runtime. Programs linked against the internal library must therefore
+avoid creating additional threads.
+
 ## Additional build steps
 
 Extra source files can be passed to the build using the `EXTRA_SRC`
