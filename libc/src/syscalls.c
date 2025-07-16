@@ -1,4 +1,5 @@
 #include "../internal/_vc_syscalls.h"
+#include <limits.h>
 
 #ifdef __x86_64__
 #define SYSCALL_INVOKE(num, a1, a2, a3) \
@@ -76,6 +77,8 @@ void *_vc_malloc(unsigned long size)
             return 0;
         cur_brk = (unsigned long)ret;
     }
+    if (size > ULONG_MAX - cur_brk)
+        return 0;
     unsigned long prev = cur_brk;
     unsigned long new_brk = cur_brk + size;
 #ifdef __x86_64__
