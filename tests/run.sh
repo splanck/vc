@@ -30,12 +30,14 @@ rm -f util_unit.o
 cc -Iinclude -Wall -Wextra -std=c99 -Dvector_push=test_vector_push -c src/cli.c -o cli_test.o
 cc -Iinclude -Wall -Wextra -std=c99 -c src/cli_env.c -o cli_env_test.o
 cc -Iinclude -Wall -Wextra -std=c99 -Dvector_push=test_vector_push -c src/cli_opts.c -o cli_opts_test.o
+cc -Iinclude -Wall -Wextra -std=c99 -DPROJECT_ROOT=\"$(pwd)\" -c src/preproc_path.c -o preproc_path_test.o
+cc -Iinclude -Wall -Wextra -std=c99 -c src/include_path_cache.c -o include_path_cache_test.o
 cc -Iinclude -Wall -Wextra -std=c99 -c "$DIR/unit/test_cli.c" -o "$DIR/test_cli.o"
 cc -Iinclude -Wall -Wextra -std=c99 -c src/vector.c -o vector_test.o
 cc -Iinclude -Wall -Wextra -std=c99 -DUNIT_TESTING -DNO_VECTOR_FREE_STUB -c src/util.c -o util_test.o
-cc -Iinclude -Wall -Wextra -std=c99 -c "$DIR/unit/test_cli_stubs.c" -o "$DIR/test_cli_stubs.o"
-cc -o "$DIR/cli_tests" cli_test.o cli_env_test.o cli_opts_test.o "$DIR/test_cli.o" vector_test.o util_test.o "$DIR/test_cli_stubs.o"
-rm -f cli_test.o cli_env_test.o cli_opts_test.o "$DIR/test_cli.o" vector_test.o util_test.o "$DIR/test_cli_stubs.o"
+cc -Iinclude -Wall -Wextra -std=c99 -Dpreproc_set_internal_libc_dir=preproc_set_internal_libc_dir_stub -c "$DIR/unit/test_cli_stubs.c" -o "$DIR/test_cli_stubs.o"
+cc -o "$DIR/cli_tests" cli_test.o cli_env_test.o cli_opts_test.o preproc_path_test.o include_path_cache_test.o "$DIR/test_cli.o" vector_test.o util_test.o "$DIR/test_cli_stubs.o"
+rm -f cli_test.o cli_env_test.o cli_opts_test.o preproc_path_test.o include_path_cache_test.o "$DIR/test_cli.o" vector_test.o util_test.o "$DIR/test_cli_stubs.o"
 # build parser alloc failure unit test with vector_push wrapper
 cc -Iinclude -Wall -Wextra -std=c99 -Dvector_push=test_vector_push -c src/parser_core.c -o parser_core_fail.o
 cc -Iinclude -Wall -Wextra -std=c99 -c src/parser_init.c -o parser_init_fail.o
