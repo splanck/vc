@@ -302,6 +302,7 @@ static int build_and_link_objects(vector_t *objs, const cli_options_t *cli)
     vector_t libs;
     vector_init(&lib_dirs, sizeof(char *));
     vector_init(&libs, sizeof(char *));
+    size_t dup_start = 0;
     for (size_t i = 0; i < cli->lib_dirs.count; i++) {
         char *dir = ((char **)cli->lib_dirs.data)[i];
         if (!vector_push(&lib_dirs, &dir)) {
@@ -311,6 +312,7 @@ static int build_and_link_objects(vector_t *objs, const cli_options_t *cli)
             return 0;
         }
     }
+    dup_start = lib_dirs.count;
     for (size_t i = 0; i < cli->libs.count; i++) {
         char *lib = ((char **)cli->libs.data)[i];
         if (!vector_push(&libs, &lib)) {
@@ -361,6 +363,8 @@ static int build_and_link_objects(vector_t *objs, const cli_options_t *cli)
         char *dir_dup = vc_strdup(base);
         if (!dir_dup || !vector_push(&lib_dirs, &dir_dup)) {
             free(dir_dup);
+            for (size_t j = dup_start; j < lib_dirs.count; j++)
+                free(((char **)lib_dirs.data)[j]);
             vc_oom();
             vector_free(&lib_dirs);
             vector_free(&libs);
@@ -368,6 +372,8 @@ static int build_and_link_objects(vector_t *objs, const cli_options_t *cli)
         }
         if (!vector_push(&libs, &libname)) {
             vc_oom();
+            for (size_t j = dup_start; j < lib_dirs.count; j++)
+                free(((char **)lib_dirs.data)[j]);
             vector_free(&lib_dirs);
             vector_free(&libs);
             return 0;
@@ -376,6 +382,8 @@ static int build_and_link_objects(vector_t *objs, const cli_options_t *cli)
 
     ok = run_link_command(objs, &lib_dirs, &libs,
                           cli->output, cli->use_x86_64);
+    for (size_t j = dup_start; j < lib_dirs.count; j++)
+        free(((char **)lib_dirs.data)[j]);
     vector_free(&lib_dirs);
     vector_free(&libs);
     return ok;
