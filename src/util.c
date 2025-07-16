@@ -95,9 +95,7 @@ char *vc_strdup(const char *s)
 /* Duplicate at most "n" characters of a string. */
 char *vc_strndup(const char *s, size_t n)
 {
-    size_t len = strlen(s);
-    if (len > n)
-        len = n;
+    size_t len = strnlen(s, n);
     char *out = malloc(len + 1);
     if (!out)
         return NULL;
