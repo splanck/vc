@@ -109,16 +109,10 @@ stmt_t *parser_parse_for_stmt(parser_t *p)
         return NULL;
     stmt_t *init_decl = NULL;
     expr_t *init = NULL;
-    token_t *tok = peek(p);
-    if (tok && (tok->type == TOK_KW_STATIC || tok->type == TOK_KW_CONST ||
-                tok->type == TOK_KW_INT || tok->type == TOK_KW_CHAR ||
-                tok->type == TOK_KW_FLOAT || tok->type == TOK_KW_DOUBLE ||
-                tok->type == TOK_KW_SHORT || tok->type == TOK_KW_LONG ||
-                tok->type == TOK_KW_BOOL || tok->type == TOK_KW_UNSIGNED)) {
-        init_decl = parser_parse_var_decl(p);
-        if (!init_decl)
-            return NULL;
-    } else {
+    size_t save = p->pos;
+    init_decl = parser_parse_var_decl(p);
+    if (!init_decl) {
+        p->pos = save;
         init = parser_parse_expr(p);
         if (!init || !match(p, TOK_SEMI)) {
             ast_free_expr(init);
