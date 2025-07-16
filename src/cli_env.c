@@ -1,6 +1,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <stdint.h>
 #include "cli_env.h"
 #include "util.h"
 
@@ -28,7 +29,14 @@ int load_vcflags(int *argc, char ***argv, char ***out_argv,
             vcargc++;
         free(tmp);
 
-        size_t alloc_sz = sizeof(char *) * ((size_t)*argc + vcargc + 1);
+        size_t new_count = (size_t)*argc + vcargc + 1;
+        if (new_count > SIZE_MAX / sizeof(char *)) {
+            fprintf(stderr, "vc: argument vector too large\n");
+            free(vcbuf);
+            return 1;
+        }
+
+        size_t alloc_sz = sizeof(char *) * new_count;
         vcargv = malloc(alloc_sz);
         if (!vcargv) {
             fprintf(stderr, "Out of memory while processing VCFLAGS.\n");
