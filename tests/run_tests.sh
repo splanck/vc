@@ -34,7 +34,7 @@ for cfile in "$DIR"/fixtures/*.c; do
     base=$(basename "$cfile" .c)
 
     case "$base" in
-        *_x86-64|struct_*|bitfield_rw|include_search|include_angle|include_env|macro_bad_define|preproc_blank|macro_cli|macro_cli_quote|include_once|include_once_link|include_next|include_next_quote|libm_program|union_example|varargs_double|include_stdio|libc_puts|libc_printf|local_program|local_assign|libc_fileio|libc_short_write|libc_write_fail)
+        *_x86-64|struct_*|bitfield_rw|include_search|include_angle|include_env|macro_bad_define|preproc_blank|macro_cli|macro_cli_quote|include_once|include_once_link|include_next|include_next_quote|libm_program|union_example|varargs_double|include_stdio|libc_puts|libc_printf|local_program|local_assign|libc_fileio|libc_short_write|libc_write_fail|libc_memmove)
             continue;;
     esac
     compile_fixture "$cfile" "$DIR/fixtures/$base.s"
@@ -824,6 +824,28 @@ if [ $SKIP_LIBC_TESTS -eq 0 ]; then
         fail=1
     fi
     rm -f "${fileio64}" "$io_file"
+
+    # overlapping copy tests for memmove
+    expected_move="ababcdef\nbcdef"
+    if [ $CAN_COMPILE_32 -eq 0 ]; then
+        memmove32=$(mktemp)
+        rm -f "${memmove32}"
+        "$BINARY" --link --internal-libc -o "${memmove32}" "$DIR/fixtures/libc_memmove.c"
+        if [ "$("${memmove32}")" != "$expected_move" ]; then
+            echo "Test libc_memmove_32 failed"
+            fail=1
+        fi
+        rm -f "${memmove32}"
+    fi
+
+    memmove64=$(mktemp)
+    rm -f "${memmove64}"
+    "$BINARY" --x86-64 --link --internal-libc -o "${memmove64}" "$DIR/fixtures/libc_memmove.c"
+    if [ "$("${memmove64}")" != "$expected_move" ]; then
+        echo "Test libc_memmove_64 failed"
+        fail=1
+    fi
+    rm -f "${memmove64}"
 else
     echo "Skipping internal libc link tests (stack protector issue)"
 fi

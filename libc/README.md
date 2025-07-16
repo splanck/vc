@@ -11,7 +11,7 @@ Only a few functions are implemented:
 
 - `puts` and a very small `printf`
 - `exit`, `malloc` and `free`
-- `strlen` and `memcpy`
+- `strlen`, `memcpy` and `memmove`
 
 Other standard interfaces are intentionally omitted for now. Programs that
 require features like file I/O must be built against the host system libc
