@@ -28,14 +28,14 @@ $CC -Iinclude -Wall -Wextra -std=c99 \
     src/ast_expr_control.c src/ast_expr_literal.c src/ast_expr_type.c
 rm -f util_unit.o
 # build cli unit test binary with vector_push wrapper
-$CC -Iinclude -Wall -Wextra -std=c99 -Dvector_push=test_vector_push -c src/cli.c -o cli_test.o
-$CC -Iinclude -Wall -Wextra -std=c99 -c src/cli_env.c -o cli_env_test.o
-$CC -Iinclude -Wall -Wextra -std=c99 -Dvector_push=test_vector_push -c src/cli_opts.c -o cli_opts_test.o
-$CC -Iinclude -Wall -Wextra -std=c99 -DPROJECT_ROOT=\"$(pwd)\" -c src/preproc_path.c -o preproc_path_test.o
-$CC -Iinclude -Wall -Wextra -std=c99 -c src/include_path_cache.c -o include_path_cache_test.o
-$CC -Iinclude -Wall -Wextra -std=c99 -c "$DIR/unit/test_cli.c" -o "$DIR/test_cli.o"
-$CC -Iinclude -Wall -Wextra -std=c99 -c src/vector.c -o vector_test.o
-$CC -Iinclude -Wall -Wextra -std=c99 -DUNIT_TESTING -DNO_VECTOR_FREE_STUB -c src/util.c -o util_test.o
+$CC -Iinclude -Wall -Wextra -std=c99 -Dvector_push=test_vector_push -Dmalloc=test_malloc -Dcalloc=test_calloc -Drealloc=test_realloc -Dfree=test_free -c src/cli.c -o cli_test.o
+$CC -Iinclude -Wall -Wextra -std=c99 -Dmalloc=test_malloc -Dcalloc=test_calloc -Drealloc=test_realloc -Dfree=test_free -c src/cli_env.c -o cli_env_test.o
+$CC -Iinclude -Wall -Wextra -std=c99 -Dvector_push=test_vector_push -Dmalloc=test_malloc -Dcalloc=test_calloc -Drealloc=test_realloc -Dfree=test_free -c src/cli_opts.c -o cli_opts_test.o
+$CC -Iinclude -Wall -Wextra -std=c99 -DPROJECT_ROOT=\"$(pwd)\" -Dmalloc=test_malloc -Dcalloc=test_calloc -Drealloc=test_realloc -Dfree=test_free -c src/preproc_path.c -o preproc_path_test.o
+$CC -Iinclude -Wall -Wextra -std=c99 -Dmalloc=test_malloc -Dcalloc=test_calloc -Drealloc=test_realloc -Dfree=test_free -c src/include_path_cache.c -o include_path_cache_test.o
+$CC -Iinclude -Wall -Wextra -std=c99 -Dmalloc=test_malloc -Dcalloc=test_calloc -Drealloc=test_realloc -Dfree=test_free -c "$DIR/unit/test_cli.c" -o "$DIR/test_cli.o"
+$CC -Iinclude -Wall -Wextra -std=c99 -Dmalloc=test_malloc -Dcalloc=test_calloc -Drealloc=test_realloc -Dfree=test_free -c src/vector.c -o vector_test.o
+$CC -Iinclude -Wall -Wextra -std=c99 -DUNIT_TESTING -DNO_VECTOR_FREE_STUB -Dmalloc=test_malloc -Dcalloc=test_calloc -Drealloc=test_realloc -Dfree=test_free -c src/util.c -o util_test.o
 $CC -Iinclude -Wall -Wextra -std=c99 -Dpreproc_set_internal_libc_dir=preproc_set_internal_libc_dir_stub -c "$DIR/unit/test_cli_stubs.c" -o "$DIR/test_cli_stubs.o"
 $CC -o "$DIR/cli_tests" cli_test.o cli_env_test.o cli_opts_test.o preproc_path_test.o include_path_cache_test.o "$DIR/test_cli.o" vector_test.o util_test.o "$DIR/test_cli_stubs.o"
 rm -f cli_test.o cli_env_test.o cli_opts_test.o preproc_path_test.o include_path_cache_test.o "$DIR/test_cli.o" vector_test.o util_test.o "$DIR/test_cli_stubs.o"

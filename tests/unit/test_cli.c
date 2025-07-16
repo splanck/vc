@@ -3,6 +3,7 @@
 #include <unistd.h>
 #include <getopt.h>
 #include <stdlib.h>
+#include <limits.h>
 #include "cli.h"
 #include "vector.h"
 
@@ -24,6 +25,50 @@ int test_vector_push(vector_t *vec, const void *elem)
     return vector_push(vec, elem);
 }
 
+/* malloc wrappers to track leaks */
+extern void *malloc(size_t size); /* real malloc */
+extern void *calloc(size_t nmemb, size_t size); /* real calloc */
+extern void *realloc(void *ptr, size_t size); /* real realloc */
+extern void free(void *ptr); /* real free */
+static int allocs = 0;
+
+void *test_malloc(size_t size)
+{
+    void *p = malloc(size);
+    if (p)
+        allocs++;
+    return p;
+}
+
+void *test_calloc(size_t nmemb, size_t size)
+{
+    if (size && nmemb > SIZE_MAX / size)
+        return NULL;
+    void *p = calloc(nmemb, size);
+    if (p)
+        allocs++;
+    return p;
+}
+
+void *test_realloc(void *ptr, size_t size)
+{
+    if (!ptr)
+        return test_malloc(size);
+    void *p = realloc(ptr, size);
+    if (p && p != ptr) {
+        allocs++;
+        allocs--; /* previous ptr freed */
+    }
+    return p;
+}
+
+void test_free(void *ptr)
+{
+    if (ptr)
+        allocs--;
+    free(ptr);
+}
+
 static void test_parse_success(void)
 {
     cli_options_t opts;
@@ -34,6 +79,7 @@ static void test_parse_success(void)
     ASSERT(strcmp(((char **)opts.sources.data)[0], "file.c") == 0);
     ASSERT(opts.asm_syntax == ASM_ATT);
     cli_free_opts(&opts);
+    ASSERT(allocs == 0);
 }
 
 static void test_intel_syntax_option(void)
@@ -44,6 +90,7 @@ static void test_intel_syntax_option(void)
     ASSERT(ret == 0);
     ASSERT(opts.asm_syntax == ASM_INTEL);
     cli_free_opts(&opts);
+    ASSERT(allocs == 0);
 }
 
 static void test_dump_ast_option(void)
@@ -54,6 +101,7 @@ static void test_dump_ast_option(void)
     ASSERT(ret == 0);
     ASSERT(opts.dump_ast);
     cli_free_opts(&opts);
+    ASSERT(allocs == 0);
 }
 
 static void test_dump_tokens_option(void)
@@ -64,6 +112,7 @@ static void test_dump_tokens_option(void)
     ASSERT(ret == 0);
     ASSERT(opts.dump_tokens);
     cli_free_opts(&opts);
+    ASSERT(allocs == 0);
 }
 
 static void test_verbose_includes_option(void)
@@ -74,6 +123,7 @@ static void test_verbose_includes_option(void)
     ASSERT(ret == 0);
     ASSERT(opts.verbose_includes);
     cli_free_opts(&opts);
+    ASSERT(allocs == 0);
 }
 
 static void test_parse_failure(void)
@@ -109,6 +159,19 @@ static void test_parse_failure(void)
 
     ASSERT(ret != 0);
     ASSERT(strstr(buf, "Out of memory") != NULL);
+    ASSERT(allocs == 0);
+}
+
+static void test_internal_libc_leak(void)
+{
+    cli_options_t opts;
+    char *argv[] = {"vc", "--internal-libc", "-o", "out.o", "file.c", NULL};
+    int ret = cli_parse_args(5, argv, &opts);
+    ASSERT(ret == 0);
+    ASSERT(opts.internal_libc);
+    ASSERT(opts.vc_sysinclude != NULL);
+    cli_free_opts(&opts);
+    ASSERT(allocs == 0);
 }
 
 int main(void)
@@ -118,6 +181,7 @@ int main(void)
     test_dump_ast_option();
     test_dump_tokens_option();
     test_verbose_includes_option();
+    test_internal_libc_leak();
     test_parse_failure();
     if (failures == 0)
         printf("All cli tests passed\n");

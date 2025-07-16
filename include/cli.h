@@ -82,6 +82,10 @@ typedef struct {
     bool internal_libc; /* use bundled libc */
     bool verbose_includes; /* print include search details */
     bool named_locals;   /* keep names for local variables */
+    bool free_output;    /* output path needs free */
+    bool free_obj_dir;   /* obj_dir was heap allocated */
+    bool free_sysroot;   /* sysroot was heap allocated */
+    bool free_vc_sysinclude; /* vc_sysinclude was heap allocated */
     vector_t include_dirs; /* additional include directories */
     vector_t sources;      /* input source files */
     vector_t defines;      /* command line macro definitions */

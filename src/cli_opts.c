@@ -422,6 +422,7 @@ int finalize_options(int argc, char **argv, const char *prog,
                 cli_free_opts(opts);
                 return 1;
             }
+            opts->free_vc_sysinclude = true;
         }
         preproc_set_internal_libc_dir(opts->vc_sysinclude);
 

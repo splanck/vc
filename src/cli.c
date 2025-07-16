@@ -48,6 +48,10 @@ static void init_default_opts(cli_options_t *opts)
     opts->internal_libc = false;
     opts->verbose_includes = false;
     opts->named_locals = false;
+    opts->free_output = false;
+    opts->free_obj_dir = false;
+    opts->free_sysroot = false;
+    opts->free_vc_sysinclude = false;
     opts->max_include_depth = DEFAULT_INCLUDE_DEPTH;
     vector_init(&opts->include_dirs, sizeof(char *));
     vector_init(&opts->sources, sizeof(char *));
@@ -61,6 +65,14 @@ void cli_free_opts(cli_options_t *opts)
 {
     if (!opts)
         return;
+    if (opts->free_output)
+        free(opts->output);
+    if (opts->free_obj_dir)
+        free(opts->obj_dir);
+    if (opts->free_sysroot)
+        free(opts->sysroot);
+    if (opts->free_vc_sysinclude)
+        free(opts->vc_sysinclude);
     vector_free(&opts->sources);
     vector_free(&opts->include_dirs);
     vector_free(&opts->defines);
