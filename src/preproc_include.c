@@ -17,23 +17,8 @@
 #include "preproc_path.h"
 #include "preproc_file.h"
 #include "preproc_macros.h"
+#include "preproc_utils.h"
 
-/* Return 1 if all conditional states on the stack are active */
-static int stack_active(vector_t *conds)
-{
-    for (size_t i = 0; i < conds->count; i++) {
-        cond_state_t *c = &((cond_state_t *)conds->data)[i];
-        if (!c->taking)
-            return 0;
-    }
-    return 1;
-}
-
-/* Wrapper used by directive handlers */
-static int is_active(vector_t *conds)
-{
-    return stack_active(conds);
-}
 
 /* Return non-zero when the include stack already contains PATH. */
 /* Parse the include filename from LINE. ENDC receives '"' or '>' */
