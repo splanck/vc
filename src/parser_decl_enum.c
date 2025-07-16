@@ -71,6 +71,15 @@ fail:
     }
     enumerator_t *items = (enumerator_t *)items_v.data;
     size_t count = items_v.count;
-    return ast_make_enum_decl(tag, items, count, kw->line, kw->column);
+    stmt_t *stmt = ast_make_enum_decl(tag, items, count, kw->line, kw->column);
+    if (!stmt) {
+        for (size_t i = 0; i < count; i++) {
+            free(items[i].name);
+            ast_free_expr(items[i].value);
+        }
+        free(items);
+        return NULL;
+    }
+    return stmt;
 }
 
