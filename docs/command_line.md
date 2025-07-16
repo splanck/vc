@@ -72,6 +72,12 @@ flags provided directly on the command line override those from
 quotes which will be removed during parsing. Spaces and quote characters
 can also be escaped with a backslash.
 
+Setting the `VC_NAMED_LOCALS` environment variable enables named
+symbols for local variables without requiring the `--named-locals`
+option. The command-line flag and environment variable are combined, so
+passing the flag when the variable is set simply keeps the behaviour
+active.
+
 Use `vc -o out.s source.c` to compile a file, `vc -c -o out.o source.c` to
 produce an object, `vc --link -o prog main.c util.c` to build an executable
 from multiple sources, `vc -S source.c` to print the assembly to the

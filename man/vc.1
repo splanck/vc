@@ -242,6 +242,11 @@ parsing. Flags given directly on the command line override these. Spaces
 or quotes may be escaped with a backslash or an argument may be quoted
 with single or double quotes.
 .TP
+.B VC_NAMED_LOCALS
+When set to a non-empty value, behave as if \fB--named-locals\fR was
+specified on the command line. Passing the flag explicitly while the
+variable is set has no additional effect.
+.TP
 .B AS
 Assembler program to invoke instead of the default.
 .TP
