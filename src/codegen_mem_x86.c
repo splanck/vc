@@ -39,10 +39,6 @@ static const char *fmt_stack(char buf[32], const char *name, int x64,
     return buf;
 }
 
-/* total bytes pushed for the current function call */
-size_t arg_stack_bytes = 0;
-int arg_reg_idx = 0;
-
 #define SCRATCH_REG 0
 
 /* The table `mem_emitters` maps IR opcodes to the helpers below. */
@@ -487,10 +483,7 @@ static void emit_glob_string(strbuf_t *sb, ir_instr_t *ins,
 }
 
 /* Mapping of IR opcodes to emitter helpers */
-typedef void (*mem_emit_fn)(strbuf_t *, ir_instr_t *, regalloc_t *, int,
-                            asm_syntax_t);
-
-static mem_emit_fn mem_emitters[IR_LABEL + 1] = {
+mem_emit_fn mem_emitters[IR_LABEL + 1] = {
     [IR_CONST] = emit_const,
     [IR_LOAD] = emit_load,
     [IR_STORE] = emit_store,
@@ -507,23 +500,4 @@ static mem_emit_fn mem_emitters[IR_LABEL + 1] = {
     [IR_GLOB_STRING] = emit_glob_string,
     [IR_GLOB_WSTRING] = emit_glob_string
 };
-
-/*
- * Emit x86 for load/store and other memory instructions.
- *
- * Operand locations are taken from the register allocator.  If the
- * destination is spilled, a temporary register is used and the value is
- * stored back to the stack.  The `x64` flag determines pointer size and
- * register names so that either 32- or 64-bit code can be produced.
- */
-void emit_memory_instr(strbuf_t *sb, ir_instr_t *ins,
-                       regalloc_t *ra, int x64,
-                       asm_syntax_t syntax)
-{
-    if (!ins || ins->op < 0 || ins->op > IR_LABEL)
-        return;
-    mem_emit_fn fn = mem_emitters[ins->op];
-    if (fn)
-        fn(sb, ins, ra, x64, syntax);
-}
 

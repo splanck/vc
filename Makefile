@@ -16,7 +16,7 @@ CORE_SRC = src/main.c src/compile.c src/compile_stage.c src/compile_link.c src/c
            src/semantic_loops.c src/semantic_control.c src/semantic_init.c src/semantic_var.c src/semantic_stmt.c \
            src/semantic_block.c src/semantic_decl.c src/semantic_decl_stmt.c src/semantic_expr_stmt.c src/semantic_label.c src/semantic_return.c src/semantic_static_assert.c \
            src/semantic_layout.c src/semantic_inline.c src/semantic_global.c src/consteval.c src/error.c src/ir_core.c src/ir_const.c src/ir_memory.c src/ir_control.c src/ir_global.c \
-           src/codegen.c src/codegen_mem.c src/codegen_load.c src/codegen_store.c src/codegen_arith_int.c src/codegen_arith_float.c src/codegen_branch.c \
+           src/codegen.c src/codegen_mem_common.c src/codegen_mem_x86.c src/codegen_load.c src/codegen_store.c src/codegen_arith_int.c src/codegen_arith_float.c src/codegen_branch.c \
            src/codegen_float.c src/codegen_complex.c src/codegen_x86.c \
            src/regalloc.c src/regalloc_x86.c src/strbuf.c src/util.c src/vector.c src/ir_dump.c src/ir_builder.c src/ast_dump.c src/label.c \
            src/preproc_expand.c src/preproc_builtin.c src/preproc_args.c src/preproc_table.c src/preproc_expr.c src/preproc_cond.c src/preproc_file.c \
@@ -260,8 +260,11 @@ src/ir_global.o: src/ir_global.c $(HDR)
 src/codegen.o: src/codegen.c $(HDR)
 	$(CC) $(CFLAGS) $(OPTFLAGS) -Iinclude -c src/codegen.c -o src/codegen.o
 
-src/codegen_mem.o: src/codegen_mem.c $(HDR)
-	$(CC) $(CFLAGS) $(OPTFLAGS) -Iinclude -c src/codegen_mem.c -o src/codegen_mem.o
+src/codegen_mem_common.o: src/codegen_mem_common.c $(HDR)
+	$(CC) $(CFLAGS) $(OPTFLAGS) -Iinclude -c src/codegen_mem_common.c -o src/codegen_mem_common.o
+
+src/codegen_mem_x86.o: src/codegen_mem_x86.c $(HDR)
+	$(CC) $(CFLAGS) $(OPTFLAGS) -Iinclude -c src/codegen_mem_x86.c -o src/codegen_mem_x86.o
 
 src/codegen_load.o: src/codegen_load.c $(HDR)
 	$(CC) $(CFLAGS) $(OPTFLAGS) -Iinclude -c src/codegen_load.c -o src/codegen_load.o
