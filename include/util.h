@@ -52,7 +52,14 @@ void free_func_list_vector(vector_t *v);
 /* Release a vector of stmt_t* elements */
 void free_glob_list_vector(vector_t *v);
 
-/* Assemble an mkstemp template path using cli->obj_dir */
+/*
+ * Assemble an mkstemp template path using cli->obj_dir or TMPDIR.
+ * Returns a newly allocated string on success or NULL on failure.
+ *
+ * Possible errno values:
+ *   ENAMETOOLONG - resulting path would exceed PATH_MAX or snprintf truncated
+ *   others       - from malloc or snprintf
+ */
 char *create_temp_template(const cli_options_t *cli, const char *prefix);
 
 /* Create and open the temporary file described by tmpl */
