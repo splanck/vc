@@ -196,5 +196,9 @@ most work to helper routines:
   `--link`.
 - `finalize_options` – validates the parsed state and gathers source files.
 
+`build_linker_args` constructs the final `cc` command for linking using an array
+of fixed arguments. The array size drives the allocation of the argument vector
+so adding new options only requires appending to the list.
+
 Splitting the logic keeps `cli_parse_args` short and makes each option group
 easier to maintain.

@@ -211,8 +211,21 @@ build_linker_args(const vector_t *objs, const vector_t *lib_dirs,
 {
     const char *arch_flag = use_x86_64 ? "-m64" : "-m32";
 
+    /* base linker arguments:
+     *   0: compiler command (cc)
+     *   1: architecture flag (-m32/-m64)
+     *   2: -no-pie
+     *   3: -nostdlib
+     *   4: -o
+     *   5: output file path
+     */
+    const char *base[] = {
+        get_cc(), arch_flag, "-no-pie", "-nostdlib", "-o", output
+    };
+    size_t base_args = sizeof(base) / sizeof(base[0]);
+
     /* calculate required argument count and detect overflow */
-    size_t argc = 0;
+    size_t argc = base_args;
     if (objs->count > SIZE_MAX - argc)
         goto arg_overflow;
     argc += objs->count;
@@ -222,9 +235,6 @@ build_linker_args(const vector_t *objs, const vector_t *lib_dirs,
     if (libs->count > (SIZE_MAX - argc) / 2)
         goto arg_overflow;
     argc += libs->count * 2;
-    if (6 > SIZE_MAX - argc)
-        goto arg_overflow;
-    argc += 6;
 
     size_t n = argc + 1; /* plus NULL terminator */
     if (n > SIZE_MAX / sizeof(char *))
@@ -233,22 +243,22 @@ build_linker_args(const vector_t *objs, const vector_t *lib_dirs,
     char **argv = vc_alloc_or_exit(n * sizeof(char *));
 
     size_t idx = 0;
-    argv[idx++] = (char *)get_cc();
-    argv[idx++] = (char *)arch_flag;
-    argv[idx++] = "-no-pie";
+    argv[idx++] = (char *)base[0];
+    argv[idx++] = (char *)base[1];
+    argv[idx++] = (char *)base[2];
     for (size_t i = 0; i < objs->count; i++)
         argv[idx++] = ((char **)objs->data)[i];
     for (size_t i = 0; i < lib_dirs->count; i++) {
         argv[idx++] = "-L";
         argv[idx++] = ((char **)lib_dirs->data)[i];
     }
-    argv[idx++] = "-nostdlib";
+    argv[idx++] = (char *)base[3];
     for (size_t i = 0; i < libs->count; i++) {
         argv[idx++] = "-l";
         argv[idx++] = ((char **)libs->data)[i];
     }
-    argv[idx++] = "-o";
-    argv[idx++] = (char *)output;
+    argv[idx++] = (char *)base[4];
+    argv[idx++] = (char *)base[5];
     argv[idx] = NULL;
     return argv;
 
