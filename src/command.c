@@ -86,11 +86,15 @@ int command_run(char *const argv[])
     int ret = posix_spawnp(&pid, argv[0], NULL, NULL, argv, environ);
     if (ret != 0) {
         char *cmd = command_to_string(argv);
-        if (cmd)
+        if (cmd) {
             fprintf(stderr, "posix_spawnp %s: %s\n", cmd, strerror(ret));
-        else
-            fprintf(stderr, "posix_spawnp %s: %s\n", argv[0], strerror(ret));
-        free(cmd);
+            free(cmd);
+        } else {
+            fprintf(stderr, "posix_spawnp");
+            for (size_t i = 0; argv[i]; i++)
+                fprintf(stderr, " %s", argv[i]);
+            fprintf(stderr, ": %s\n", strerror(ret));
+        }
         return 0;
     }
     while (waitpid(pid, &status, 0) < 0) {
