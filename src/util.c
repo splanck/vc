@@ -272,10 +272,9 @@ create_temp_template(const cli_options_t *cli, const char *prefix)
     if (!tmpl)
         return NULL;
 
-    errno = 0;
     int n = snprintf(tmpl, len + 1, "%s/%sXXXXXX", dir, prefix);
-    int err = errno;
     if (n < 0) {
+        int err = errno;
         free(tmpl);
         errno = err;
         return NULL;

@@ -14,6 +14,7 @@
 #include <sys/stat.h>
 #include <unistd.h>
 #include "cli.h"
+#include "util.h"
 
 int create_temp_file(const cli_options_t *cli, const char *prefix, char **out_path);
 
@@ -38,6 +39,8 @@ int snprintf(char *str, size_t size, const char *fmt, ...)
     va_end(ap);
     return rc;
 }
+
+#include "../../src/util.c"
 
 static int failures = 0;
 #define ASSERT(cond) do { \
@@ -121,6 +124,19 @@ static void test_snprintf_error(void)
     force_snprintf_error = 0;
 }
 
+static void test_template_snprintf_error(void)
+{
+    force_snprintf_error = 1;
+    cli_options_t cli;
+    memset(&cli, 0, sizeof(cli));
+    const char *prefix = "vc";
+    errno = 0;
+    char *tmpl = create_temp_template(&cli, prefix);
+    ASSERT(tmpl == NULL);
+    ASSERT(errno == ENOSYS);
+    force_snprintf_error = 0;
+}
+
 static void test_tmpdir(void)
 {
     const char *tmpdir = "./tmp_test_dir";
@@ -168,6 +184,7 @@ int main(void)
     test_reject_pathmax_dir();
     test_snprintf_overflow();
     test_snprintf_error();
+    test_template_snprintf_error();
     test_tmpdir();
     test_tmpdir_mkdtemp();
     if (failures == 0)
