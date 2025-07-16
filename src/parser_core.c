@@ -386,6 +386,13 @@ func_t *parser_parse_func(parser_t *p, symtable_t *symtab,
         free(ret_tag);
         return NULL;
     }
+    for (size_t i = 0; i < pcount; i++)
+        free(param_tags[i]);
+    free(param_tags);
+    free(param_names);
+    free(param_types);
+    free(param_sizes);
+    free(param_restrict);
     free(ret_tag);
     return fn;
 }
