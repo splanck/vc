@@ -45,7 +45,7 @@ static int flush_buf_fd(int fd, const char *buf, size_t *pos, int *total)
 {
     if (*pos > 0) {
         long ret = _vc_write(fd, buf, *pos);
-        if (ret < 0)
+        if (ret < (long)(*pos))
             return -1;
         if (total)
             *total += (int)(*pos);
