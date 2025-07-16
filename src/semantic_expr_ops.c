@@ -10,7 +10,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
-#include "semantic_arith.h"
+#include "semantic_expr_ops.h"
 #include "semantic_expr.h"
 #include "consteval.h"
 #include "symtable.h"
@@ -19,28 +19,6 @@
 #include "error.h"
 #include <limits.h>
 
-/* Mapping from BINOP_* to corresponding IR op.  Logical ops are
- * handled separately and use IR_CMPEQ here just as a placeholder. */
-static const ir_op_t binop_to_ir[] = {
-    [BINOP_ADD]    = IR_ADD,
-    [BINOP_SUB]    = IR_SUB,
-    [BINOP_MUL]    = IR_MUL,
-    [BINOP_DIV]    = IR_DIV,
-    [BINOP_MOD]    = IR_MOD,
-    [BINOP_SHL]    = IR_SHL,
-    [BINOP_SHR]    = IR_SHR,
-    [BINOP_BITAND] = IR_AND,
-    [BINOP_BITXOR] = IR_XOR,
-    [BINOP_BITOR]  = IR_OR,
-    [BINOP_EQ]     = IR_CMPEQ,
-    [BINOP_NEQ]    = IR_CMPNE,
-    [BINOP_LOGAND] = IR_CMPEQ, /* unreachable */
-    [BINOP_LOGOR]  = IR_CMPEQ, /* unreachable */
-    [BINOP_LT]     = IR_CMPLT,
-    [BINOP_GT]     = IR_CMPGT,
-    [BINOP_LE]     = IR_CMPLE,
-    [BINOP_GE]     = IR_CMPGE,
-};
 
 /*
  * Perform a binary arithmetic or comparison operation.
@@ -84,7 +62,7 @@ type_kind_t check_binary(expr_t *left, expr_t *right, symtable_t *vars,
         return lt;
     } else if (is_intlike(lt) && is_intlike(rt)) {
         if (out) {
-            ir_op_t ir_op = binop_to_ir[op];
+            ir_op_t ir_op = ir_op_for_binop(op);
             *out = ir_build_binop(ir, ir_op, lval, rval);
         }
         if (lt == TYPE_LLONG || lt == TYPE_ULLONG ||
@@ -125,7 +103,7 @@ type_kind_t check_binary(expr_t *left, expr_t *right, symtable_t *vars,
                 op == BINOP_LT || op == BINOP_GT ||
                 op == BINOP_LE || op == BINOP_GE)) {
         if (out) {
-            ir_op_t ir_op = binop_to_ir[op];
+            ir_op_t ir_op = ir_op_for_binop(op);
             *out = ir_build_binop(ir, ir_op, lval, rval);
         }
         return TYPE_INT;
@@ -347,5 +325,42 @@ type_kind_t check_binary_expr(expr_t *expr, symtable_t *vars,
     }
     return check_binary(expr->data.binary.left, expr->data.binary.right, vars, funcs,
                         ir, out, expr->data.binary.op);
+}
+
+/* Cast and type conversion helpers */
+
+/*
+ * Validate a type cast expression. The operand expression is evaluated
+ * and checked for compatibility with the destination type. No IR is
+ * emitted for the conversion itself as primitive types share the same
+ * representation.
+ */
+type_kind_t check_cast_expr(expr_t *expr, symtable_t *vars,
+                            symtable_t *funcs, ir_builder_t *ir,
+                            ir_value_t *out)
+{
+    ir_value_t val;
+    type_kind_t src = check_expr(expr->data.cast.expr, vars, funcs, ir, &val);
+    type_kind_t dst = expr->data.cast.type;
+
+    if (src == TYPE_UNKNOWN)
+        return TYPE_UNKNOWN;
+
+    if (src == dst ||
+        ((is_intlike(src) || src == TYPE_PTR) &&
+         (is_intlike(dst) || dst == TYPE_PTR)) ||
+        (is_floatlike(src) && (is_floatlike(dst) || is_intlike(dst))) ||
+        (is_floatlike(dst) && is_intlike(src)) ||
+        (is_complexlike(src) && src == dst)) {
+        if (out)
+            *out = val;
+        return dst;
+    }
+
+    error_set(expr->line, expr->column, error_current_file,
+              error_current_function);
+    if (out)
+        *out = (ir_value_t){0};
+    return TYPE_UNKNOWN;
 }
 
