@@ -30,7 +30,7 @@ for cfile in "$DIR"/fixtures/*.c; do
     base=$(basename "$cfile" .c)
 
     case "$base" in
-        *_x86-64|struct_*|bitfield_rw|include_search|include_angle|include_env|macro_bad_define|preproc_blank|macro_cli|macro_cli_quote|include_once|include_once_link|include_next|include_next_quote|libm_program|union_example|varargs_double|include_stdio|libc_puts|libc_printf|local_program|local_assign|libc_fileio)
+        *_x86-64|struct_*|bitfield_rw|include_search|include_angle|include_env|macro_bad_define|preproc_blank|macro_cli|macro_cli_quote|include_once|include_once_link|include_next|include_next_quote|libm_program|union_example|varargs_double|include_stdio|libc_puts|libc_printf|local_program|local_assign|libc_fileio|libc_short_write)
             continue;;
     esac
     expect="$DIR/fixtures/$base.s"
@@ -1049,6 +1049,27 @@ if command -v nasm >/dev/null; then
 else
     echo "Skipping disk_full_fputs (nasm not found)"
 fi
+
+# simulate short write failure inside internal libc
+libvclib="$DIR/libvclib.so"
+cc -shared -fPIC -I "$DIR/../libc/include" \
+    "$DIR/../libc/src/stdio.c" "$DIR/../libc/src/stdlib.c" \
+    "$DIR/../libc/src/string.c" "$DIR/../libc/src/syscalls.c" \
+    "$DIR/../libc/src/file.c" -o "$libvclib"
+prog=$(mktemp)
+cc -I "$DIR/../libc/include" "$DIR/fixtures/libc_short_write.c" \
+    -L"$DIR" -Wl,-rpath="$DIR" -lvclib -o "$prog"
+shortlib="$DIR/libfail_vcwrite.so"
+cc -shared -fPIC -o "$shortlib" "$DIR/unit/fail_vcwrite.c"
+set +e
+LD_PRELOAD="$shortlib" "$prog" >/dev/null 2>&1
+ret=$?
+set -e
+if [ $ret -eq 0 ]; then
+    echo "Test short_write_detect failed"
+    fail=1
+fi
+rm -f "$prog" "$shortlib" "$libvclib"
 
 # regression test for long command error message
 long_tmpdir=$(mktemp -d)
