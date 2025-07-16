@@ -486,6 +486,14 @@ $CC -Iinclude -Wall -Wextra -std=c99 -Dpopen=test_popen -DUNIT_TESTING -DNO_VECT
 $CC -Iinclude -Wall -Wextra -std=c99 -Dpopen=test_popen -DUNIT_TESTING -DNO_VECTOR_FREE_STUB \
     -o "$DIR/preproc_sysheaders_fail" "$DIR/unit/test_preproc_sysheaders_fail.c" \
     src/include_path_cache.c src/include_path_cache.c src/preproc_path.c src/vector.c src/util.c
+# build std include dirs allocation failure test
+$CC -Iinclude -Wall -Wextra -std=c99 -Dvc_alloc_or_exit=test_alloc_or_exit -c src/include_path_cache.c -o include_path_cache_fail_impl.o
+$CC -Iinclude -Wall -Wextra -std=c99 -DUNIT_TESTING -c src/util.c -o util_std_dirs_fail.o
+$CC -Iinclude -Wall -Wextra -std=c99 -Dvc_alloc_or_exit=test_alloc_or_exit \
+    -c "$DIR/unit/test_std_dirs_alloc_fail.c" -o "$DIR/test_std_dirs_alloc_fail.o"
+$CC -o "$DIR/std_dirs_alloc_fail" include_path_cache_fail_impl.o util_std_dirs_fail.o \
+    "$DIR/test_std_dirs_alloc_fail.o"
+rm -f include_path_cache_fail_impl.o util_std_dirs_fail.o "$DIR/test_std_dirs_alloc_fail.o"
 # build create_temp_file path length regression test
 $CC -Iinclude -Wall -Wextra -std=c99 -DUNIT_TESTING -ffunction-sections -fdata-sections -c src/compile.c -o compile_temp.o
 $CC -Iinclude -Wall -Wextra -std=c99 -c "$DIR/unit/test_temp_file.c" -o "$DIR/test_temp_file.o"
@@ -573,6 +581,7 @@ rm -f ir_licm.o util_licm.o label_licm.o error_licm.o opt_main_licm.o \
 "$DIR/temp_file_tests"
 "$DIR/compile_obj_fail"
 "$DIR/vc_names_tests"
+"$DIR/std_dirs_alloc_fail"
 "$DIR/preproc_alloc_tests"
 "$DIR/add_macro_fail_tests"
 "$DIR/text_line_fail"
