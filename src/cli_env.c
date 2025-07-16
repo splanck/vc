@@ -25,8 +25,24 @@ int load_vcflags(int *argc, char ***argv, char ***out_argv,
             free(vcbuf);
             return 1;
         }
-        for (char *t = strtok(tmp, " "); t; t = strtok(NULL, " "))
+        char *p = tmp;
+        while (*p) {
+            while (*p == ' ')
+                p++;
+            if (!*p)
+                break;
             vcargc++;
+            if (*p == '\'' || *p == '"') {
+                char q = *p++;
+                while (*p && *p != q)
+                    p++;
+                if (*p)
+                    p++;
+            } else {
+                while (*p && *p != ' ')
+                    p++;
+            }
+        }
         free(tmp);
 
         size_t new_count = (size_t)*argc + vcargc + 1;
@@ -46,8 +62,29 @@ int load_vcflags(int *argc, char ***argv, char ***out_argv,
 
         vcargv[0] = (*argv)[0];
         size_t idx = 1;
-        for (char *t = strtok(vcbuf, " "); t; t = strtok(NULL, " "))
-            vcargv[idx++] = t;
+        char *p2 = vcbuf;
+        while (*p2) {
+            while (*p2 == ' ')
+                p2++;
+            if (!*p2)
+                break;
+            char *start;
+            if (*p2 == '\'' || *p2 == '"') {
+                char q = *p2++;
+                start = p2;
+                while (*p2 && *p2 != q)
+                    p2++;
+                if (*p2)
+                    *p2++ = '\0';
+            } else {
+                start = p2;
+                while (*p2 && *p2 != ' ')
+                    p2++;
+                if (*p2)
+                    *p2++ = '\0';
+            }
+            vcargv[idx++] = start;
+        }
         for (int i = 1; i < *argc; i++)
             vcargv[idx++] = (*argv)[i];
 
