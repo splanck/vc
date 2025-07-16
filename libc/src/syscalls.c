@@ -40,6 +40,7 @@ long _vc_close(int fd)
 
 __attribute__((noreturn, naked)) void _vc_exit(int status)
 {
+    (void)status;
 #ifdef __x86_64__
     __asm__ volatile(
         "mov $60, %rax\n"
