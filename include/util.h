@@ -33,7 +33,11 @@ char *vc_read_file(const char *path);
 /* Convert string to size_t, returning 1 on success */
 int vc_strtoul_size(const char *s, size_t *out);
 
-/* Convert string to unsigned, returning 1 on success */
+/*
+ * Convert string to unsigned, returning 1 on success.
+ *
+ * Negative values are rejected.
+ */
 int vc_strtoul_unsigned(const char *s, unsigned *out);
 
 /* Release a vector of malloc'd strings */

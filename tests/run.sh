@@ -149,6 +149,11 @@ $CC -Iinclude -Wall -Wextra -std=c99 \
 $CC -Iinclude -Wall -Wextra -std=c99 -c "$DIR/unit/test_command_fail.c" -o "$DIR/test_command_fail.o"
 $CC -o "$DIR/command_fail" command_fail.o "$DIR/test_command_fail.o"
 rm -f command_fail.o "$DIR/test_command_fail.o"
+# build vc_strtoul_unsigned negative value rejection test
+$CC -Iinclude -Wall -Wextra -std=c99 -c src/util.c -o util_strtoul_unsigned.o
+$CC -Iinclude -Wall -Wextra -std=c99 -c "$DIR/unit/test_vc_strtoul_unsigned.c" -o "$DIR/test_vc_strtoul_unsigned.o"
+$CC -o "$DIR/vc_strtoul_unsigned" util_strtoul_unsigned.o "$DIR/test_vc_strtoul_unsigned.o"
+rm -f util_strtoul_unsigned.o "$DIR/test_vc_strtoul_unsigned.o"
 # build builtin counter wraparound regression test
 $CC -Iinclude -Wall -Wextra -std=c99 -c src/preproc_builtin.c -o preproc_builtin_wrap.o
 $CC -Iinclude -Wall -Wextra -std=c99 -c src/strbuf.c -o strbuf_wrap.o
@@ -640,6 +645,17 @@ if [ $ret -ne 0 ] || ! grep -q "posix_spawnp cmd arg1 arg2" "$err"; then
     fail=1
 fi
 rm -f "$err" "$DIR/command_fail"
+# regression test for vc_strtoul_unsigned handling
+err=$(mktemp)
+set +e
+"$DIR/vc_strtoul_unsigned" > /dev/null 2> "$err"
+ret=$?
+set -e
+if [ $ret -ne 0 ]; then
+    echo "Test vc_strtoul_unsigned failed"
+    fail=1
+fi
+rm -f "$err" "$DIR/vc_strtoul_unsigned"
 # regression test for collect_funcs overflow handling
 err=$(mktemp)
 set +e
