@@ -3,6 +3,12 @@ set -e
 DIR=$(dirname "$0")
 BINARY="$DIR/../vc"
 
+# build the compiler if it's missing
+if [ ! -x "$BINARY" ]; then
+    echo "Compiler not found, running make"
+    (cd "$DIR/.." && make >/dev/null)
+fi
+
 # check if the host compiler supports 32-bit builds
 set +e
 gcc -m32 -xc /dev/null -o /dev/null 2>/dev/null
