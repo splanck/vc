@@ -333,6 +333,13 @@ fail:
     }
     struct_member_t *members = (struct_member_t *)members_v.data;
     size_t count = members_v.count;
-    return ast_make_struct_decl(tag, members, count, kw->line, kw->column);
+    stmt_t *res = ast_make_struct_decl(tag, members, count,
+                                       kw->line, kw->column);
+    if (!res) {
+        for (size_t i = 0; i < count; i++)
+            free(members[i].name);
+        free(members);
+    }
+    return res;
 }
 
