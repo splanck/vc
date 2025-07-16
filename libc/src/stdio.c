@@ -47,8 +47,10 @@ int printf(const char *fmt, ...)
         if (*p != '%') {
             out[pos++] = *p;
             if (pos == sizeof(out)) {
-                if (flush_buf(out, &pos, &written) < 0)
+                if (flush_buf(out, &pos, &written) < 0) {
+                    va_end(ap);
                     return -1;
+                }
             }
             continue;
         }
@@ -58,14 +60,18 @@ int printf(const char *fmt, ...)
         if (*p == '%') {
             out[pos++] = '%';
             if (pos == sizeof(out)) {
-                if (flush_buf(out, &pos, &written) < 0)
+                if (flush_buf(out, &pos, &written) < 0) {
+                    va_end(ap);
                     return -1;
+                }
             }
             continue;
         }
 
-        if (flush_buf(out, &pos, &written) < 0)
+        if (flush_buf(out, &pos, &written) < 0) {
+            va_end(ap);
             return -1;
+        }
 
         if (*p == 's') {
             const char *s = va_arg(ap, const char *);
