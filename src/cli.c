@@ -52,6 +52,7 @@ static void init_default_opts(cli_options_t *opts)
     opts->free_obj_dir = false;
     opts->free_sysroot = false;
     opts->free_vc_sysinclude = false;
+    opts->vcflags_buf = NULL;
     opts->max_include_depth = DEFAULT_INCLUDE_DEPTH;
     vector_init(&opts->include_dirs, sizeof(char *));
     vector_init(&opts->sources, sizeof(char *));
@@ -73,6 +74,7 @@ void cli_free_opts(cli_options_t *opts)
         free(opts->sysroot);
     if (opts->free_vc_sysinclude)
         free(opts->vc_sysinclude);
+    free(opts->vcflags_buf);
     vector_free(&opts->sources);
     vector_free(&opts->include_dirs);
     vector_free(&opts->defines);
@@ -85,12 +87,10 @@ void cli_free_opts(cli_options_t *opts)
  * Free option structures and any resources allocated for VCFLAGS
  * processing, then signal an error.
  */
-static int cleanup_parse_error(cli_options_t *opts, char **vcflags_argv,
-                               char *vcflags_buf)
+static int cleanup_parse_error(cli_options_t *opts, char **vcflags_argv)
 {
     cli_free_opts(opts);
     free(vcflags_argv);
-    free(vcflags_buf);
     return 1;
 }
 
@@ -106,6 +106,8 @@ int cli_parse_args(int argc, char **argv, cli_options_t *opts)
 
     if (load_vcflags(&argc, &argv, &vcflags_argv, &vcflags_buf))
         return 1;
+
+    opts->vcflags_buf = vcflags_buf;
 
     scan_shortcuts(&argc, argv);
 
@@ -152,30 +154,29 @@ int cli_parse_args(int argc, char **argv, cli_options_t *opts)
     while ((opt = getopt_long(argc, argv, "hvo:O:cD:U:I:L:l:ESf:", long_opts, NULL)) != -1) {
         int ret;
         if ((ret = parse_optimization_opts(opt, optarg, opts)) == 1) {
-            return cleanup_parse_error(opts, vcflags_argv, vcflags_buf);
+            return cleanup_parse_error(opts, vcflags_argv);
         } else if (ret == 0) {
             continue;
         }
 
         if ((ret = parse_io_paths(opt, optarg, opts)) == 1) {
-            return cleanup_parse_error(opts, vcflags_argv, vcflags_buf);
+            return cleanup_parse_error(opts, vcflags_argv);
         } else if (ret == 0) {
             continue;
         }
 
         if ((ret = parse_misc_opts(opt, optarg, argv[0], opts)) == 1) {
-            return cleanup_parse_error(opts, vcflags_argv, vcflags_buf);
+            return cleanup_parse_error(opts, vcflags_argv);
         } else if (ret == 0) {
             continue;
         }
 
         print_usage(argv[0]);
-        return cleanup_parse_error(opts, vcflags_argv, vcflags_buf);
+        return cleanup_parse_error(opts, vcflags_argv);
     }
 
     int ret = finalize_options(argc, argv, argv[0], opts);
     free(vcflags_argv);
-    free(vcflags_buf);
     return ret;
 }
 

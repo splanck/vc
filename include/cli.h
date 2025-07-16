@@ -93,6 +93,7 @@ typedef struct {
     vector_t lib_dirs;     /* additional library search paths */
     vector_t libs;         /* libraries to link against */
     size_t max_include_depth; /* maximum nested includes */
+    char *vcflags_buf;     /* buffer holding VCFLAGS contents */
 } cli_options_t;
 
 /* Parse command line arguments. Returns 0 on success, non-zero on error. */
