@@ -44,22 +44,46 @@ void emit_ptr_diff(strbuf_t *sb, ir_instr_t *ins,
 {
     char b1[32];
     char b2[32];
+    char mem[32];
     const char *sfx = x64 ? "q" : "l";
     int esz = (int)ins->imm;
+    int power_two = esz && !(esz & (esz - 1));
     int shift = 0;
-    while ((esz >>= 1) > 0) shift++;
+    int tmp = esz;
+    while (power_two && (tmp >>= 1) > 0) shift++;
+
+    int dest_spill = (ra && ins->dest > 0 && ra->loc[ins->dest] < 0);
+    const char *dest_reg = dest_spill ? x86_reg_str(SCRATCH_REG, syntax)
+                                      : x86_loc_str(b2, ra, ins->dest, x64, syntax);
+    const char *dest_mem = x86_loc_str(mem, ra, ins->dest, x64, syntax);
+
     x86_emit_mov(sb, sfx,
-                 x86_loc_str(b1, ra, ins->src1, x64, syntax),
-                 x86_loc_str(b2, ra, ins->dest, x64, syntax), syntax);
+                 x86_loc_str(b1, ra, ins->src1, x64, syntax), dest_reg, syntax);
     x86_emit_op(sb, "sub", sfx,
-                x86_loc_str(b1, ra, ins->src2, x64, syntax),
-                x86_loc_str(b2, ra, ins->dest, x64, syntax), syntax);
-    if (syntax == ASM_INTEL)
-        strbuf_appendf(sb, "    sar%s %s, %d\n", sfx,
-                       x86_loc_str(b2, ra, ins->dest, x64, syntax), shift);
-    else
-        strbuf_appendf(sb, "    sar%s $%d, %s\n", sfx, shift,
-                       x86_loc_str(b2, ra, ins->dest, x64, syntax));
+                x86_loc_str(b1, ra, ins->src2, x64, syntax), dest_reg, syntax);
+
+    if (power_two) {
+        if (syntax == ASM_INTEL)
+            strbuf_appendf(sb, "    sar%s %s, %d\n", sfx, dest_reg, shift);
+        else
+            strbuf_appendf(sb, "    sar%s $%d, %s\n", sfx, shift, dest_reg);
+    } else {
+        const char *ax = x86_fmt_reg(x64 ? "%rax" : "%eax", syntax);
+        const char *cx = x86_fmt_reg(x64 ? "%rcx" : "%ecx", syntax);
+        if (strcmp(dest_reg, ax) != 0)
+            x86_emit_mov(sb, sfx, dest_reg, ax, syntax);
+        strbuf_appendf(sb, "    %s\n", x64 ? "cqto" : "cltd");
+        if (syntax == ASM_INTEL)
+            strbuf_appendf(sb, "    mov%s %s, %d\n", sfx, cx, esz);
+        else
+            strbuf_appendf(sb, "    mov%s $%d, %s\n", sfx, esz, cx);
+        strbuf_appendf(sb, "    idiv%s %s\n", sfx, cx);
+        if (strcmp(dest_reg, ax) != 0)
+            x86_emit_mov(sb, sfx, ax, dest_reg, syntax);
+    }
+
+    if (dest_spill)
+        x86_emit_mov(sb, sfx, dest_reg, dest_mem, syntax);
 }
 
 void emit_ptr_arith(strbuf_t *sb, ir_instr_t *ins,
