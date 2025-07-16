@@ -229,6 +229,7 @@ int append_env_paths(const char *env, vector_t *search_dirs)
     char *tmp = vc_strdup(env);
     if (!tmp)
         return 0;
+    size_t start = search_dirs->count;
     char *tok, *sp;
 #if defined(_WIN32)
     const char *sep = ";:";
@@ -241,6 +242,9 @@ int append_env_paths(const char *env, vector_t *search_dirs)
             char *dup = vc_strdup(tok);
             if (!dup || !vector_push(search_dirs, &dup)) {
                 free(dup);
+                for (size_t i = start; i < search_dirs->count; i++)
+                    free(((char **)search_dirs->data)[i]);
+                search_dirs->count = start;
                 free(tmp);
                 return 0;
             }

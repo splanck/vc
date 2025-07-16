@@ -176,6 +176,24 @@ $CC -Iinclude -Wall -Wextra -std=c99 \
 $CC -Iinclude -Wall -Wextra -std=c99 -D_WIN32 \
     -o "$DIR/append_env_paths_semicolon" "$DIR/unit/test_append_env_paths_semicolon.c" \
     src/include_path_cache.c src/preproc_path.c src/vector.c src/util.c
+# build append_env_paths failure test
+$CC -Iinclude -Wall -Wextra -std=c99 -Dvector_push=test_vector_push \
+    -Dmalloc=test_malloc -Dcalloc=test_calloc -Drealloc=test_realloc -Dfree=test_free \
+    -c src/preproc_path.c -o preproc_path_append_fail.o
+$CC -Iinclude -Wall -Wextra -std=c99 -Dmalloc=test_malloc -Dcalloc=test_calloc -Drealloc=test_realloc -Dfree=test_free \
+    -c src/include_path_cache.c -o include_path_cache_append_fail.o
+$CC -Iinclude -Wall -Wextra -std=c99 -Dmalloc=test_malloc -Dcalloc=test_calloc -Drealloc=test_realloc -Dfree=test_free \
+    -c src/vector.c -o vector_append_fail.o
+$CC -Iinclude -Wall -Wextra -std=c99 -DUNIT_TESTING -DNO_VECTOR_FREE_STUB \
+    -Dmalloc=test_malloc -Dcalloc=test_calloc -Drealloc=test_realloc -Dfree=test_free \
+    -c src/util.c -o util_append_fail.o
+$CC -Iinclude -Wall -Wextra -std=c99 -Dvector_push=test_vector_push \
+    -Dmalloc=test_malloc -Dcalloc=test_calloc -Drealloc=test_realloc -Dfree=test_free \
+    -c "$DIR/unit/test_append_env_paths_fail.c" -o "$DIR/test_append_env_paths_fail.o"
+$CC -o "$DIR/append_env_paths_fail" preproc_path_append_fail.o include_path_cache_append_fail.o \
+    vector_append_fail.o util_append_fail.o "$DIR/test_append_env_paths_fail.o"
+rm -f preproc_path_append_fail.o include_path_cache_append_fail.o vector_append_fail.o util_append_fail.o \
+      "$DIR/test_append_env_paths_fail.o"
 # build invalid macro parse test
 $CC -Iinclude -Wall -Wextra -std=c99 -c "$DIR/unit/test_invalid_macro.c" -o "$DIR/test_invalid_macro.o"
 $CC -Iinclude -Wall -Wextra -std=c99 -c src/vector.c -o vector_invalid.o
@@ -551,6 +569,7 @@ rm -f ir_licm.o util_licm.o label_licm.o error_licm.o opt_main_licm.o \
 "$DIR/waitpid_retry"
 "$DIR/append_env_paths_colon"
 "$DIR/append_env_paths_semicolon"
+"$DIR/append_env_paths_fail"
 "$DIR/temp_file_tests"
 "$DIR/compile_obj_fail"
 "$DIR/vc_names_tests"
