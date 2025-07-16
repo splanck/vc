@@ -12,6 +12,7 @@
  */
 
 #include <stdlib.h>
+#include <stdint.h>
 #include "ast_clone.h"
 #include "ast_expr.h"
 #include "util.h"
@@ -187,6 +188,8 @@ static expr_t *clone_offsetof(const expr_t *expr)
     size_t n = expr->data.offsetof_expr.member_count;
     char **members = NULL;
     if (n) {
+        if (n > SIZE_MAX / sizeof(char *))
+            return NULL;
         members = malloc(n * sizeof(char *));
         if (!members)
             return NULL;
