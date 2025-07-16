@@ -54,10 +54,23 @@ static void test_large_constants(void)
     vector_free(&macros);
 }
 
+static void test_shift_clamp(void)
+{
+    vector_t macros; vector_init(&macros, sizeof(macro_t));
+
+    ASSERT(eval_expr("1 << 70", &macros) == (long long)(1ULL << 63));
+    ASSERT(eval_expr("8 >> 70", &macros) == 0);
+    ASSERT(eval_expr("1 << -1", &macros) == 1);
+    ASSERT(eval_expr("8 >> -2", &macros) == 8);
+
+    vector_free(&macros);
+}
+
 int main(void)
 {
     test_features_expr();
     test_large_constants();
+    test_shift_clamp();
     if (failures == 0)
         printf("All preproc_expr tests passed\n");
     else
