@@ -33,6 +33,11 @@ vc_obj_name(const char *source)
     const char *dot = strrchr(base, '.');
     size_t len = dot ? (size_t)(dot - base) : strlen(base);
 
+    if (len > SIZE_MAX - 3) {
+        fprintf(stderr, "vc: object filename too long\n");
+        return NULL;
+    }
+
     char *obj = malloc(len + 3);
     if (!obj)
         return NULL;
@@ -53,6 +58,12 @@ static char *vc_dep_name(const char *target)
     base = base ? base + 1 : target;
     const char *dot = strrchr(base, '.');
     size_t len = dot ? (size_t)(dot - base) : strlen(base);
+
+    if (len > SIZE_MAX - 3) {
+        fprintf(stderr, "vc: dependency filename too long\n");
+        return NULL;
+    }
+
     char *dep = malloc(len + 3);
     if (!dep)
         return NULL;
