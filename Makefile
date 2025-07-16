@@ -8,7 +8,7 @@ GCC_INCLUDE_DIR := $(shell $(CC) -print-file-name=include | tr -d '\n')
 BIN = vc
 # The resulting binary accepts -c/--compile to assemble objects using cc
 # Core compiler sources
-CORE_SRC = src/main.c src/compile.c src/compile_stage.c src/compile_link.c src/compile_tokenize.c src/compile_parse.c src/compile_output.c src/startup.c src/command.c src/cli.c src/cli_env.c src/cli_opts.c src/lexer.c src/lexer_ident.c src/lexer_scan_numeric.c src/ast_expr.c src/ast_expr_binary.c src/ast_expr_literal.c src/ast_expr_control.c src/ast_expr_type.c src/ast_stmt_create.c src/ast_stmt_free.c src/ast_clone.c src/parser_core.c src/parser_toplevel.c src/parser_toplevel_func.c src/parser_toplevel_var.c src/symtable_core.c src/symtable_globals.c src/symtable_struct.c src/parser_expr.c src/parser_expr_primary.c src/parser_expr_binary.c src/parser_expr_ops.c src/parser_expr_literal.c src/parser_init.c \
+CORE_SRC = src/main.c src/compile.c src/compile_stage.c src/compile_link.c src/compile_tokenize.c src/compile_parse.c src/compile_output.c src/compile_optimize.c src/startup.c src/command.c src/cli.c src/cli_env.c src/cli_opts.c src/lexer.c src/lexer_ident.c src/lexer_scan_numeric.c src/ast_expr.c src/ast_expr_binary.c src/ast_expr_literal.c src/ast_expr_control.c src/ast_expr_type.c src/ast_stmt_create.c src/ast_stmt_free.c src/ast_clone.c src/parser_core.c src/parser_toplevel.c src/parser_toplevel_func.c src/parser_toplevel_var.c src/symtable_core.c src/symtable_globals.c src/symtable_struct.c src/parser_expr.c src/parser_expr_primary.c src/parser_expr_binary.c src/parser_expr_ops.c src/parser_expr_literal.c src/parser_init.c \
            src/parser_decl_var.c src/parser_decl_struct.c src/parser_decl_enum.c \
            src/parser_flow.c src/parser_stmt.c src/parser_types.c \
            src/semantic_expr.c src/semantic_expr_const.c src/semantic_expr_cast.c \
@@ -35,7 +35,7 @@ HDR = include/token.h include/token_names.h include/ast.h include/ast_clone.h in
     include/ir_core.h include/ir_const.h include/ir_memory.h include/ir_control.h include/ir_builder.h include/ir_global.h include/ir_dump.h include/ast_dump.h include/opt.h include/codegen.h include/codegen_mem.h include/codegen_loadstore.h include/codegen_arith.h include/codegen_arith_int.h include/codegen_arith_float.h include/codegen_branch.h include/strbuf.h \
     include/util.h include/command.h include/cli.h include/vector.h include/regalloc_x86.h include/label.h include/error.h include/lexer_internal.h \
     include/opt_inline_helpers.h \
-    include/preproc.h include/preproc_file.h include/preproc_macros.h include/preproc_includes.h include/preproc_expr.h include/preproc_expr_parse.h include/preproc_expr_lex.h include/preproc_cond.h include/preproc_path.h include/preproc_utils.h include/preproc_macro_utils.h include/preproc_paste.h include/parser_types.h include/parser_core.h include/startup.h include/compile_stage.h
+    include/preproc.h include/preproc_file.h include/preproc_macros.h include/preproc_includes.h include/preproc_expr.h include/preproc_expr_parse.h include/preproc_expr_lex.h include/preproc_cond.h include/preproc_path.h include/preproc_utils.h include/preproc_macro_utils.h include/preproc_paste.h include/parser_types.h include/parser_core.h include/startup.h include/compile_stage.h include/compile_optimize.h
 PREFIX ?= /usr/local
 INCLUDEDIR ?= $(PREFIX)/include/vc
 MANDIR ?= $(PREFIX)/share/man
@@ -85,6 +85,8 @@ src/compile_parse.o: src/compile_parse.c $(HDR)
 	$(CC) $(CFLAGS) $(OPTFLAGS) -Iinclude -c src/compile_parse.c -o src/compile_parse.o
 src/compile_output.o: src/compile_output.c $(HDR)
 	$(CC) $(CFLAGS) $(OPTFLAGS) -Iinclude -c src/compile_output.c -o src/compile_output.o
+src/compile_optimize.o: src/compile_optimize.c $(HDR)
+	$(CC) $(CFLAGS) $(OPTFLAGS) -Iinclude -c src/compile_optimize.c -o src/compile_optimize.o
 src/command.o: src/command.c $(HDR)
 	$(CC) $(CFLAGS) $(OPTFLAGS) -Iinclude -c src/command.c -o src/command.o
 
