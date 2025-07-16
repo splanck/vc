@@ -32,16 +32,29 @@ int load_vcflags(int *argc, char ***argv, char ***out_argv,
             if (!*p)
                 break;
             vcargc++;
-            if (*p == '\'' || *p == '"') {
-                char q = *p++;
-                while (*p && *p != q)
+            int in_quote = 0;
+            char q = '\0';
+            while (*p) {
+                if (*p == '\\' && p[1]) {
+                    p += 2;
+                    continue;
+                }
+                if (!in_quote && (*p == '\'' || *p == '"')) {
+                    in_quote = 1;
+                    q = *p++;
+                    continue;
+                }
+                if (in_quote && *p == q) {
+                    in_quote = 0;
                     p++;
-                if (*p)
-                    p++;
-            } else {
-                while (*p && *p != ' ')
-                    p++;
+                    continue;
+                }
+                if (!in_quote && *p == ' ')
+                    break;
+                p++;
             }
+            while (*p && *p != ' ')
+                p++;
         }
         free(tmp);
 
@@ -68,22 +81,39 @@ int load_vcflags(int *argc, char ***argv, char ***out_argv,
                 p2++;
             if (!*p2)
                 break;
-            char *start;
-            if (*p2 == '\'' || *p2 == '"') {
-                char q = *p2++;
-                start = p2;
-                while (*p2 && *p2 != q)
+            char *start = p2;
+            char *dst = p2;
+            int in_quote = 0;
+            char q = '\0';
+            char delim = '\0';
+            while (*p2) {
+                if (*p2 == '\\' && p2[1]) {
                     p2++;
-                if (*p2)
-                    *p2++ = '\0';
-            } else {
-                start = p2;
-                while (*p2 && *p2 != ' ')
+                    *dst++ = *p2++;
+                    continue;
+                }
+                if (!in_quote && (*p2 == '\'' || *p2 == '"')) {
+                    in_quote = 1;
+                    q = *p2++;
+                    continue;
+                }
+                if (in_quote && *p2 == q) {
+                    in_quote = 0;
                     p2++;
-                if (*p2)
-                    *p2++ = '\0';
+                    continue;
+                }
+                if (!in_quote && *p2 == ' ') {
+                    delim = *p2;
+                    break;
+                }
+                *dst++ = *p2++;
             }
+            *dst = '\0';
             vcargv[idx++] = start;
+            if (delim)
+                p2++; /* skip delimiter */
+            while (*p2 == ' ')
+                p2++;
         }
         for (int i = 1; i < *argc; i++)
             vcargv[idx++] = (*argv)[i];
