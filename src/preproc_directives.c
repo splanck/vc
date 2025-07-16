@@ -243,7 +243,13 @@ int handle_pragma_directive(char *line, const char *dir, vector_t *macros,
                 errno = 0;
                 char *end;
                 long val = strtol(p, &end, 10);
-                if (errno == 0 && end != p) {
+                int valid = errno != ERANGE && end != p && val > 0 &&
+                            (unsigned long long)val <= (unsigned long long)SIZE_MAX;
+                if (!valid) {
+                    const char *file = ctx->current_file ? ctx->current_file : "";
+                    fprintf(stderr, "%s:%zu: Invalid #pragma pack value\n",
+                            file, preproc_get_line(ctx));
+                } else {
                     p = end;
                     p = skip_ws(p);
                     if (*p == ')') {
