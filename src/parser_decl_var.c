@@ -285,6 +285,15 @@ stmt_t *parser_parse_var_decl(parser_t *p)
                                     tag_name, NULL, 0,
                                     kw_tok->line, kw_tok->column);
     if (!res) {
+        ast_free_expr(size_expr);
+        ast_free_expr(align_expr);
+        ast_free_expr(init);
+        for (size_t i = 0; i < init_count; i++) {
+            ast_free_expr(init_list[i].index);
+            ast_free_expr(init_list[i].value);
+            free(init_list[i].field);
+        }
+        free(init_list);
         free(tag_name);
         free(param_types);
     } else {
