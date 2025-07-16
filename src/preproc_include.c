@@ -95,6 +95,7 @@ static int process_include_file(const char *fname, const char *chosen,
 {
     vector_t subconds;
     vector_init(&subconds, sizeof(cond_state_t));
+    (void)fname; /* unused */
     int ok = 1;
     if (is_active(conds)) {
         if (!chosen) {
