@@ -848,6 +848,18 @@ if [ ! -f "$dep_src" ] || ! grep -q "val.h" "$dep_src"; then
 fi
 rm -f "$dep_src"
 
+# dependency generation with spaces in path
+space_dir=$(mktemp -d)
+cp "$DIR/fixtures/include_search.c" "$space_dir/file with space.c"
+"$BINARY" -MD -c -I "$DIR/includes" -o "$space_dir/out.o" "$space_dir/file with space.c"
+dep_file="out.d"
+if [ ! -f "$dep_file" ] || ! grep -Fq "file\\ with\\ space.c" "$dep_file"; then
+    echo "Test dep_space_path failed"
+    fail=1
+fi
+rm -f "$dep_file" "$space_dir/out.o"
+rm -rf "$space_dir"
+
 # test --std option
 std_out=$(mktemp)
 "$BINARY" --std=gnu99 -o "${std_out}" "$DIR/fixtures/simple_add.c"

@@ -61,6 +61,28 @@ static char *vc_dep_name(const char *target)
     return dep;
 }
 
+static int
+fputs_make_escaped(FILE *f, const char *s)
+{
+    for (; *s; s++) {
+        switch (*s) {
+        case ' ':
+        case '\t':
+        case '#':
+        case '$':
+        case '\\':
+            if (fputc('\\', f) == EOF)
+                return 0;
+            break;
+        default:
+            break;
+        }
+        if (fputc(*s, f) == EOF)
+            return 0;
+    }
+    return 1;
+}
+
 int write_dep_file(const char *target, const vector_t *deps)
 {
     char *dep = vc_dep_name(target);
@@ -74,11 +96,19 @@ int write_dep_file(const char *target, const vector_t *deps)
         free(dep);
         return 0;
     }
-    fprintf(f, "%s:", target);
-    for (size_t i = 0; i < deps->count; i++)
-        fprintf(f, " %s", ((const char **)deps->data)[i]);
-    fprintf(f, "\n");
-    int ok = (fclose(f) == 0);
+    int ok = fputs_make_escaped(f, target);
+    if (ok)
+        ok = (fputc(':', f) != EOF);
+    for (size_t i = 0; i < deps->count && ok; i++) {
+        if (fputc(' ', f) == EOF)
+            ok = 0;
+        else
+            ok = fputs_make_escaped(f, ((const char **)deps->data)[i]);
+    }
+    if (ok)
+        ok = (fputc('\n', f) != EOF);
+    if (fclose(f) != 0)
+        ok = 0;
     if (!ok)
         perror(dep);
     free(dep);
