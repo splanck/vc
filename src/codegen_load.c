@@ -10,6 +10,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <errno.h>
 #include <string.h>
 #include "codegen_loadstore.h"
 #include "regalloc_x86.h"
@@ -20,17 +21,21 @@ static const char *fmt_stack(char buf[32], const char *name, int x64,
 {
     if (strncmp(name, "stack:", 6) != 0)
         return name;
-    int off = atoi(name + 6);
+    char *end;
+    errno = 0;
+    long off = strtol(name + 6, &end, 10);
+    if (errno || *end != '\0')
+        off = 0;
     if (x64) {
         if (syntax == ASM_INTEL)
-            snprintf(buf, 32, "[rbp-%d]", off);
+            snprintf(buf, 32, "[rbp-%d]", (int)off);
         else
-            snprintf(buf, 32, "-%d(%%rbp)", off);
+            snprintf(buf, 32, "-%d(%%rbp)", (int)off);
     } else {
         if (syntax == ASM_INTEL)
-            snprintf(buf, 32, "[ebp-%d]", off);
+            snprintf(buf, 32, "[ebp-%d]", (int)off);
         else
-            snprintf(buf, 32, "-%d(%%ebp)", off);
+            snprintf(buf, 32, "-%d(%%ebp)", (int)off);
     }
     return buf;
 }
