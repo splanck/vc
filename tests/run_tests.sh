@@ -3,24 +3,20 @@ set -e
 DIR=$(dirname "$0")
 BINARY="$DIR/../vc"
 
-# build the compiler if it's missing
-if [ ! -x "$BINARY" ]; then
-    echo "Compiler not found, running make"
-    (cd "$DIR/.." && make >/dev/null)
-fi
+# import shared helpers
+. "$DIR/helpers.sh"
 
-# check if the host compiler supports 32-bit builds
-set +e
-gcc -m32 -xc /dev/null -o /dev/null 2>/dev/null
-CAN_COMPILE_32=$?
-set -e
+ensure_compiler
+check_can_compile_32
 if [ $CAN_COMPILE_32 -ne 0 ]; then
     echo "Notice: 32-bit compilation not available, skipping 32-bit libc test"
 fi
 
 fail=0
 # ensure internal libc archive is available for tests
-make -s -C "$DIR/../libc" >/dev/null
+ensure_libc
+
+# build the compiler if it's missing (legacy section removed)
 # ensure host headers are not used
 NO_SYSROOT="$DIR/empty_sysroot"
 export VCFLAGS="--sysroot=$NO_SYSROOT"
@@ -33,165 +29,54 @@ for cfile in "$DIR"/fixtures/*.c; do
         *_x86-64|struct_*|bitfield_rw|include_search|include_angle|include_env|macro_bad_define|preproc_blank|macro_cli|macro_cli_quote|include_once|include_once_link|include_next|include_next_quote|libm_program|union_example|varargs_double|include_stdio|libc_puts|libc_printf|local_program|local_assign|libc_fileio|libc_short_write)
             continue;;
     esac
-    expect="$DIR/fixtures/$base.s"
-    out=$(mktemp)
-    echo "Running fixture $base"
-    if grep -Eq '\-[0-9]+\(%(e|r)bp\)|\[(e|r)bp-' "$expect"; then
-        "$BINARY" -o "${out}" "$cfile"
-    else
-        VC_NAMED_LOCALS=1 "$BINARY" -o "${out}" "$cfile"
-    fi
-    if ! diff -u "$expect" "${out}"; then
-        echo "Test $base failed"
-        fail=1
-    fi
-    rm -f "${out}"
+    compile_fixture "$cfile" "$DIR/fixtures/$base.s"
 done
 
 # run struct fixtures separately to ensure struct member access and assignment
 for cfile in "$DIR"/fixtures/struct_*.c; do
     [ -e "$cfile" ] || continue
     base=$(basename "$cfile" .c)
-    expect="$DIR/fixtures/$base.s"
-    out=$(mktemp)
-    echo "Running fixture $base"
-    if grep -Eq '\-[0-9]+\(%(e|r)bp\)|\[(e|r)bp-' "$expect"; then
-        "$BINARY" -o "${out}" "$cfile"
-    else
-        VC_NAMED_LOCALS=1 "$BINARY" -o "${out}" "$cfile"
-    fi
-    if ! diff -u "$expect" "${out}"; then
-        echo "Test $base failed"
-        fail=1
-    fi
-    rm -f "${out}"
+    compile_fixture "$cfile" "$DIR/fixtures/$base.s"
 done
 
 # verify -O0 disables all optimizations for selected fixtures
 for o0asm in "$DIR"/fixtures/*_O0.s; do
     base=$(basename "$o0asm" _O0.s)
     cfile="$DIR/fixtures/$base.c"
-    out=$(mktemp)
-    if grep -Eq '\-[0-9]+\(%(e|r)bp\)|\[(e|r)bp-' "$o0asm"; then
-        "$BINARY" -O0 -o "${out}" "$cfile"
-    else
-        VC_NAMED_LOCALS=1 "$BINARY" -O0 -o "${out}" "$cfile"
-    fi
-    if ! diff -u "$o0asm" "${out}"; then
-        echo "Test O0_$base failed"
-        fail=1
-    fi
-    rm -f "${out}"
+    compile_fixture "$cfile" "$o0asm" -O0
 done
 
 # verify 64-bit code generation for selected fixtures
 for asm64 in "$DIR"/fixtures/*_x86-64.s; do
     base=$(basename "$asm64" _x86-64.s)
     cfile="$DIR/fixtures/$base.c"
-    out=$(mktemp)
-    if grep -Eq '\-[0-9]+\(%(e|r)bp\)|\[(e|r)bp-' "$asm64"; then
-        "$BINARY" --x86-64 -o "${out}" "$cfile"
-    else
-        VC_NAMED_LOCALS=1 "$BINARY" --x86-64 -o "${out}" "$cfile"
-    fi
-    if ! diff -u "$asm64" "${out}"; then
-        echo "Test x86_64_$base failed"
-        fail=1
-    fi
-    rm -f "${out}"
+    compile_fixture "$cfile" "$asm64" --x86-64
 done
 
 # verify Intel syntax assembly for simple_add.c
-intel_out=$(mktemp)
-if grep -Eq '\-[0-9]+\(%(e|r)bp\)|\[(e|r)bp-' "$DIR/fixtures/simple_add_intel.s"; then
-    "$BINARY" --intel-syntax -o "${intel_out}" "$DIR/fixtures/simple_add.c"
-else
-    VC_NAMED_LOCALS=1 "$BINARY" --intel-syntax -o "${intel_out}" "$DIR/fixtures/simple_add.c"
-fi
-if ! diff -u "$DIR/fixtures/simple_add_intel.s" "${intel_out}"; then
-    echo "Test intel_simple_add failed"
-    fail=1
-fi
-rm -f "${intel_out}"
+compile_fixture "$DIR/fixtures/simple_add.c" "$DIR/fixtures/simple_add_intel.s" --intel-syntax
 
 # additional Intel syntax fixtures
-intel_out=$(mktemp)
-if grep -Eq '\-[0-9]+\(%(e|r)bp\)|\[(e|r)bp-' "$DIR/fixtures/pointer_add_intel.s"; then
-    "$BINARY" --intel-syntax -o "${intel_out}" "$DIR/fixtures/pointer_add.c"
-else
-    VC_NAMED_LOCALS=1 "$BINARY" --intel-syntax -o "${intel_out}" "$DIR/fixtures/pointer_add.c"
-fi
-if ! diff -u "$DIR/fixtures/pointer_add_intel.s" "${intel_out}"; then
-    echo "Test intel_pointer_add failed"
-    fail=1
-fi
-rm -f "${intel_out}"
-
-intel_out=$(mktemp)
-if grep -Eq '\-[0-9]+\(%(e|r)bp\)|\[(e|r)bp-' "$DIR/fixtures/while_loop_intel.s"; then
-    "$BINARY" --intel-syntax -o "${intel_out}" "$DIR/fixtures/while_loop.c"
-else
-    VC_NAMED_LOCALS=1 "$BINARY" --intel-syntax -o "${intel_out}" "$DIR/fixtures/while_loop.c"
-fi
-if ! diff -u "$DIR/fixtures/while_loop_intel.s" "${intel_out}"; then
-    echo "Test intel_while_loop failed"
-    fail=1
-fi
-rm -f "${intel_out}"
+compile_fixture "$DIR/fixtures/pointer_add.c" "$DIR/fixtures/pointer_add_intel.s" --intel-syntax
+compile_fixture "$DIR/fixtures/while_loop.c" "$DIR/fixtures/while_loop_intel.s" --intel-syntax
 
 # verify include search path option
-inc_out=$(mktemp)
-"$BINARY" -I "$DIR/includes" -o "${inc_out}" "$DIR/fixtures/include_search.c"
-if ! diff -u "$DIR/fixtures/include_search.s" "${inc_out}"; then
-    echo "Test include_search failed"
-    fail=1
-fi
-rm -f "${inc_out}"
+compile_fixture "$DIR/fixtures/include_search.c" "$DIR/fixtures/include_search.s" -I "$DIR/includes"
 
 # verify angle-bracket include search
-angle_out=$(mktemp)
-"$BINARY" -I "$DIR/includes" -o "${angle_out}" "$DIR/fixtures/include_angle.c"
-if ! diff -u "$DIR/fixtures/include_angle.s" "${angle_out}"; then
-    echo "Test include_angle failed"
-    fail=1
-fi
-rm -f "${angle_out}"
+compile_fixture "$DIR/fixtures/include_angle.c" "$DIR/fixtures/include_angle.s" -I "$DIR/includes"
 
 # verify VCPATH include search
-env_out=$(mktemp)
-VCPATH="$DIR/includes" "$BINARY" -o "${env_out}" "$DIR/fixtures/include_env.c"
-if ! diff -u "$DIR/fixtures/include_env.s" "${env_out}"; then
-    echo "Test include_env failed"
-    fail=1
-fi
-rm -f "${env_out}"
+VCPATH="$DIR/includes" compile_fixture "$DIR/fixtures/include_env.c" "$DIR/fixtures/include_env.s"
 
 # verify VCINC include search
-inc_env_out=$(mktemp)
-VCINC="$DIR/includes" "$BINARY" -o "${inc_env_out}" "$DIR/fixtures/include_search.c"
-if ! diff -u "$DIR/fixtures/include_search.s" "${inc_env_out}"; then
-    echo "Test include_vcinc failed"
-    fail=1
-fi
-rm -f "${inc_env_out}"
+VCINC="$DIR/includes" compile_fixture "$DIR/fixtures/include_search.c" "$DIR/fixtures/include_search.s"
 
 # verify CPATH include search
-cpath_out=$(mktemp)
-CPATH="$DIR/includes" "$BINARY" -o "${cpath_out}" "$DIR/fixtures/include_search.c"
-if ! diff -u "$DIR/fixtures/include_search.s" "${cpath_out}"; then
-    echo "Test include_cpath failed"
-    fail=1
-fi
-rm -f "${cpath_out}"
+CPATH="$DIR/includes" compile_fixture "$DIR/fixtures/include_search.c" "$DIR/fixtures/include_search.s"
 
 # verify C_INCLUDE_PATH include search
-cinc_out=$(mktemp)
-C_INCLUDE_PATH="$DIR/includes" "$BINARY" -o "${cinc_out}" "$DIR/fixtures/include_env.c"
-if ! diff -u "$DIR/fixtures/include_env.s" "${cinc_out}"; then
-    echo "Test include_c_include_path failed"
-    fail=1
-fi
-rm -f "${cinc_out}"
+C_INCLUDE_PATH="$DIR/includes" compile_fixture "$DIR/fixtures/include_env.c" "$DIR/fixtures/include_env.s"
 
 # verify verbose include resolution with internal libc
 err=$(mktemp)
@@ -203,57 +88,21 @@ fi
 rm -f "$err"
 
 # verify VCFLAGS options are parsed
-vcflags_out=$(mktemp)
-VCFLAGS="--x86-64 --sysroot=$NO_SYSROOT" "$BINARY" -o "${vcflags_out}" "$DIR/fixtures/simple_add.c"
-if ! diff -u "$DIR/fixtures/simple_add_x86-64.s" "${vcflags_out}"; then
-    echo "Test vcflags_x86_64 failed"
-    fail=1
-fi
-rm -f "${vcflags_out}"
+VCFLAGS="--x86-64 --sysroot=$NO_SYSROOT" compile_fixture "$DIR/fixtures/simple_add.c" "$DIR/fixtures/simple_add_x86-64.s"
 
-vcflags_out=$(mktemp)
-VCFLAGS="--intel-syntax --sysroot=$NO_SYSROOT" "$BINARY" -o "${vcflags_out}" "$DIR/fixtures/pointer_add.c"
-if ! diff -u "$DIR/fixtures/pointer_add_intel.s" "${vcflags_out}"; then
-    echo "Test vcflags_intel failed"
-    fail=1
-fi
-rm -f "${vcflags_out}"
+VCFLAGS="--intel-syntax --sysroot=$NO_SYSROOT" compile_fixture "$DIR/fixtures/pointer_add.c" "$DIR/fixtures/pointer_add_intel.s"
 
 # verify #include_next directive
-next_out=$(mktemp)
-"$BINARY" -I "$DIR/include_next/dir1" -I "$DIR/include_next/dir2" -I "$DIR/include_next/dir3" -o "${next_out}" "$DIR/fixtures/include_next.c"
-if ! diff -u "$DIR/fixtures/include_next.s" "${next_out}"; then
-    echo "Test include_next failed"
-    fail=1
-fi
-rm -f "${next_out}"
+compile_fixture "$DIR/fixtures/include_next.c" "$DIR/fixtures/include_next.s" -I "$DIR/include_next/dir1" -I "$DIR/include_next/dir2" -I "$DIR/include_next/dir3"
 
 # verify quoted #include_next directive
-next_quote_out=$(mktemp)
-"$BINARY" -I "$DIR/include_next_quote/dir1" -I "$DIR/include_next_quote/dir2" -I "$DIR/include_next_quote/dir3" -o "${next_quote_out}" "$DIR/fixtures/include_next_quote.c"
-if ! diff -u "$DIR/fixtures/include_next_quote.s" "${next_quote_out}"; then
-    echo "Test include_next_quote failed"
-    fail=1
-fi
-rm -f "${next_quote_out}"
+compile_fixture "$DIR/fixtures/include_next_quote.c" "$DIR/fixtures/include_next_quote.s" -I "$DIR/include_next_quote/dir1" -I "$DIR/include_next_quote/dir2" -I "$DIR/include_next_quote/dir3"
 
 # verify command-line macro definitions
-macro_out=$(mktemp)
-"$BINARY" -DVAL=4 -DFLAG -o "${macro_out}" "$DIR/fixtures/macro_cli.c"
-if ! diff -u "$DIR/fixtures/macro_cli.s" "${macro_out}"; then
-    echo "Test define_option failed"
-    fail=1
-fi
-rm -f "${macro_out}"
+compile_fixture "$DIR/fixtures/macro_cli.c" "$DIR/fixtures/macro_cli.s" -DVAL=4 -DFLAG
 
 # verify command-line macro undefinition
-macro_u_out=$(mktemp)
-"$BINARY" -DFLAG -UFLAG -o "${macro_u_out}" "$DIR/fixtures/macro_cli_undef.c"
-if ! diff -u "$DIR/fixtures/macro_cli_undef.s" "${macro_u_out}"; then
-    echo "Test undef_option failed"
-    fail=1
-fi
-rm -f "${macro_u_out}"
+compile_fixture "$DIR/fixtures/macro_cli_undef.c" "$DIR/fixtures/macro_cli_undef.s" -DFLAG -UFLAG
 
 # verify quoted macro values are unquoted
 macro_quote=$(mktemp)
