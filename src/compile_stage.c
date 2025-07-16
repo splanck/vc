@@ -18,6 +18,7 @@
 #include "ast_dump.h"
 #include "opt.h"
 #include "codegen.h"
+#include "compile_optimize.h"
 #include "label.h"
 #include "preproc.h"
 #include "command.h"
@@ -44,7 +45,6 @@ static int compile_semantic_impl(func_t **func_list, size_t fcount,
                                  stmt_t **glob_list, size_t gcount,
                                  symtable_t *funcs, symtable_t *globals,
                                  ir_builder_t *ir);
-static int compile_optimize_impl(ir_builder_t *ir, const opt_config_t *cfg);
 int compile_output_impl(ir_builder_t *ir, const char *output,
                         int dump_ir, int dump_asm, int use_x86_64,
                         int compile, const cli_options_t *cli);
@@ -144,13 +144,6 @@ static int compile_semantic_impl(func_t **func_list, size_t fcount,
         ok = check_function_defs(func_list, fcount, funcs, globals, ir);
 
     return ok;
-}
-
-static int compile_optimize_impl(ir_builder_t *ir, const opt_config_t *cfg)
-{
-    if (cfg)
-        opt_run(ir, cfg);
-    return 1;
 }
 
 /* --- Context management ----------------------------------------------- */
@@ -321,12 +314,67 @@ static int run_output(compile_context_t *ctx, const char *output,
                                 cli->use_x86_64, compile_obj, cli);
 }
 
+/* --- Pipeline table --------------------------------------------------- */
+
+typedef int (*stage_fn)(compile_context_t *ctx, const char *source,
+                        const char *output, int compile_obj,
+                        const cli_options_t *cli);
+
+static int stage_tokenize(compile_context_t *ctx, const char *source,
+                          const char *output, int compile_obj,
+                          const cli_options_t *cli)
+{
+    (void)output; (void)compile_obj;
+    return run_tokenize(ctx, source, cli);
+}
+
+static int stage_parse(compile_context_t *ctx, const char *source,
+                       const char *output, int compile_obj,
+                       const cli_options_t *cli)
+{
+    (void)source; (void)output; (void)compile_obj;
+    return run_parse(ctx, cli);
+}
+
+static int stage_semantic(compile_context_t *ctx, const char *source,
+                          const char *output, int compile_obj,
+                          const cli_options_t *cli)
+{
+    (void)source; (void)output; (void)compile_obj;
+    return run_semantic(ctx, cli);
+}
+
+static int stage_optimize_cb(compile_context_t *ctx, const char *source,
+                             const char *output, int compile_obj,
+                             const cli_options_t *cli)
+{
+    (void)source; (void)output; (void)compile_obj;
+    return run_optimize(ctx, cli);
+}
+
+static int stage_codegen(compile_context_t *ctx, const char *source,
+                         const char *output, int compile_obj,
+                         const cli_options_t *cli)
+{
+    (void)source;
+    return run_output(ctx, output, compile_obj, cli);
+}
+
+typedef struct compile_stage_entry {
+    const char *name;
+    stage_fn     fn;
+} compile_stage_entry_t;
+
+static const compile_stage_entry_t pipeline[] = {
+    {"tokenize",  stage_tokenize},
+    {"parse",     stage_parse},
+    {"semantic",  stage_semantic},
+    {"optimize",  stage_optimize_cb},
+    {"codegen",   stage_codegen},
+    {NULL, NULL}
+};
+
 /* --- Public API ------------------------------------------------------- */
-/*
- * compile_pipeline orchestrates the full compilation process:
- * tokenization, parsing, semantic analysis, optimization and
- * final output generation.
- */
 int compile_pipeline(const char *source, const cli_options_t *cli,
                      const char *output, int compile_obj)
 {
@@ -335,21 +383,13 @@ int compile_pipeline(const char *source, const cli_options_t *cli,
 
     init_compile_context(&ctx, source, cli);
 
-    ok = run_tokenize(&ctx, source, cli);
-    if (ok)
-        ok = run_parse(&ctx, cli);
-    if (ok)
-        ok = run_semantic(&ctx, cli);
-    if (ok)
-        ok = run_optimize(&ctx, cli);
-    if (ok)
-        ok = run_output(&ctx, output, compile_obj, cli);
+    for (const compile_stage_entry_t *s = pipeline; s->fn && ok; s++)
+        ok = s->fn(&ctx, source, output, compile_obj, cli);
 
     if (ok && cli->deps)
         ok = write_dep_file(output ? output : source, &ctx.deps);
 
     finalize_compile_context(&ctx);
-
     return ok;
 }
 
