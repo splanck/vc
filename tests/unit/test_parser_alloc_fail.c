@@ -34,9 +34,20 @@ static void test_param_alloc_fail(void)
     lexer_free_tokens(toks, count);
 }
 
+static void test_token_alloc_fail(void)
+{
+    const char *src = "int x;";
+    size_t count = 0;
+    fail_push = 1;
+    token_t *toks = lexer_tokenize(src, &count);
+    ASSERT(toks == NULL);
+    fail_push = 0;
+}
+
 int main(void)
 {
     test_param_alloc_fail();
+    test_token_alloc_fail();
     if (failures == 0)
         printf("All parser alloc tests passed\n");
     else

@@ -63,8 +63,8 @@ static token_type_t lookup_keyword(const char *str, size_t len)
     return TOK_IDENT;
 }
 
-static void read_identifier(const char *src, size_t *i, size_t *col,
-                            vector_t *tokens, size_t line)
+static int read_identifier(const char *src, size_t *i, size_t *col,
+                           vector_t *tokens, size_t line)
 {
     size_t start = *i;
     while (isalnum((unsigned char)src[*i]) || src[*i] == '_')
@@ -73,13 +73,16 @@ static void read_identifier(const char *src, size_t *i, size_t *col,
     token_type_t type = TOK_IDENT;
     if (src[*i] == ':') {
         (*i)++; /* consume ':' */
-        append_token(tokens, TOK_LABEL, src + start, len, line, *col);
+        if (!append_token(tokens, TOK_LABEL, src + start, len, line, *col))
+            return 0;
         *col += len + 1;
-        return;
+        return 1;
     }
     type = lookup_keyword(src + start, len);
-    append_token(tokens, type, src + start, len, line, *col);
+    if (!append_token(tokens, type, src + start, len, line, *col))
+        return 0;
     *col += len;
+    return 1;
 }
 
 int scan_identifier(const char *src, size_t *i, size_t *col,
@@ -88,6 +91,7 @@ int scan_identifier(const char *src, size_t *i, size_t *col,
     char c = src[*i];
     if (!isalpha((unsigned char)c) && c != '_')
         return 0;
-    read_identifier(src, i, col, tokens, line);
+    if (!read_identifier(src, i, col, tokens, line))
+        return -1;
     return 1;
 }
