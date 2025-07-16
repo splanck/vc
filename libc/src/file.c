@@ -1,6 +1,7 @@
 #include <stddef.h>
 #include <stdarg.h>
 #include <string.h>
+#include <fcntl.h>
 #include "stdio.h"
 #include "stdlib.h"
 #include "../internal/_vc_syscalls.h"
@@ -12,7 +13,7 @@ FILE *fopen(const char *path, const char *mode)
     if (mode && mode[0] == 'r') {
         flags = 0; /* O_RDONLY */
     } else if (mode && mode[0] == 'w') {
-        flags = 1 | 64 | 512; /* O_WRONLY | O_CREAT | O_TRUNC */
+        flags = O_WRONLY | O_CREAT | O_TRUNC;
         perm = 0666;
     } else {
         return NULL;
