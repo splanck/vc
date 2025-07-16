@@ -286,7 +286,11 @@ static int run_link_command(const vector_t *objs, const vector_t *lib_dirs,
 }
 
 /* Create entry stub and link all objects into the final executable. */
+#ifdef UNIT_TESTING
+int build_and_link_objects(vector_t *objs, const cli_options_t *cli)
+#else
 static int build_and_link_objects(vector_t *objs, const cli_options_t *cli)
+#endif
 {
     char *stubobj = NULL;
     int ok = create_startup_object(cli, cli->use_x86_64, &stubobj);
@@ -341,7 +345,22 @@ static int build_and_link_objects(vector_t *objs, const cli_options_t *cli)
                              ? cli->vc_sysinclude
                              : PROJECT_ROOT "/libc/include";
         char base[PATH_MAX];
-        snprintf(base, sizeof(base), "%s", inc);
+        int ret = snprintf(base, sizeof(base), "%s", inc);
+        if (ret < 0) {
+            fprintf(stderr,
+                    "vc: failed to format internal libc path\n");
+            vector_free(&lib_dirs);
+            vector_free(&libs);
+            free_string_vector(&dup_dirs);
+            return 0;
+        }
+        if (ret >= (int)sizeof(base)) {
+            fprintf(stderr, "vc: internal libc path too long\n");
+            vector_free(&lib_dirs);
+            vector_free(&libs);
+            free_string_vector(&dup_dirs);
+            return 0;
+        }
         char *slash = strrchr(base, '/');
         if (slash)
             *slash = '\0';
