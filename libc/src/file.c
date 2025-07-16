@@ -29,6 +29,7 @@ FILE *fopen(const char *path, const char *mode)
         return NULL;
     }
     f->fd = (int)fd;
+    f->err = 0;
     return f;
 }
 
@@ -152,7 +153,11 @@ char *fgets(char *s, int size, FILE *stream)
     while (i < size - 1) {
         char c;
         long r = _vc_read(stream->fd, &c, 1);
-        if (r <= 0) {
+        if (r < 0) {
+            stream->err = 1;
+            return NULL;
+        }
+        if (r == 0) {
             if (i == 0)
                 return NULL;
             break;
