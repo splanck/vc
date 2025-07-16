@@ -2,14 +2,13 @@
 # exit on unhandled errors
 set -e
 DIR=$(dirname "$0")
+BINARY="$DIR/../vc"
 # track failing regression tests
 fail=0
-# build the compiler
-make vc
-# ensure internal libc archives are present
-if [ ! -f libc/libc32.a ] || [ ! -f libc/libc64.a ]; then
-    make libc
-fi
+
+. "$DIR/helpers.sh"
+ensure_compiler
+ensure_libc
 # build unit test binary
 cc -Iinclude -Wall -Wextra -std=c99 -DUNIT_TESTING -DNO_VECTOR_FREE_STUB -c src/util.c -o util_unit.o
 cc -Iinclude -Wall -Wextra -std=c99 \
