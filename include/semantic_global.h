@@ -24,6 +24,8 @@ void semantic_set_named_locals(int flag);
 
 int check_func(func_t *func, symtable_t *funcs, symtable_t *globals,
                ir_builder_t *ir);
+int emit_func_ir(func_t *func, symtable_t *funcs, symtable_t *globals,
+                 ir_builder_t *ir);
 int check_global(stmt_t *decl, symtable_t *globals, ir_builder_t *ir);
 void semantic_global_cleanup(void);
 
