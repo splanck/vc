@@ -69,7 +69,8 @@ Additional options may be supplied in the `VCFLAGS` environment variable.
 Its contents are split on spaces and prepended to the argument vector so
 flags provided directly on the command line override those from
 `VCFLAGS`. Values containing spaces may be quoted with single or double
-quotes which will be removed during parsing.
+quotes which will be removed during parsing. Spaces and quote characters
+can also be escaped with a backslash.
 
 Use `vc -o out.s source.c` to compile a file, `vc -c -o out.o source.c` to
 produce an object, `vc --link -o prog main.c util.c` to build an executable
