@@ -41,14 +41,17 @@ int fclose(FILE *stream)
     return ret;
 }
 
-static void flush_buf_fd(int fd, const char *buf, size_t *pos, int *total)
+static int flush_buf_fd(int fd, const char *buf, size_t *pos, int *total)
 {
     if (*pos > 0) {
-        _vc_write(fd, buf, *pos);
+        long ret = _vc_write(fd, buf, *pos);
+        if (ret < 0)
+            return -1;
         if (total)
             *total += (int)(*pos);
         *pos = 0;
     }
+    return 0;
 }
 
 int fprintf(FILE *stream, const char *fmt, ...)
@@ -63,7 +66,10 @@ int fprintf(FILE *stream, const char *fmt, ...)
         if (*p != '%') {
             out[pos++] = *p;
             if (pos == sizeof(out))
-                flush_buf_fd(stream->fd, out, &pos, &written);
+                if (flush_buf_fd(stream->fd, out, &pos, &written) < 0) {
+                    va_end(ap);
+                    return -1;
+                }
             continue;
         }
 
@@ -71,16 +77,26 @@ int fprintf(FILE *stream, const char *fmt, ...)
         if (*p == '%') {
             out[pos++] = '%';
             if (pos == sizeof(out))
-                flush_buf_fd(stream->fd, out, &pos, &written);
+                if (flush_buf_fd(stream->fd, out, &pos, &written) < 0) {
+                    va_end(ap);
+                    return -1;
+                }
             continue;
         }
 
-        flush_buf_fd(stream->fd, out, &pos, &written);
+        if (flush_buf_fd(stream->fd, out, &pos, &written) < 0) {
+            va_end(ap);
+            return -1;
+        }
 
         if (*p == 's') {
             const char *s = va_arg(ap, const char *);
             size_t len = strlen(s);
-            _vc_write(stream->fd, s, len);
+            long ret = _vc_write(stream->fd, s, len);
+            if (ret < 0) {
+                va_end(ap);
+                return -1;
+            }
             written += (int)len;
         } else if (*p == 'd') {
             int n = va_arg(ap, int);
@@ -98,19 +114,32 @@ int fprintf(FILE *stream, const char *fmt, ...)
                     *--q = '-';
             }
             size_t len = num + sizeof(num) - q;
-            _vc_write(stream->fd, q, len);
+            long ret2 = _vc_write(stream->fd, q, len);
+            if (ret2 < 0) {
+                va_end(ap);
+                return -1;
+            }
             written += (int)len;
         } else {
             out[pos++] = '%';
             if (pos == sizeof(out))
-                flush_buf_fd(stream->fd, out, &pos, &written);
+                if (flush_buf_fd(stream->fd, out, &pos, &written) < 0) {
+                    va_end(ap);
+                    return -1;
+                }
             out[pos++] = *p;
             if (pos == sizeof(out))
-                flush_buf_fd(stream->fd, out, &pos, &written);
+                if (flush_buf_fd(stream->fd, out, &pos, &written) < 0) {
+                    va_end(ap);
+                    return -1;
+                }
         }
     }
 
-    flush_buf_fd(stream->fd, out, &pos, &written);
+    if (flush_buf_fd(stream->fd, out, &pos, &written) < 0) {
+        va_end(ap);
+        return -1;
+    }
     va_end(ap);
     return written;
 }
