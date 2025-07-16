@@ -46,6 +46,12 @@ static int append_quoted(strbuf_t *sb, const char *arg)
         if (*p == '\'') {
             if (strbuf_append(sb, "'\\''") < 0)
                 return -1;
+        } else if (*p == '\n') {
+            if (strbuf_append(sb, "\\n") < 0)
+                return -1;
+        } else if (*p == '\r') {
+            if (strbuf_append(sb, "\\r") < 0)
+                return -1;
         } else {
             char tmp[2] = {*p, '\0'};
             if (strbuf_append(sb, tmp) < 0)
