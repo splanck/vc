@@ -138,6 +138,15 @@ cc -Iinclude -Wall -Wextra -std=c99 -Dstrbuf_append=test_strbuf_append \
     -c "$DIR/unit/test_text_line_fail.c" -o "$DIR/test_text_line_fail.o"
 cc -o "$DIR/text_line_fail" strbuf_textfail_impl.o util_textfail.o "$DIR/test_text_line_fail.o"
 rm -f strbuf_textfail_impl.o util_textfail.o "$DIR/test_text_line_fail.o"
+# build command_to_string failure test
+cc -Iinclude -Wall -Wextra -std=c99 \
+    -Dstrbuf_init=test_strbuf_init -Dstrbuf_append=test_strbuf_append \
+    -Dstrbuf_free=test_strbuf_free -Dposix_spawnp=test_posix_spawnp \
+    -Dmalloc=test_malloc -Drealloc=test_realloc \
+    -c src/command.c -o command_fail.o
+cc -Iinclude -Wall -Wextra -std=c99 -c "$DIR/unit/test_command_fail.c" -o "$DIR/test_command_fail.o"
+cc -o "$DIR/command_fail" command_fail.o "$DIR/test_command_fail.o"
+rm -f command_fail.o "$DIR/test_command_fail.o"
 # build builtin counter wraparound regression test
 cc -Iinclude -Wall -Wextra -std=c99 -c src/preproc_builtin.c -o preproc_builtin_wrap.o
 cc -Iinclude -Wall -Wextra -std=c99 -c src/strbuf.c -o strbuf_wrap.o
@@ -610,6 +619,17 @@ if [ $ret -ne 0 ] || ! grep -q "Constant overflow" "$err"; then
     fail=1
 fi
 rm -f "$err" "$DIR/consteval_overflow"
+# regression test for command_to_string failure handling
+err=$(mktemp)
+set +e
+"$DIR/command_fail" 2> "$err"
+ret=$?
+set -e
+if [ $ret -ne 0 ] || ! grep -q "posix_spawnp cmd arg1 arg2" "$err"; then
+    echo "Test command_fail failed"
+    fail=1
+fi
+rm -f "$err" "$DIR/command_fail"
 # regression test for collect_funcs overflow handling
 err=$(mktemp)
 set +e
