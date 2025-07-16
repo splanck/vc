@@ -188,6 +188,26 @@ static void test_vcflags_quotes(void)
     ASSERT(allocs == 0);
 }
 
+static void test_shortcut_quotes(void)
+{
+    cli_options_t opts;
+    char *argv1[] = {"vc", "\"-MD\"", "file.c", NULL};
+    int ret = cli_parse_args(3, argv1, &opts);
+    ASSERT(ret == 0);
+    ASSERT(opts.deps);
+    ASSERT(!opts.dep_only);
+    cli_free_opts(&opts);
+    ASSERT(allocs == 0);
+
+    char *argv2[] = {"vc", "'-M'", "file.c", NULL};
+    ret = cli_parse_args(3, argv2, &opts);
+    ASSERT(ret == 0);
+    ASSERT(opts.dep_only);
+    ASSERT(!opts.deps);
+    cli_free_opts(&opts);
+    ASSERT(allocs == 0);
+}
+
 int main(void)
 {
     test_parse_success();
@@ -197,6 +217,7 @@ int main(void)
     test_verbose_includes_option();
     test_internal_libc_leak();
     test_vcflags_quotes();
+    test_shortcut_quotes();
     test_parse_failure();
     if (failures == 0)
         printf("All cli tests passed\n");

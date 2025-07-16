@@ -99,13 +99,32 @@ int load_vcflags(int *argc, char ***argv, char ***out_argv,
     return 0;
 }
 
+static int match_flag(const char *arg, const char *flag)
+{
+    if (strcmp(arg, flag) == 0)
+        return 1;
+
+    size_t len = strlen(arg);
+    if (len >= 2 && (arg[0] == '"' || arg[0] == '\'') && arg[len - 1] == arg[0]) {
+        char buf[8];
+        if (len - 2 < sizeof(buf)) {
+            memcpy(buf, arg + 1, len - 2);
+            buf[len - 2] = '\0';
+            if (strcmp(buf, flag) == 0)
+                return 1;
+        }
+    }
+
+    return 0;
+}
+
 void scan_shortcuts(int *argc, char **argv)
 {
     int new_argc = 1;
     for (int i = 1; i < *argc; i++) {
-        if (strcmp(argv[i], "-MD") == 0)
+        if (match_flag(argv[i], "-MD"))
             argv[new_argc++] = "--MD";
-        else if (strcmp(argv[i], "-M") == 0)
+        else if (match_flag(argv[i], "-M"))
             argv[new_argc++] = "--M";
         else
             argv[new_argc++] = argv[i];
