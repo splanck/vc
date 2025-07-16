@@ -1,6 +1,7 @@
 #define _POSIX_C_SOURCE 200809L
 #include <stdlib.h>
 #include <string.h>
+#include <stdint.h>
 #include "preproc_args.h"
 #include "strbuf.h"
 #include "util.h"
@@ -116,7 +117,13 @@ int gather_varargs(vector_t *args, size_t fixed,
     strbuf_free(&sb);
     if (!va)
         return 0;
-    char **ap = malloc((fixed + 1) * sizeof(char *));
+    size_t count = fixed + 1;
+    if (count > SIZE_MAX / sizeof(char *)) {
+        vc_oom();
+        free(va);
+        return 0;
+    }
+    char **ap = malloc(count * sizeof(char *));
     if (!ap) {
         vc_oom();
         free(va);
