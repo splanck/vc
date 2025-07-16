@@ -142,33 +142,56 @@ static void init_std_include_dirs(void)
     }
     size_t len = strlen("/usr/include/") + strlen(multi);
     char *path = vc_alloc_or_exit(len + 1);
+    if (!path)
+        return;
     snprintf(path, len + 1, "/usr/include/%s", multi);
     std_include_dirs[0] = path;
     const char *gccdir = get_gcc_include_dir();
+    char *fallback = NULL;
     if (!gccdir) {
 #if !defined(GCC_INCLUDE_DIR)
         len = strlen("/usr/lib/gcc/") + strlen(multi) + strlen("/include");
-        gcc_include_cached = vc_alloc_or_exit(len + 1);
-        snprintf(gcc_include_cached, len + 1, "/usr/lib/gcc/%s/include", multi);
-        gccdir = gcc_include_cached;
+        fallback = vc_alloc_or_exit(len + 1);
+        if (!fallback)
+            goto fail;
+        snprintf(fallback, len + 1, "/usr/lib/gcc/%s/include", multi);
+        gcc_include_cached = fallback;
+        gccdir = fallback;
 #else
         gccdir = GCC_INCLUDE_DIR;
 #endif
     }
     std_include_dirs[1] = gccdir;
+    std_dirs_initialized = 1;
+    return;
+fail:
+    free(path);
+    std_include_dirs[0] = NULL;
+#ifndef GCC_INCLUDE_DIR
+    free(fallback);
+    if (fallback && gcc_include_cached == fallback)
+        gcc_include_cached = NULL;
+#endif
+    std_include_dirs[1] = NULL;
+    return;
 #elif defined(__NetBSD__) || defined(__FreeBSD__)
     const char *gccdir = get_gcc_include_dir();
+    char *fallback = NULL;
     if (!gccdir) {
 #if !defined(GCC_INCLUDE_DIR)
-        gcc_include_cached = vc_strdup("/usr/lib/gcc/include");
-        gccdir = gcc_include_cached;
+        fallback = vc_strdup("/usr/lib/gcc/include");
+        if (!fallback)
+            return;
+        gcc_include_cached = fallback;
+        gccdir = fallback;
 #else
         gccdir = GCC_INCLUDE_DIR;
 #endif
     }
     std_include_dirs[0] = gccdir;
-#endif
     std_dirs_initialized = 1;
+    return;
+#endif
 }
 
 void include_path_cache_init(void)
