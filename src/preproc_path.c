@@ -113,9 +113,15 @@ char *find_include_path(const char *fname, char endc, const char *dir,
         if (len > max_len)
             max_len = len;
     }
-    char *out_path = vc_alloc_or_exit(max_len + 1);
+
+    if (max_len == SIZE_MAX) {
+        fprintf(stderr, "vc: include path too long\n");
+        return NULL;
+    }
+    max_len += 1;
+    char *out_path = vc_alloc_or_exit(max_len);
     if (endc == '"' && dir && start == 0) {
-        snprintf(out_path, max_len + 1, "%s%s", dir, fname);
+        snprintf(out_path, max_len, "%s%s", dir, fname);
         if (verbose_includes)
             fprintf(stderr, "checking %s%s\n", dir, fname);
         if (access(out_path, R_OK) == 0) {
@@ -128,7 +134,7 @@ char *find_include_path(const char *fname, char endc, const char *dir,
     }
     for (size_t i = start; i < incdirs->count; i++) {
         const char *base = ((const char **)incdirs->data)[i];
-        snprintf(out_path, max_len + 1, "%s/%s", base, fname);
+        snprintf(out_path, max_len, "%s/%s", base, fname);
         if (verbose_includes)
             fprintf(stderr, "checking %s/%s\n", base, fname);
         if (access(out_path, R_OK) == 0) {
@@ -145,7 +151,7 @@ char *find_include_path(const char *fname, char endc, const char *dir,
     if (endc == '<') {
         for (size_t i = builtin_start; i < extra_sys_dirs.count; i++) {
             const char *base = ((const char **)extra_sys_dirs.data)[i];
-            snprintf(out_path, max_len + 1, "%s/%s", base, fname);
+            snprintf(out_path, max_len, "%s/%s", base, fname);
             if (verbose_includes)
                 fprintf(stderr, "checking %s/%s\n", base, fname);
             if (access(out_path, R_OK) == 0) {
@@ -159,7 +165,7 @@ char *find_include_path(const char *fname, char endc, const char *dir,
         size_t off = builtin_start > extra_sys_dirs.count ?
                       builtin_start - extra_sys_dirs.count : 0;
         for (size_t i = off; std_include_dirs[i]; i++) {
-            snprintf(out_path, max_len + 1, "%s/%s", std_include_dirs[i], fname);
+            snprintf(out_path, max_len, "%s/%s", std_include_dirs[i], fname);
             if (verbose_includes)
                 fprintf(stderr, "checking %s/%s\n", std_include_dirs[i], fname);
             if (access(out_path, R_OK) == 0) {
@@ -173,7 +179,7 @@ char *find_include_path(const char *fname, char endc, const char *dir,
         free(out_path);
         return NULL;
     }
-    snprintf(out_path, max_len + 1, "%s", fname);
+    snprintf(out_path, max_len, "%s", fname);
     if (verbose_includes)
         fprintf(stderr, "checking %s\n", out_path);
     if (access(out_path, R_OK) == 0) {
@@ -185,7 +191,7 @@ char *find_include_path(const char *fname, char endc, const char *dir,
     }
     for (size_t i = builtin_start; i < extra_sys_dirs.count; i++) {
         const char *base = ((const char **)extra_sys_dirs.data)[i];
-        snprintf(out_path, max_len + 1, "%s/%s", base, fname);
+        snprintf(out_path, max_len, "%s/%s", base, fname);
         if (verbose_includes)
             fprintf(stderr, "checking %s/%s\n", base, fname);
         if (access(out_path, R_OK) == 0) {
@@ -199,7 +205,7 @@ char *find_include_path(const char *fname, char endc, const char *dir,
     size_t off = builtin_start > extra_sys_dirs.count ?
                   builtin_start - extra_sys_dirs.count : 0;
     for (size_t i = off; std_include_dirs[i]; i++) {
-        snprintf(out_path, max_len + 1, "%s/%s", std_include_dirs[i], fname);
+        snprintf(out_path, max_len, "%s/%s", std_include_dirs[i], fname);
         if (verbose_includes)
             fprintf(stderr, "checking %s/%s\n", std_include_dirs[i], fname);
         if (access(out_path, R_OK) == 0) {
