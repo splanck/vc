@@ -22,6 +22,7 @@ The compiler supports the following options:
 - `--no-inline` – disable inline expansion of small functions.
 - `--debug` – emit `.file` and `.loc` directives in the assembly output.
 - `--emit-dwarf` – include DWARF line and symbol data in the output.
+- `--named-locals` – emit named symbols for local variables.
 - `--no-color` – disable ANSI colors in diagnostics.
 - `--no-warn-unreachable` – disable warnings for unreachable statements.
 - `--x86-64` – generate 64‑bit x86 assembly.
