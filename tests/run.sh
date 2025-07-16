@@ -505,6 +505,14 @@ $CC -Iinclude -Wall -Wextra -std=c99 -DUNIT_TESTING -Dcompile_unit=test_compile_
 $CC -Iinclude -Wall -Wextra -std=c99 -c "$DIR/unit/test_compile_obj_fail.c" -o "$DIR/test_compile_obj_fail.o"
 $CC -Wl,--gc-sections -o "$DIR/compile_obj_fail" compile_obj_fail.o compile_link_obj_fail.o "$DIR/test_compile_obj_fail.o"
 rm -f compile_obj_fail.o compile_link_obj_fail.o "$DIR/test_compile_obj_fail.o"
+# build vc_sysinclude long path test
+$CC -Iinclude -Wall -Wextra -std=c99 -DUNIT_TESTING \
+    -Dcreate_startup_object=test_create_startup_object \
+    -Dcommand_run=test_command_run -ffunction-sections -fdata-sections \
+    -c src/compile_link.c -o compile_link_vc_sysinclude_long.o
+$CC -Iinclude -Wall -Wextra -std=c99 -c "$DIR/unit/test_vc_sysinclude_long.c" -o "$DIR/test_vc_sysinclude_long.o"
+$CC -Wl,--gc-sections -o "$DIR/vc_sysinclude_long" compile_link_vc_sysinclude_long.o src/vector.c src/util.c src/error.c "$DIR/test_vc_sysinclude_long.o"
+rm -f compile_link_vc_sysinclude_long.o "$DIR/test_vc_sysinclude_long.o"
 # build object/dependency name long filename test
 $CC -Iinclude -Wall -Wextra -std=c99 -DUNIT_TESTING -ffunction-sections -fdata-sections -c src/compile_link.c -o compile_link_names.o
 $CC -Iinclude -Wall -Wextra -std=c99 -c "$DIR/unit/test_vc_names.c" -o "$DIR/test_vc_names.o"
@@ -624,6 +632,7 @@ rm -f ir_licm.o util_licm.o label_licm.o error_licm.o opt_main_licm.o \
 "$DIR/internal_libc_sysroot"
 "$DIR/vc_sysinclude"
 "$DIR/vc_sysinclude_win"
+"$DIR/vc_sysinclude_long"
 "$DIR/preproc_sysheaders_fail"
 "$DIR/preproc_popen_fail"
 "$DIR/invalid_macro_tests"
