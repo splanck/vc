@@ -21,7 +21,7 @@ CORE_SRC = src/main.c src/compile.c src/compile_stage.c src/compile_link.c src/c
            src/regalloc.c src/regalloc_x86.c src/strbuf.c src/util.c src/vector.c src/ir_dump.c src/ir_builder.c src/ast_dump.c src/label.c \
            src/preproc_expand.c src/preproc_macro_utils.c src/preproc_paste.c src/preproc_builtin.c src/preproc_args.c src/preproc_table.c \
            src/preproc_expr_parse.c src/preproc_expr_lex.c src/preproc_expr_eval.c src/preproc_cond.c src/preproc_file.c \
-           src/preproc_directives.c src/preproc_file_io.c src/preproc_include.c src/preproc_includes.c src/preproc_path.c \
+           src/preproc_directives.c src/preproc_file_io.c src/preproc_include.c src/preproc_includes.c src/include_path_cache.c src/preproc_path.c \
            src/token_names.c
 
 # Optional optimization sources
@@ -35,7 +35,7 @@ HDR = include/token.h include/token_names.h include/ast.h include/ast_clone.h in
     include/ir_core.h include/ir_const.h include/ir_memory.h include/ir_control.h include/ir_builder.h include/ir_global.h include/ir_dump.h include/ast_dump.h include/opt.h include/codegen.h include/codegen_mem.h include/codegen_loadstore.h include/codegen_arith.h include/codegen_arith_int.h include/codegen_arith_float.h include/codegen_branch.h include/strbuf.h \
     include/util.h include/command.h include/cli.h include/vector.h include/regalloc_x86.h include/label.h include/error.h include/lexer_internal.h \
     include/opt_inline_helpers.h \
-    include/preproc.h include/preproc_file.h include/preproc_macros.h include/preproc_includes.h include/preproc_expr.h include/preproc_expr_parse.h include/preproc_expr_lex.h include/preproc_cond.h include/preproc_path.h include/preproc_utils.h include/preproc_macro_utils.h include/preproc_paste.h include/parser_types.h include/parser_core.h include/startup.h include/compile_stage.h include/compile_optimize.h
+    include/preproc.h include/preproc_file.h include/preproc_macros.h include/preproc_includes.h include/preproc_expr.h include/preproc_expr_parse.h include/preproc_expr_lex.h include/preproc_cond.h include/preproc_path.h include/include_path_cache.h include/preproc_utils.h include/preproc_macro_utils.h include/preproc_paste.h include/parser_types.h include/parser_core.h include/startup.h include/compile_stage.h include/compile_optimize.h
 PREFIX ?= /usr/local
 INCLUDEDIR ?= $(PREFIX)/include/vc
 MANDIR ?= $(PREFIX)/share/man
@@ -368,11 +368,16 @@ src/preproc_include.o: src/preproc_include.c $(HDR)
 	$(CC) $(CFLAGS) $(OPTFLAGS) -Iinclude -c src/preproc_include.c -o src/preproc_include.o
 src/preproc_includes.o: src/preproc_includes.c $(HDR)
 	$(CC) $(CFLAGS) $(OPTFLAGS) -Iinclude -c src/preproc_includes.c -o src/preproc_includes.o
+src/include_path_cache.o: src/include_path_cache.c $(HDR)
+	$(CC) $(CFLAGS) $(OPTFLAGS) \
+	-DMULTIARCH=\"$(MULTIARCH)\" \
+	-DGCC_INCLUDE_DIR=\"$(GCC_INCLUDE_DIR)\" \
+	-Iinclude -c src/include_path_cache.c -o src/include_path_cache.o
 src/preproc_path.o: src/preproc_path.c $(HDR)
 	$(CC) $(CFLAGS) $(OPTFLAGS) \
-		-DMULTIARCH=\"$(MULTIARCH)\" \
-		-DGCC_INCLUDE_DIR=\"$(GCC_INCLUDE_DIR)\" \
-		-Iinclude -c src/preproc_path.c -o src/preproc_path.o
+	-DMULTIARCH=\"$(MULTIARCH)\" \
+	-DGCC_INCLUDE_DIR=\"$(GCC_INCLUDE_DIR)\" \
+	-Iinclude -c src/preproc_path.c -o src/preproc_path.o
 
 src/opt.o: src/opt.c $(HDR)
 	$(CC) $(CFLAGS) $(OPTFLAGS) -Iinclude -c src/opt.c -o src/opt.o
