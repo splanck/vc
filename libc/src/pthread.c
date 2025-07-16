@@ -20,5 +20,7 @@ int pthread_create(pthread_t *thread, const pthread_attr_t *attr,
         if (ret < 0)
             _exit(1);
     }
+
+    return -1;
 }
 
