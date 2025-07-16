@@ -7,6 +7,7 @@
 
 #include <stdlib.h>
 #include <string.h>
+#include <stdint.h>
 #include "symtable.h"
 #include "util.h"
 
@@ -85,6 +86,12 @@ int symtable_add_union(symtable_t *table, const char *tag,
         return 0;
     sym->type = TYPE_UNION;
     if (member_count) {
+        if (member_count > SIZE_MAX / sizeof(*sym->members)) {
+            free(sym->name);
+            free(sym->ir_name);
+            free(sym);
+            return 0;
+        }
         sym->members = malloc(member_count * sizeof(*sym->members));
         if (!sym->members) {
             free(sym->name);
@@ -126,6 +133,12 @@ int symtable_add_union_global(symtable_t *table, const char *tag,
         return 0;
     sym->type = TYPE_UNION;
     if (member_count) {
+        if (member_count > SIZE_MAX / sizeof(*sym->members)) {
+            free(sym->name);
+            free(sym->ir_name);
+            free(sym);
+            return 0;
+        }
         sym->members = malloc(member_count * sizeof(*sym->members));
         if (!sym->members) {
             free(sym->name);
@@ -184,6 +197,12 @@ int symtable_add_struct(symtable_t *table, const char *tag,
         return 0;
     sym->type = TYPE_STRUCT;
     if (member_count) {
+        if (member_count > SIZE_MAX / sizeof(*sym->struct_members)) {
+            free(sym->name);
+            free(sym->ir_name);
+            free(sym);
+            return 0;
+        }
         sym->struct_members = malloc(member_count * sizeof(*sym->struct_members));
         if (!sym->struct_members) {
             free(sym->name);
@@ -234,6 +253,12 @@ int symtable_add_struct_global(symtable_t *table, const char *tag,
         return 0;
     sym->type = TYPE_STRUCT;
     if (member_count) {
+        if (member_count > SIZE_MAX / sizeof(*sym->struct_members)) {
+            free(sym->name);
+            free(sym->ir_name);
+            free(sym);
+            return 0;
+        }
         sym->struct_members = malloc(member_count * sizeof(*sym->struct_members));
         if (!sym->struct_members) {
             free(sym->name);
