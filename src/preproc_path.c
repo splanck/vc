@@ -285,15 +285,6 @@ int collect_include_dirs(vector_t *search_dirs,
 
     free_string_vector(&extra_sys_dirs);
     vector_init(&extra_sys_dirs, sizeof(char *));
-    if (internal_libc) {
-        char *dup = vc_strdup(internal_libc_dir);
-        if (!dup || !vector_push(&extra_sys_dirs, &dup)) {
-            free(dup);
-            free_string_vector(search_dirs);
-            free_string_vector(&extra_sys_dirs);
-            return 0;
-        }
-    }
     const char *sysinc = vc_sysinclude && *vc_sysinclude ? vc_sysinclude
                        : getenv("VC_SYSINCLUDE");
     if (sysinc && *sysinc) {
@@ -301,6 +292,25 @@ int collect_include_dirs(vector_t *search_dirs,
             free_string_vector(search_dirs);
             free_string_vector(&extra_sys_dirs);
             return 0;
+        }
+    }
+    if (internal_libc) {
+        int exists = 0;
+        for (size_t i = 0; i < extra_sys_dirs.count; i++) {
+            const char *p = ((const char **)extra_sys_dirs.data)[i];
+            if (strcmp(p, internal_libc_dir) == 0) {
+                exists = 1;
+                break;
+            }
+        }
+        if (!exists) {
+            char *dup = vc_strdup(internal_libc_dir);
+            if (!dup || !vector_push(&extra_sys_dirs, &dup)) {
+                free(dup);
+                free_string_vector(search_dirs);
+                free_string_vector(&extra_sys_dirs);
+                return 0;
+            }
         }
     }
 
