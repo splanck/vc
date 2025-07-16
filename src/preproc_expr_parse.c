@@ -214,6 +214,17 @@ static long long parse_shift(expr_ctx_t *ctx)
         int left = (ctx->s[0] == '<');
         ctx->s += 2;
         long long rhs = parse_add(ctx);
+        /*
+         * Clamp the shift count so undefined behaviour does not occur when
+         * shifting by a value outside the width of long long. Negative counts
+         * are treated as zero while counts greater than or equal to the type
+         * width (64 on most hosts) are reduced to width - 1.  This mirrors the
+         * behaviour of many hosts and keeps evaluation well-defined.
+         */
+        if (rhs < 0)
+            rhs = 0;
+        else if (rhs >= (long long)(sizeof(long long) * CHAR_BIT))
+            rhs = (long long)(sizeof(long long) * CHAR_BIT) - 1;
         if (left)
             val <<= rhs;
         else
