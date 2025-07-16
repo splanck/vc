@@ -8,7 +8,7 @@ GCC_INCLUDE_DIR := $(shell $(CC) -print-file-name=include | tr -d '\n')
 BIN = vc
 # The resulting binary accepts -c/--compile to assemble objects using cc
 # Core compiler sources
-CORE_SRC = src/main.c src/compile.c src/compile_stage.c src/compile_link.c src/compile_tokenize.c src/compile_parse.c src/compile_output.c src/startup.c src/command.c src/cli.c src/cli_env.c src/cli_opts.c src/lexer.c src/lexer_ident.c src/lexer_scan_numeric.c src/ast_expr.c src/ast_stmt_create.c src/ast_stmt_free.c src/ast_clone.c src/parser_core.c src/parser_toplevel.c src/parser_toplevel_func.c src/parser_toplevel_var.c src/symtable_core.c src/symtable_globals.c src/symtable_struct.c src/parser_expr.c src/parser_expr_primary.c src/parser_expr_binary.c src/parser_expr_ops.c src/parser_expr_literal.c src/parser_init.c \
+CORE_SRC = src/main.c src/compile.c src/compile_stage.c src/compile_link.c src/compile_tokenize.c src/compile_parse.c src/compile_output.c src/startup.c src/command.c src/cli.c src/cli_env.c src/cli_opts.c src/lexer.c src/lexer_ident.c src/lexer_scan_numeric.c src/ast_expr.c src/ast_expr_binary.c src/ast_expr_literal.c src/ast_expr_control.c src/ast_expr_type.c src/ast_stmt_create.c src/ast_stmt_free.c src/ast_clone.c src/parser_core.c src/parser_toplevel.c src/parser_toplevel_func.c src/parser_toplevel_var.c src/symtable_core.c src/symtable_globals.c src/symtable_struct.c src/parser_expr.c src/parser_expr_primary.c src/parser_expr_binary.c src/parser_expr_ops.c src/parser_expr_literal.c src/parser_init.c \
            src/parser_decl_var.c src/parser_decl_struct.c src/parser_decl_enum.c \
            src/parser_flow.c src/parser_stmt.c src/parser_types.c \
            src/semantic_expr.c src/semantic_expr_const.c src/semantic_expr_cast.c \
@@ -109,6 +109,14 @@ src/lexer_scan_numeric.o: src/lexer_scan_numeric.c $(HDR)
 
 src/ast_expr.o: src/ast_expr.c $(HDR)
 	$(CC) $(CFLAGS) $(OPTFLAGS) -Iinclude -c src/ast_expr.c -o src/ast_expr.o
+src/ast_expr_binary.o: src/ast_expr_binary.c $(HDR)
+	$(CC) $(CFLAGS) $(OPTFLAGS) -Iinclude -c src/ast_expr_binary.c -o src/ast_expr_binary.o
+src/ast_expr_literal.o: src/ast_expr_literal.c $(HDR)
+	$(CC) $(CFLAGS) $(OPTFLAGS) -Iinclude -c src/ast_expr_literal.c -o src/ast_expr_literal.o
+src/ast_expr_control.o: src/ast_expr_control.c $(HDR)
+	$(CC) $(CFLAGS) $(OPTFLAGS) -Iinclude -c src/ast_expr_control.c -o src/ast_expr_control.o
+src/ast_expr_type.o: src/ast_expr_type.c $(HDR)
+	$(CC) $(CFLAGS) $(OPTFLAGS) -Iinclude -c src/ast_expr_type.c -o src/ast_expr_type.o
 src/ast_stmt_create.o: src/ast_stmt_create.c $(HDR)
 	$(CC) $(CFLAGS) $(OPTFLAGS) -Iinclude -c src/ast_stmt_create.c -o src/ast_stmt_create.o
 
