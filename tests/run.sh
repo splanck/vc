@@ -514,6 +514,17 @@ $CC -Iinclude -Wall -Wextra -std=c99 -DUNIT_TESTING \
 $CC -Iinclude -Wall -Wextra -std=c99 -c "$DIR/unit/test_vc_sysinclude_long.c" -o "$DIR/test_vc_sysinclude_long.o"
 $CC -Wl,--gc-sections -o "$DIR/vc_sysinclude_long" compile_link_vc_sysinclude_long.o src/vector.c src/util.c src/error.c "$DIR/test_vc_sysinclude_long.o"
 rm -f compile_link_vc_sysinclude_long.o "$DIR/test_vc_sysinclude_long.o"
+# build overlong program path regression test
+$CC -Iinclude -Wall -Wextra -std=c99 -c src/cli.c -o cli_prog_path_long.o
+$CC -Iinclude -Wall -Wextra -std=c99 -c src/cli_env.c -o cli_env_prog_path_long.o
+$CC -Iinclude -Wall -Wextra -std=c99 -c src/cli_opts.c -o cli_opts_prog_path_long.o
+$CC -Iinclude -Wall -Wextra -std=c99 -DPROJECT_ROOT="$(pwd)" -c src/preproc_path.c -o preproc_path_prog_path_long.o
+$CC -Iinclude -Wall -Wextra -std=c99 -c src/include_path_cache.c -o include_path_cache_prog_path_long.o
+$CC -Iinclude -Wall -Wextra -std=c99 -c src/vector.c -o vector_prog_path_long.o
+$CC -Iinclude -Wall -Wextra -std=c99 -c src/util.c -o util_prog_path_long.o
+$CC -Iinclude -Wall -Wextra -std=c99 -c "$DIR/unit/test_prog_path_long.c" -o "$DIR/test_prog_path_long.o"
+$CC -o "$DIR/prog_path_long" cli_prog_path_long.o cli_env_prog_path_long.o cli_opts_prog_path_long.o preproc_path_prog_path_long.o include_path_cache_prog_path_long.o vector_prog_path_long.o util_prog_path_long.o "$DIR/test_prog_path_long.o"
+rm -f cli_prog_path_long.o cli_env_prog_path_long.o cli_opts_prog_path_long.o preproc_path_prog_path_long.o include_path_cache_prog_path_long.o vector_prog_path_long.o util_prog_path_long.o "$DIR/test_prog_path_long.o"
 # build object/dependency name long filename test
 $CC -Iinclude -Wall -Wextra -std=c99 -DUNIT_TESTING -ffunction-sections -fdata-sections -c src/compile_link.c -o compile_link_names.o
 $CC -Iinclude -Wall -Wextra -std=c99 -c "$DIR/unit/test_vc_names.c" -o "$DIR/test_vc_names.o"
@@ -634,6 +645,7 @@ rm -f ir_licm.o util_licm.o label_licm.o error_licm.o opt_main_licm.o \
 "$DIR/vc_sysinclude"
 "$DIR/vc_sysinclude_win"
 "$DIR/vc_sysinclude_long"
+"$DIR/prog_path_long"
 "$DIR/preproc_sysheaders_fail"
 "$DIR/preproc_popen_fail"
 "$DIR/invalid_macro_tests"
