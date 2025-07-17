@@ -71,3 +71,10 @@ Allocates an integer array with `malloc` and computes the sum of numbers 1..5. R
 ```sh
 ./malloc_sum
 ```
+
+### copy_string.c
+Copies a string using `malloc` and `memcpy`. Run with:
+
+```sh
+./copy_string
+```
