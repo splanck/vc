@@ -81,6 +81,7 @@ static int parse_inline_hint(const char *file, const char *name)
     ssize_t nread;
     int in_comment = 0;
     int result = 0;
+    int rc = 0;
 
     while ((nread = getline(&line, &len, f)) != -1) {
         strip_comments(line, &in_comment);
@@ -102,32 +103,28 @@ static int parse_inline_hint(const char *file, const char *name)
         size_t pre_len = (size_t)(pos - line);
         char *prefix = vc_strndup(line, pre_len);
         if (!prefix) {
-            free(line);
-            fclose(f);
             errno = ENOMEM;
-            return -1;
+            rc = -1;
+            goto cleanup;
         }
         int r = tokens_have_inline(prefix);
         free(prefix);
         if (r < 0) {
-            free(line);
-            fclose(f);
             errno = ENOMEM;
-            return -1;
+            rc = -1;
+            goto cleanup;
         }
         result = r;
         break;
     }
 
-    if (ferror(f)) {
-        free(line);
-        fclose(f);
-        return -1;
-    }
+    if (ferror(f))
+        rc = -1;
 
+cleanup:
     free(line);
     fclose(f);
-    return result;
+    return rc ? -1 : result;
 }
 
 static int is_simple_op(ir_op_t op)
