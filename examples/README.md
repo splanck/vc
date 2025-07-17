@@ -64,3 +64,10 @@ Computes the greatest common divisor of two integers. Run with:
 ```sh
 ./gcd
 ```
+
+### malloc_sum.c
+Allocates an integer array with `malloc` and computes the sum of numbers 1..5. Run with:
+
+```sh
+./malloc_sum
+```
