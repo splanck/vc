@@ -156,6 +156,8 @@ char *vc_read_file(const char *path)
  */
 int vc_strtoul_size(const char *s, size_t *out)
 {
+    if (s[0] == '-')
+        return 0;
     errno = 0;
     char *end;
     unsigned long val = strtoul(s, &end, 10);
