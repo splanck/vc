@@ -295,6 +295,116 @@ static int run_link_command(const vector_t *objs, const vector_t *lib_dirs,
     return 1;
 }
 
+/* Populate library directory and library name vectors from CLI options. */
+static int
+prepare_lib_vectors(const cli_options_t *cli, vector_t *lib_dirs,
+                    vector_t *libs, vector_t *dup_dirs)
+{
+    vector_init(lib_dirs, sizeof(char *));
+    vector_init(libs, sizeof(char *));
+    vector_init(dup_dirs, sizeof(char *));
+
+    for (size_t i = 0; i < cli->lib_dirs.count; i++) {
+        char *dir = ((char **)cli->lib_dirs.data)[i];
+        if (!vector_push(lib_dirs, &dir)) {
+            vc_oom();
+            vector_free(lib_dirs);
+            vector_free(libs);
+            free_string_vector(dup_dirs);
+            return 0;
+        }
+    }
+
+    for (size_t i = 0; i < cli->libs.count; i++) {
+        char *lib = ((char **)cli->libs.data)[i];
+        if (!vector_push(libs, &lib)) {
+            vc_oom();
+            vector_free(lib_dirs);
+            vector_free(libs);
+            free_string_vector(dup_dirs);
+            return 0;
+        }
+    }
+
+    return 1;
+}
+
+/* Add the internal libc to the provided vectors when requested. */
+static int
+add_internal_libc(vector_t *lib_dirs, vector_t *libs, vector_t *dup_dirs,
+                  const cli_options_t *cli)
+{
+    const char *inc = (cli->vc_sysinclude && *cli->vc_sysinclude)
+                          ? cli->vc_sysinclude
+                          : PROJECT_ROOT "/libc/include";
+    char base[PATH_MAX];
+    int ret = snprintf(base, sizeof(base), "%s", inc);
+    if (ret < 0) {
+        fprintf(stderr, "vc: failed to format internal libc path\n");
+        return 0;
+    }
+    if (ret >= (int)sizeof(base)) {
+        fprintf(stderr, "vc: internal libc path too long\n");
+        return 0;
+    }
+    char *slash = strrchr(base, '/');
+    if (slash)
+        *slash = '\0';
+
+    const char *libname = cli->use_x86_64 ? "c64" : "c32";
+    char archive[PATH_MAX];
+    int n = snprintf(archive, sizeof(archive), "%s/lib%s.a", base,
+                     cli->use_x86_64 ? "c64" : "c32");
+    if (n < 0) {
+        fprintf(stderr,
+                "vc: failed to format internal libc archive path\n");
+        return 0;
+    }
+    if (n >= (int)sizeof(archive)) {
+        fprintf(stderr, "vc: internal libc archive path too long\n");
+        return 0;
+    }
+
+    if (access(archive, F_OK) != 0) {
+        const char *make_target = cli->use_x86_64 ? "libc64" : "libc32";
+        fprintf(stderr,
+                "vc: internal libc archive '%s' not found. Build it with 'make %s'\n",
+                archive, make_target);
+        return 0;
+    }
+
+    char *dir_dup = vc_strdup(base);
+    if (!dir_dup) {
+        vc_oom();
+        return 0;
+    }
+    if (!vector_push(lib_dirs, &dir_dup) ||
+        !vector_push(dup_dirs, &dir_dup)) {
+        free(dir_dup);
+        vc_oom();
+        return 0;
+    }
+    if (!vector_push(libs, &libname)) {
+        vc_oom();
+        return 0;
+    }
+
+    return 1;
+}
+
+/* Link all object files and release library vectors. */
+static int
+link_final_objects(vector_t *objs, vector_t *lib_dirs, vector_t *libs,
+                   vector_t *dup_dirs, const cli_options_t *cli)
+{
+    int ok = run_link_command(objs, lib_dirs, libs,
+                              cli->output, cli->use_x86_64);
+    vector_free(lib_dirs);
+    vector_free(libs);
+    free_string_vector(dup_dirs);
+    return ok;
+}
+
 /* Create entry stub and link all objects into the final executable. */
 #ifdef UNIT_TESTING
 int build_and_link_objects(vector_t *objs, const cli_options_t *cli)
@@ -302,6 +412,7 @@ int build_and_link_objects(vector_t *objs, const cli_options_t *cli)
 static int build_and_link_objects(vector_t *objs, const cli_options_t *cli)
 #endif
 {
+    /* Phase 1: create startup object */
     char *stubobj = NULL;
     int ok = create_startup_object(cli, cli->use_x86_64, &stubobj);
     if (!ok)
@@ -314,6 +425,7 @@ static int build_and_link_objects(vector_t *objs, const cli_options_t *cli)
         return 0;
     }
 
+    /* Phase 2: detect -nostdlib flag */
     int disable_stdlib = 0;
     for (size_t i = 0; i < cli->libs.count; i++) {
         const char *lib = ((const char **)cli->libs.data)[i];
@@ -323,107 +435,16 @@ static int build_and_link_objects(vector_t *objs, const cli_options_t *cli)
         }
     }
 
+    /* Phase 3: gather library options from CLI */
     vector_t lib_dirs;
     vector_t libs;
     vector_t dup_dirs; /* track heap allocations for internal libc */
-    vector_init(&lib_dirs, sizeof(char *));
-    vector_init(&libs, sizeof(char *));
-    vector_init(&dup_dirs, sizeof(char *));
-    for (size_t i = 0; i < cli->lib_dirs.count; i++) {
-        char *dir = ((char **)cli->lib_dirs.data)[i];
-        if (!vector_push(&lib_dirs, &dir)) {
-            vc_oom();
-            vector_free(&lib_dirs);
-            vector_free(&libs);
-            free_string_vector(&dup_dirs);
-            return 0;
-        }
-    }
-    for (size_t i = 0; i < cli->libs.count; i++) {
-        char *lib = ((char **)cli->libs.data)[i];
-        if (!vector_push(&libs, &lib)) {
-            vc_oom();
-            vector_free(&lib_dirs);
-            vector_free(&libs);
-            free_string_vector(&dup_dirs);
-            return 0;
-        }
-    }
+    if (!prepare_lib_vectors(cli, &lib_dirs, &libs, &dup_dirs))
+        return 0;
 
+    /* Phase 4: optionally add internal libc */
     if (cli->internal_libc && !disable_stdlib) {
-        const char *inc = (cli->vc_sysinclude && *cli->vc_sysinclude)
-                             ? cli->vc_sysinclude
-                             : PROJECT_ROOT "/libc/include";
-        char base[PATH_MAX];
-        int ret = snprintf(base, sizeof(base), "%s", inc);
-        if (ret < 0) {
-            fprintf(stderr,
-                    "vc: failed to format internal libc path\n");
-            vector_free(&lib_dirs);
-            vector_free(&libs);
-            free_string_vector(&dup_dirs);
-            return 0;
-        }
-        if (ret >= (int)sizeof(base)) {
-            fprintf(stderr, "vc: internal libc path too long\n");
-            vector_free(&lib_dirs);
-            vector_free(&libs);
-            free_string_vector(&dup_dirs);
-            return 0;
-        }
-        char *slash = strrchr(base, '/');
-        if (slash)
-            *slash = '\0';
-        const char *libname = cli->use_x86_64 ? "c64" : "c32";
-        char archive[PATH_MAX];
-        int n = snprintf(archive, sizeof(archive), "%s/lib%s.a", base,
-                         cli->use_x86_64 ? "c64" : "c32");
-        if (n < 0) {
-            fprintf(stderr,
-                    "vc: failed to format internal libc archive path\n");
-            vector_free(&lib_dirs);
-            vector_free(&libs);
-            free_string_vector(&dup_dirs);
-            return 0;
-        }
-        if (n >= (int)sizeof(archive)) {
-            fprintf(stderr, "vc: internal libc archive path too long\n");
-            vector_free(&lib_dirs);
-            vector_free(&libs);
-            free_string_vector(&dup_dirs);
-            return 0;
-        }
-
-        if (access(archive, F_OK) != 0) {
-            const char *make_target = cli->use_x86_64 ? "libc64" : "libc32";
-            fprintf(stderr,
-                    "vc: internal libc archive '%s' not found. Build it with 'make %s'\n",
-                    archive, make_target);
-            vector_free(&lib_dirs);
-            vector_free(&libs);
-            free_string_vector(&dup_dirs);
-            return 0;
-        }
-
-        char *dir_dup = vc_strdup(base);
-        if (!dir_dup) {
-            vc_oom();
-            vector_free(&lib_dirs);
-            vector_free(&libs);
-            free_string_vector(&dup_dirs);
-            return 0;
-        }
-        if (!vector_push(&lib_dirs, &dir_dup) ||
-            !vector_push(&dup_dirs, &dir_dup)) {
-            free(dir_dup);
-            vc_oom();
-            vector_free(&lib_dirs);
-            vector_free(&libs);
-            free_string_vector(&dup_dirs);
-            return 0;
-        }
-        if (!vector_push(&libs, &libname)) {
-            vc_oom();
+        if (!add_internal_libc(&lib_dirs, &libs, &dup_dirs, cli)) {
             vector_free(&lib_dirs);
             vector_free(&libs);
             free_string_vector(&dup_dirs);
@@ -431,12 +452,8 @@ static int build_and_link_objects(vector_t *objs, const cli_options_t *cli)
         }
     }
 
-    ok = run_link_command(objs, &lib_dirs, &libs,
-                          cli->output, cli->use_x86_64);
-    vector_free(&lib_dirs);
-    vector_free(&libs);
-    free_string_vector(&dup_dirs);
-    return ok;
+    /* Phase 5: link into final executable */
+    return link_final_objects(objs, &lib_dirs, &libs, &dup_dirs, cli);
 }
 
 /* Compile all sources and link them into the final executable. */
