@@ -4,6 +4,7 @@
 #include <fcntl.h>
 #include <errno.h>
 #include "stdio.h"
+#include <limits.h>
 #include "stdlib.h"
 #include "../internal/_vc_syscalls.h"
 
@@ -94,7 +95,15 @@ int fprintf(FILE *stream, const char *fmt, ...)
         int width = 0;
         const char *start = p;
         while (*p >= '0' && *p <= '9') {
-            width = width * 10 + (*p - '0');
+            int digit = *p - '0';
+            if (width > INT_MAX / 10 ||
+                (width == INT_MAX / 10 && digit > INT_MAX % 10)) {
+                width = INT_MAX;
+                while (*p >= '0' && *p <= '9')
+                    p++;
+                break;
+            }
+            width = width * 10 + digit;
             p++;
         }
 
