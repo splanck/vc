@@ -243,6 +243,7 @@ int compile_tokenize_impl(const char *source, const cli_options_t *cli,
                            cli->internal_libc, cli->use_x86_64);
         if (!text) {
             perror("preproc_run");
+            preproc_context_free(&ctx);
             return 0;
         }
         if (deps) {
