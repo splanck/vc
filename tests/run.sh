@@ -156,6 +156,14 @@ $CC -Iinclude -Wall -Wextra -std=c99 \
 $CC -Iinclude -Wall -Wextra -std=c99 -c "$DIR/unit/test_command_fail.c" -o "$DIR/test_command_fail.o"
 $CC -o "$DIR/command_fail" command_fail.o "$DIR/test_command_fail.o"
 rm -f command_fail.o "$DIR/test_command_fail.o"
+# build command_to_string alloc failure test
+$CC -Iinclude -Wall -Wextra -std=c99 -c src/strbuf.c -o strbuf_cmdalloc_impl.o
+$CC -Iinclude -Wall -Wextra -std=c99 -Dstrbuf_append=test_strbuf_append \
+    -c src/command.c -o command_alloc_fail.o
+$CC -Iinclude -Wall -Wextra -std=c99 -Dstrbuf_append=test_strbuf_append \
+    -c "$DIR/unit/test_command_alloc_fail.c" -o "$DIR/test_command_alloc_fail.o"
+$CC -o "$DIR/command_alloc_fail" command_alloc_fail.o strbuf_cmdalloc_impl.o "$DIR/test_command_alloc_fail.o"
+rm -f command_alloc_fail.o strbuf_cmdalloc_impl.o "$DIR/test_command_alloc_fail.o"
 # build vc_strtoul_unsigned negative value rejection test
 $CC -Iinclude -Wall -Wextra -std=c99 -c src/util.c -o util_strtoul_unsigned.o
 $CC -Iinclude -Wall -Wextra -std=c99 -c "$DIR/unit/test_vc_strtoul_unsigned.c" -o "$DIR/test_vc_strtoul_unsigned.o"
@@ -646,6 +654,7 @@ rm -f ir_licm.o util_licm.o label_licm.o error_licm.o opt_main_licm.o \
 "$DIR/add_macro_fail_tests"
 "$DIR/collect_include_dest_fail"
 "$DIR/text_line_fail"
+"$DIR/command_alloc_fail"
 "$DIR/variadic_macro_tests"
 "$DIR/macro_stringize_escape"
 "$DIR/preproc_literal_args"
