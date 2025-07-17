@@ -2,7 +2,7 @@
 #include <stdarg.h>
 #include <string.h>
 #include <fcntl.h>
-#include <errno.h>
+#include "errno.h"
 #include "stdio.h"
 #include <limits.h>
 #include "stdlib.h"
