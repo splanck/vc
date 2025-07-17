@@ -528,6 +528,10 @@ $CC -Iinclude -Wall -Wextra -std=c99 -Dvc_alloc_or_exit=test_alloc_or_exit \
 $CC -o "$DIR/std_dirs_alloc_fail" include_path_cache_fail_impl.o util_std_dirs_fail.o \
     "$DIR/test_std_dirs_alloc_fail.o"
 rm -f include_path_cache_fail_impl.o util_std_dirs_fail.o "$DIR/test_std_dirs_alloc_fail.o"
+# build gcc include dir strndup failure test
+$CC -Iinclude -Wall -Wextra -std=c99 \
+    -o "$DIR/gcc_dir_strndup_fail" "$DIR/unit/test_gcc_dir_strndup_fail.c" \
+    src/util.c
 # build create_temp_file path length regression test
 $CC -Iinclude -Wall -Wextra -std=c99 -DUNIT_TESTING -ffunction-sections -fdata-sections -c src/compile.c -o compile_temp.o
 $CC -Iinclude -Wall -Wextra -std=c99 -c "$DIR/unit/test_temp_file.c" -o "$DIR/test_temp_file.o"
@@ -637,6 +641,7 @@ rm -f ir_licm.o util_licm.o label_licm.o error_licm.o opt_main_licm.o \
 "$DIR/compile_obj_fail"
 "$DIR/vc_names_tests"
 "$DIR/std_dirs_alloc_fail"
+"$DIR/gcc_dir_strndup_fail"
 "$DIR/preproc_alloc_tests"
 "$DIR/add_macro_fail_tests"
 "$DIR/collect_include_dest_fail"

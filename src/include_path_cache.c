@@ -53,8 +53,17 @@ static const char *get_multiarch_dir(void)
                 size_t len = strlen(buf);
                 while (len && (buf[len-1] == '\n' || buf[len-1] == '\r'))
                     buf[--len] = '\0';
-                if (len)
+                if (len) {
                     tmp = vc_strndup(buf, len);
+                    if (!tmp) {
+                        gcc_query_failed = 1;
+                        if (pclose(fp) == -1) {
+                            perror("pclose");
+                            gcc_query_failed = 1;
+                        }
+                        return NULL;
+                    }
+                }
             } else {
                 perror("fgets");
                 gcc_query_failed = 1;
@@ -100,8 +109,17 @@ static const char *get_gcc_include_dir(void)
                 size_t len = strlen(buf);
                 while (len && (buf[len-1] == '\n' || buf[len-1] == '\r'))
                     buf[--len] = '\0';
-                if (len)
+                if (len) {
                     gcc_include_cached = vc_strndup(buf, len);
+                    if (!gcc_include_cached) {
+                        gcc_query_failed = 1;
+                        if (pclose(fp) == -1) {
+                            perror("pclose");
+                            gcc_query_failed = 1;
+                        }
+                        return NULL;
+                    }
+                }
             } else {
                 perror("fgets");
                 gcc_query_failed = 1;
