@@ -90,7 +90,7 @@ C_INCLUDE_PATH="$DIR/includes" compile_fixture "$DIR/fixtures/include_env.c" "$D
 if [ $CAN_COMPILE_32 -ne 0 ]; then
     echo "Skipping verbose_internal_stdio (32-bit libc unavailable)"
 else
-    err=$(mktemp)
+    err=$(safe_mktemp)
     "$BINARY" --preprocess --verbose-includes --internal-libc "$DIR/fixtures/include_stdio.c" >/dev/null 2> "$err"
     if ! grep -q "libc/include/stdio.h" "$err"; then
         echo "Test verbose_internal_stdio failed"
@@ -117,7 +117,7 @@ compile_fixture "$DIR/fixtures/macro_cli.c" "$DIR/fixtures/macro_cli.s" -DVAL=4 
 compile_fixture "$DIR/fixtures/macro_cli_undef.c" "$DIR/fixtures/macro_cli_undef.s" -DFLAG -UFLAG
 
 # verify quoted macro values are unquoted
-macro_quote=$(mktemp)
+macro_quote=$(safe_mktemp)
 "$BINARY" -E "$DIR/fixtures/macro_cli_quote.c" '-DVAL="1 + 4"' > "${macro_quote}"
 if ! diff -u "$DIR/fixtures/macro_cli_quote.expected" "${macro_quote}"; then
     echo "Test macro_cli_quote failed"
@@ -126,8 +126,8 @@ fi
 rm -f "${macro_quote}"
 
 # negative test for parse error message
-err=$(mktemp)
-out=$(mktemp)
+err=$(safe_mktemp)
+out=$(safe_mktemp)
 set +e
 "$BINARY" -o "${out}" "$DIR/invalid/parse_error.c" 2> "${err}"
 ret=$?
@@ -139,8 +139,8 @@ fi
 rm -f "${out}" "${err}"
 
 # negative test for undefined variable error message
-err=$(mktemp)
-out=$(mktemp)
+err=$(safe_mktemp)
+out=$(safe_mktemp)
 set +e
 "$BINARY" -o "${out}" "$DIR/invalid/undef_var.c" 2> "${err}"
 ret=$?
@@ -152,8 +152,8 @@ fi
 rm -f "${out}" "${err}"
 
 # negative test for assigning to const variable
-err=$(mktemp)
-out=$(mktemp)
+err=$(safe_mktemp)
+out=$(safe_mktemp)
 set +e
 "$BINARY" -o "${out}" "$DIR/invalid/const_assign.c" 2> "${err}"
 ret=$?
@@ -165,8 +165,8 @@ fi
 rm -f "${out}" "${err}"
 
 # negative test for const variable without initializer
-err=$(mktemp)
-out=$(mktemp)
+err=$(safe_mktemp)
+out=$(safe_mktemp)
 set +e
 "$BINARY" -o "${out}" "$DIR/invalid/const_no_init.c" 2> "${err}"
 ret=$?
@@ -178,8 +178,8 @@ fi
 rm -f "${out}" "${err}"
 
 # negative test for undefined variable in conditional expression
-err=$(mktemp)
-out=$(mktemp)
+err=$(safe_mktemp)
+out=$(safe_mktemp)
 set +e
 "$BINARY" -o "${out}" "$DIR/invalid/undef_cond.c" 2> "${err}"
 ret=$?
@@ -191,8 +191,8 @@ fi
 rm -f "${out}" "${err}"
 
 # negative test for assignment to undefined variable
-err=$(mktemp)
-out=$(mktemp)
+err=$(safe_mktemp)
+out=$(safe_mktemp)
 set +e
 "$BINARY" -o "${out}" "$DIR/invalid/undef_assign.c" 2> "${err}"
 ret=$?
@@ -204,8 +204,8 @@ fi
 rm -f "${out}" "${err}"
 
 # negative test for failing static assertion
-err=$(mktemp)
-out=$(mktemp)
+err=$(safe_mktemp)
+out=$(safe_mktemp)
 set +e
 "$BINARY" -o "${out}" "$DIR/invalid/static_assert_fail.c" 2> "${err}"
 ret=$?
@@ -217,8 +217,8 @@ fi
 rm -f "${out}" "${err}"
 
 # negative test for #error directive
-err=$(mktemp)
-out=$(mktemp)
+err=$(safe_mktemp)
+out=$(safe_mktemp)
 set +e
 "$BINARY" -o "${out}" "$DIR/invalid/preproc_error.c" 2> "${err}"
 ret=$?
@@ -230,8 +230,8 @@ fi
 rm -f "${out}" "${err}"
 
 # negative test for include cycle detection
-err=$(mktemp)
-out=$(mktemp)
+err=$(safe_mktemp)
+out=$(safe_mktemp)
 set +e
 "$BINARY" -o "${out}" "$DIR/invalid/include_cycle.c" 2> "${err}"
 ret=$?
@@ -243,8 +243,8 @@ fi
 rm -f "${out}" "${err}"
 
 # negative test for include cycle through search path
-err=$(mktemp)
-out=$(mktemp)
+err=$(safe_mktemp)
+out=$(safe_mktemp)
 set +e
 "$BINARY" -I "$DIR/includes" -o "${out}" "$DIR/invalid/include_cycle_search.c" 2> "${err}"
 ret=$?
@@ -256,8 +256,8 @@ fi
 rm -f "${out}" "${err}"
 
 # negative test for include cycle with symlinked header
-err=$(mktemp)
-out=$(mktemp)
+err=$(safe_mktemp)
+out=$(safe_mktemp)
 set +e
 "$BINARY" -o "${out}" "$DIR/invalid/include_cycle_symlink.c" 2> "${err}"
 ret=$?
@@ -269,8 +269,8 @@ fi
 rm -f "${out}" "${err}"
 
 # negative test for missing include file
-err=$(mktemp)
-out=$(mktemp)
+err=$(safe_mktemp)
+out=$(safe_mktemp)
 set +e
 "$BINARY" -o "${out}" "$DIR/invalid/include_missing.c" 2> "${err}"
 ret=$?
@@ -284,8 +284,8 @@ fi
 rm -f "${out}" "${err}"
 
 # negative test for include_next missing file
-err=$(mktemp)
-out=$(mktemp)
+err=$(safe_mktemp)
+out=$(safe_mktemp)
 set +e
 "$BINARY" -I "$DIR/include_next/miss1" -I "$DIR/include_next/miss2" -o "${out}" "$DIR/invalid/include_next_missing.c" 2> "${err}"
 ret=$?
@@ -299,8 +299,8 @@ fi
 rm -f "${out}" "${err}"
 
 # negative test for quoted include_next missing file
-err=$(mktemp)
-out=$(mktemp)
+err=$(safe_mktemp)
+out=$(safe_mktemp)
 set +e
 "$BINARY" -I "$DIR/include_next_quote/miss1" -I "$DIR/include_next_quote/miss2" -o "${out}" "$DIR/invalid/include_next_quote_missing.c" 2> "${err}"
 ret=$?
@@ -314,8 +314,8 @@ fi
 rm -f "${out}" "${err}"
 
 # negative test for malformed include line
-err=$(mktemp)
-out=$(mktemp)
+err=$(safe_mktemp)
+out=$(safe_mktemp)
 set +e
 "$BINARY" -o "${out}" "$DIR/invalid/include_malformed.c" 2> "${err}"
 ret=$?
@@ -327,8 +327,8 @@ fi
 rm -f "${out}" "${err}"
 
 # negative test for malformed include_next line
-err=$(mktemp)
-out=$(mktemp)
+err=$(safe_mktemp)
+out=$(safe_mktemp)
 set +e
 "$BINARY" -o "${out}" "$DIR/invalid/include_next_malformed.c" 2> "${err}"
 ret=$?
@@ -340,8 +340,8 @@ fi
 rm -f "${out}" "${err}"
 
 # negative test for include_next outside header
-err=$(mktemp)
-out=$(mktemp)
+err=$(safe_mktemp)
+out=$(safe_mktemp)
 set +e
 "$BINARY" -o "${out}" "$DIR/invalid/include_next_outside.c" 2> "${err}"
 ret=$?
@@ -353,8 +353,8 @@ fi
 rm -f "${out}" "${err}"
 
 # macro recursion should fail without expansion limit error
-err=$(mktemp)
-out=$(mktemp)
+err=$(safe_mktemp)
+out=$(safe_mktemp)
 set +e
 "$BINARY" -o "${out}" "$DIR/invalid/macro_cycle.c" 2> "${err}"
 ret=$?
@@ -366,8 +366,8 @@ fi
 rm -f "${out}" "${err}"
 
 # regression test for missing ')' in macro definition
-err=$(mktemp)
-out=$(mktemp)
+err=$(safe_mktemp)
+out=$(safe_mktemp)
 set +e
 "$BINARY" -o "${out}" "$DIR/invalid/macro_param_missing.c" 2> "${err}"
 ret=$?
@@ -379,8 +379,8 @@ fi
 rm -f "${out}" "${err}"
 
 # negative test for unterminated macro parameter list
-err=$(mktemp)
-out=$(mktemp)
+err=$(safe_mktemp)
+out=$(safe_mktemp)
 set +e
 "$BINARY" -o "${out}" "$DIR/invalid/macro_param_unterm.c" 2> "${err}"
 ret=$?
@@ -392,8 +392,8 @@ fi
 rm -f "${out}" "${err}"
 
 # negative test for duplicate macro parameter names
-err=$(mktemp)
-out=$(mktemp)
+err=$(safe_mktemp)
+out=$(safe_mktemp)
 set +e
 "$BINARY" -o "${out}" "$DIR/invalid/macro_param_dup.c" 2> "${err}"
 ret=$?
@@ -405,8 +405,8 @@ fi
 rm -f "${out}" "${err}"
 
 # negative test for include depth limit
-err=$(mktemp)
-out=$(mktemp)
+err=$(safe_mktemp)
+out=$(safe_mktemp)
 set +e
 "$BINARY" -o "${out}" "$DIR/invalid/include_depth.c" 2> "${err}"
 ret=$?
@@ -418,7 +418,7 @@ fi
 rm -f "${out}" "${err}"
 
 # verify custom include depth option works
-depth_ok=$(mktemp)
+depth_ok=$(safe_mktemp)
 "$BINARY" -fmax-include-depth=22 -o "${depth_ok}" "$DIR/invalid/include_depth.c"
 if ! diff -u "$DIR/fixtures/include_depth_ok.s" "${depth_ok}"; then
     echo "Test include_depth_override failed"
@@ -427,8 +427,8 @@ fi
 rm -f "${depth_ok}"
 
 # negative test for duplicate switch cases
-err=$(mktemp)
-out=$(mktemp)
+err=$(safe_mktemp)
+out=$(safe_mktemp)
 set +e
 "$BINARY" -o "${out}" "$DIR/invalid/duplicate_case.c" 2> "${err}"
 ret=$?
@@ -440,8 +440,8 @@ fi
 rm -f "${out}" "${err}"
 
 # negative test for invalid union member access
-err=$(mktemp)
-out=$(mktemp)
+err=$(safe_mktemp)
+out=$(safe_mktemp)
 set +e
 "$BINARY" -o "${out}" "$DIR/invalid/union_bad_access.c" 2> "${err}"
 ret=$?
@@ -453,7 +453,7 @@ fi
 rm -f "${out}" "${err}"
 
 # test --dump-asm option
-dump_out=$(mktemp)
+dump_out=$(safe_mktemp)
 "$BINARY" --dump-asm "$DIR/fixtures/simple_add.c" > "${dump_out}"
 if ! grep -q "movl \$7, %eax" "${dump_out}"; then
     echo "Test dump_asm failed"
@@ -462,7 +462,7 @@ fi
 rm -f "${dump_out}"
 
 # test -S option
-dashS_out=$(mktemp)
+dashS_out=$(safe_mktemp)
 "$BINARY" -S "$DIR/fixtures/simple_add.c" > "${dashS_out}"
 if ! grep -q "movl \$7, %eax" "${dashS_out}"; then
     echo "Test dash_S failed"
@@ -471,7 +471,7 @@ fi
 rm -f "${dashS_out}"
 
 # test --dump-ir option
-ir_out=$(mktemp)
+ir_out=$(safe_mktemp)
 "$BINARY" --dump-ir "$DIR/fixtures/simple_add.c" > "${ir_out}"
 if ! grep -q "IR_CONST" "${ir_out}"; then
     echo "Test dump_ir failed"
@@ -480,7 +480,7 @@ fi
 rm -f "${ir_out}"
 
 # verify restrict pointers are marked in IR
-ir_restrict=$(mktemp)
+ir_restrict=$(safe_mktemp)
 "$BINARY" --dump-ir "$DIR/fixtures/restrict_load.c" > "${ir_restrict}"
 if ! grep -q "alias=" "${ir_restrict}" || ! grep -q "restrict" "${ir_restrict}"; then
     echo "Test dump_ir_restrict failed"
@@ -489,7 +489,7 @@ fi
 rm -f "${ir_restrict}"
 
 # verify multiple restrict parameters produce separate alias records
-ir_restrict_multi=$(mktemp)
+ir_restrict_multi=$(safe_mktemp)
 "$BINARY" --dump-ir "$DIR/fixtures/restrict_ptr.c" > "${ir_restrict_multi}"
 if [ $(grep -c "restrict" "${ir_restrict_multi}") -lt 2 ]; then
     echo "Test dump_ir_restrict_ptr failed"
@@ -498,7 +498,7 @@ fi
 rm -f "${ir_restrict_multi}"
 
 # test -E/--preprocess option
-pp_out=$(mktemp)
+pp_out=$(safe_mktemp)
 "$BINARY" -E "$DIR/fixtures/macro_object.c" > "${pp_out}"
 if ! grep -q "return 42;" "${pp_out}"; then
     echo "Test preprocess_option failed"
@@ -507,7 +507,7 @@ fi
 rm -f "${pp_out}"
 
 # verify blank lines are preserved by the preprocessor
-pp_blank=$(mktemp)
+pp_blank=$(safe_mktemp)
 "$BINARY" -E "$DIR/fixtures/preproc_blank.c" > "${pp_blank}"
 if ! diff -u "$DIR/fixtures/preproc_blank.expected" "${pp_blank}"; then
     echo "Test preprocess_blank_lines failed"
@@ -516,7 +516,7 @@ fi
 rm -f "${pp_blank}"
 
 # verify #pragma once prevents repeated includes
-pp_once=$(mktemp)
+pp_once=$(safe_mktemp)
 "$BINARY" -I "$DIR/includes" -E "$DIR/fixtures/include_once.c" > "${pp_once}"
 if ! diff -u "$DIR/fixtures/include_once.expected" "${pp_once}"; then
     echo "Test pragma_once failed"
@@ -525,7 +525,7 @@ fi
 rm -f "${pp_once}"
 
 # verify #pragma once with symlinked header
-pp_link=$(mktemp)
+pp_link=$(safe_mktemp)
 "$BINARY" -I "$DIR/includes" -E "$DIR/fixtures/include_once_link.c" > "${pp_link}"
 if ! diff -u "$DIR/fixtures/include_once_link.expected" "${pp_link}"; then
     echo "Test pragma_once_symlink failed"
@@ -545,9 +545,9 @@ fi
 if [ -z "$header" ]; then
     echo "Skipping pragma_glibc (sys/cdefs.h not found)"
 else
-    tmp_pragma=$(mktemp)
+    tmp_pragma=$(safe_mktemp)
     echo '#include <sys/cdefs.h>' > "$tmp_pragma"
-    err=$(mktemp)
+    err=$(safe_mktemp)
     set +e
     "$BINARY" -E "$tmp_pragma" > /dev/null 2> "$err"
     ret=$?
@@ -563,7 +563,7 @@ else
 fi
 
 # verify macros inside #if are expanded
-pp_gnu=$(mktemp)
+pp_gnu=$(safe_mktemp)
 "$BINARY" -E "$DIR/fixtures/ifexpr_header.h" > "$pp_gnu"
 if grep -q "__BEGIN_DECLS" "$pp_gnu"; then
     echo "Test ifexpr_macro_expand failed"
@@ -572,8 +572,8 @@ fi
 rm -f "$pp_gnu"
 
 # simulate write failure with a full pipe
-err=$(mktemp)
-tmp_big=$(mktemp)
+err=$(safe_mktemp)
+tmp_big=$(safe_mktemp)
 # create a large temporary source exceeding the pipe capacity
 yes "int x = 0;" | head -n 7000 > "$tmp_big"
 set +e
@@ -589,7 +589,7 @@ fi
 rm -f "$err"
 
 # test --no-cprop option
-cprop_out=$(mktemp)
+cprop_out=$(safe_mktemp)
 VC_NAMED_LOCALS=1 "$BINARY" --no-cprop -o "${cprop_out}" "$DIR/fixtures/const_load.c"
 if ! grep -q "movl x, %eax" "${cprop_out}"; then
     echo "Test no_cprop failed"
@@ -598,7 +598,7 @@ fi
 rm -f "${cprop_out}"
 
 # test --no-inline option
-inline_out=$(mktemp)
+inline_out=$(safe_mktemp)
 "$BINARY" --no-inline -o "${inline_out}" "$DIR/fixtures/inline_func.c"
 if ! grep -q "call add" "${inline_out}"; then
     echo "Test no_inline failed"
@@ -607,7 +607,7 @@ fi
 rm -f "${inline_out}"
 
 # verify additional inline fixtures
-multi_out=$(mktemp)
+multi_out=$(safe_mktemp)
 "$BINARY" -o "${multi_out}" "$DIR/fixtures/inline_multi.c"
 if ! diff -u "$DIR/fixtures/inline_multi.s" "${multi_out}"; then
     echo "Test inline_multi failed"
@@ -615,7 +615,7 @@ if ! diff -u "$DIR/fixtures/inline_multi.s" "${multi_out}"; then
 fi
 rm -f "${multi_out}"
 
-return_out=$(mktemp)
+return_out=$(safe_mktemp)
 "$BINARY" -o "${return_out}" "$DIR/fixtures/inline_return.c"
 if ! diff -u "$DIR/fixtures/inline_return.s" "${return_out}"; then
     echo "Test inline_return failed"
@@ -624,7 +624,7 @@ fi
 rm -f "${return_out}"
 
 # test --debug option
-debug_out=$(mktemp)
+debug_out=$(safe_mktemp)
 "$BINARY" --debug -S "$DIR/fixtures/simple_add.c" > "${debug_out}"
 if ! grep -q "\.file" "${debug_out}"; then
     echo "Test debug_option failed"
@@ -633,7 +633,7 @@ fi
 rm -f "${debug_out}"
 
 # test -c/--compile option
-obj_tmp=$(mktemp tmp.XXXXXX)
+obj_tmp=$(safe_mktemp tmp.XXXXXX)
 obj_out="${obj_tmp}.o"
 rm -f "${obj_tmp}"
 "$BINARY" -c -o "${obj_out}" "$DIR/fixtures/simple_add.c"
@@ -645,7 +645,7 @@ rm -f "${obj_out}"
 
 # test --intel-syntax --compile option (requires nasm)
 if command -v nasm >/dev/null; then
-    obj_tmp=$(mktemp tmp.XXXXXX)
+    obj_tmp=$(safe_mktemp tmp.XXXXXX)
     obj_out="${obj_tmp}.o"
     rm -f "${obj_tmp}"
     "$BINARY" --intel-syntax -c -o "${obj_out}" "$DIR/fixtures/simple_add.c"
@@ -659,7 +659,7 @@ else
 fi
 
 # test --emit-dwarf option
-obj_tmp=$(mktemp tmp.XXXXXX)
+obj_tmp=$(safe_mktemp tmp.XXXXXX)
 obj_out="${obj_tmp}.o"
 rm -f "${obj_tmp}"
 "$BINARY" --emit-dwarf -c -o "${obj_out}" "$DIR/fixtures/simple_add.c"
@@ -674,7 +674,7 @@ fi
 rm -f "${obj_out}"
 
 # test --link option with spaces and semicolons in output path
-link_tmpdir=$(mktemp -d)
+link_tmpdir=$(safe_mktemp -d)
 trap 'rm -rf "$link_tmpdir"' EXIT
 exe_space="${link_tmpdir}/out with space"
 "$BINARY" --x86-64 --link -o "${exe_space}" "$DIR/fixtures/simple_add.c"
@@ -692,7 +692,7 @@ rm -f "${exe_space}" "${exe_semi}"
 rmdir "${link_tmpdir}"
 
 # link program against libm using -l and -L options
-libm_exe=$(mktemp)
+libm_exe=$(safe_mktemp)
 "$BINARY" --x86-64 --link -o "${libm_exe}" "$DIR/fixtures/libm_program.c" -L/usr/lib -lm
 if ! od -An -t x1 "${libm_exe}" | head -n 1 | grep -q "7f 45 4c 46"; then
     echo "Test link_libm failed"
@@ -703,7 +703,7 @@ rm -f "${libm_exe}"
 # build and run simple program with internal libc (32-bit and 64-bit)
 if [ $SKIP_LIBC_TESTS -eq 0 ]; then
     if [ $CAN_COMPILE_32 -eq 0 ]; then
-        libc32=$(mktemp)
+        libc32=$(safe_mktemp)
         rm -f "${libc32}"
         "$BINARY" --link --internal-libc -o "${libc32}" "$DIR/fixtures/libc_puts.c"
         out=$("${libc32}")
@@ -715,7 +715,7 @@ if [ $SKIP_LIBC_TESTS -eq 0 ]; then
         rm -f "${libc32}"
     fi
 
-    libc64=$(mktemp)
+    libc64=$(safe_mktemp)
     rm -f "${libc64}"
     "$BINARY" --x86-64 --link --internal-libc -o "${libc64}" "$DIR/fixtures/libc_puts.c"
     out=$("${libc64}")
@@ -727,7 +727,7 @@ if [ $SKIP_LIBC_TESTS -eq 0 ]; then
     rm -f "${libc64}"
 
     if [ $CAN_COMPILE_32 -eq 0 ]; then
-        libc_printf32=$(mktemp)
+        libc_printf32=$(safe_mktemp)
         rm -f "${libc_printf32}"
         "$BINARY" --link --internal-libc -o "${libc_printf32}" "$DIR/fixtures/libc_printf.c"
         if [ "$("${libc_printf32}")" != "hi A 3     7" ]; then
@@ -737,7 +737,7 @@ if [ $SKIP_LIBC_TESTS -eq 0 ]; then
         rm -f "${libc_printf32}"
     fi
 
-    libc_printf64=$(mktemp)
+    libc_printf64=$(safe_mktemp)
     rm -f "${libc_printf64}"
     "$BINARY" --x86-64 --link --internal-libc -o "${libc_printf64}" "$DIR/fixtures/libc_printf.c"
     if [ "$("${libc_printf64}")" != "hi A 3     7" ]; then
@@ -749,8 +749,8 @@ if [ $SKIP_LIBC_TESTS -eq 0 ]; then
     # verify error message when internal libc archive is missing
     archive_path="$DIR/../libc/libc64.a"
     mv "$archive_path" "$archive_path.bak"
-    err=$(mktemp)
-    out=$(mktemp)
+    err=$(safe_mktemp)
+    out=$(safe_mktemp)
     set +e
     "$BINARY" --x86-64 --internal-libc -o "${out}" "$DIR/fixtures/simple_add.c" 2> "$err"
     ret=$?
@@ -765,7 +765,7 @@ if [ $SKIP_LIBC_TESTS -eq 0 ]; then
     # build and run program with locals using internal libc
     expected="5 + 2 = 7\n5 - 2 = 3\n5 * 2 = 10\n5 / 2 = 2\nSum 1..10 = 55"
     if [ $CAN_COMPILE_32 -eq 0 ]; then
-        local32=$(mktemp)
+        local32=$(safe_mktemp)
         rm -f "${local32}"
         "$BINARY" --link --internal-libc -o "${local32}" "$DIR/fixtures/local_program.c"
         if [ "$("${local32}")" != "$expected" ]; then
@@ -775,7 +775,7 @@ if [ $SKIP_LIBC_TESTS -eq 0 ]; then
         rm -f "${local32}"
     fi
 
-    local64=$(mktemp)
+    local64=$(safe_mktemp)
     rm -f "${local64}"
     "$BINARY" --x86-64 --link --internal-libc -o "${local64}" "$DIR/fixtures/local_program.c"
     if [ "$("${local64}")" != "$expected" ]; then
@@ -785,7 +785,7 @@ if [ $SKIP_LIBC_TESTS -eq 0 ]; then
     rm -f "${local64}"
 
     # verify stack offsets in generated assembly for local_program
-    asm_chk=$(mktemp)
+    asm_chk=$(safe_mktemp)
     "$BINARY" --x86-64 --internal-libc -o "${asm_chk}" "$DIR/fixtures/local_program.c"
     if grep -q "\bsum\b" "${asm_chk}"; then
         echo "Test local_program_stack failed"
@@ -794,7 +794,7 @@ if [ $SKIP_LIBC_TESTS -eq 0 ]; then
     rm -f "${asm_chk}"
 
     # verify assembly for local_assign with internal libc
-    assign_out=$(mktemp)
+    assign_out=$(safe_mktemp)
     "$BINARY" --x86-64 --internal-libc -o "${assign_out}" "$DIR/fixtures/local_assign.c"
     if ! diff -u "$DIR/fixtures/local_assign.s" "${assign_out}"; then
         echo "Test local_assign_libc failed"
@@ -806,7 +806,7 @@ if [ $SKIP_LIBC_TESTS -eq 0 ]; then
     io_file="$DIR/input.txt"
     echo "hello" > "$io_file"
     if [ $CAN_COMPILE_32 -eq 0 ]; then
-        fileio32=$(mktemp)
+        fileio32=$(safe_mktemp)
         rm -f "${fileio32}"
         "$BINARY" --link --internal-libc -o "${fileio32}" "$DIR/fixtures/libc_fileio.c"
         if [ "$("${fileio32}")" != "hello" ]; then
@@ -816,7 +816,7 @@ if [ $SKIP_LIBC_TESTS -eq 0 ]; then
         rm -f "${fileio32}"
     fi
 
-    fileio64=$(mktemp)
+    fileio64=$(safe_mktemp)
     rm -f "${fileio64}"
     "$BINARY" --x86-64 --link --internal-libc -o "${fileio64}" "$DIR/fixtures/libc_fileio.c"
     if [ "$("${fileio64}")" != "hello" ]; then
@@ -849,7 +849,7 @@ fi
 rm -f "$dep_src"
 
 # dependency generation with spaces in path
-space_dir=$(mktemp -d)
+space_dir=$(safe_mktemp -d)
 cp "$DIR/fixtures/include_search.c" "$space_dir/file with space.c"
 "$BINARY" -MD -c -I "$DIR/includes" -o "$space_dir/out.o" "$space_dir/file with space.c"
 dep_file="out.d"
@@ -861,7 +861,7 @@ rm -f "$dep_file" "$space_dir/out.o"
 rm -rf "$space_dir"
 
 # test --std option
-std_out=$(mktemp)
+std_out=$(safe_mktemp)
 "$BINARY" --std=gnu99 -o "${std_out}" "$DIR/fixtures/simple_add.c"
 if ! diff -u "$DIR/fixtures/simple_add.s" "${std_out}" > /dev/null; then
     echo "Test std_gnu99 failed"
@@ -869,7 +869,7 @@ if ! diff -u "$DIR/fixtures/simple_add.s" "${std_out}" > /dev/null; then
 fi
 rm -f "${std_out}"
 
-err=$(mktemp)
+err=$(safe_mktemp)
 set +e
 "$BINARY" --std=c23 -o "${std_out}" "$DIR/fixtures/simple_add.c" 2> "${err}"
 ret=$?
@@ -881,8 +881,8 @@ fi
 rm -f "${std_out}" "${err}"
 
 # invalid optimization level should fail
-err=$(mktemp)
-out=$(mktemp)
+err=$(safe_mktemp)
+out=$(safe_mktemp)
 set +e
 "$BINARY" -O4 -o "${out}" "$DIR/fixtures/simple_add.c" 2> "${err}"
 ret=$?
@@ -896,8 +896,8 @@ rm -f "${out}" "${err}"
 # simulate disk full during assembly generation
 lib="$DIR/libfail_fflush.so"
 cc -shared -fPIC -o "$lib" "$DIR/unit/fail_fflush.c"
-out=$(mktemp)
-err=$(mktemp)
+out=$(safe_mktemp)
+err=$(safe_mktemp)
 set +e
 LD_PRELOAD="$lib" "$BINARY" -c -o "$out" "$DIR/fixtures/simple_add.c" 2> "$err"
 ret=$?
@@ -912,8 +912,8 @@ rm -f "$out" "$err" "$lib"
 if command -v nasm >/dev/null; then
     lib="$DIR/libfail_fputs.so"
     cc -shared -fPIC -o "$lib" "$DIR/unit/fail_fputs.c"
-    out=$(mktemp)
-    err=$(mktemp)
+    out=$(safe_mktemp)
+    err=$(safe_mktemp)
     set +e
     LD_PRELOAD="$lib" "$BINARY" --intel-syntax -c -o "$out" "$DIR/fixtures/simple_add.c" 2> "$err"
     ret=$?
@@ -933,7 +933,7 @@ cc -shared -fPIC -I "$DIR/../libc/include" \
     "$DIR/../libc/src/stdio.c" "$DIR/../libc/src/stdlib.c" \
     "$DIR/../libc/src/string.c" "$DIR/../libc/src/syscalls.c" \
     "$DIR/../libc/src/file.c" -o "$libvclib"
-prog=$(mktemp)
+prog=$(safe_mktemp)
 cc -I "$DIR/../libc/include" "$DIR/fixtures/libc_short_write.c" \
     -L"$DIR" -Wl,-rpath="$DIR" -lvclib -o "$prog"
 shortlib="$DIR/libfail_vcwrite.so"
@@ -954,7 +954,7 @@ cc -shared -fPIC -I "$DIR/../libc/include" \
     "$DIR/../libc/src/stdio.c" "$DIR/../libc/src/stdlib.c" \
     "$DIR/../libc/src/string.c" "$DIR/../libc/src/syscalls.c" \
     "$DIR/../libc/src/file.c" -o "$libvclib"
-prog=$(mktemp)
+prog=$(safe_mktemp)
 cc -I "$DIR/../libc/include" "$DIR/fixtures/libc_write_fail.c" \
     -L"$DIR" -Wl,-rpath="$DIR" -lvclib -o "$prog"
 failwrite="$DIR/libfail_vcwrite_neg.so"
@@ -975,7 +975,7 @@ cc -shared -fPIC -I "$DIR/../libc/include" \
     "$DIR/../libc/src/stdio.c" "$DIR/../libc/src/stdlib.c" \
     "$DIR/../libc/src/string.c" "$DIR/../libc/src/syscalls.c" \
     "$DIR/../libc/src/file.c" -o "$libvclib"
-prog=$(mktemp)
+prog=$(safe_mktemp)
 cc -I "$DIR/../libc/include" "$DIR/fixtures/libc_exit_fail.c" \
     -L"$DIR" -Wl,-rpath="$DIR" -lvclib -o "$prog"
 failexit="$DIR/libfail_vcexit.so"
@@ -996,7 +996,7 @@ cc -shared -fPIC -I "$DIR/../libc/include" \
     "$DIR/../libc/src/stdio.c" "$DIR/../libc/src/stdlib.c" \
     "$DIR/../libc/src/string.c" "$DIR/../libc/src/syscalls.c" \
     "$DIR/../libc/src/file.c" -o "$libvclib"
-prog=$(mktemp)
+prog=$(safe_mktemp)
 cc -I "$DIR/../libc/include" "$DIR/fixtures/libc_puts_large.c" \
     -L"$DIR" -Wl,-rpath="$DIR" -lvclib -o "$prog"
 clamp="$DIR/liblarge_strlen.so"
@@ -1012,10 +1012,10 @@ fi
 rm -f "$prog" "$clamp" "$libvclib"
 
 # regression test for long command error message
-long_tmpdir=$(mktemp -d)
+long_tmpdir=$(safe_mktemp -d)
 long_out="$long_tmpdir/$(printf 'a%.0s' {1..50})/$(printf 'b%.0s' {1..50})/$(printf 'c%.0s' {1..50})/$(printf 'd%.0s' {1..50})/$(printf 'e%.0s' {1..50})/out.o"
 mkdir -p "$(dirname "$long_out")"
-err=$(mktemp)
+err=$(safe_mktemp)
 set +e
 PATH=/nonexistent "$BINARY" -c -o "$long_out" "$DIR/fixtures/simple_add.c" 2> "$err"
 ret=$?
@@ -1027,7 +1027,7 @@ fi
 rm -rf "$long_tmpdir" "$err"
 
 # test reading source from stdin
-stdin_out=$(mktemp)
+stdin_out=$(safe_mktemp)
 cat "$DIR/fixtures/simple_add.c" | "$BINARY" -o "${stdin_out}" -
 if ! diff -u "$DIR/fixtures/simple_add.s" "${stdin_out}" > /dev/null; then
     echo "Test stdin_source failed"
@@ -1036,8 +1036,8 @@ fi
 rm -f "${stdin_out}"
 
 # regression test for invalid source with --link (double free)
-err=$(mktemp)
-out=$(mktemp)
+err=$(safe_mktemp)
+out=$(safe_mktemp)
 set +e
 "$BINARY" --link -o "${out}" "$DIR/invalid/parse_error.c" 2> "${err}"
 ret=$?
@@ -1049,8 +1049,8 @@ fi
 rm -f "${out}" "${err}"
 
 # unreachable warning for return
-err=$(mktemp)
-out=$(mktemp)
+err=$(safe_mktemp)
+out=$(safe_mktemp)
 "$BINARY" -o "${out}" "$DIR/invalid/unreachable_return.c" 2> "${err}"
 if ! grep -q "warning: unreachable statement" "${err}"; then
     echo "Test warn_unreachable_return failed"
@@ -1059,8 +1059,8 @@ fi
 rm -f "${out}" "${err}"
 
 # unreachable warning for goto
-err=$(mktemp)
-out=$(mktemp)
+err=$(safe_mktemp)
+out=$(safe_mktemp)
 "$BINARY" -o "${out}" "$DIR/invalid/unreachable_goto.c" 2> "${err}"
 if ! grep -q "warning: unreachable statement" "${err}"; then
     echo "Test warn_unreachable_goto failed"

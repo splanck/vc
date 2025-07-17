@@ -658,7 +658,7 @@ rm -f ir_licm.o util_licm.o label_licm.o error_licm.o opt_main_licm.o \
 # separator for clarity
 echo "======="
 # regression test for strbuf overflow handling
-err=$(mktemp)
+err=$(safe_mktemp)
 set +e
 "$DIR/strbuf_overflow" 2> "$err"
 ret=$?
@@ -669,7 +669,7 @@ if [ $ret -ne 0 ] || ! grep -q "string buffer too large" "$err"; then
 fi
 rm -f "$err" "$DIR/strbuf_overflow"
 # regression test for builtin counter overflow handling
-err=$(mktemp)
+err=$(safe_mktemp)
 set +e
 "$DIR/preproc_counter_wrap" 2> "$err"
 ret=$?
@@ -680,7 +680,7 @@ if [ $ret -ne 0 ] || ! grep -q "Builtin counter overflow" "$err"; then
 fi
 rm -f "$err" "$DIR/preproc_counter_wrap"
 # regression test for constant expression overflow handling
-err=$(mktemp)
+err=$(safe_mktemp)
 set +e
 "$DIR/consteval_overflow" 2> "$err"
 ret=$?
@@ -691,7 +691,7 @@ if [ $ret -ne 0 ] || ! grep -q "Constant overflow" "$err"; then
 fi
 rm -f "$err" "$DIR/consteval_overflow"
 # regression test for command_to_string failure handling
-err=$(mktemp)
+err=$(safe_mktemp)
 set +e
 "$DIR/command_fail" 2> "$err"
 ret=$?
@@ -702,7 +702,7 @@ if [ $ret -ne 0 ] || ! grep -q "posix_spawnp cmd arg1 arg2" "$err"; then
 fi
 rm -f "$err" "$DIR/command_fail"
 # regression test for vc_strtoul_unsigned handling
-err=$(mktemp)
+err=$(safe_mktemp)
 set +e
 "$DIR/vc_strtoul_unsigned" > /dev/null 2> "$err"
 ret=$?
@@ -713,7 +713,7 @@ if [ $ret -ne 0 ]; then
 fi
 rm -f "$err" "$DIR/vc_strtoul_unsigned"
 # regression test for collect_funcs overflow handling
-err=$(mktemp)
+err=$(safe_mktemp)
 set +e
 "$DIR/collect_funcs_overflow" 2> "$err" >/dev/null
 ret=$?
