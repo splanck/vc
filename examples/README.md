@@ -57,3 +57,10 @@ Computes the factorial of 5 using a while loop. Run with:
 ```sh
 ./loops
 ```
+
+### gcd.c
+Computes the greatest common divisor of two integers. Run with:
+
+```sh
+./gcd
+```
