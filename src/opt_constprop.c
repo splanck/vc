@@ -93,7 +93,7 @@ static uint64_t eval_long_float_op(ir_op_t op, long double a, long double b)
 }
 
 /* Handle constant propagation through an IR_STORE instruction */
-static void handle_store(const_track_t *ct, ir_instr_t *ins)
+static void handle_store(const_track_t *ct, ir_instr_t *ins, int in_loop)
 {
     var_const_t *v = ct->vars;
     size_t max_id = ct->max_id;
@@ -109,7 +109,8 @@ static void handle_store(const_track_t *ct, ir_instr_t *ins)
         v->next = ct->vars;
         ct->vars = v;
     }
-    if (!ins->is_volatile && (size_t)ins->src1 < max_id && ct->is_const[ins->src1]) {
+    if (!in_loop && !ins->is_volatile &&
+        (size_t)ins->src1 < max_id && ct->is_const[ins->src1]) {
         v->known = 1;
         v->value = ct->values[ins->src1];
     } else {
@@ -118,13 +119,13 @@ static void handle_store(const_track_t *ct, ir_instr_t *ins)
 }
 
 /* Handle constant propagation through an IR_LOAD instruction */
-static void handle_load(const_track_t *ct, ir_instr_t *ins)
+static void handle_load(const_track_t *ct, ir_instr_t *ins, int in_loop)
 {
     var_const_t *v = ct->vars;
     size_t max_id = ct->max_id;
     while (v && strcmp(v->name, ins->name) != 0)
         v = v->next;
-    if (!ins->is_volatile && v && v->known) {
+    if (!in_loop && !ins->is_volatile && v && v->known) {
         free(ins->name);
         ins->name = NULL;
         ins->op = IR_CONST;
@@ -139,7 +140,8 @@ static void handle_load(const_track_t *ct, ir_instr_t *ins)
 }
 
 /* Update constant tracking information for a single instruction */
-static void propagate_through_instruction(const_track_t *ct, ir_instr_t *ins)
+static void propagate_through_instruction(const_track_t *ct, ir_instr_t *ins,
+                                          int in_loop)
 {
     size_t max_id = ct->max_id;
     switch (ins->op) {
@@ -151,11 +153,11 @@ static void propagate_through_instruction(const_track_t *ct, ir_instr_t *ins)
         break;
     case IR_STORE:
     case IR_BFSTORE:
-        handle_store(ct, ins);
+        handle_store(ct, ins, in_loop);
         break;
     case IR_LOAD:
     case IR_BFLOAD:
-        handle_load(ct, ins);
+        handle_load(ct, ins, in_loop);
         break;
     case IR_STORE_PTR:
     case IR_STORE_IDX:
@@ -229,10 +231,38 @@ static void propagate_through_instruction(const_track_t *ct, ir_instr_t *ins)
 }
 
 /* Traverse all instructions applying store/load propagation */
+static int loop_start(ir_instr_t *lbl, ir_instr_t **end_out)
+{
+    if (!lbl || lbl->op != IR_LABEL)
+        return 0;
+    ir_instr_t *bcond = lbl->next;
+    if (!bcond || bcond->op != IR_BCOND)
+        return 0;
+    ir_instr_t *br = bcond->next;
+    while (br && !(br->op == IR_BR && br->name && strcmp(br->name, lbl->name) == 0))
+        br = br->next;
+    if (!br)
+        return 0;
+    for (ir_instr_t *i = bcond->next; i && i != br; i = i->next)
+        if (i->op == IR_LABEL)
+            return 0;
+    *end_out = br;
+    return 1;
+}
+
 static void process_instructions(ir_builder_t *ir, const_track_t *ct)
 {
-    for (ir_instr_t *ins = ir->head; ins; ins = ins->next)
-        propagate_through_instruction(ct, ins);
+    int in_loop = 0;
+    ir_instr_t *loop_end = NULL;
+    for (ir_instr_t *ins = ir->head; ins; ins = ins->next) {
+        if (!in_loop && ins->op == IR_LABEL && loop_start(ins, &loop_end))
+            in_loop = 1;
+
+        propagate_through_instruction(ct, ins, in_loop);
+
+        if (in_loop && ins == loop_end)
+            in_loop = 0;
+    }
 }
 
 /* Top level constant propagation pass */
