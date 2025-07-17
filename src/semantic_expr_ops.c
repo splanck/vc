@@ -43,7 +43,7 @@ type_kind_t check_binary(expr_t *left, expr_t *right, symtable_t *vars,
             case BINOP_DIV: cop = IR_CPLX_DIV; break;
             default: break;
             }
-            *out = ir_build_binop(ir, cop, lval, rval);
+            *out = ir_build_binop(ir, cop, lval, rval, lt);
         }
         return lt;
     } else if (is_floatlike(lt) && lt == rt &&
@@ -57,13 +57,17 @@ type_kind_t check_binary(expr_t *left, expr_t *right, symtable_t *vars,
             case BINOP_DIV: fop = (lt == TYPE_LDOUBLE) ? IR_LFDIV : IR_FDIV; break;
             default: break;
             }
-            *out = ir_build_binop(ir, fop, lval, rval);
+            *out = ir_build_binop(ir, fop, lval, rval, lt);
         }
         return lt;
     } else if (is_intlike(lt) && is_intlike(rt)) {
         if (out) {
             ir_op_t ir_op = ir_op_for_binop(op);
-            *out = ir_build_binop(ir, ir_op, lval, rval);
+            type_kind_t rtype = (lt == TYPE_LLONG || lt == TYPE_ULLONG ||
+                                rt == TYPE_LLONG || rt == TYPE_ULLONG)
+                                   ? TYPE_LLONG
+                                   : TYPE_INT;
+            *out = ir_build_binop(ir, ir_op, lval, rval, rtype);
         }
         if (lt == TYPE_LLONG || lt == TYPE_ULLONG ||
             rt == TYPE_LLONG || rt == TYPE_ULLONG)
@@ -83,7 +87,7 @@ type_kind_t check_binary(expr_t *left, expr_t *right, symtable_t *vars,
         }
         if (op == BINOP_SUB && lt == TYPE_PTR) {
             ir_value_t zero = ir_build_const(ir, 0);
-            idx = ir_build_binop(ir, IR_SUB, zero, idx);
+            idx = ir_build_binop(ir, IR_SUB, zero, idx, TYPE_INT);
         }
         if (out)
             *out = ir_build_ptr_add(ir, ptr, idx, (int)esz);
@@ -104,7 +108,7 @@ type_kind_t check_binary(expr_t *left, expr_t *right, symtable_t *vars,
                 op == BINOP_LE || op == BINOP_GE)) {
         if (out) {
             ir_op_t ir_op = ir_op_for_binop(op);
-            *out = ir_build_binop(ir, ir_op, lval, rval);
+            *out = ir_build_binop(ir, ir_op, lval, rval, TYPE_INT);
         }
         return TYPE_INT;
     }
@@ -170,14 +174,15 @@ static type_kind_t unary_neg(expr_t *opnd, symtable_t *vars,
     if (is_intlike(vt)) {
         if (out) {
             ir_value_t zero = ir_build_const(ir, 0);
-            *out = ir_build_binop(ir, IR_SUB, zero, val);
+            *out = ir_build_binop(ir, IR_SUB, zero, val,
+                                   (vt == TYPE_LLONG || vt == TYPE_ULLONG) ? TYPE_LLONG : TYPE_INT);
         }
         return (vt == TYPE_LLONG || vt == TYPE_ULLONG) ? TYPE_LLONG : TYPE_INT;
     } else if (is_floatlike(vt)) {
         if (out) {
             ir_value_t zero = ir_build_const(ir, 0);
             ir_op_t op = (vt == TYPE_LDOUBLE) ? IR_LFSUB : IR_FSUB;
-            *out = ir_build_binop(ir, op, zero, val);
+            *out = ir_build_binop(ir, op, zero, val, vt);
         }
         return vt;
     }
@@ -194,7 +199,7 @@ static type_kind_t unary_not(expr_t *opnd, symtable_t *vars,
     if (is_intlike(check_expr(opnd, vars, funcs, ir, &val))) {
         if (out) {
             ir_value_t zero = ir_build_const(ir, 0);
-            *out = ir_build_binop(ir, IR_CMPEQ, val, zero);
+            *out = ir_build_binop(ir, IR_CMPEQ, val, zero, TYPE_INT);
         }
         return TYPE_INT;
     }
@@ -222,9 +227,9 @@ static type_kind_t unary_incdec(expr_t *expr, symtable_t *vars,
     }
 
     ir_value_t cur = sym->param_index >= 0
-                         ? ir_build_load_param(ir, sym->param_index)
-                         : (sym->is_volatile ? ir_build_load_vol(ir, sym->ir_name)
-                                             : ir_build_load(ir, sym->ir_name));
+                         ? ir_build_load_param(ir, sym->param_index, sym->type)
+                         : (sym->is_volatile ? ir_build_load_vol(ir, sym->ir_name, sym->type)
+                                             : ir_build_load(ir, sym->ir_name, sym->type));
 
     if (sym->type == TYPE_PTR) {
         int esz = sym->elem_size ? (int)sym->elem_size : 4;
@@ -235,11 +240,11 @@ static type_kind_t unary_incdec(expr_t *expr, symtable_t *vars,
         ir_value_t idx = ir_build_const(ir, step);
         ir_value_t upd = ir_build_ptr_add(ir, cur, idx, esz);
         if (sym->param_index >= 0)
-            ir_build_store_param(ir, sym->param_index, upd);
+            ir_build_store_param(ir, sym->param_index, sym->type, upd);
         else if (sym->is_volatile)
-            ir_build_store_vol(ir, sym->ir_name, upd);
+            ir_build_store_vol(ir, sym->ir_name, sym->type, upd);
         else
-            ir_build_store(ir, sym->ir_name, upd);
+            ir_build_store(ir, sym->ir_name, sym->type, upd);
         if (out)
             *out = (expr->data.unary.op == UNOP_PREINC ||
                     expr->data.unary.op == UNOP_PREDEC)
@@ -260,13 +265,13 @@ static type_kind_t unary_incdec(expr_t *expr, symtable_t *vars,
                  expr->data.unary.op == UNOP_POSTDEC)
                     ? IR_SUB
                     : IR_ADD;
-    ir_value_t upd = ir_build_binop(ir, ir_op, cur, one);
+    ir_value_t upd = ir_build_binop(ir, ir_op, cur, one, sym->type);
     if (sym->param_index >= 0)
-        ir_build_store_param(ir, sym->param_index, upd);
+        ir_build_store_param(ir, sym->param_index, sym->type, upd);
     else if (sym->is_volatile)
-        ir_build_store_vol(ir, sym->ir_name, upd);
+        ir_build_store_vol(ir, sym->ir_name, sym->type, upd);
     else
-        ir_build_store(ir, sym->ir_name, upd);
+        ir_build_store(ir, sym->ir_name, sym->type, upd);
     if (out)
         *out = (expr->data.unary.op == UNOP_PREINC ||
                 expr->data.unary.op == UNOP_PREDEC)

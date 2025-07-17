@@ -5,7 +5,7 @@
 #include "util.h"
 #include "error.h"
 
-ir_value_t ir_build_load(ir_builder_t *b, const char *name)
+ir_value_t ir_build_load(ir_builder_t *b, const char *name, type_kind_t type)
 {
     ir_instr_t *ins = append_instr(b);
     if (!ins)
@@ -19,10 +19,11 @@ ir_value_t ir_build_load(ir_builder_t *b, const char *name)
     }
     if (name)
         ins->alias_set = get_alias(b, name);
+    ins->type = type;
     return (ir_value_t){ins->dest};
 }
 
-ir_value_t ir_build_load_vol(ir_builder_t *b, const char *name)
+ir_value_t ir_build_load_vol(ir_builder_t *b, const char *name, type_kind_t type)
 {
     ir_instr_t *ins = append_instr(b);
     if (!ins)
@@ -37,10 +38,12 @@ ir_value_t ir_build_load_vol(ir_builder_t *b, const char *name)
     ins->is_volatile = 1;
     if (name)
         ins->alias_set = get_alias(b, name);
+    ins->type = type;
     return (ir_value_t){ins->dest};
 }
 
-void ir_build_store(ir_builder_t *b, const char *name, ir_value_t val)
+void ir_build_store(ir_builder_t *b, const char *name, type_kind_t type,
+                    ir_value_t val)
 {
     ir_instr_t *ins = append_instr(b);
     if (!ins)
@@ -54,9 +57,11 @@ void ir_build_store(ir_builder_t *b, const char *name, ir_value_t val)
     }
     if (name)
         ins->alias_set = get_alias(b, name);
+    ins->type = type;
 }
 
-void ir_build_store_vol(ir_builder_t *b, const char *name, ir_value_t val)
+void ir_build_store_vol(ir_builder_t *b, const char *name, type_kind_t type,
+                        ir_value_t val)
 {
     ir_instr_t *ins = append_instr(b);
     if (!ins)
@@ -71,9 +76,10 @@ void ir_build_store_vol(ir_builder_t *b, const char *name, ir_value_t val)
     ins->is_volatile = 1;
     if (name)
         ins->alias_set = get_alias(b, name);
+    ins->type = type;
 }
 
-ir_value_t ir_build_load_param(ir_builder_t *b, int index)
+ir_value_t ir_build_load_param(ir_builder_t *b, int index, type_kind_t type)
 {
     ir_instr_t *ins = append_instr(b);
     if (!ins)
@@ -81,10 +87,12 @@ ir_value_t ir_build_load_param(ir_builder_t *b, int index)
     ins->op = IR_LOAD_PARAM;
     ins->dest = alloc_value_id(b);
     ins->imm = index;
+    ins->type = type;
     return (ir_value_t){ins->dest};
 }
 
-void ir_build_store_param(ir_builder_t *b, int index, ir_value_t val)
+void ir_build_store_param(ir_builder_t *b, int index, type_kind_t type,
+                          ir_value_t val)
 {
     ir_instr_t *ins = append_instr(b);
     if (!ins)
@@ -92,6 +100,7 @@ void ir_build_store_param(ir_builder_t *b, int index, ir_value_t val)
     ins->op = IR_STORE_PARAM;
     ins->imm = index;
     ins->src1 = val.id;
+    ins->type = type;
 }
 
 ir_value_t ir_build_addr(ir_builder_t *b, const char *name)
@@ -183,7 +192,8 @@ ir_value_t ir_build_ptr_diff(ir_builder_t *b, ir_value_t a, ir_value_t bptr,
     return (ir_value_t){ins->dest};
 }
 
-ir_value_t ir_build_load_idx(ir_builder_t *b, const char *name, ir_value_t idx)
+ir_value_t ir_build_load_idx(ir_builder_t *b, const char *name, ir_value_t idx,
+                             type_kind_t type)
 {
     ir_instr_t *ins = append_instr(b);
     if (!ins)
@@ -198,10 +208,12 @@ ir_value_t ir_build_load_idx(ir_builder_t *b, const char *name, ir_value_t idx)
     }
     if (name)
         ins->alias_set = get_alias(b, name);
+    ins->type = type;
     return (ir_value_t){ins->dest};
 }
 
-ir_value_t ir_build_load_idx_vol(ir_builder_t *b, const char *name, ir_value_t idx)
+ir_value_t ir_build_load_idx_vol(ir_builder_t *b, const char *name, ir_value_t idx,
+                                 type_kind_t type)
 {
     ir_instr_t *ins = append_instr(b);
     if (!ins)
@@ -217,11 +229,12 @@ ir_value_t ir_build_load_idx_vol(ir_builder_t *b, const char *name, ir_value_t i
     ins->is_volatile = 1;
     if (name)
         ins->alias_set = get_alias(b, name);
+    ins->type = type;
     return (ir_value_t){ins->dest};
 }
 
 void ir_build_store_idx(ir_builder_t *b, const char *name, ir_value_t idx,
-                        ir_value_t val)
+                        ir_value_t val, type_kind_t type)
 {
     ir_instr_t *ins = append_instr(b);
     if (!ins)
@@ -236,10 +249,11 @@ void ir_build_store_idx(ir_builder_t *b, const char *name, ir_value_t idx,
     }
     if (name)
         ins->alias_set = get_alias(b, name);
+    ins->type = type;
 }
 
 void ir_build_store_idx_vol(ir_builder_t *b, const char *name, ir_value_t idx,
-                            ir_value_t val)
+                            ir_value_t val, type_kind_t type)
 {
     ir_instr_t *ins = append_instr(b);
     if (!ins)
@@ -255,6 +269,7 @@ void ir_build_store_idx_vol(ir_builder_t *b, const char *name, ir_value_t idx,
     ins->is_volatile = 1;
     if (name)
         ins->alias_set = get_alias(b, name);
+    ins->type = type;
 }
 
 ir_value_t ir_build_alloca(ir_builder_t *b, ir_value_t size)

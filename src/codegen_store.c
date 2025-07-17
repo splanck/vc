@@ -64,7 +64,7 @@ void emit_store(strbuf_t *sb, ir_instr_t *ins,
                 asm_syntax_t syntax)
 {
     char b1[32];
-    const char *sfx = x64 ? "q" : "l";
+    const char *sfx = (x64 && ins->type != TYPE_INT) ? "q" : "l";
     char sbuf[32];
     const char *dst = fmt_stack(sbuf, ins->name, x64, syntax);
     if (syntax == ASM_INTEL)
@@ -87,7 +87,7 @@ void emit_store_ptr(strbuf_t *sb, ir_instr_t *ins,
                     asm_syntax_t syntax)
 {
     char b1[32];
-    const char *sfx = x64 ? "q" : "l";
+    const char *sfx = (x64 && ins->type != TYPE_INT) ? "q" : "l";
     if (syntax == ASM_INTEL) {
         char b2[32];
         strbuf_appendf(sb, "    mov%s [%s], %s\n", sfx,
@@ -113,7 +113,7 @@ void emit_store_idx(strbuf_t *sb, ir_instr_t *ins,
                     asm_syntax_t syntax)
 {
     char b1[32];
-    const char *sfx = x64 ? "q" : "l";
+    const char *sfx = (x64 && ins->type != TYPE_INT) ? "q" : "l";
     char basebuf[32];
     const char *base = fmt_stack(basebuf, ins->name, x64, syntax);
     if (syntax == ASM_INTEL) {

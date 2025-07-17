@@ -17,6 +17,7 @@ ir_instr_t *append_instr(ir_builder_t *b)
     ins->is_volatile = 0;
     ins->is_restrict = 0;
     ins->alias_set = 0;
+    ins->type = TYPE_UNKNOWN;
     ins->file = b->cur_file;
     ins->line = b->cur_line;
     ins->column = b->cur_column;

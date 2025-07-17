@@ -103,8 +103,8 @@ type_kind_t check_index_expr(expr_t *expr, symtable_t *vars,
             *out = ir_build_load_ptr(ir, addr);
         } else {
             *out = sym->is_volatile
-                     ? ir_build_load_idx_vol(ir, sym->ir_name, idx_val)
-                     : ir_build_load_idx(ir, sym->ir_name, idx_val);
+                     ? ir_build_load_idx_vol(ir, sym->ir_name, idx_val, sym->type)
+                     : ir_build_load_idx(ir, sym->ir_name, idx_val, sym->type);
         }
     }
     return TYPE_INT;
@@ -156,9 +156,9 @@ type_kind_t check_assign_index_expr(expr_t *expr, symtable_t *vars,
         ir_value_t addr = ir_build_ptr_add(ir, sym->vla_addr, idx_val, esz);
         ir_build_store_ptr(ir, addr, val);
     } else if (sym->is_volatile) {
-        ir_build_store_idx_vol(ir, sym->ir_name, idx_val, val);
+        ir_build_store_idx_vol(ir, sym->ir_name, idx_val, val, sym->type);
     } else {
-        ir_build_store_idx(ir, sym->ir_name, idx_val, val);
+        ir_build_store_idx(ir, sym->ir_name, idx_val, val, sym->type);
     }
     if (out)
         *out = val;
@@ -243,11 +243,11 @@ type_kind_t check_assign_member_expr(expr_t *expr, symtable_t *vars,
         unsigned mask_bits = (mbw == 32) ? 0xFFFFFFFFu : ((1u << mbw) - 1u);
         ir_value_t maskv = ir_build_const(ir, (int)mask_bits);
         ir_value_t clear_mask = ir_build_const(ir, ~(int)(mask_bits << mbo));
-        word = ir_build_binop(ir, IR_AND, word, clear_mask);
-        ir_value_t new_val = ir_build_binop(ir, IR_AND, val, maskv);
+        word = ir_build_binop(ir, IR_AND, word, clear_mask, TYPE_INT);
+        ir_value_t new_val = ir_build_binop(ir, IR_AND, val, maskv, TYPE_INT);
         if (mbo)
-            new_val = ir_build_binop(ir, IR_SHL, new_val, ir_build_const(ir, (int)mbo));
-        word = ir_build_binop(ir, IR_OR, word, new_val);
+            new_val = ir_build_binop(ir, IR_SHL, new_val, ir_build_const(ir, (int)mbo), TYPE_INT);
+        word = ir_build_binop(ir, IR_OR, word, new_val, TYPE_INT);
         if (restr)
             ir_build_store_ptr_res(ir, addr, word);
         else
@@ -344,10 +344,10 @@ type_kind_t check_member_expr(expr_t *expr, symtable_t *vars,
         if (mbw > 0) {
             if (mbo)
                 word = ir_build_binop(ir, IR_SHR, word,
-                                      ir_build_const(ir, (int)mbo));
+                                      ir_build_const(ir, (int)mbo), TYPE_INT);
             unsigned mask_bits = (mbw == 32) ? 0xFFFFFFFFu : ((1u << mbw) - 1u);
             ir_value_t maskv = ir_build_const(ir, (int)mask_bits);
-            word = ir_build_binop(ir, IR_AND, word, maskv);
+            word = ir_build_binop(ir, IR_AND, word, maskv, TYPE_INT);
             *out = word;
         } else {
             *out = word;
