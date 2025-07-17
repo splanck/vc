@@ -90,6 +90,12 @@ static const char *fmt_reg(const char *name, asm_syntax_t syntax)
     return name;
 }
 
+/* Return the temporary register used for bit-field operations. */
+static const char *tmp_reg(int x64, asm_syntax_t syntax)
+{
+    return fmt_reg(x64 ? "%rcx" : "%ecx", syntax);
+}
+
 static const char *loc_str(char buf[32], regalloc_t *ra, int id, int x64,
                            asm_syntax_t syntax)
 {
@@ -138,8 +144,7 @@ static void mask_shift_input(strbuf_t *sb, const char *sfx, const char *val,
                              unsigned long long mask, unsigned shift,
                              int x64, asm_syntax_t syntax)
 {
-    const char *reg = x64 ? fmt_reg("%rcx", syntax)
-                          : fmt_reg("%ecx", syntax);
+    const char *reg = tmp_reg(x64, syntax);
     if (syntax == ASM_INTEL)
         strbuf_appendf(sb, "    mov%s %s, %s\n", sfx, reg, val);
     else
@@ -163,8 +168,7 @@ static void write_back_value(strbuf_t *sb, const char *sfx,
                              asm_syntax_t syntax)
 {
     const char *scratch = regalloc_reg_name(SCRATCH_REG);
-    const char *reg = x64 ? fmt_reg("%rcx", syntax)
-                          : fmt_reg("%ecx", syntax);
+    const char *reg = tmp_reg(x64, syntax);
     strbuf_appendf(sb, "    or%s %s, %s\n", sfx, reg, scratch);
     char buf[32];
     const char *dst = fmt_stack(buf, name, x64, syntax);
@@ -348,17 +352,20 @@ static void emit_bfload(strbuf_t *sb, ir_instr_t *ins,
     const char *slot = loc_str(mem, ra, ins->dest, x64, syntax);
     unsigned shift = (unsigned)(ins->imm >> 32);
     unsigned width = (unsigned)(ins->imm & 0xffffffffu);
+    /* Mask covering the bit-field width. */
     unsigned long long mask = (width == 64) ? 0xffffffffffffffffULL
                                             : ((1ULL << width) - 1ULL);
     char nbuf[32];
     const char *src = fmt_stack(nbuf, ins->name, x64, syntax);
     emit_move_with_spill(sb, sfx, src, dest, slot, 0, syntax);
     if (shift) {
+        /* Shift down to align the field with bit 0. */
         if (syntax == ASM_INTEL)
             strbuf_appendf(sb, "    shr%s %s, %u\n", sfx, dest, shift);
         else
             strbuf_appendf(sb, "    shr%s $%u, %s\n", sfx, shift, dest);
     }
+    /* Mask off any unrelated bits. */
     if (syntax == ASM_INTEL)
         strbuf_appendf(sb, "    and%s %s, %llu\n", sfx, dest, mask);
     else
@@ -382,10 +389,14 @@ static void emit_bfstore(strbuf_t *sb, ir_instr_t *ins,
     const char *sfx = x64 ? "q" : "l";
     unsigned shift = (unsigned)(ins->imm >> 32);
     unsigned width = (unsigned)(ins->imm & 0xffffffffu);
+    /* Mask covering the bit-field width. */
     unsigned long long mask = (width == 64) ? 0xffffffffffffffffULL
                                             : ((1ULL << width) - 1ULL);
+    /* Clear mask to zero out the destination field. */
     unsigned long long clear = ~((unsigned long long)mask << shift);
+    /* Load destination and clear the field bits. */
     load_dest_scratch(sb, sfx, ins->name, clear, x64, syntax);
+    /* Prepare the input value for insertion. */
     mask_shift_input(sb, sfx,
                      loc_str(bval, ra, ins->src1, x64, syntax),
                      mask, shift, x64, syntax);
