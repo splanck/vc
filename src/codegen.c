@@ -153,16 +153,100 @@ char *codegen_ir_to_string(ir_builder_t *ir, int x64,
  * when at least one directive is written so the caller knows whether a
  * `.text` header is needed before the instruction stream.
  */
+/* ----------------------------------------------------------------------
+ * Global data emitters
+ * ---------------------------------------------------------------------- */
+
+/* Emit a scalar global variable (IR_GLOB_VAR). */
+static void emit_global_var(ir_instr_t *ins,
+                            const char *size_directive,
+                            FILE *out)
+{
+    fprintf(out, "    %s %lld\n", size_directive, ins->imm);
+}
+
+/* Emit a string literal (IR_GLOB_STRING). */
+static void emit_global_string(ir_instr_t *ins,
+                               const char *size_directive,
+                               FILE *out)
+{
+    (void)size_directive;
+    const char *s = ins->data;
+    fputs("    .asciz \"", out);
+    for (; *s; s++) {
+        unsigned char c = (unsigned char)*s;
+        switch (c) {
+        case '\\': fputs("\\\\", out); break;
+        case '"':  fputs("\\\"", out); break;
+        case '\n': fputs("\\n", out); break;
+        case '\t': fputs("\\t", out); break;
+        case '\r': fputs("\\r", out); break;
+        case '\b': fputs("\\b", out); break;
+        case '\f': fputs("\\f", out); break;
+        case '\v': fputs("\\v", out); break;
+        case '\a': fputs("\\a", out); break;
+        default:
+            if (c < 32 || c > 126)
+                fprintf(out, "\\x%02x", c);
+            else
+                fputc(c, out);
+        }
+    }
+    fputs("\"\n", out);
+}
+
+/* Emit a wide string literal (IR_GLOB_WSTRING). */
+static void emit_global_wstring(ir_instr_t *ins,
+                                const char *size_directive,
+                                FILE *out)
+{
+    const long long *vals = (const long long *)ins->data;
+    for (long long i = 0; i < ins->imm; i++)
+        fprintf(out, "    %s %lld\n", size_directive, vals[i]);
+}
+
+/* Emit an initializer array (IR_GLOB_ARRAY). */
+static void emit_global_array(ir_instr_t *ins,
+                              const char *size_directive,
+                              FILE *out)
+{
+    const long long *vals = (const long long *)ins->data;
+    for (long long i = 0; i < ins->imm; i++)
+        fprintf(out, "    %s %lld\n", size_directive, vals[i]);
+}
+
+/* Emit zero-filled storage for structs and unions. */
+static void emit_global_zero(ir_instr_t *ins,
+                             const char *size_directive,
+                             FILE *out)
+{
+    (void)size_directive;
+    fprintf(out, "    .zero %lld\n", ins->imm);
+}
+
+/* Emit the address of another symbol (IR_GLOB_ADDR). */
+static void emit_global_addr(ir_instr_t *ins,
+                             const char *size_directive,
+                             FILE *out)
+{
+    fprintf(out, "    %s %s\n", size_directive,
+            ins->data ? ins->data : "0");
+}
+
 static int emit_global_data(FILE *out, const ir_builder_t *ir, int x64)
 {
     const char *size_directive = x64 ? ".quad" : ".long";
     int has_data = 0;
 
     for (ir_instr_t *ins = ir->head; ins; ins = ins->next) {
-        if (ins->op == IR_GLOB_VAR || ins->op == IR_GLOB_STRING ||
-            ins->op == IR_GLOB_WSTRING || ins->op == IR_GLOB_ARRAY ||
-            ins->op == IR_GLOB_UNION || ins->op == IR_GLOB_STRUCT ||
-            ins->op == IR_GLOB_ADDR) {
+        switch (ins->op) {
+        case IR_GLOB_VAR:
+        case IR_GLOB_STRING:
+        case IR_GLOB_WSTRING:
+        case IR_GLOB_ARRAY:
+        case IR_GLOB_UNION:
+        case IR_GLOB_STRUCT:
+        case IR_GLOB_ADDR:
             if (!has_data) {
                 fputs(".data\n", out);
                 has_data = 1;
@@ -172,45 +256,33 @@ static int emit_global_data(FILE *out, const ir_builder_t *ir, int x64)
             if (ins->src2 > 1)
                 fprintf(out, "    .align %d\n", ins->src2);
             fprintf(out, "%s:\n", ins->name);
-            if (ins->op == IR_GLOB_VAR) {
-                fprintf(out, "    %s %lld\n", size_directive, ins->imm);
-            } else if (ins->op == IR_GLOB_STRING) {
-                const char *s = ins->data;
-                fputs("    .asciz \"", out);
-                for (; *s; s++) {
-                    unsigned char c = (unsigned char)*s;
-                    switch (c) {
-                    case '\\': fputs("\\\\", out); break;
-                    case '"':  fputs("\\\"", out); break;
-                    case '\n': fputs("\\n", out); break;
-                    case '\t': fputs("\\t", out); break;
-                    case '\r': fputs("\\r", out); break;
-                    case '\b': fputs("\\b", out); break;
-                    case '\f': fputs("\\f", out); break;
-                    case '\v': fputs("\\v", out); break;
-                    case '\a': fputs("\\a", out); break;
-                    default:
-                        if (c < 32 || c > 126)
-                            fprintf(out, "\\x%02x", c);
-                        else
-                            fputc(c, out);
-                    }
-                }
-                fputs("\"\n", out);
-            } else if (ins->op == IR_GLOB_WSTRING) {
-                const long long *vals = (const long long *)ins->data;
-                for (long long i = 0; i < ins->imm; i++)
-                    fprintf(out, "    %s %lld\n", size_directive, vals[i]);
-            } else if (ins->op == IR_GLOB_ARRAY) {
-                const long long *vals = (const long long *)ins->data;
-                for (long long i = 0; i < ins->imm; i++)
-                    fprintf(out, "    %s %lld\n", size_directive, vals[i]);
-            } else if (ins->op == IR_GLOB_UNION || ins->op == IR_GLOB_STRUCT) {
-                fprintf(out, "    .zero %lld\n", ins->imm);
-            } else if (ins->op == IR_GLOB_ADDR) {
-                fprintf(out, "    %s %s\n", size_directive,
-                        ins->data ? ins->data : "0");
+
+            switch (ins->op) {
+            case IR_GLOB_VAR:
+                emit_global_var(ins, size_directive, out);
+                break;
+            case IR_GLOB_STRING:
+                emit_global_string(ins, size_directive, out);
+                break;
+            case IR_GLOB_WSTRING:
+                emit_global_wstring(ins, size_directive, out);
+                break;
+            case IR_GLOB_ARRAY:
+                emit_global_array(ins, size_directive, out);
+                break;
+            case IR_GLOB_UNION:
+            case IR_GLOB_STRUCT:
+                emit_global_zero(ins, size_directive, out);
+                break;
+            case IR_GLOB_ADDR:
+                emit_global_addr(ins, size_directive, out);
+                break;
+            default:
+                break;
             }
+            break;
+        default:
+            break;
         }
     }
 
