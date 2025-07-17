@@ -101,7 +101,12 @@ void include_stack_pop(vector_t *stack, preproc_context_t *ctx)
         preproc_set_include_level(ctx, 0);
 }
 
-static char *read_file_lines_internal(const char *path, char ***out_lines)
+/*
+ * Read PATH into a newly allocated buffer while handling CR, CRLF and
+ * backslash-newline sequences.  The resulting text is NUL terminated and
+ * the length is written to OUT_LEN on success.
+ */
+static char *load_file_text(const char *path, size_t *out_len)
 {
     FILE *f = fopen(path, "rb");
     if (!f) {
@@ -161,7 +166,16 @@ static char *read_file_lines_internal(const char *path, char ***out_lines)
     fclose(f);
 
     text[len] = '\0';
+    *out_len = len;
+    return text;
+}
 
+/*
+ * Break TEXT of length LEN into an array of NUL terminated lines.
+ * The returned array is terminated with a NULL pointer.
+ */
+static char **split_file_lines(char *text, size_t len)
+{
     size_t line_count = 1;
     for (size_t i = 0; i < len; i++)
         if (text[i] == '\n')
@@ -181,6 +195,18 @@ static char *read_file_lines_internal(const char *path, char ***out_lines)
         }
     }
     lines[idx] = NULL;
+    return lines;
+}
+
+/* Read PATH and split it into a NULL terminated list of line pointers. */
+static char *read_file_lines_internal(const char *path, char ***out_lines)
+{
+    size_t len;
+    char *text = load_file_text(path, &len);
+    if (!text)
+        return NULL;
+
+    char **lines = split_file_lines(text, len);
     *out_lines = lines;
     return text;
 }
