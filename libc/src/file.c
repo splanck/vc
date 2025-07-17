@@ -90,50 +90,93 @@ int fprintf(FILE *stream, const char *fmt, ...)
             return -1;
         }
 
-        if (*p == 's') {
-            const char *s = va_arg(ap, const char *);
-            size_t len = strlen(s);
-            long ret = _vc_write(stream->fd, s, len);
-            if (ret < 0) {
-                va_end(ap);
-                return -1;
-            }
-            written += (int)len;
-        } else if (*p == 'd') {
-            int n = va_arg(ap, int);
+        int width = 0;
+        const char *start = p;
+        while (*p >= '0' && *p <= '9') {
+            width = width * 10 + (*p - '0');
+            p++;
+        }
+
+        if (*p == 's' || *p == 'c' || *p == 'd' || *p == 'u') {
             char num[32];
-            char *q = num + sizeof(num);
-            unsigned int u = (n < 0) ? (unsigned int)(-n) : (unsigned int)n;
-            if (n == 0) {
-                *--q = '0';
-            } else {
-                while (u) {
-                    *--q = (char)('0' + (u % 10));
-                    u /= 10;
+            const char *s = NULL;
+            size_t len = 0;
+
+            if (*p == 's') {
+                s = va_arg(ap, const char *);
+                len = strlen(s);
+            } else if (*p == 'c') {
+                num[0] = (char)va_arg(ap, int);
+                s = num;
+                len = 1;
+            } else if (*p == 'd' || *p == 'u') {
+                unsigned int u;
+                int neg = 0;
+                if (*p == 'd') {
+                    int n = va_arg(ap, int);
+                    if (n < 0) {
+                        neg = 1;
+                        u = (unsigned int)(-n);
+                    } else {
+                        u = (unsigned int)n;
+                    }
+                } else {
+                    u = va_arg(ap, unsigned int);
                 }
-                if (n < 0)
+
+                char *q = num + sizeof(num);
+                if (u == 0) {
+                    *--q = '0';
+                } else {
+                    while (u) {
+                        *--q = (char)('0' + (u % 10));
+                        u /= 10;
+                    }
+                }
+                if (neg)
                     *--q = '-';
+                len = num + sizeof(num) - q;
+                s = q;
             }
-            size_t len = num + sizeof(num) - q;
-            long ret2 = _vc_write(stream->fd, q, len);
-            if (ret2 < 0) {
+
+            int pad = width > (int)len ? width - (int)len : 0;
+            while (pad-- > 0) {
+                if (_vc_write(stream->fd, " ", 1) < 1) {
+                    va_end(ap);
+                    return -1;
+                }
+                written += 1;
+            }
+
+            long ret = _vc_write(stream->fd, s, len);
+            if (ret < (long)len) {
                 va_end(ap);
                 return -1;
             }
             written += (int)len;
         } else {
-            out[pos++] = '%';
-            if (pos == sizeof(out))
-                if (flush_buf_fd(stream->fd, out, &pos, &written) < 0) {
+            long ret = _vc_write(stream->fd, "%", 1);
+            if (ret < 1) {
+                va_end(ap);
+                return -1;
+            }
+            written += 1;
+            if (width) {
+                const char *q = start;
+                size_t l = (size_t)(p - start);
+                ret = _vc_write(stream->fd, q, l);
+                if (ret < (long)l) {
                     va_end(ap);
                     return -1;
                 }
-            out[pos++] = *p;
-            if (pos == sizeof(out))
-                if (flush_buf_fd(stream->fd, out, &pos, &written) < 0) {
-                    va_end(ap);
-                    return -1;
-                }
+                written += (int)l;
+            }
+            ret = _vc_write(stream->fd, p, 1);
+            if (ret < 1) {
+                va_end(ap);
+                return -1;
+            }
+            written += 1;
         }
     }
 
