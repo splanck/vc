@@ -159,6 +159,7 @@ static void test_parse_failure(void)
 
     ASSERT(ret != 0);
     ASSERT(strstr(buf, "Out of memory") != NULL);
+    cli_free_opts(&opts);
     ASSERT(allocs == 0);
 }
 
@@ -230,6 +231,7 @@ static void test_vcflags_unterm_single(void)
 
     ASSERT(ret != 0);
     ASSERT(strstr(buf, "Unterminated quote") != NULL);
+    cli_free_opts(&opts);
     ASSERT(allocs == 0);
 }
 
@@ -261,6 +263,7 @@ static void test_vcflags_unterm_double(void)
 
     ASSERT(ret != 0);
     ASSERT(strstr(buf, "Unterminated quote") != NULL);
+    cli_free_opts(&opts);
     ASSERT(allocs == 0);
 }
 
