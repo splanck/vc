@@ -53,6 +53,12 @@ int load_vcflags(int *argc, char ***argv, char ***out_argv,
                     break;
                 p++;
             }
+            if (in_quote) {
+                fprintf(stderr, "Unterminated quote in VCFLAGS\n");
+                free(tmp);
+                free(vcbuf);
+                return 1;
+            }
             while (*p && *p != ' ')
                 p++;
         }
@@ -107,6 +113,12 @@ int load_vcflags(int *argc, char ***argv, char ***out_argv,
                     break;
                 }
                 *dst++ = *p2++;
+            }
+            if (in_quote) {
+                fprintf(stderr, "Unterminated quote in VCFLAGS\n");
+                free(vcargv);
+                free(vcbuf);
+                return 1;
             }
             *dst = '\0';
             vcargv[idx++] = start;
