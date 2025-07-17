@@ -6,7 +6,7 @@ VC="$DIR/../vc"
 
 # detect 32-bit compilation capability
 set +e
-gcc -m32 -xc /dev/null -o /dev/null 2>/dev/null
+${CC:-gcc} -m32 -xc /dev/null -o /dev/null 2>/dev/null
 CAN_COMPILE_32=$?
 set -e
 ARCH_OPT=""

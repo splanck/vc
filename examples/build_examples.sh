@@ -5,7 +5,7 @@ DIR="$(dirname "$0")"
 VC="$DIR/../vc"
 
 # detect 32-bit compilation capability
-gcc -m32 -xc /dev/null -o /dev/null 2>/dev/null
+${CC:-gcc} -m32 -xc /dev/null -o /dev/null 2>/dev/null
 HAS_32=$?
 ARCH_OPT=""
 if [ $HAS_32 -ne 0 ]; then
