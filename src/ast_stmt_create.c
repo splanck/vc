@@ -14,6 +14,24 @@
 #include "ast_expr.h"
 #include "util.h"
 
+/* Internal helper for variable declarations */
+int init_var_decl(stmt_t *stmt, const char *name, const char *tag)
+{
+    STMT_VAR_DECL(stmt).name = vc_strdup(name ? name : "");
+    if (!STMT_VAR_DECL(stmt).name)
+        return 0;
+    if (tag) {
+        STMT_VAR_DECL(stmt).tag = vc_strdup(tag);
+        if (!STMT_VAR_DECL(stmt).tag) {
+            free(STMT_VAR_DECL(stmt).name);
+            return 0;
+        }
+    } else {
+        STMT_VAR_DECL(stmt).tag = NULL;
+    }
+    return 1;
+}
+
 /* Constructors for statements */
 /* Wrap an expression as a statement. */
 stmt_t *ast_make_expr_stmt(expr_t *expr, size_t line, size_t column)
@@ -56,8 +74,7 @@ stmt_t *ast_make_var_decl(const char *name, type_kind_t type, size_t array_size,
     stmt->kind = STMT_VAR_DECL;
     stmt->line = line;
     stmt->column = column;
-    STMT_VAR_DECL(stmt).name = vc_strdup(name ? name : "");
-    if (!STMT_VAR_DECL(stmt).name) {
+    if (!init_var_decl(stmt, name, tag)) {
         free(stmt);
         return NULL;
     }
@@ -67,16 +84,6 @@ stmt_t *ast_make_var_decl(const char *name, type_kind_t type, size_t array_size,
     STMT_VAR_DECL(stmt).align_expr = align_expr;
     STMT_VAR_DECL(stmt).alignment = 0;
     STMT_VAR_DECL(stmt).elem_size = elem_size;
-    if (tag) {
-        STMT_VAR_DECL(stmt).tag = vc_strdup(tag);
-        if (!STMT_VAR_DECL(stmt).tag) {
-            free(STMT_VAR_DECL(stmt).name);
-            free(stmt);
-            return NULL;
-        }
-    } else {
-        STMT_VAR_DECL(stmt).tag = NULL;
-    }
     STMT_VAR_DECL(stmt).is_static = is_static;
     STMT_VAR_DECL(stmt).is_register = is_register;
     STMT_VAR_DECL(stmt).is_extern = is_extern;

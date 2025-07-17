@@ -202,6 +202,8 @@ stmt_t *ast_make_var_decl(const char *name, type_kind_t type, size_t array_size,
                           expr_t *init, init_entry_t *init_list, size_t init_count,
                           const char *tag, union_member_t *members,
                           size_t member_count, size_t line, size_t column);
+/* Internal helper for allocating name/tag strings. */
+int init_var_decl(stmt_t *stmt, const char *name, const char *tag);
 /* Create an if statement. */
 stmt_t *ast_make_if(expr_t *cond, stmt_t *then_branch, stmt_t *else_branch,
                     size_t line, size_t column);
