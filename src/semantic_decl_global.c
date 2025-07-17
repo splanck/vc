@@ -279,53 +279,85 @@ static symbol_t *register_global_symbol(stmt_t *decl, symtable_t *globals)
 }
 
 /*
- * Emit IR to initialize a global variable.
- * Handles arrays, structs, unions and scalars using constant
- * expressions only. Returns non-zero on success.
+ * Emit IR for a global array initializer.
+ * `decl` must describe an array variable. Returns non-zero on success.
  */
-static int emit_global_initializer(stmt_t *decl, symbol_t *sym,
-                                   symtable_t *globals, ir_builder_t *ir)
+static int emit_init_array(stmt_t *decl, symtable_t *globals, ir_builder_t *ir)
 {
-    if (STMT_VAR_DECL(decl).is_extern)
-        return 1;
+    long long *vals;
+    if (!expand_array_initializer(STMT_VAR_DECL(decl).init_list,
+                                  STMT_VAR_DECL(decl).init_count,
+                                  STMT_VAR_DECL(decl).array_size, globals,
+                                  decl->line, decl->column, &vals))
+        return 0;
+    if (!ir_build_glob_array(ir, STMT_VAR_DECL(decl).name, vals,
+                             STMT_VAR_DECL(decl).array_size,
+                             STMT_VAR_DECL(decl).is_static,
+                             STMT_VAR_DECL(decl).alignment)) {
+        free(vals);
+        return 0;
+    }
+    free(vals);
+    return 1;
+}
 
-    if (STMT_VAR_DECL(decl).type == TYPE_ARRAY) {
-        long long *vals;
-        if (!expand_array_initializer(STMT_VAR_DECL(decl).init_list,
-                                      STMT_VAR_DECL(decl).init_count,
-                                      STMT_VAR_DECL(decl).array_size, globals,
-                                      decl->line, decl->column, &vals))
-            return 0;
-        if (!ir_build_glob_array(ir, STMT_VAR_DECL(decl).name, vals,
-                                 STMT_VAR_DECL(decl).array_size,
-                                 STMT_VAR_DECL(decl).is_static,
-                                 STMT_VAR_DECL(decl).alignment)) {
-            free(vals);
+/*
+ * Emit IR for a struct or union global initializer.
+ * Handles optional initializer lists for structs.
+ */
+static int emit_init_struct_union(stmt_t *decl, symbol_t *sym,
+                                  symtable_t *globals, ir_builder_t *ir)
+{
+    if (STMT_VAR_DECL(decl).init_list) {
+        if (STMT_VAR_DECL(decl).type != TYPE_STRUCT) {
+            error_set(decl->line, decl->column, error_current_file, error_current_function);
             return 0;
         }
+        long long *vals;
+        if (!expand_struct_initializer(STMT_VAR_DECL(decl).init_list,
+                                       STMT_VAR_DECL(decl).init_count, sym,
+                                       globals, decl->line, decl->column,
+                                       &vals))
+            return 0;
+        ir_build_glob_struct(ir, STMT_VAR_DECL(decl).name,
+                             (int)STMT_VAR_DECL(decl).elem_size,
+                             STMT_VAR_DECL(decl).is_static,
+                             STMT_VAR_DECL(decl).alignment);
         free(vals);
         return 1;
     }
 
-    if (STMT_VAR_DECL(decl).init_list) {
-        if (STMT_VAR_DECL(decl).type == TYPE_STRUCT) {
-            long long *vals;
-            if (!expand_struct_initializer(STMT_VAR_DECL(decl).init_list,
-                                           STMT_VAR_DECL(decl).init_count, sym,
-                                           globals, decl->line,
-                                           decl->column, &vals))
-                return 0;
-            ir_build_glob_struct(ir, STMT_VAR_DECL(decl).name,
-                                 (int)STMT_VAR_DECL(decl).elem_size,
-                                 STMT_VAR_DECL(decl).is_static,
-                                 STMT_VAR_DECL(decl).alignment);
-            free(vals);
-            return 1;
+    long long value = 0;
+    if (STMT_VAR_DECL(decl).init) {
+        if (!eval_const_expr(STMT_VAR_DECL(decl).init, globals,
+                             semantic_get_x86_64(), &value)) {
+            error_set(STMT_VAR_DECL(decl).init->line,
+                      STMT_VAR_DECL(decl).init->column,
+                      error_current_file, error_current_function);
+            return 0;
         }
-        error_set(decl->line, decl->column, error_current_file, error_current_function);
-        return 0;
     }
 
+    if (STMT_VAR_DECL(decl).type == TYPE_UNION)
+        ir_build_glob_union(ir, STMT_VAR_DECL(decl).name,
+                            (int)STMT_VAR_DECL(decl).elem_size,
+                            STMT_VAR_DECL(decl).is_static,
+                            STMT_VAR_DECL(decl).alignment);
+    else
+        ir_build_glob_struct(ir, STMT_VAR_DECL(decl).name,
+                             (int)STMT_VAR_DECL(decl).elem_size,
+                             STMT_VAR_DECL(decl).is_static,
+                             STMT_VAR_DECL(decl).alignment);
+    return 1;
+}
+
+/*
+ * Emit IR for a scalar global initializer.
+ * Supports address-of expressions and constant values.
+ */
+static int emit_init_scalar(stmt_t *decl, symtable_t *globals,
+                            ir_builder_t *ir)
+{
     if (STMT_VAR_DECL(decl).init &&
         STMT_VAR_DECL(decl).init->kind == EXPR_UNARY &&
         STMT_VAR_DECL(decl).init->data.unary.op == UNOP_ADDR &&
@@ -340,27 +372,38 @@ static int emit_global_initializer(stmt_t *decl, symbol_t *sym,
     if (STMT_VAR_DECL(decl).init) {
         if (!eval_const_expr(STMT_VAR_DECL(decl).init, globals,
                              semantic_get_x86_64(), &value)) {
-            error_set(STMT_VAR_DECL(decl).init->line, STMT_VAR_DECL(decl).init->column, error_current_file, error_current_function);
+            error_set(STMT_VAR_DECL(decl).init->line,
+                      STMT_VAR_DECL(decl).init->column,
+                      error_current_file, error_current_function);
             return 0;
         }
     }
 
-    if (STMT_VAR_DECL(decl).type == TYPE_UNION)
-        ir_build_glob_union(ir, STMT_VAR_DECL(decl).name,
-                           (int)STMT_VAR_DECL(decl).elem_size,
-                           STMT_VAR_DECL(decl).is_static,
-                           STMT_VAR_DECL(decl).alignment);
-    else if (STMT_VAR_DECL(decl).type == TYPE_STRUCT)
-        ir_build_glob_struct(ir, STMT_VAR_DECL(decl).name,
-                            (int)STMT_VAR_DECL(decl).elem_size,
-                            STMT_VAR_DECL(decl).is_static,
-                            STMT_VAR_DECL(decl).alignment);
-    else
-        ir_build_glob_var(ir, STMT_VAR_DECL(decl).name, value,
-                          STMT_VAR_DECL(decl).is_static,
-                          STMT_VAR_DECL(decl).alignment);
-
+    ir_build_glob_var(ir, STMT_VAR_DECL(decl).name, value,
+                      STMT_VAR_DECL(decl).is_static,
+                      STMT_VAR_DECL(decl).alignment);
     return 1;
+}
+
+/*
+ * Emit IR to initialize a global variable. Dispatches to the array,
+ * struct/union or scalar helpers. Returns non-zero on success.
+ */
+static int emit_global_initializer(stmt_t *decl, symbol_t *sym,
+                                   symtable_t *globals, ir_builder_t *ir)
+{
+    if (STMT_VAR_DECL(decl).is_extern)
+        return 1;
+
+    switch (STMT_VAR_DECL(decl).type) {
+    case TYPE_ARRAY:
+        return emit_init_array(decl, globals, ir);
+    case TYPE_STRUCT:
+    case TYPE_UNION:
+        return emit_init_struct_union(decl, sym, globals, ir);
+    default:
+        return emit_init_scalar(decl, globals, ir);
+    }
 }
 
 /*
