@@ -215,7 +215,7 @@ int collect_funcs(ir_builder_t *ir, inline_func_t **out, size_t *count)
             } else if (r < 0) {
                 if (errno != ENAMETOOLONG) {
                     char msg[256];
-                    snprintf(msg, sizeof(msg),
+                    vc_snprintf(msg, sizeof(msg),
                              "could not open %s for inline check: %s",
                              src_file, strerror(errno));
                     opt_error(msg);

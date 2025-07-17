@@ -100,19 +100,19 @@ void parser_print_error(parser_t *p, const token_type_t *expected,
     int off;
     if (tok) {
         error_set(tok->line, tok->column, error_current_file, error_current_function);
-        off = snprintf(msg, sizeof(msg), "Unexpected token '%s'", tok->lexeme);
+        off = vc_snprintf(msg, sizeof(msg), "Unexpected token '%s'", tok->lexeme);
     } else {
         error_set(0, 0, error_current_file, error_current_function);
-        off = snprintf(msg, sizeof(msg), "Unexpected end of file");
+        off = vc_snprintf(msg, sizeof(msg), "Unexpected end of file");
     }
 
     if (expected_count > 0 && off >= 0 && (size_t)off < sizeof(msg)) {
-        off += snprintf(msg + off, sizeof(msg) - (size_t)off, ", expected ");
+        off += vc_snprintf(msg + off, sizeof(msg) - (size_t)off, ", expected ");
         for (size_t i = 0; i < expected_count && (size_t)off < sizeof(msg); i++) {
-            off += snprintf(msg + off, sizeof(msg) - (size_t)off, "%s",
+            off += vc_snprintf(msg + off, sizeof(msg) - (size_t)off, "%s",
                             token_name(expected[i]));
             if (i + 1 < expected_count && (size_t)off < sizeof(msg))
-                off += snprintf(msg + off, sizeof(msg) - (size_t)off, ", ");
+                off += vc_snprintf(msg + off, sizeof(msg) - (size_t)off, ", ");
         }
     }
 

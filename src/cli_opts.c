@@ -430,7 +430,7 @@ int finalize_options(int argc, char **argv, const char *prog,
         const char *dir = opts->vc_sysinclude;
         int ret;
         char hdr[PATH_MAX];
-        ret = snprintf(hdr, sizeof(hdr), "%s/stdio.h", dir);
+        ret = vc_snprintf(hdr, sizeof(hdr), "%s/stdio.h", dir);
         if (ret < 0 || ret >= (int)sizeof(hdr) || access(hdr, F_OK) != 0) {
             fprintf(stderr,
                     "Error: internal libc header '%s' not found.\n",
@@ -440,7 +440,7 @@ int finalize_options(int argc, char **argv, const char *prog,
         }
 
         char libdir[PATH_MAX];
-        ret = snprintf(libdir, sizeof(libdir), "%s", dir);
+        ret = vc_snprintf(libdir, sizeof(libdir), "%s", dir);
         if (ret < 0 || ret >= (int)sizeof(libdir)) {
             fprintf(stderr, "Error: internal libc archive path too long.\n");
             cli_free_opts(opts);
@@ -451,7 +451,7 @@ int finalize_options(int argc, char **argv, const char *prog,
             *slash = '\0';
         const char *libname = opts->use_x86_64 ? "libc64.a" : "libc32.a";
         char archive[PATH_MAX];
-        if (snprintf(archive, sizeof(archive), "%s/%s", libdir, libname) >= (int)sizeof(archive)) {
+        if (vc_snprintf(archive, sizeof(archive), "%s/%s", libdir, libname) >= (int)sizeof(archive)) {
             fprintf(stderr, "Error: internal libc archive path too long.\n");
             cli_free_opts(opts);
             return 1;

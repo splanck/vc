@@ -7,6 +7,7 @@
 #include "semantic_control.h"
 #include "semantic_global.h"
 #include <stdio.h>
+#include "util.h"
 #include "semantic.h"
 #include "ir_core.h"
 #include "label.h"
@@ -171,7 +172,7 @@ static symbol_t *register_var_symbol(stmt_t *stmt, symtable_t *vars)
         semantic_stack_zero = 0;
         sym->stack_offset = semantic_stack_offset;
         char sbuf[32];
-        snprintf(sbuf, sizeof(sbuf), "stack:%d", sym->stack_offset);
+        vc_snprintf(sbuf, sizeof(sbuf), "stack:%d", sym->stack_offset);
         free(sym->ir_name);
         sym->ir_name = vc_strdup(sbuf);
     }

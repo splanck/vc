@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include "util.h"
 #include "codegen_float.h"
 #include "regalloc_x86.h"
 #include "codegen_x86.h"
@@ -31,9 +32,9 @@ static const char *loc_str_off(char buf[32], regalloc_t *ra, int id,
     int size = x64 ? 8 : 4;
     int disp = -loc * size + off;
     if (syntax == ASM_INTEL)
-        snprintf(buf, 32, x64 ? "[rbp-%d]" : "[ebp-%d]", disp);
+        vc_snprintf(buf, 32, x64 ? "[rbp-%d]" : "[ebp-%d]", disp);
     else
-        snprintf(buf, 32, "-%d(%s)", disp, x64 ? "%rbp" : "%ebp");
+        vc_snprintf(buf, 32, "-%d(%s)", disp, x64 ? "%rbp" : "%ebp");
     return buf;
 }
 

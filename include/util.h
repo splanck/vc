@@ -27,6 +27,9 @@ void *vc_alloc_or_exit(size_t size);
 /* Reallocate memory or exit on failure */
 void *vc_realloc_or_exit(void *ptr, size_t size);
 
+/* snprintf wrapper that aborts on truncation or error */
+int vc_snprintf(char *buf, size_t size, const char *fmt, ...);
+
 /* Read entire file into a NUL-terminated buffer */
 char *vc_read_file(const char *path);
 

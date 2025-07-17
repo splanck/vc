@@ -8,6 +8,7 @@
 #define _POSIX_C_SOURCE 200809L
 #include <stdlib.h>
 #include <stdio.h>
+#include <stdarg.h>
 #include <string.h>
 #include <stdint.h>
 #include <sys/types.h>
@@ -36,6 +37,25 @@ void vector_free(vector_t *v) { (void)v; }
 #endif
 void ast_free_func(func_t *func) { (void)func; }
 void ast_free_stmt(stmt_t *stmt) { (void)stmt; }
+#endif
+
+/*
+ * snprintf wrapper that aborts the process if truncation occurs or if an
+ * encoding error is detected.
+ */
+#ifndef NO_VC_SNPRINTF_IMPL
+int vc_snprintf(char *buf, size_t size, const char *fmt, ...)
+{
+    va_list ap;
+    va_start(ap, fmt);
+    int ret = vsnprintf(buf, size, fmt, ap);
+    va_end(ap);
+    if (ret < 0 || (size_t)ret >= size) {
+        fprintf(stderr, "vc: internal snprintf failure\n");
+        exit(1);
+    }
+    return ret;
+}
 #endif
 
 /* Print a generic out of memory message */
@@ -272,7 +292,7 @@ create_temp_template(const cli_options_t *cli, const char *prefix)
     if (!tmpl)
         return NULL;
 
-    int n = snprintf(tmpl, len + 1, "%s/%sXXXXXX", dir, prefix);
+    int n = vc_snprintf(tmpl, len + 1, "%s/%sXXXXXX", dir, prefix);
     if (n < 0) {
         int err = errno;
         free(tmpl);

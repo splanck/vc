@@ -7,6 +7,7 @@
 
 #include "label.h"
 #include <stdio.h>
+#include "util.h"
 #include "error.h"
 
 /* Next label identifier to issue. */
@@ -39,7 +40,7 @@ void label_reset(void)
 /* Format a label combining prefix and id.  "buf" must have space for 32 bytes. */
 const char *label_format(const char *prefix, int id, char buf[32])
 {
-    int n = snprintf(buf, 32, "%s%d", prefix, id);
+    int n = vc_snprintf(buf, 32, "%s%d", prefix, id);
     if (n < 0 || n >= 32) {
         error_set(0, 0, error_current_file, error_current_function);
         error_print("Generated label name too long");
@@ -54,7 +55,7 @@ const char *label_format(const char *prefix, int id, char buf[32])
 const char *label_format_suffix(const char *prefix, int id, const char *suffix,
                                 char buf[32])
 {
-    int n = snprintf(buf, 32, "%s%d%s", prefix, id, suffix);
+    int n = vc_snprintf(buf, 32, "%s%d%s", prefix, id, suffix);
     if (n < 0 || n >= 32) {
         error_set(0, 0, error_current_file, error_current_function);
         error_print("Generated label name too long");

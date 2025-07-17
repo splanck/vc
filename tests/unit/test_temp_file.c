@@ -21,7 +21,7 @@ int create_temp_file(const cli_options_t *cli, const char *prefix, char **out_pa
 static int force_snprintf_overflow;
 static int force_snprintf_error;
 
-int snprintf(char *str, size_t size, const char *fmt, ...)
+int vc_snprintf(char *str, size_t size, const char *fmt, ...)
 {
     if (force_snprintf_overflow) {
         (void)str; (void)fmt;
@@ -39,7 +39,7 @@ int snprintf(char *str, size_t size, const char *fmt, ...)
     va_end(ap);
     return rc;
 }
-
+#define NO_VC_SNPRINTF_IMPL
 #include "../../src/util.c"
 
 static int failures = 0;

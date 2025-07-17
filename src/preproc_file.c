@@ -319,7 +319,7 @@ static int define_default_macros(vector_t *macros, const char *base_file,
             return 0;
         }
         char quoted[PATH_MAX + 2];
-        snprintf(quoted, sizeof(quoted), "\"%s\"", canon);
+        vc_snprintf(quoted, sizeof(quoted), "\"%s\"", canon);
         define_simple_macro(macros, "__BASE_FILE__", quoted);
         free(canon);
     } else {

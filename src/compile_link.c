@@ -355,7 +355,7 @@ static int build_and_link_objects(vector_t *objs, const cli_options_t *cli)
                              ? cli->vc_sysinclude
                              : PROJECT_ROOT "/libc/include";
         char base[PATH_MAX];
-        int ret = snprintf(base, sizeof(base), "%s", inc);
+        int ret = vc_snprintf(base, sizeof(base), "%s", inc);
         if (ret < 0) {
             fprintf(stderr,
                     "vc: failed to format internal libc path\n");
@@ -376,7 +376,7 @@ static int build_and_link_objects(vector_t *objs, const cli_options_t *cli)
             *slash = '\0';
         const char *libname = cli->use_x86_64 ? "c64" : "c32";
         char archive[PATH_MAX];
-        int n = snprintf(archive, sizeof(archive), "%s/lib%s.a", base,
+        int n = vc_snprintf(archive, sizeof(archive), "%s/lib%s.a", base,
                          cli->use_x86_64 ? "c64" : "c32");
         if (n < 0) {
             fprintf(stderr,

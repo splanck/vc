@@ -15,6 +15,7 @@
 #include <stdlib.h>
 #include <errno.h>
 #include <string.h>
+#include "util.h"
 #include "codegen_mem.h"
 #include "codegen_loadstore.h"
 #include "regalloc_x86.h"
@@ -32,14 +33,14 @@ static const char *fmt_stack(char buf[32], const char *name, int x64,
         off = 0;
     if (x64) {
         if (syntax == ASM_INTEL)
-            snprintf(buf, 32, "[rbp-%d]", (int)off);
+            vc_snprintf(buf, 32, "[rbp-%d]", (int)off);
         else
-            snprintf(buf, 32, "-%d(%%rbp)", (int)off);
+            vc_snprintf(buf, 32, "-%d(%%rbp)", (int)off);
     } else {
         if (syntax == ASM_INTEL)
-            snprintf(buf, 32, "[ebp-%d]", (int)off);
+            vc_snprintf(buf, 32, "[ebp-%d]", (int)off);
         else
-            snprintf(buf, 32, "-%d(%%ebp)", (int)off);
+            vc_snprintf(buf, 32, "-%d(%%ebp)", (int)off);
     }
     return buf;
 }
@@ -100,14 +101,14 @@ static const char *loc_str(char buf[32], regalloc_t *ra, int id, int x64,
         return reg_str(loc, syntax);
     if (x64) {
         if (syntax == ASM_INTEL)
-            snprintf(buf, 32, "[rbp-%d]", -loc * 8);
+            vc_snprintf(buf, 32, "[rbp-%d]", -loc * 8);
         else
-            snprintf(buf, 32, "-%d(%%rbp)", -loc * 8);
+            vc_snprintf(buf, 32, "-%d(%%rbp)", -loc * 8);
     } else {
         if (syntax == ASM_INTEL)
-            snprintf(buf, 32, "[ebp-%d]", -loc * 4);
+            vc_snprintf(buf, 32, "[ebp-%d]", -loc * 4);
         else
-            snprintf(buf, 32, "-%d(%%ebp)", -loc * 4);
+            vc_snprintf(buf, 32, "-%d(%%ebp)", -loc * 4);
     }
     return buf;
 }
@@ -197,9 +198,9 @@ static void emit_const(strbuf_t *sb, ir_instr_t *ins,
     const char *slot = loc_str(mem, ra, ins->dest, x64, syntax);
     char srcbuf[32];
     if (syntax == ASM_INTEL)
-        snprintf(srcbuf, sizeof(srcbuf), "%lld", ins->imm);
+        vc_snprintf(srcbuf, sizeof(srcbuf), "%lld", ins->imm);
     else
-        snprintf(srcbuf, sizeof(srcbuf), "$%lld", ins->imm);
+        vc_snprintf(srcbuf, sizeof(srcbuf), "$%lld", ins->imm);
     emit_move_with_spill(sb, sfx, srcbuf, dest, slot, spill, syntax);
 }
 
@@ -241,9 +242,9 @@ static void emit_load_param(strbuf_t *sb, ir_instr_t *ins,
     int off = 8 + (int)ins->imm * (x64 ? 8 : 4);
     char srcbuf[32];
     if (syntax == ASM_INTEL)
-        snprintf(srcbuf, sizeof(srcbuf), "[%s+%d]", bp, off);
+        vc_snprintf(srcbuf, sizeof(srcbuf), "[%s+%d]", bp, off);
     else
-        snprintf(srcbuf, sizeof(srcbuf), "%d(%s)", off, bp);
+        vc_snprintf(srcbuf, sizeof(srcbuf), "%d(%s)", off, bp);
     emit_move_with_spill(sb, sfx, srcbuf, dest, slot, spill, syntax);
 }
 
@@ -303,9 +304,9 @@ static void emit_addr(strbuf_t *sb, ir_instr_t *ins,
         return;
     }
     if (syntax == ASM_INTEL)
-        snprintf(srcbuf, sizeof(srcbuf), "%s", name);
+        vc_snprintf(srcbuf, sizeof(srcbuf), "%s", name);
     else
-        snprintf(srcbuf, sizeof(srcbuf), "$%s", name);
+        vc_snprintf(srcbuf, sizeof(srcbuf), "$%s", name);
     emit_move_with_spill(sb, sfx, srcbuf, dest, slot, spill, syntax);
 }
 
@@ -481,9 +482,9 @@ static void emit_glob_string(strbuf_t *sb, ir_instr_t *ins,
     const char *slot = loc_str(mem, ra, ins->dest, x64, syntax);
     char srcbuf[32];
     if (syntax == ASM_INTEL)
-        snprintf(srcbuf, sizeof(srcbuf), "%s", ins->name);
+        vc_snprintf(srcbuf, sizeof(srcbuf), "%s", ins->name);
     else
-        snprintf(srcbuf, sizeof(srcbuf), "$%s", ins->name);
+        vc_snprintf(srcbuf, sizeof(srcbuf), "$%s", ins->name);
     emit_move_with_spill(sb, sfx, srcbuf, dest, slot, spill, syntax);
 }
 

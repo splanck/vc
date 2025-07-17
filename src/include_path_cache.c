@@ -112,7 +112,7 @@ static const char *get_gcc_include_dir(void)
             const char *multi = get_multiarch_dir();
             size_t len = strlen("/usr/lib/gcc/") + strlen(multi) + strlen("/include");
             gcc_include_cached = vc_alloc_or_exit(len + 1);
-            snprintf(gcc_include_cached, len + 1, "/usr/lib/gcc/%s/include", multi);
+            vc_snprintf(gcc_include_cached, len + 1, "/usr/lib/gcc/%s/include", multi);
 #else
             gcc_include_cached = vc_strdup("/usr/lib/gcc/include");
 #endif
@@ -144,7 +144,7 @@ static void init_std_include_dirs(void)
     char *path = vc_alloc_or_exit(len + 1);
     if (!path)
         return;
-    snprintf(path, len + 1, "/usr/include/%s", multi);
+    vc_snprintf(path, len + 1, "/usr/include/%s", multi);
     std_include_dirs[0] = path;
     const char *gccdir = get_gcc_include_dir();
     char *fallback = NULL;
@@ -154,7 +154,7 @@ static void init_std_include_dirs(void)
         fallback = vc_alloc_or_exit(len + 1);
         if (!fallback)
             goto fail;
-        snprintf(fallback, len + 1, "/usr/lib/gcc/%s/include", multi);
+        vc_snprintf(fallback, len + 1, "/usr/lib/gcc/%s/include", multi);
         gcc_include_cached = fallback;
         gccdir = fallback;
 #else

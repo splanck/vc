@@ -134,6 +134,11 @@ $CC -Iinclude -Wall -Wextra -std=c99 -c src/util.c -o util_strbuf.o
 $CC -Iinclude -Wall -Wextra -std=c99 -c "$DIR/unit/test_strbuf_overflow.c" -o "$DIR/test_strbuf_overflow.o"
 $CC -o "$DIR/strbuf_overflow" strbuf_overflow_impl.o util_strbuf.o "$DIR/test_strbuf_overflow.o"
 rm -f strbuf_overflow_impl.o util_strbuf.o "$DIR/test_strbuf_overflow.o"
+# build vc_snprintf truncation test
+$CC -Iinclude -Wall -Wextra -std=c99 -c src/util.c -o util_snprintf.o
+$CC -Iinclude -Wall -Wextra -std=c99 -c "$DIR/unit/test_vc_snprintf_fail.c" -o "$DIR/test_vc_snprintf_fail.o"
+$CC -o "$DIR/vc_snprintf_fail" util_snprintf.o "$DIR/test_vc_snprintf_fail.o"
+rm -f util_snprintf.o "$DIR/test_vc_snprintf_fail.o"
 # build text line append failure test
 $CC -Iinclude -Wall -Wextra -std=c99 -c src/strbuf.c -o strbuf_textfail_impl.o
 $CC -Iinclude -Wall -Wextra -std=c99 -c src/util.c -o util_textfail.o
@@ -665,6 +670,17 @@ if [ $ret -ne 0 ] || ! grep -q "string buffer too large" "$err"; then
     fail=1
 fi
 rm -f "$err" "$DIR/strbuf_overflow"
+# regression test for vc_snprintf truncation handling
+err=$(mktemp)
+set +e
+"$DIR/vc_snprintf_fail" 2> "$err"
+ret=$?
+set -e
+if [ $ret -eq 0 ] || ! grep -q "internal snprintf failure" "$err"; then
+    echo "Test vc_snprintf_fail failed"
+    fail=1
+fi
+rm -f "$err" "$DIR/vc_snprintf_fail"
 # regression test for builtin counter overflow handling
 err=$(mktemp)
 set +e
