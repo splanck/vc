@@ -26,8 +26,3 @@ long long eval_expr_full(const char *s, vector_t *macros,
     return eval_internal(s, macros, dir, incdirs, stack);
 }
 
-long long eval_expr(const char *s, vector_t *macros)
-{
-    return eval_internal(s, macros, NULL, NULL, NULL);
-}
-
