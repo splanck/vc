@@ -137,12 +137,14 @@ static int match_flag(const char *arg, const char *flag)
     size_t len = strlen(arg);
     if (len >= 2 && (arg[0] == '"' || arg[0] == '\'') && arg[len - 1] == arg[0]) {
         char *buf = vc_strndup(arg + 1, len - 2);
-        if (buf) {
-            int match = strcmp(buf, flag) == 0;
-            free(buf);
-            if (match)
-                return 1;
+        if (!buf) {
+            vc_oom();
+            return 0;
         }
+        int match = strcmp(buf, flag) == 0;
+        free(buf);
+        if (match)
+            return 1;
     }
 
     return 0;
