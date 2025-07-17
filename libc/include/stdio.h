@@ -10,6 +10,8 @@
 
 #include <stdarg.h>
 
+/* Returns the number of characters written including the newline. If the
+ * length would overflow an int, INT_MAX is returned instead. */
 int puts(const char *s);
 int printf(const char *format, ...);
 
