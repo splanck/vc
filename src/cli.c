@@ -83,16 +83,6 @@ void cli_free_opts(cli_options_t *opts)
     vector_free(&opts->libs);
 }
 
-/*
- * Free option structures and any resources allocated for VCFLAGS
- * processing, then signal an error.
- */
-static int cleanup_parse_error(cli_options_t *opts, char **vcflags_argv)
-{
-    cli_free_opts(opts);
-    free(vcflags_argv);
-    return 1;
-}
 
 int cli_parse_args(int argc, char **argv, cli_options_t *opts)
 {
@@ -151,28 +141,38 @@ int cli_parse_args(int argc, char **argv, cli_options_t *opts)
     init_default_opts(opts);
 
     int opt;
-    while ((opt = getopt_long(argc, argv, "hvo:O:cD:U:I:L:l:ESf:", long_opts, NULL)) != -1) {
-        int ret;
-        if ((ret = parse_optimization_opts(opt, optarg, opts)) == 1) {
-            return cleanup_parse_error(opts, vcflags_argv);
-        } else if (ret == 0) {
+    while ((opt = getopt_long(argc, argv, "hvo:O:cD:U:I:L:l:ESf:",
+                              long_opts, NULL)) != -1) {
+        int ret = handle_opt_group(opt, optarg, opts);
+        if (ret >= 0) {
+            if (ret == 1) {
+                free(vcflags_argv);
+                return 1;
+            }
             continue;
         }
 
-        if ((ret = parse_io_paths(opt, optarg, opts)) == 1) {
-            return cleanup_parse_error(opts, vcflags_argv);
-        } else if (ret == 0) {
+        ret = handle_io_path_opt(opt, optarg, opts);
+        if (ret >= 0) {
+            if (ret == 1) {
+                free(vcflags_argv);
+                return 1;
+            }
             continue;
         }
 
-        if ((ret = parse_misc_opts(opt, optarg, argv[0], opts)) == 1) {
-            return cleanup_parse_error(opts, vcflags_argv);
-        } else if (ret == 0) {
+        ret = handle_misc_opt(opt, optarg, argv[0], opts);
+        if (ret >= 0) {
+            if (ret == 1) {
+                free(vcflags_argv);
+                return 1;
+            }
             continue;
         }
 
         print_usage(argv[0]);
-        return cleanup_parse_error(opts, vcflags_argv);
+        free(vcflags_argv);
+        return 1;
     }
 
     int ret = finalize_options(argc, argv, argv[0], opts);

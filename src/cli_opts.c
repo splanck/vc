@@ -369,6 +369,22 @@ int parse_misc_opts(int opt, const char *arg, const char *prog,
     }
 }
 
+int handle_opt_group(int opt, const char *arg, cli_options_t *opts)
+{
+    return parse_optimization_opts(opt, arg, opts);
+}
+
+int handle_io_path_opt(int opt, const char *arg, cli_options_t *opts)
+{
+    return parse_io_paths(opt, arg, opts);
+}
+
+int handle_misc_opt(int opt, const char *arg, const char *prog,
+                    cli_options_t *opts)
+{
+    return parse_misc_opts(opt, arg, prog, opts);
+}
+
 /* Collect remaining command line arguments as source files */
 static int collect_sources(int argc, char **argv, const char *prog,
                            cli_options_t *opts)
