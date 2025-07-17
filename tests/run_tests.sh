@@ -1013,7 +1013,7 @@ rm -f "$prog" "$clamp" "$libvclib"
 
 # regression test for long command error message
 long_tmpdir=$(safe_mktemp -d)
-long_out="$long_tmpdir/$(printf 'a%.0s' {1..50})/$(printf 'b%.0s' {1..50})/$(printf 'c%.0s' {1..50})/$(printf 'd%.0s' {1..50})/$(printf 'e%.0s' {1..50})/out.o"
+long_out="$long_tmpdir/$(printf 'a%.0s' $(seq 1 50))/$(printf 'b%.0s' $(seq 1 50))/$(printf 'c%.0s' $(seq 1 50))/$(printf 'd%.0s' $(seq 1 50))/$(printf 'e%.0s' $(seq 1 50))/out.o"
 mkdir -p "$(dirname "$long_out")"
 err=$(safe_mktemp)
 set +e
