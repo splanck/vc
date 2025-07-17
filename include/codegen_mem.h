@@ -40,4 +40,7 @@ void emit_memory_instr(strbuf_t *sb, ir_instr_t *ins,
 extern size_t arg_stack_bytes;
 extern int arg_reg_idx;
 
+const char *fmt_stack(char buf[32], const char *name, int x64,
+                      asm_syntax_t syntax);
+
 #endif /* VC_CODEGEN_MEM_H */
