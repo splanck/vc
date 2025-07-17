@@ -48,12 +48,13 @@ static const char *get_multiarch_dir(void)
             gcc_query_failed = 1;
         } else {
             char buf[256];
+            char *tmp = NULL;
             if (fgets(buf, sizeof(buf), fp)) {
                 size_t len = strlen(buf);
                 while (len && (buf[len-1] == '\n' || buf[len-1] == '\r'))
                     buf[--len] = '\0';
                 if (len)
-                    multiarch_cached = vc_strndup(buf, len);
+                    tmp = vc_strndup(buf, len);
             } else {
                 perror("fgets");
                 gcc_query_failed = 1;
@@ -61,8 +62,10 @@ static const char *get_multiarch_dir(void)
             if (pclose(fp) == -1) {
                 perror("pclose");
                 gcc_query_failed = 1;
+                free(tmp);
                 return NULL;
             }
+            multiarch_cached = tmp;
         }
         if (!multiarch_cached) {
 #ifdef MULTIARCH
