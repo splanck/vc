@@ -58,9 +58,10 @@ long _vc_exit(int status)
 #endif
 }
 
+static unsigned long cur_brk = 0;
+
 void *_vc_malloc(unsigned long size)
 {
-    static unsigned long cur_brk = 0;
     long ret;
     if (cur_brk == 0) {
 #ifdef __x86_64__
@@ -78,10 +79,10 @@ void *_vc_malloc(unsigned long size)
             return 0;
         cur_brk = (unsigned long)ret;
     }
-    if (size > ULONG_MAX - cur_brk)
+    if (size > ULONG_MAX - cur_brk - sizeof(unsigned long))
         return 0;
     unsigned long prev = cur_brk;
-    unsigned long new_brk = cur_brk + size;
+    unsigned long new_brk = cur_brk + sizeof(unsigned long) + size;
 #ifdef __x86_64__
     __asm__ volatile ("syscall"
                       : "=a"(ret)
@@ -96,11 +97,35 @@ void *_vc_malloc(unsigned long size)
     if (ret < 0 || (unsigned long)ret < new_brk) {
         return 0;
     }
+    *(unsigned long *)prev = size;
     cur_brk = new_brk;
-    return (void *)prev;
+    return (void *)(prev + sizeof(unsigned long));
 }
 
 void _vc_free(void *ptr)
 {
-    (void)ptr;
+    if (!ptr || cur_brk == 0)
+        return;
+
+    unsigned long start = (unsigned long)ptr - sizeof(unsigned long);
+    unsigned long size = *(unsigned long *)start;
+    unsigned long end = start + sizeof(unsigned long) + size;
+
+    if (end != cur_brk)
+        return;
+
+    long ret;
+#ifdef __x86_64__
+    __asm__ volatile ("syscall"
+                      : "=a"(ret)
+                      : "a"(VC_SYS_BRK), "D"(start)
+                      : "rcx", "r11", "memory");
+#elif defined(__i386__)
+    __asm__ volatile ("int $0x80"
+                      : "=a"(ret)
+                      : "a"(VC_SYS_BRK), "b"(start)
+                      : "memory");
+#endif
+    if (ret >= 0 && (unsigned long)ret >= start)
+        cur_brk = start;
 }
