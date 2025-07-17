@@ -2,6 +2,10 @@
 #include "../internal/_vc_syscalls.h"
 void _exit(int) __attribute__((noreturn));
 
+/*
+ * Stub implementation for pthread_create in the single-threaded libc.
+ * Prints an error message and exits; this function never returns.
+ */
 int pthread_create(pthread_t *thread, const pthread_attr_t *attr,
                    void *(*start_routine)(void *), void *arg)
 {
@@ -18,7 +22,5 @@ int pthread_create(pthread_t *thread, const pthread_attr_t *attr,
     _vc_write(2, fail, sizeof(fail) - 1);
     exit_ptr(1);
     _exit(1);
-
-    return -1;
 }
 
