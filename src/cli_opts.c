@@ -369,8 +369,9 @@ int parse_misc_opts(int opt, const char *arg, const char *prog,
     }
 }
 
-int finalize_options(int argc, char **argv, const char *prog,
-                     cli_options_t *opts)
+/* Collect remaining command line arguments as source files */
+static int collect_sources(int argc, char **argv, const char *prog,
+                           cli_options_t *opts)
 {
     if (optind >= argc) {
         fprintf(stderr, "Error: no source file specified.\n");
@@ -386,6 +387,12 @@ int finalize_options(int argc, char **argv, const char *prog,
         }
     }
 
+    return 0;
+}
+
+/* Check that an output option or dump flag was provided */
+static int validate_output(const char *prog, cli_options_t *opts)
+{
     if (!opts->output && !opts->dump_asm && !opts->dump_ir &&
         !opts->dump_tokens && !opts->dump_ast && !opts->preprocess &&
         !opts->dep_only) {
@@ -395,75 +402,95 @@ int finalize_options(int argc, char **argv, const char *prog,
         return 1;
     }
 
-    if (opts->internal_libc) {
-        if (!opts->vc_sysinclude || !*opts->vc_sysinclude) {
-            char tmp[PATH_MAX];
-            size_t prog_len = strlen(prog);
-            if (prog_len >= sizeof(tmp)) {
-                fprintf(stderr, "Error: internal libc path too long.\n");
-                cli_free_opts(opts);
-                return 1;
-            }
-            memcpy(tmp, prog, prog_len + 1);
-            char *slash = strrchr(tmp, '/');
-            if (slash)
-                *slash = '\0';
-            else
-                strcpy(tmp, ".");
-            size_t dirlen = strlen(tmp);
-            if (dirlen + strlen("/libc/include") >= PATH_MAX) {
-                fprintf(stderr, "Error: internal libc path too long.\n");
-                cli_free_opts(opts);
-                return 1;
-            }
-            strcat(tmp, "/libc/include");
-            opts->vc_sysinclude = vc_strdup(tmp);
-            if (!opts->vc_sysinclude) {
-                vc_oom();
-                cli_free_opts(opts);
-                return 1;
-            }
-            opts->free_vc_sysinclude = true;
-        }
-        preproc_set_internal_libc_dir(opts->vc_sysinclude);
+    return 0;
+}
 
-        const char *dir = opts->vc_sysinclude;
-        int ret;
-        char hdr[PATH_MAX];
-        ret = snprintf(hdr, sizeof(hdr), "%s/stdio.h", dir);
-        if (ret < 0 || ret >= (int)sizeof(hdr) || access(hdr, F_OK) != 0) {
-            fprintf(stderr,
-                    "Error: internal libc header '%s' not found.\n",
-                    hdr);
+/* Configure the bundled libc when --internal-libc is used */
+static int setup_internal_libc(const char *prog, cli_options_t *opts)
+{
+    if (!opts->internal_libc)
+        return 0;
+
+    if (!opts->vc_sysinclude || !*opts->vc_sysinclude) {
+        char tmp[PATH_MAX];
+        size_t prog_len = strlen(prog);
+        if (prog_len >= sizeof(tmp)) {
+            fprintf(stderr, "Error: internal libc path too long.\n");
             cli_free_opts(opts);
             return 1;
         }
-
-        char libdir[PATH_MAX];
-        ret = snprintf(libdir, sizeof(libdir), "%s", dir);
-        if (ret < 0 || ret >= (int)sizeof(libdir)) {
-            fprintf(stderr, "Error: internal libc archive path too long.\n");
-            cli_free_opts(opts);
-            return 1;
-        }
-        char *slash = strrchr(libdir, '/');
+        memcpy(tmp, prog, prog_len + 1);
+        char *slash = strrchr(tmp, '/');
         if (slash)
             *slash = '\0';
-        const char *libname = opts->use_x86_64 ? "libc64.a" : "libc32.a";
-        char archive[PATH_MAX];
-        if (snprintf(archive, sizeof(archive), "%s/%s", libdir, libname) >= (int)sizeof(archive)) {
-            fprintf(stderr, "Error: internal libc archive path too long.\n");
+        else
+            strcpy(tmp, ".");
+        size_t dirlen = strlen(tmp);
+        if (dirlen + strlen("/libc/include") >= PATH_MAX) {
+            fprintf(stderr, "Error: internal libc path too long.\n");
             cli_free_opts(opts);
             return 1;
         }
-        if (access(archive, F_OK) != 0) {
-            fprintf(stderr,
-                    "Error: internal libc archive '%s' not found.\n",
-                    archive);
+        strcat(tmp, "/libc/include");
+        opts->vc_sysinclude = vc_strdup(tmp);
+        if (!opts->vc_sysinclude) {
+            vc_oom();
             cli_free_opts(opts);
             return 1;
         }
+        opts->free_vc_sysinclude = true;
     }
+    preproc_set_internal_libc_dir(opts->vc_sysinclude);
+
+    const char *dir = opts->vc_sysinclude;
+    int ret;
+    char hdr[PATH_MAX];
+    ret = snprintf(hdr, sizeof(hdr), "%s/stdio.h", dir);
+    if (ret < 0 || ret >= (int)sizeof(hdr) || access(hdr, F_OK) != 0) {
+        fprintf(stderr, "Error: internal libc header '%s' not found.\n", hdr);
+        cli_free_opts(opts);
+        return 1;
+    }
+
+    char libdir[PATH_MAX];
+    ret = snprintf(libdir, sizeof(libdir), "%s", dir);
+    if (ret < 0 || ret >= (int)sizeof(libdir)) {
+        fprintf(stderr, "Error: internal libc archive path too long.\n");
+        cli_free_opts(opts);
+        return 1;
+    }
+    char *slash = strrchr(libdir, '/');
+    if (slash)
+        *slash = '\0';
+    const char *libname = opts->use_x86_64 ? "libc64.a" : "libc32.a";
+    char archive[PATH_MAX];
+    if (snprintf(archive, sizeof(archive), "%s/%s", libdir, libname) >=
+        (int)sizeof(archive)) {
+        fprintf(stderr, "Error: internal libc archive path too long.\n");
+        cli_free_opts(opts);
+        return 1;
+    }
+    if (access(archive, F_OK) != 0) {
+        fprintf(stderr, "Error: internal libc archive '%s' not found.\n",
+                archive);
+        cli_free_opts(opts);
+        return 1;
+    }
+
+    return 0;
+}
+
+int finalize_options(int argc, char **argv, const char *prog,
+                     cli_options_t *opts)
+{
+    if (collect_sources(argc, argv, prog, opts))
+        return 1;
+
+    if (validate_output(prog, opts))
+        return 1;
+
+    if (setup_internal_libc(prog, opts))
+        return 1;
 
     return 0;
 }
