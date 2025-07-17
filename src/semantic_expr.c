@@ -250,6 +250,30 @@ static type_kind_t check_assign_expr(expr_t *expr, symtable_t *vars,
  */
 
 /*
+ * Look up the size of an aggregate referenced by an expression.
+ *
+ * When `op` is an identifier and `t` is an aggregate type, the symbol
+ * table is queried for the real size.  If the lookup fails a default of
+ * zero (or 4 for arrays) is returned.
+ */
+static int lookup_aggregate_size(expr_t *op, type_kind_t t, symtable_t *vars)
+{
+    symbol_t *sym = NULL;
+    if (op && op->kind == EXPR_IDENT)
+        sym = symtable_lookup(vars, op->data.ident.name);
+    if (!sym) {
+        return (t == TYPE_ARRAY) ? 4 : 0;
+    }
+    if (t == TYPE_ARRAY)
+        return (int)sym->array_size * (int)sym->elem_size;
+    if (t == TYPE_STRUCT)
+        return (int)sym->struct_total_size;
+    if (t == TYPE_UNION)
+        return (int)sym->total_size;
+    return 0;
+}
+
+/*
  * Determine the byte size of a type operand of sizeof().
  * Array and struct sizes are provided by the parser.
  */
@@ -301,24 +325,8 @@ static int sizeof_from_expr(expr_t *op, type_kind_t t, symtable_t *vars)
         return 8;
     if (t == TYPE_PTR)
         return 4;
-    if (t == TYPE_ARRAY) {
-        symbol_t *sym = NULL;
-        if (op && op->kind == EXPR_IDENT)
-            sym = symtable_lookup(vars, op->data.ident.name);
-        return sym ? (int)sym->array_size * (int)sym->elem_size : 4;
-    }
-    if (t == TYPE_UNION) {
-        symbol_t *sym = NULL;
-        if (op && op->kind == EXPR_IDENT)
-            sym = symtable_lookup(vars, op->data.ident.name);
-        return sym ? (int)sym->total_size : 0;
-    }
-    if (t == TYPE_STRUCT) {
-        symbol_t *sym = NULL;
-        if (op && op->kind == EXPR_IDENT)
-            sym = symtable_lookup(vars, op->data.ident.name);
-        return sym ? (int)sym->struct_total_size : 0;
-    }
+    if (t == TYPE_ARRAY || t == TYPE_STRUCT || t == TYPE_UNION)
+        return lookup_aggregate_size(op, t, vars);
     return 0;
 }
 
