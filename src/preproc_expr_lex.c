@@ -37,7 +37,13 @@ char *expr_parse_ident(expr_ctx_t *ctx)
         ctx->s++;
         len++;
     }
-    return vc_strndup(start, len);
+    char *id = vc_strndup(start, len);
+    if (!id) {
+        vc_oom();
+        ctx->error = 1;
+        return NULL;
+    }
+    return id;
 }
 
 char *expr_parse_header_name(expr_ctx_t *ctx, char *endc)
@@ -54,6 +60,11 @@ char *expr_parse_header_name(expr_ctx_t *ctx, char *endc)
             return NULL;
         }
         char *name = vc_strndup(start, (size_t)(ctx->s - start));
+        if (!name) {
+            vc_oom();
+            ctx->error = 1;
+            return NULL;
+        }
         ctx->s++;
         return name;
     } else if (*ctx->s == '<') {
@@ -67,6 +78,11 @@ char *expr_parse_header_name(expr_ctx_t *ctx, char *endc)
             return NULL;
         }
         char *name = vc_strndup(start, (size_t)(ctx->s - start));
+        if (!name) {
+            vc_oom();
+            ctx->error = 1;
+            return NULL;
+        }
         ctx->s++;
         return name;
     }
