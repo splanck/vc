@@ -932,7 +932,7 @@ libvclib="$DIR/libvclib.so"
 cc -shared -fPIC -I "$DIR/../libc/include" \
     "$DIR/../libc/src/stdio.c" "$DIR/../libc/src/stdlib.c" \
     "$DIR/../libc/src/string.c" "$DIR/../libc/src/syscalls.c" \
-    "$DIR/../libc/src/file.c" -o "$libvclib"
+    "$DIR/../libc/src/file.c" "$DIR/../libc/src/errno.c" -o "$libvclib"
 prog=$(safe_mktemp)
 cc -I "$DIR/../libc/include" "$DIR/fixtures/libc_short_write.c" \
     -L"$DIR" -Wl,-rpath="$DIR" -lvclib -o "$prog"
@@ -953,7 +953,7 @@ libvclib="$DIR/libvclib.so"
 cc -shared -fPIC -I "$DIR/../libc/include" \
     "$DIR/../libc/src/stdio.c" "$DIR/../libc/src/stdlib.c" \
     "$DIR/../libc/src/string.c" "$DIR/../libc/src/syscalls.c" \
-    "$DIR/../libc/src/file.c" -o "$libvclib"
+    "$DIR/../libc/src/file.c" "$DIR/../libc/src/errno.c" -o "$libvclib"
 prog=$(safe_mktemp)
 cc -I "$DIR/../libc/include" "$DIR/fixtures/libc_write_fail.c" \
     -L"$DIR" -Wl,-rpath="$DIR" -lvclib -o "$prog"
@@ -974,7 +974,7 @@ libvclib="$DIR/libvclib.so"
 cc -shared -fPIC -I "$DIR/../libc/include" \
     "$DIR/../libc/src/stdio.c" "$DIR/../libc/src/stdlib.c" \
     "$DIR/../libc/src/string.c" "$DIR/../libc/src/syscalls.c" \
-    "$DIR/../libc/src/file.c" -o "$libvclib"
+    "$DIR/../libc/src/file.c" "$DIR/../libc/src/errno.c" -o "$libvclib"
 prog=$(safe_mktemp)
 cc -I "$DIR/../libc/include" "$DIR/fixtures/libc_exit_fail.c" \
     -L"$DIR" -Wl,-rpath="$DIR" -lvclib -o "$prog"
@@ -995,7 +995,7 @@ libvclib="$DIR/libvclib.so"
 cc -shared -fPIC -I "$DIR/../libc/include" \
     "$DIR/../libc/src/stdio.c" "$DIR/../libc/src/stdlib.c" \
     "$DIR/../libc/src/string.c" "$DIR/../libc/src/syscalls.c" \
-    "$DIR/../libc/src/file.c" -o "$libvclib"
+    "$DIR/../libc/src/file.c" "$DIR/../libc/src/errno.c" -o "$libvclib"
 prog=$(safe_mktemp)
 cc -I "$DIR/../libc/include" "$DIR/fixtures/libc_puts_large.c" \
     -L"$DIR" -Wl,-rpath="$DIR" -lvclib -o "$prog"
