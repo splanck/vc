@@ -202,6 +202,68 @@ static void test_vcflags_backslash(void)
     ASSERT(allocs == 0);
 }
 
+static void test_vcflags_unterm_single(void)
+{
+    cli_options_t opts;
+    setenv("VCFLAGS", "--output 'out file.s", 1);
+    char *argv[] = {"vc", "file.c", NULL};
+    FILE *tmp = tmpfile();
+    if (!tmp) {
+        perror("tmpfile");
+        exit(1);
+    }
+    int saved = dup(fileno(stderr));
+    dup2(fileno(tmp), fileno(stderr));
+
+    int ret = cli_parse_args(2, argv, &opts);
+
+    fflush(stderr);
+    fseek(tmp, 0, SEEK_SET);
+    char buf[256];
+    size_t n = fread(buf, 1, sizeof(buf) - 1, tmp);
+    buf[n] = '\0';
+
+    dup2(saved, fileno(stderr));
+    close(saved);
+    fclose(tmp);
+    unsetenv("VCFLAGS");
+
+    ASSERT(ret != 0);
+    ASSERT(strstr(buf, "Unterminated quote") != NULL);
+    ASSERT(allocs == 0);
+}
+
+static void test_vcflags_unterm_double(void)
+{
+    cli_options_t opts;
+    setenv("VCFLAGS", "--output \"out file.s", 1);
+    char *argv[] = {"vc", "file.c", NULL};
+    FILE *tmp = tmpfile();
+    if (!tmp) {
+        perror("tmpfile");
+        exit(1);
+    }
+    int saved = dup(fileno(stderr));
+    dup2(fileno(tmp), fileno(stderr));
+
+    int ret = cli_parse_args(2, argv, &opts);
+
+    fflush(stderr);
+    fseek(tmp, 0, SEEK_SET);
+    char buf[256];
+    size_t n = fread(buf, 1, sizeof(buf) - 1, tmp);
+    buf[n] = '\0';
+
+    dup2(saved, fileno(stderr));
+    close(saved);
+    fclose(tmp);
+    unsetenv("VCFLAGS");
+
+    ASSERT(ret != 0);
+    ASSERT(strstr(buf, "Unterminated quote") != NULL);
+    ASSERT(allocs == 0);
+}
+
 static void test_shortcut_quotes(void)
 {
     cli_options_t opts;
@@ -232,6 +294,8 @@ int main(void)
     test_internal_libc_leak();
     test_vcflags_quotes();
     test_vcflags_backslash();
+    test_vcflags_unterm_single();
+    test_vcflags_unterm_double();
     test_shortcut_quotes();
     test_parse_failure();
     if (failures == 0)
