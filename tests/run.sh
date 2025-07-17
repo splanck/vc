@@ -219,6 +219,24 @@ $CC -Iinclude -Wall -Wextra -std=c99 -Dvector_push=test_vector_push -c "$DIR/uni
 $CC -Iinclude -Wall -Wextra -std=c99 -c src/vector.c -o vector_addmacro.o
 $CC -o "$DIR/add_macro_fail_tests" "$DIR/test_add_macro_fail.o" vector_addmacro.o
 rm -f "$DIR/test_add_macro_fail.o" vector_addmacro.o
+# build collect_include_dirs failure test
+$CC -Iinclude -Wall -Wextra -std=c99 -Dvector_push=test_vector_push \
+    -Dmalloc=test_malloc -Dcalloc=test_calloc -Drealloc=test_realloc -Dfree=test_free \
+    -c src/preproc_path.c -o preproc_path_collect_dest_fail.o
+$CC -Iinclude -Wall -Wextra -std=c99 -Dmalloc=test_malloc -Dcalloc=test_calloc -Drealloc=test_realloc -Dfree=test_free \
+    -c src/include_path_cache.c -o include_path_cache_collect_dest_fail.o
+$CC -Iinclude -Wall -Wextra -std=c99 -Dmalloc=test_malloc -Dcalloc=test_calloc -Drealloc=test_realloc -Dfree=test_free \
+    -c src/vector.c -o vector_collect_dest_fail.o
+$CC -Iinclude -Wall -Wextra -std=c99 -DUNIT_TESTING -DNO_VECTOR_FREE_STUB \
+    -Dmalloc=test_malloc -Dcalloc=test_calloc -Drealloc=test_realloc -Dfree=test_free \
+    -c src/util.c -o util_collect_dest_fail.o
+$CC -Iinclude -Wall -Wextra -std=c99 -Dvector_push=test_vector_push \
+    -Dmalloc=test_malloc -Dcalloc=test_calloc -Drealloc=test_realloc -Dfree=test_free \
+    -c "$DIR/unit/test_collect_include_dest_fail.c" -o "$DIR/test_collect_include_dest_fail.o"
+$CC -o "$DIR/collect_include_dest_fail" preproc_path_collect_dest_fail.o include_path_cache_collect_dest_fail.o \
+    vector_collect_dest_fail.o util_collect_dest_fail.o "$DIR/test_collect_include_dest_fail.o"
+rm -f preproc_path_collect_dest_fail.o include_path_cache_collect_dest_fail.o vector_collect_dest_fail.o util_collect_dest_fail.o \
+      "$DIR/test_collect_include_dest_fail.o"
 # build variadic macro tests
 $CC -Iinclude -Wall -Wextra -std=c99 -c src/preproc_expand.c -o preproc_expand.o
 $CC -Iinclude -Wall -Wextra -std=c99 -c src/preproc_table.c -o preproc_table.o
@@ -614,6 +632,7 @@ rm -f ir_licm.o util_licm.o label_licm.o error_licm.o opt_main_licm.o \
 "$DIR/std_dirs_alloc_fail"
 "$DIR/preproc_alloc_tests"
 "$DIR/add_macro_fail_tests"
+"$DIR/collect_include_dest_fail"
 "$DIR/text_line_fail"
 "$DIR/variadic_macro_tests"
 "$DIR/macro_stringize_escape"

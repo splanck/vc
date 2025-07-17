@@ -335,9 +335,11 @@ int collect_include_dirs(vector_t *search_dirs,
             size_t len = root_len + strlen(base);
             char *dup = malloc(len + 1);
             if (!dup) {
-                free_string_vector(search_dirs);
-                if (dest == &extra_sys_dirs)
+                free_string_vector(dest);
+                if (dest == search_dirs)
                     free_string_vector(&extra_sys_dirs);
+                else
+                    free_string_vector(search_dirs);
                 return 0;
             }
             memcpy(dup, sysroot, root_len);
@@ -345,9 +347,11 @@ int collect_include_dirs(vector_t *search_dirs,
             strcat(dup, base);
             if (!vector_push(dest, &dup)) {
                 free(dup);
-                free_string_vector(search_dirs);
-                if (dest == &extra_sys_dirs)
+                free_string_vector(dest);
+                if (dest == search_dirs)
                     free_string_vector(&extra_sys_dirs);
+                else
+                    free_string_vector(search_dirs);
                 return 0;
             }
         }
