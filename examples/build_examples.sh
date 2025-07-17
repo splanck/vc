@@ -33,6 +33,7 @@ for src in "$DIR"/*.c; do
 
     "$VC" $opts -o "$exe" "$src" >"$exe.log" 2>&1
     if [ $? -eq 0 ]; then
+        "$VC" $ARCH_OPT --internal-libc -o "$DIR/${base}.s" "$src" >>"$exe.log" 2>&1
         success=$((success + 1))
     else
         echo "Failed to build $exe (see $exe.log)"
