@@ -39,23 +39,20 @@ long _vc_close(int fd)
     SYSCALL_INVOKE(VC_SYS_CLOSE, fd, 0, 0);
 }
 
-long _vc_exit(int status)
+void _vc_exit(int status)
 {
 #ifdef __x86_64__
-    long ret;
     __asm__ volatile ("syscall"
-                      : "=a"(ret)
+                      :
                       : "a"(VC_SYS_EXIT), "D"(status)
                       : "rcx", "r11", "memory");
-    return ret;
 #elif defined(__i386__)
-    long ret;
     __asm__ volatile ("int $0x80"
-                      : "=a"(ret)
+                      :
                       : "a"(VC_SYS_EXIT), "b"(status)
                       : "memory");
-    return ret;
 #endif
+    __builtin_unreachable();
 }
 
 static unsigned long cur_brk = 0;
