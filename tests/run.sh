@@ -87,6 +87,12 @@ $CC -Iinclude -Wall -Wextra -std=c99 -c src/error.c -o error_ircore.o
 $CC -Iinclude -Wall -Wextra -std=c99 -c "$DIR/unit/test_ir_core.c" -o "$DIR/test_ir_core.o"
 $CC -o "$DIR/ir_core_tests" ir_core_test.o util_ircore.o error_ircore.o label_ircore.o "$DIR/test_ir_core.o"
 rm -f ir_core_test.o util_ircore.o error_ircore.o label_ircore.o "$DIR/test_ir_core.o"
+# build AST allocation failure test
+$CC -Iinclude -Wall -Wextra -std=c99 -Dmalloc=test_malloc -c src/ast_expr_literal.c -o ast_expr_literal_alloc.o
+$CC -Iinclude -Wall -Wextra -std=c99 -Dmalloc=test_malloc -c src/util.c -o util_ast_alloc.o
+$CC -Iinclude -Wall -Wextra -std=c99 -Dmalloc=test_malloc -c "$DIR/unit/test_ast_alloc_fail.c" -o "$DIR/test_ast_alloc_fail.o"
+$CC -o "$DIR/ast_alloc_fail" ast_expr_literal_alloc.o util_ast_alloc.o "$DIR/test_ast_alloc_fail.o"
+rm -f ast_expr_literal_alloc.o util_ast_alloc.o "$DIR/test_ast_alloc_fail.o"
 # build conditional expression regression test
 $CC -Iinclude -Wall -Wextra -std=c99 \
     -o "$DIR/cond_expr_tests" "$DIR/unit/test_cond_expr.c" \
@@ -588,6 +594,7 @@ rm -f ir_licm.o util_licm.o label_licm.o error_licm.o opt_main_licm.o \
 "$DIR/cli_tests"
 "$DIR/parser_alloc_tests"
 "$DIR/ir_core_tests"
+"$DIR/ast_alloc_fail"
 "$DIR/opt_fold_tests"
 "$DIR/opt_unreachable_tests"
 "$DIR/opt_licm_tests"
