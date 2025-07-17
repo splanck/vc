@@ -28,13 +28,12 @@ void strbuf_init(strbuf_t *sb)
     sb->data[0] = '\0';
 }
 
-/* Ensure the buffer can hold at least "extra" additional bytes. */
 /*
  * Ensure the buffer can hold at least "extra" additional bytes.
  * Returns 0 on success and -1 on failure.  On failure an error message
  * is printed and no reallocation is performed.  Memory allocation
  * failures are fatal and terminate the process.
- */
+*/
 static int sb_ensure(strbuf_t *sb, size_t extra)
 {
     if (!sb)
