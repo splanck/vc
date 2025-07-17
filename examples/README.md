@@ -78,3 +78,10 @@ Copies a string using `malloc` and `memcpy`. Run with:
 ```sh
 ./copy_string
 ```
+
+### file_count.c
+Counts the number of lines in `example.txt`. Run with:
+
+```sh
+./file_count
+```
