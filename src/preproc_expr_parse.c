@@ -11,6 +11,79 @@
 #include "preproc_file_io.h"
 #include "preproc_utils.h"
 
+typedef long long (*binary_fn_t)(long long, long long);
+
+typedef struct {
+    const char *op;
+    binary_fn_t fn;
+} binary_op_t;
+
+static long long parse_binary(expr_ctx_t *ctx,
+                              long long (*next_fn)(expr_ctx_t *),
+                              const binary_op_t *ops, size_t op_count)
+{
+    long long val = next_fn(ctx);
+    ctx->s = skip_ws((char *)ctx->s);
+
+    while (1) {
+        size_t idx;
+        size_t len = 0;
+        binary_fn_t fn = NULL;
+
+        for (idx = 0; idx < op_count; idx++) {
+            len = strlen(ops[idx].op);
+            if (strncmp(ctx->s, ops[idx].op, len) == 0) {
+                fn = ops[idx].fn;
+                break;
+            }
+        }
+
+        if (!fn)
+            break;
+
+        ctx->s += len;
+        long long rhs = next_fn(ctx);
+        val = fn(val, rhs);
+        ctx->s = skip_ws((char *)ctx->s);
+    }
+
+    return val;
+}
+
+/* Binary operator implementations */
+static long long op_mul(long long a, long long b) { return a * b; }
+static long long op_div(long long a, long long b) { return b ? a / b : 0; }
+static long long op_mod(long long a, long long b) { return b ? a % b : 0; }
+static long long op_add(long long a, long long b) { return a + b; }
+static long long op_sub(long long a, long long b) { return a - b; }
+static long long op_shl(long long a, long long b)
+{
+    if (b < 0)
+        b = 0;
+    else if (b >= (long long)(sizeof(long long) * CHAR_BIT))
+        b = (long long)(sizeof(long long) * CHAR_BIT) - 1;
+    return a << b;
+}
+static long long op_shr(long long a, long long b)
+{
+    if (b < 0)
+        b = 0;
+    else if (b >= (long long)(sizeof(long long) * CHAR_BIT))
+        b = (long long)(sizeof(long long) * CHAR_BIT) - 1;
+    return a >> b;
+}
+static long long op_lt(long long a, long long b)  { return a < b; }
+static long long op_gt(long long a, long long b)  { return a > b; }
+static long long op_le(long long a, long long b)  { return a <= b; }
+static long long op_ge(long long a, long long b)  { return a >= b; }
+static long long op_eq(long long a, long long b)  { return a == b; }
+static long long op_ne(long long a, long long b)  { return a != b; }
+static long long op_band(long long a, long long b){ return a & b; }
+static long long op_xor(long long a, long long b) { return a ^ b; }
+static long long op_bor(long long a, long long b) { return a | b; }
+static long long op_land(long long a, long long b){ return a && b; }
+static long long op_lor(long long a, long long b) { return a || b; }
+
 static long long parse_has_include(expr_ctx_t *ctx, int is_next)
 {
     ctx->s += is_next ? 18 : 13; /* skip directive name */
@@ -180,178 +253,82 @@ static long long parse_unary(expr_ctx_t *ctx)
 
 static long long parse_mul(expr_ctx_t *ctx)
 {
-    long long val = parse_unary(ctx);
-    ctx->s = skip_ws((char *)ctx->s);
-    while (*ctx->s == '*' || *ctx->s == '/' || *ctx->s == '%') {
-        char op = *ctx->s++;
-        long long rhs = parse_unary(ctx);
-        switch (op) {
-        case '*': val = val * rhs; break;
-        case '/': val = rhs ? val / rhs : 0; break;
-        case '%': val = rhs ? val % rhs : 0; break;
-        }
-        ctx->s = skip_ws((char *)ctx->s);
-    }
-    return val;
+    static const binary_op_t ops[] = {
+        {"*", op_mul}, {"/", op_div}, {"%", op_mod}
+    };
+    return parse_binary(ctx, parse_unary, ops, sizeof(ops) / sizeof(ops[0]));
 }
 
 static long long parse_add(expr_ctx_t *ctx)
 {
-    long long val = parse_mul(ctx);
-    ctx->s = skip_ws((char *)ctx->s);
-    while (*ctx->s == '+' || *ctx->s == '-') {
-        char op = *ctx->s++;
-        long long rhs = parse_mul(ctx);
-        if (op == '+')
-            val += rhs;
-        else
-            val -= rhs;
-        ctx->s = skip_ws((char *)ctx->s);
-    }
-    return val;
+    static const binary_op_t ops[] = {
+        {"+", op_add}, {"-", op_sub}
+    };
+    return parse_binary(ctx, parse_mul, ops, sizeof(ops) / sizeof(ops[0]));
 }
 
 static long long parse_shift(expr_ctx_t *ctx)
 {
-    long long val = parse_add(ctx);
-    ctx->s = skip_ws((char *)ctx->s);
-    while (strncmp(ctx->s, "<<", 2) == 0 || strncmp(ctx->s, ">>", 2) == 0) {
-        int left = (ctx->s[0] == '<');
-        ctx->s += 2;
-        long long rhs = parse_add(ctx);
-        /*
-         * Clamp the shift count so undefined behaviour does not occur when
-         * shifting by a value outside the width of long long. Negative counts
-         * are treated as zero while counts greater than or equal to the type
-         * width (64 on most hosts) are reduced to width - 1.  This mirrors the
-         * behaviour of many hosts and keeps evaluation well-defined.
-         */
-        if (rhs < 0)
-            rhs = 0;
-        else if (rhs >= (long long)(sizeof(long long) * CHAR_BIT))
-            rhs = (long long)(sizeof(long long) * CHAR_BIT) - 1;
-        if (left)
-            val <<= rhs;
-        else
-            val >>= rhs;
-        ctx->s = skip_ws((char *)ctx->s);
-    }
-    return val;
+    static const binary_op_t ops[] = {
+        {"<<", op_shl}, {">>", op_shr}
+    };
+    return parse_binary(ctx, parse_add, ops, sizeof(ops) / sizeof(ops[0]));
 }
 
 static long long parse_rel(expr_ctx_t *ctx)
 {
-    long long val = parse_shift(ctx);
-    ctx->s = skip_ws((char *)ctx->s);
-    while (1) {
-        if (strncmp(ctx->s, "<=", 2) == 0) {
-            ctx->s += 2;
-            long long rhs = parse_shift(ctx);
-            val = val <= rhs;
-        } else if (strncmp(ctx->s, ">=", 2) == 0) {
-            ctx->s += 2;
-            long long rhs = parse_shift(ctx);
-            val = val >= rhs;
-        } else if (*ctx->s == '<' && ctx->s[1] != '<') {
-            ctx->s++;
-            long long rhs = parse_shift(ctx);
-            val = val < rhs;
-        } else if (*ctx->s == '>' && ctx->s[1] != '>') {
-            ctx->s++;
-            long long rhs = parse_shift(ctx);
-            val = val > rhs;
-        } else {
-            break;
-        }
-        ctx->s = skip_ws((char *)ctx->s);
-    }
-    return val;
+    static const binary_op_t ops[] = {
+        {"<=", op_le}, {">=", op_ge}, {"<", op_lt}, {">", op_gt}
+    };
+    return parse_binary(ctx, parse_shift, ops, sizeof(ops) / sizeof(ops[0]));
 }
 
 static long long parse_eq(expr_ctx_t *ctx)
 {
-    long long val = parse_rel(ctx);
-    ctx->s = skip_ws((char *)ctx->s);
-    while (1) {
-        if (strncmp(ctx->s, "==", 2) == 0) {
-            ctx->s += 2;
-            long long rhs = parse_rel(ctx);
-            val = val == rhs;
-        } else if (strncmp(ctx->s, "!=", 2) == 0) {
-            ctx->s += 2;
-            long long rhs = parse_rel(ctx);
-            val = val != rhs;
-        } else {
-            break;
-        }
-        ctx->s = skip_ws((char *)ctx->s);
-    }
-    return val;
+    static const binary_op_t ops[] = {
+        {"==", op_eq}, {"!=", op_ne}
+    };
+    return parse_binary(ctx, parse_rel, ops, sizeof(ops) / sizeof(ops[0]));
 }
 
 static long long parse_band(expr_ctx_t *ctx)
 {
-    long long val = parse_eq(ctx);
-    ctx->s = skip_ws((char *)ctx->s);
-    while (*ctx->s == '&' && ctx->s[1] != '&') {
-        ctx->s++;
-        long long rhs = parse_eq(ctx);
-        val &= rhs;
-        ctx->s = skip_ws((char *)ctx->s);
-    }
-    return val;
+    static const binary_op_t ops[] = {
+        {"&", op_band}
+    };
+    return parse_binary(ctx, parse_eq, ops, sizeof(ops) / sizeof(ops[0]));
 }
 
 static long long parse_xor(expr_ctx_t *ctx)
 {
-    long long val = parse_band(ctx);
-    ctx->s = skip_ws((char *)ctx->s);
-    while (*ctx->s == '^') {
-        ctx->s++;
-        long long rhs = parse_band(ctx);
-        val ^= rhs;
-        ctx->s = skip_ws((char *)ctx->s);
-    }
-    return val;
+    static const binary_op_t ops[] = {
+        {"^", op_xor}
+    };
+    return parse_binary(ctx, parse_band, ops, sizeof(ops) / sizeof(ops[0]));
 }
 
 static long long parse_bor(expr_ctx_t *ctx)
 {
-    long long val = parse_xor(ctx);
-    ctx->s = skip_ws((char *)ctx->s);
-    while (*ctx->s == '|' && ctx->s[1] != '|') {
-        ctx->s++;
-        long long rhs = parse_xor(ctx);
-        val |= rhs;
-        ctx->s = skip_ws((char *)ctx->s);
-    }
-    return val;
+    static const binary_op_t ops[] = {
+        {"|", op_bor}
+    };
+    return parse_binary(ctx, parse_xor, ops, sizeof(ops) / sizeof(ops[0]));
 }
 
 static long long parse_and(expr_ctx_t *ctx)
 {
-    long long val = parse_bor(ctx);
-    ctx->s = skip_ws((char *)ctx->s);
-    while (strncmp(ctx->s, "&&", 2) == 0) {
-        ctx->s += 2;
-        long long rhs = parse_bor(ctx);
-        val = val && rhs;
-        ctx->s = skip_ws((char *)ctx->s);
-    }
-    return val;
+    static const binary_op_t ops[] = {
+        {"&&", op_land}
+    };
+    return parse_binary(ctx, parse_bor, ops, sizeof(ops) / sizeof(ops[0]));
 }
 
 static long long parse_or(expr_ctx_t *ctx)
 {
-    long long val = parse_and(ctx);
-    ctx->s = skip_ws((char *)ctx->s);
-    while (strncmp(ctx->s, "||", 2) == 0) {
-        ctx->s += 2;
-        long long rhs = parse_and(ctx);
-        val = val || rhs;
-        ctx->s = skip_ws((char *)ctx->s);
-    }
-    return val;
+    static const binary_op_t ops[] = {
+        {"||", op_lor}
+    };
+    return parse_binary(ctx, parse_and, ops, sizeof(ops) / sizeof(ops[0]));
 }
 
 long long parse_conditional(expr_ctx_t *ctx)
