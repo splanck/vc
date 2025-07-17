@@ -824,6 +824,35 @@ if [ $SKIP_LIBC_TESTS -eq 0 ]; then
         fail=1
     fi
     rm -f "${fileio64}" "$io_file"
+
+    # build and run factorial example using internal libc
+    if [ $CAN_COMPILE_32 -eq 0 ]; then
+        fact32=$(safe_mktemp)
+        rm -f "${fact32}"
+        "$BINARY" --link --internal-libc -o "${fact32}" "$DIR/loops/factorial.c"
+        set +e
+        "${fact32}" >/dev/null 2>&1
+        status=$?
+        set -e
+        if [ $status -ne 0 ]; then
+            echo "Test loops_factorial_32 failed"
+            fail=1
+        fi
+        rm -f "${fact32}"
+    fi
+
+    fact64=$(safe_mktemp)
+    rm -f "${fact64}"
+    "$BINARY" --x86-64 --link --internal-libc -o "${fact64}" "$DIR/loops/factorial.c"
+    set +e
+    "${fact64}" >/dev/null 2>&1
+    status=$?
+    set -e
+    if [ $status -ne 0 ]; then
+        echo "Test loops_factorial_64 failed"
+        fail=1
+    fi
+    rm -f "${fact64}"
 else
     echo "Skipping internal libc link tests (stack protector issue)"
 fi
