@@ -61,6 +61,7 @@ void ir_builder_free(ir_builder_t *b)
     b->next_value_id = 0;
     while (b->aliases) {
         alias_ent_t *n = b->aliases->next;
+        free((char *)b->aliases->name);
         free(b->aliases);
         b->aliases = n;
     }
