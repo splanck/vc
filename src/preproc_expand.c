@@ -269,6 +269,56 @@ static int dispatch_macro(const char *line, size_t start, size_t end,
         *pos = p;
     return r;
 }
+/*
+ * Append the character represented by the escape sequence starting with
+ * backslash C.  Additional characters are read from S beginning at *I and the
+ * index is updated past any consumed input.
+ */
+static void append_escape_sequence(char c, const char *s, size_t *i,
+                                   strbuf_t *sb)
+{
+    switch (c) {
+    case 'n': strbuf_append(sb, "\n"); break;
+    case 't': strbuf_append(sb, "\t"); break;
+    case 'r': strbuf_append(sb, "\r"); break;
+    case 'b': strbuf_append(sb, "\b"); break;
+    case 'f': strbuf_append(sb, "\f"); break;
+    case 'v': strbuf_append(sb, "\v"); break;
+    case 'a': strbuf_append(sb, "\a"); break;
+    case '\\':
+    case '\'':
+    case '"':
+    case '?':
+        strbuf_appendf(sb, "%c", c);
+        break;
+    case 'x': {
+        unsigned value = 0;
+        while (isxdigit((unsigned char)s[*i])) {
+            char d = s[*i];
+            int hex = (d >= '0' && d <= '9') ? d - '0' :
+                       (d >= 'a' && d <= 'f') ? d - 'a' + 10 :
+                       (d >= 'A' && d <= 'F') ? d - 'A' + 10 : 0;
+            value = value * 16 + (unsigned)hex;
+            (*i)++;
+        }
+        strbuf_appendf(sb, "%c", (char)value);
+        break;
+    }
+    default:
+        if (c >= '0' && c <= '7') {
+            unsigned value = (unsigned)(c - '0');
+            int digits = 1;
+            while (digits < 3 && s[*i] >= '0' && s[*i] <= '7') {
+                value = value * 8 + (unsigned)(s[*i] - '0');
+                (*i)++; digits++;
+            }
+            strbuf_appendf(sb, "%c", (char)value);
+        } else {
+            strbuf_appendf(sb, "%c", c);
+        }
+        break;
+    }
+}
 
 /* Decode escape sequences in a string literal and return a malloc'd copy. */
 static char *decode_string_literal(const char *s, size_t len)
@@ -282,48 +332,7 @@ static char *decode_string_literal(const char *s, size_t len)
         if (c == '\\' && i + 1 < len) {
             i++;
             c = s[i++];
-            switch (c) {
-            case 'n': strbuf_append(&sb, "\n"); break;
-            case 't': strbuf_append(&sb, "\t"); break;
-            case 'r': strbuf_append(&sb, "\r"); break;
-            case 'b': strbuf_append(&sb, "\b"); break;
-            case 'f': strbuf_append(&sb, "\f"); break;
-            case 'v': strbuf_append(&sb, "\v"); break;
-            case 'a': strbuf_append(&sb, "\a"); break;
-            case '\\':
-            case '\'':
-            case '"':
-            case '?':
-                strbuf_appendf(&sb, "%c", c);
-                break;
-            case 'x': {
-                unsigned value = 0;
-                int digits = 0;
-                while (i < len && isxdigit((unsigned char)s[i])) {
-                    char d = s[i];
-                    int hex = (d >= '0' && d <= '9') ? d - '0' :
-                               (d >= 'a' && d <= 'f') ? d - 'a' + 10 :
-                               (d >= 'A' && d <= 'F') ? d - 'A' + 10 : 0;
-                    value = value * 16 + (unsigned)hex;
-                    i++; digits++;
-                }
-                strbuf_appendf(&sb, "%c", (char)value);
-                break;
-            }
-            default:
-                if (c >= '0' && c <= '7') {
-                    unsigned value = (unsigned)(c - '0');
-                    int digits = 1;
-                    while (digits < 3 && i < len && s[i] >= '0' && s[i] <= '7') {
-                        value = value * 8 + (unsigned)(s[i] - '0');
-                        i++; digits++;
-                    }
-                    strbuf_appendf(&sb, "%c", (char)value);
-                } else {
-                    strbuf_appendf(&sb, "%c", c);
-                }
-                break;
-            }
+            append_escape_sequence(c, s, &i, &sb);
         } else {
             strbuf_appendf(&sb, "%c", c);
             i++;
