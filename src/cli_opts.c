@@ -405,8 +405,20 @@ static int validate_output(const char *prog, cli_options_t *opts)
     return 0;
 }
 
-/* Configure the bundled libc when --internal-libc is used */
-static int setup_internal_libc(const char *prog, cli_options_t *opts)
+/*
+ * Resolve the bundled libc path when `--internal-libc` is enabled.
+ *
+ * The function expands the directory containing the headers to an absolute
+ * path and checks for both the `stdio.h` header and the matching archive
+ * (libc32.a or libc64.a).  `prog` should be `argv[0]` from the command line so
+ * the path to the executable can be used as a base when no explicit
+ * `--vc-sysinclude` value was supplied.
+ *
+ * On success `opts->vc_sysinclude` is updated and the preprocessor is informed
+ * via `preproc_set_internal_libc_dir`.  Returns 0 when everything was found or
+ * a non-zero value on error.
+ */
+static int resolve_internal_libc(const char *prog, cli_options_t *opts)
 {
     if (!opts->internal_libc)
         return 0;
@@ -480,6 +492,13 @@ static int setup_internal_libc(const char *prog, cli_options_t *opts)
     return 0;
 }
 
+/*
+ * Validate command-line options and resolve paths after parsing.
+ *
+ * This gathers any remaining source arguments, ensures some form of output
+ * option was specified and resolves the bundled libc location when requested.
+ * Returns 0 on success or 1 when an error occurs.
+ */
 int finalize_options(int argc, char **argv, const char *prog,
                      cli_options_t *opts)
 {
@@ -489,7 +508,7 @@ int finalize_options(int argc, char **argv, const char *prog,
     if (validate_output(prog, opts))
         return 1;
 
-    if (setup_internal_libc(prog, opts))
+    if (resolve_internal_libc(prog, opts))
         return 1;
 
     return 0;

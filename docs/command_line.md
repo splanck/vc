@@ -195,6 +195,8 @@ most work to helper routines:
 - `parse_misc_opts` – processes all remaining flags such as `--debug` or
   `--link`.
 - `finalize_options` – validates the parsed state and gathers source files.
+- `resolve_internal_libc` – expands `--internal-libc` paths and verifies the
+  bundled archive.
 
 `build_linker_args` constructs the final `cc` command for linking using an array
 of fixed arguments. The array size drives the allocation of the argument vector
