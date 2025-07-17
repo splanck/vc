@@ -153,7 +153,7 @@ char *codegen_ir_to_string(ir_builder_t *ir, int x64,
  * when at least one directive is written so the caller knows whether a
  * `.text` header is needed before the instruction stream.
  */
-static int emit_global_data(FILE *out, ir_builder_t *ir, int x64)
+static int emit_global_data(FILE *out, const ir_builder_t *ir, int x64)
 {
     const char *size_directive = x64 ? ".quad" : ".long";
     int has_data = 0;
@@ -198,11 +198,11 @@ static int emit_global_data(FILE *out, ir_builder_t *ir, int x64)
                 }
                 fputs("\"\n", out);
             } else if (ins->op == IR_GLOB_WSTRING) {
-                long long *vals = (long long *)ins->data;
+                const long long *vals = (const long long *)ins->data;
                 for (long long i = 0; i < ins->imm; i++)
                     fprintf(out, "    %s %lld\n", size_directive, vals[i]);
             } else if (ins->op == IR_GLOB_ARRAY) {
-                long long *vals = (long long *)ins->data;
+                const long long *vals = (const long long *)ins->data;
                 for (long long i = 0; i < ins->imm; i++)
                     fprintf(out, "    %s %lld\n", size_directive, vals[i]);
             } else if (ins->op == IR_GLOB_UNION || ins->op == IR_GLOB_STRUCT) {
@@ -224,7 +224,7 @@ static int emit_global_data(FILE *out, ir_builder_t *ir, int x64)
  * operations.  Emit a `.lcomm` directive for each such name so that the
  * resulting assembly has a definition for every symbol referenced.
  */
-static int emit_local_comm(FILE *out, ir_builder_t *ir, int x64)
+static int emit_local_comm(FILE *out, const ir_builder_t *ir, int x64)
 {
     vector_t names;
     vector_init(&names, sizeof(char *));
