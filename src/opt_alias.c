@@ -9,6 +9,7 @@
 #include <string.h>
 #include "opt.h"
 #include "ir_core.h"
+#include "util.h"
 
 static int lookup_alias(alias_ent_t **list, const char *name, int *next_id)
 {
@@ -22,7 +23,12 @@ static int lookup_alias(alias_ent_t **list, const char *name, int *next_id)
         opt_error("out of memory");
         return 0;
     }
-    e->name = name;
+    e->name = vc_strdup(name);
+    if (!e->name) {
+        opt_error("out of memory");
+        free(e);
+        return 0;
+    }
     e->set = (*next_id)++;
     e->next = *list;
     *list = e;
@@ -65,6 +71,7 @@ void compute_alias_sets(ir_builder_t *ir)
 
     while (vars) {
         alias_ent_t *n = vars->next;
+        free((char *)vars->name);
         free(vars);
         vars = n;
     }

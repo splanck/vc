@@ -3,6 +3,7 @@
 #include <limits.h>
 #include <stdio.h>
 #include "ir_builder.h"
+#include "util.h"
 
 /* Allocate and append a blank instruction */
 ir_instr_t *append_instr(ir_builder_t *b)
@@ -72,7 +73,11 @@ int get_alias(ir_builder_t *b, const char *name)
     e = malloc(sizeof(*e));
     if (!e)
         return 0;
-    e->name = name;
+    e->name = vc_strdup(name);
+    if (!e->name) {
+        free(e);
+        return 0;
+    }
     e->set = b->next_alias_id++;
     e->next = b->aliases;
     b->aliases = e;
