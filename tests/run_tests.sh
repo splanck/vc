@@ -730,7 +730,7 @@ if [ $SKIP_LIBC_TESTS -eq 0 ]; then
         libc_printf32=$(mktemp)
         rm -f "${libc_printf32}"
         "$BINARY" --link --internal-libc -o "${libc_printf32}" "$DIR/fixtures/libc_printf.c"
-        if [ "$("${libc_printf32}")" != "hi" ]; then
+        if [ "$("${libc_printf32}")" != "hi A 3     7" ]; then
             echo "Test libc_printf_32 failed"
             fail=1
         fi
@@ -740,7 +740,7 @@ if [ $SKIP_LIBC_TESTS -eq 0 ]; then
     libc_printf64=$(mktemp)
     rm -f "${libc_printf64}"
     "$BINARY" --x86-64 --link --internal-libc -o "${libc_printf64}" "$DIR/fixtures/libc_printf.c"
-    if [ "$("${libc_printf64}")" != "hi" ]; then
+    if [ "$("${libc_printf64}")" != "hi A 3     7" ]; then
         echo "Test libc_printf_64 failed"
         fail=1
     fi
