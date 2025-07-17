@@ -5,6 +5,7 @@
  * See LICENSE for details.
  */
 
+#define _GNU_SOURCE
 #define _POSIX_C_SOURCE 200809L
 #include <stdlib.h>
 #include <stdio.h>
@@ -289,13 +290,22 @@ create_temp_template(const cli_options_t *cli, const char *prefix)
 }
 
 /*
- * Create and open the temporary file described by tmpl.  Returns the file
- * descriptor on success or -1 on failure.  On error the file is unlinked
- * and errno is preserved.
+ * Create and open the temporary file described by tmpl.  The file is opened
+ * with O_CLOEXEC using mkostemp when available; otherwise mkstemp is used and
+ * FD_CLOEXEC is set via fcntl.  Returns the file descriptor on success or -1
+ * on failure.  On error the file is unlinked and errno is preserved.
  */
 int
 open_temp_file(char *tmpl)
 {
+#if defined(_GNU_SOURCE) ||                                    \
+    (defined(_POSIX_C_SOURCE) && _POSIX_C_SOURCE >= 200809L) || \
+    (defined(_XOPEN_SOURCE) && _XOPEN_SOURCE >= 700)
+    int fd = mkostemp(tmpl, O_CLOEXEC);
+    if (fd < 0)
+        return -1;
+    return fd;
+#else
     int fd = mkstemp(tmpl);
     if (fd < 0)
         return -1;
@@ -307,5 +317,6 @@ open_temp_file(char *tmpl)
         return -1;
     }
     return fd;
+#endif
 }
 
