@@ -50,3 +50,10 @@ Writes a string to `example.txt` and then reads it back. Run with:
 ```sh
 ./file_io
 ```
+
+### loops.c
+Computes the factorial of 5 using a while loop. Run with:
+
+```sh
+./loops
+```
