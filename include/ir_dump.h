@@ -18,7 +18,7 @@
  * "imm", "name" and "data". For IR_GLOB_ARRAY the element count is
  * listed instead. Values that were spilled by the register allocator
  * are annotated with their stack slot.  Caller must free the returned
- * buffer.
+ * buffer. Returns NULL on allocation failure.
  */
 char *ir_to_string(ir_builder_t *b);
 

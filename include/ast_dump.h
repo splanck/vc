@@ -12,7 +12,8 @@
 
 /*
  * Convert the parsed AST into a textual representation.
- * The returned buffer must be freed by the caller.
+ * The returned buffer must be freed by the caller.  Returns NULL if
+ * memory allocation fails.
  */
 char *ast_to_string(func_t **funcs, size_t fcount,
                     stmt_t **globs, size_t gcount);
