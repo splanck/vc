@@ -398,12 +398,13 @@ int finalize_options(int argc, char **argv, const char *prog,
     if (opts->internal_libc) {
         if (!opts->vc_sysinclude || !*opts->vc_sysinclude) {
             char tmp[PATH_MAX];
-            int len = snprintf(tmp, sizeof(tmp), "%s", prog);
-            if (len < 0 || len >= (int)sizeof(tmp)) {
+            size_t prog_len = strlen(prog);
+            if (prog_len >= sizeof(tmp)) {
                 fprintf(stderr, "Error: internal libc path too long.\n");
                 cli_free_opts(opts);
                 return 1;
             }
+            memcpy(tmp, prog, prog_len + 1);
             char *slash = strrchr(tmp, '/');
             if (slash)
                 *slash = '\0';
