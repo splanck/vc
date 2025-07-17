@@ -127,7 +127,6 @@ void emit_div(strbuf_t *sb, ir_instr_t *ins,
               asm_syntax_t syntax)
 {
     char b1[32];
-    char b2[32];
     const char *sfx = x64 ? "q" : "l";
     const char *ax = x86_fmt_reg(x64 ? "%rax" : "%eax", syntax);
     x86_emit_mov(sb, sfx,
@@ -138,6 +137,7 @@ void emit_div(strbuf_t *sb, ir_instr_t *ins,
                    x86_loc_str(b1, ra, ins->src2, x64, syntax));
     if (ra && ra->loc[ins->dest] >= 0 &&
         strcmp(regalloc_reg_name(ra->loc[ins->dest]), ax) != 0) {
+        char b2[32];
         x86_emit_mov(sb, sfx, ax,
                      x86_loc_str(b2, ra, ins->dest, x64, syntax),
                      syntax);
@@ -149,7 +149,6 @@ void emit_mod(strbuf_t *sb, ir_instr_t *ins,
               asm_syntax_t syntax)
 {
     char b1[32];
-    char b2[32];
     const char *sfx = x64 ? "q" : "l";
     const char *ax = x86_fmt_reg(x64 ? "%rax" : "%eax", syntax);
     x86_emit_mov(sb, sfx,
@@ -161,6 +160,7 @@ void emit_mod(strbuf_t *sb, ir_instr_t *ins,
     if (ra && ra->loc[ins->dest] >= 0 &&
         strcmp(regalloc_reg_name(ra->loc[ins->dest]),
                x64 ? "%rdx" : "%edx") != 0) {
+        char b2[32];
         x86_emit_mov(sb, sfx,
                      x86_fmt_reg(x64 ? "%rdx" : "%edx", syntax),
                      x86_loc_str(b2, ra, ins->dest, x64, syntax),

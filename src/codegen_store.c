@@ -109,16 +109,18 @@ void emit_store_ptr(strbuf_t *sb, ir_instr_t *ins,
                     asm_syntax_t syntax)
 {
     char b1[32];
-    char b2[32];
     const char *sfx = x64 ? "q" : "l";
-    if (syntax == ASM_INTEL)
+    if (syntax == ASM_INTEL) {
+        char b2[32];
         strbuf_appendf(sb, "    mov%s [%s], %s\n", sfx,
                        loc_str(b2, ra, ins->src1, x64, syntax),
                        loc_str(b1, ra, ins->src2, x64, syntax));
-    else
+    } else {
+        char b2[32];
         strbuf_appendf(sb, "    mov%s %s, (%s)\n", sfx,
                        loc_str(b1, ra, ins->src2, x64, syntax),
                        loc_str(b2, ra, ins->src1, x64, syntax));
+    }
 }
 
 /*
@@ -133,18 +135,20 @@ void emit_store_idx(strbuf_t *sb, ir_instr_t *ins,
                     asm_syntax_t syntax)
 {
     char b1[32];
-    char b2[32];
     const char *sfx = x64 ? "q" : "l";
     char basebuf[32];
     const char *base = fmt_stack(basebuf, ins->name, x64, syntax);
-    if (syntax == ASM_INTEL)
+    if (syntax == ASM_INTEL) {
+        char b2[32];
         strbuf_appendf(sb, "    mov%s %s(,%s,4), %s\n", sfx, base,
                        loc_str(b2, ra, ins->src1, x64, syntax),
                        loc_str(b1, ra, ins->src2, x64, syntax));
-    else
+    } else {
+        char b2[32];
         strbuf_appendf(sb, "    mov%s %s, %s(,%s,4)\n", sfx,
                        loc_str(b1, ra, ins->src2, x64, syntax),
                        base,
                        loc_str(b2, ra, ins->src1, x64, syntax));
+    }
 }
 

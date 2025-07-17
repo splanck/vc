@@ -46,7 +46,6 @@ void emit_float_binop(strbuf_t *sb, ir_instr_t *ins,
                       asm_syntax_t syntax)
 {
     char b1[32];
-    char b2[32];
     int r0 = regalloc_xmm_acquire();
     int r1 = regalloc_xmm_acquire();
     const char *reg0 = fmt_reg(regalloc_xmm_name(r0), syntax);
@@ -57,24 +56,30 @@ void emit_float_binop(strbuf_t *sb, ir_instr_t *ins,
         strbuf_appendf(sb, "    movd %s, %s\n", reg1,
                        loc_str(b1, ra, ins->src2, x64, syntax));
         strbuf_appendf(sb, "    %s %s, %s\n", op, reg0, reg1);
-        if (ra && ra->loc[ins->dest] >= 0)
+        if (ra && ra->loc[ins->dest] >= 0) {
+            char b2[32];
             strbuf_appendf(sb, "    movd %s, %s\n",
                            loc_str(b2, ra, ins->dest, x64, syntax), reg0);
-        else
+        } else {
+            char b2[32];
             strbuf_appendf(sb, "    movss %s, %s\n",
                            loc_str(b2, ra, ins->dest, x64, syntax), reg0);
+        }
     } else {
         strbuf_appendf(sb, "    movd %s, %s\n",
                        loc_str(b1, ra, ins->src1, x64, syntax), reg0);
         strbuf_appendf(sb, "    movd %s, %s\n",
                        loc_str(b1, ra, ins->src2, x64, syntax), reg1);
         strbuf_appendf(sb, "    %s %s, %s\n", op, reg1, reg0);
-        if (ra && ra->loc[ins->dest] >= 0)
+        if (ra && ra->loc[ins->dest] >= 0) {
+            char b2[32];
             strbuf_appendf(sb, "    movd %s, %s\n", reg0,
                            loc_str(b2, ra, ins->dest, x64, syntax));
-        else
+        } else {
+            char b2[32];
             strbuf_appendf(sb, "    movss %s, %s\n", reg0,
                            loc_str(b2, ra, ins->dest, x64, syntax));
+        }
     }
     regalloc_xmm_release(r1);
     regalloc_xmm_release(r0);
