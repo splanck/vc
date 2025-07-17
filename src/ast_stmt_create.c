@@ -350,6 +350,27 @@ stmt_t *ast_make_block(stmt_t **stmts, size_t count,
     return stmt;
 }
 
+/* Allocate function parameter arrays for \p fn. */
+static int alloc_func_params(func_t *fn, size_t count)
+{
+    fn->param_names = malloc(count * sizeof(*fn->param_names));
+    fn->param_types = malloc(count * sizeof(*fn->param_types));
+    fn->param_tags = malloc(count * sizeof(*fn->param_tags));
+    fn->param_elem_sizes = malloc(count * sizeof(*fn->param_elem_sizes));
+    fn->param_is_restrict = malloc(count * sizeof(*fn->param_is_restrict));
+
+    if (count && (!fn->param_names || !fn->param_types || !fn->param_tags ||
+                  !fn->param_elem_sizes || !fn->param_is_restrict)) {
+        free(fn->param_names);
+        free(fn->param_types);
+        free(fn->param_tags);
+        free(fn->param_elem_sizes);
+        free(fn->param_is_restrict);
+        return -1;
+    }
+    return 0;
+}
+
 /* Create a function definition node with parameters and body. */
 func_t *ast_make_func(const char *name, type_kind_t ret_type,
                       const char *ret_tag,
@@ -372,18 +393,8 @@ func_t *ast_make_func(const char *name, type_kind_t ret_type,
     fn->return_tag = vc_strdup(ret_tag ? ret_tag : "");
     fn->param_count = param_count;
     fn->is_variadic = is_variadic;
-    fn->param_names = malloc(param_count * sizeof(*fn->param_names));
-    fn->param_types = malloc(param_count * sizeof(*fn->param_types));
-    fn->param_tags = malloc(param_count * sizeof(*fn->param_tags));
-    fn->param_elem_sizes = malloc(param_count * sizeof(*fn->param_elem_sizes));
-    fn->param_is_restrict = malloc(param_count * sizeof(*fn->param_is_restrict));
-    if ((param_count && (!fn->param_names || !fn->param_types || !fn->param_tags || !fn->param_elem_sizes || !fn->param_is_restrict)) || !fn->return_tag) {
+    if (!fn->return_tag || alloc_func_params(fn, param_count)) {
         free(fn->name);
-        free(fn->param_names);
-        free(fn->param_types);
-        free(fn->param_tags);
-        free(fn->param_elem_sizes);
-        free(fn->param_is_restrict);
         free(fn->return_tag);
         free(fn);
         return NULL;
