@@ -131,8 +131,11 @@ static int parse_struct_union_tag(parser_t *p, type_kind_t *out_type,
     p->pos++;
     if (out_type)
         *out_type = t;
-    if (out_tag)
+    if (out_tag) {
         *out_tag = vc_strdup(id->lexeme);
+        if (!*out_tag)
+            return 0;
+    }
     return 1;
 }
 
