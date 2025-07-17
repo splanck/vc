@@ -30,7 +30,11 @@ void *vc_realloc_or_exit(void *ptr, size_t size);
 /* Read entire file into a NUL-terminated buffer */
 char *vc_read_file(const char *path);
 
-/* Convert string to size_t, returning 1 on success */
+/*
+ * Convert string to size_t, returning 1 on success.
+ *
+ * Negative values are rejected.
+ */
 int vc_strtoul_size(const char *s, size_t *out);
 
 /*
