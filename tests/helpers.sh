@@ -23,13 +23,26 @@ check_can_compile_32() {
     set -e
 }
 
+# Create a temporary file or directory safely
+safe_mktemp() {
+    tmp=$(mktemp "$@") || {
+        echo "mktemp failed" >&2
+        return 1
+    }
+    if [ -z "$tmp" ]; then
+        echo "mktemp failed" >&2
+        return 1
+    fi
+    printf '%s' "$tmp"
+}
+
 # Compile a fixture and compare the generated assembly
 # Usage: compile_fixture <cfile> <expected-asm> [extra compiler options]
 compile_fixture() {
     cfile="$1"
     expect="$2"
     shift 2
-    out=$(mktemp)
+    out=$(safe_mktemp) || return 1
     base=$(basename "$cfile" .c)
     echo "Running fixture $base"
     if grep -Eq '\-[0-9]+\(%(e|r)bp\)|\[(e|r)bp-' "$expect"; then
