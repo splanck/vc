@@ -72,8 +72,10 @@ char *command_to_string(char *const argv[])
         if (i > 0 && strbuf_append(&sb, " ") < 0)
             goto overflow;
         const char *arg = argv[i];
-        if (append_quoted(&sb, arg) < 0)
-            goto overflow;
+        if (append_quoted(&sb, arg) < 0) {
+            strbuf_free(&sb);
+            return NULL;
+        }
     }
     return sb.data;
 
