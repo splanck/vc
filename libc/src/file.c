@@ -2,6 +2,7 @@
 #include <stdarg.h>
 #include <string.h>
 #include <fcntl.h>
+#include <errno.h>
 #include "stdio.h"
 #include "stdlib.h"
 #include "../internal/_vc_syscalls.h"
@@ -168,6 +169,12 @@ char *fgets(char *s, int size, FILE *stream)
     }
     s[i] = '\0';
     return s;
+}
+
+FILE *tmpfile(void)
+{
+    errno = ENOSYS;
+    return NULL;
 }
 
 void perror(const char *msg)

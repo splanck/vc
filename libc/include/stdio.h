@@ -25,6 +25,7 @@ FILE *fopen(const char *path, const char *mode);
 int fclose(FILE *stream);
 int fprintf(FILE *stream, const char *format, ...);
 char *fgets(char *s, int size, FILE *stream);
+FILE *tmpfile(void);
 void perror(const char *msg);
 
 
