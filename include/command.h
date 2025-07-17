@@ -20,8 +20,8 @@ extern char **environ;
 /* Convert an argument vector into a single string for debugging.
  * Arguments containing spaces or shell metacharacters are quoted using
  * single quotes. The returned buffer is heap allocated and must be freed
- * by the caller. Returns NULL if the result would exceed implementation
- * limits.
+ * by the caller. Returns NULL on allocation failure or if the result
+ * would exceed implementation limits.
  */
 char *command_to_string(char *const argv[]);
 

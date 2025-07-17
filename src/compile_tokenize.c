@@ -136,8 +136,11 @@ char *tokens_to_string(const token_t *toks, size_t count)
     strbuf_init(&sb);
     for (size_t i = 0; i < count; i++) {
         const token_t *tok = &toks[i];
-        strbuf_appendf(&sb, "%zu:%zu %s %s\n", tok->line, tok->column,
-                       tok_name(tok->type), tok->lexeme);
+        if (strbuf_appendf(&sb, "%zu:%zu %s %s\n", tok->line, tok->column,
+                           tok_name(tok->type), tok->lexeme) < 0) {
+            strbuf_free(&sb);
+            return NULL;
+        }
     }
     return sb.data;
 }

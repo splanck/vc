@@ -33,8 +33,9 @@ void codegen_emit_x86(FILE *out, ir_builder_t *ir, int x86_64,
  * Convert the IR to an assembly string.
  *
  * Only the instruction stream is returned; global data is omitted.  The
- * caller owns the returned buffer and must free it.  The `x86_64` flag
- * selects whether 32- or 64-bit mnemonics are produced.
+ * caller owns the returned buffer and must free it.  Returns NULL on
+ * allocation failure.  The `x86_64` flag selects whether 32- or 64-bit
+ * mnemonics are produced.
  */
 char *codegen_ir_to_string(ir_builder_t *ir, int x86_64,
                            asm_syntax_t syntax);

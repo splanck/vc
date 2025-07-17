@@ -18,7 +18,13 @@
 int compile_unit(const char *source, const cli_options_t *cli,
                  const char *output, int compile_obj);
 
-/* Convert a token array into a printable string. Caller frees result. */
+/*
+ * Convert a token array into a printable string.
+ *
+ * The caller takes ownership of the returned buffer.  Returns NULL when
+ * memory allocation fails or if the output would exceed implementation
+ * limits.
+ */
 char *tokens_to_string(const token_t *toks, size_t count);
 
 /* Run only the preprocessor stage and print the result. */
