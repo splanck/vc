@@ -34,7 +34,7 @@ for cfile in "$DIR"/fixtures/*.c; do
     base=$(basename "$cfile" .c)
 
     case "$base" in
-        *_x86-64|struct_*|bitfield_rw|include_search|include_angle|include_env|macro_bad_define|preproc_blank|macro_cli|macro_cli_quote|include_once|include_once_link|include_next|include_next_quote|libm_program|union_example|varargs_double|include_stdio|libc_puts|libc_printf|local_program|local_assign|libc_fileio|libc_short_write|libc_write_fail|libc_exit_fail)
+        *_x86-64|struct_*|bitfield_rw|include_search|include_angle|include_env|macro_bad_define|preproc_blank|macro_cli|macro_cli_quote|include_once|include_once_link|include_next|include_next_quote|libm_program|union_example|varargs_double|include_stdio|libc_puts|libc_puts_large|libc_printf|local_program|local_assign|libc_fileio|libc_short_write|libc_write_fail|libc_exit_fail)
             continue;;
     esac
     compile_fixture "$cfile" "$DIR/fixtures/$base.s"
@@ -989,6 +989,27 @@ if [ $ret -ne 1 ]; then
     fail=1
 fi
 rm -f "$prog" "$failexit" "$libvclib"
+
+# verify puts return value clamps to INT_MAX for very long strings
+libvclib="$DIR/libvclib.so"
+cc -shared -fPIC -I "$DIR/../libc/include" \
+    "$DIR/../libc/src/stdio.c" "$DIR/../libc/src/stdlib.c" \
+    "$DIR/../libc/src/string.c" "$DIR/../libc/src/syscalls.c" \
+    "$DIR/../libc/src/file.c" -o "$libvclib"
+prog=$(mktemp)
+cc -I "$DIR/../libc/include" "$DIR/fixtures/libc_puts_large.c" \
+    -L"$DIR" -Wl,-rpath="$DIR" -lvclib -o "$prog"
+clamp="$DIR/liblarge_strlen.so"
+cc -shared -fPIC -o "$clamp" "$DIR/unit/large_strlen.c"
+set +e
+LD_PRELOAD="$clamp" "$prog" >/dev/null 2>&1
+ret=$?
+set -e
+if [ $ret -ne 0 ]; then
+    echo "Test puts_large_ret failed"
+    fail=1
+fi
+rm -f "$prog" "$clamp" "$libvclib"
 
 # regression test for long command error message
 long_tmpdir=$(mktemp -d)

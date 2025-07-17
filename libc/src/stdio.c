@@ -1,6 +1,7 @@
 #include <stddef.h>
 #include <string.h>
 #include <stdarg.h>
+#include <limits.h>
 #include "stdio.h"
 #include "../internal/_vc_syscalls.h"
 
@@ -17,6 +18,8 @@ int puts(const char *s)
         perror("write");
         return -1;
     }
+    if (len + 1 > (size_t)INT_MAX)
+        return INT_MAX;
     return (int)(len + 1);
 }
 
