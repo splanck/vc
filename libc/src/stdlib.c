@@ -22,5 +22,6 @@ void *malloc(size_t size)
 
 void free(void *ptr)
 {
-    _vc_free(ptr);
+    if (ptr)
+        _vc_free(ptr);
 }
