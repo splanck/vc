@@ -26,6 +26,11 @@ static long long parse_has_include(expr_ctx_t *ctx, int is_next)
         ctx->s++;
     size_t len = (size_t)(ctx->s - start);
     char *tok = vc_strndup(start, len);
+    if (!tok) {
+        ctx->error = 1;
+        vc_oom();
+        return 0;
+    }
     ctx->s = skip_ws((char *)ctx->s);
     if (*ctx->s == ')')
         ctx->s++;
