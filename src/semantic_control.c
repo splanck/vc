@@ -87,6 +87,10 @@ const char *label_table_get_or_add(label_table_t *t, const char *name)
     if (!e)
         return NULL;
     e->name = vc_strdup(name);
+    if (!e->name) {
+        free(e);
+        return NULL;
+    }
     char buf[32];
     const char *fmt = label_format("Luser", label_next_id(), buf);
     if (!fmt) {
@@ -95,6 +99,11 @@ const char *label_table_get_or_add(label_table_t *t, const char *name)
         return NULL;
     }
     e->ir_name = vc_strdup(fmt);
+    if (!e->ir_name) {
+        free(e->name);
+        free(e);
+        return NULL;
+    }
     e->next = t->head;
     t->head = e;
     return e->ir_name;
@@ -126,6 +135,13 @@ static char **emit_case_branches(stmt_t *stmt, symtable_t *vars,
         char buf[32];
         snprintf(buf, sizeof(buf), "L%d_case%zu", id, i);
         labels[i] = vc_strdup(buf);
+        if (!labels[i]) {
+            for (size_t j = 0; j < i; j++)
+                free(labels[j]);
+            free(labels);
+            free(values);
+            return NULL;
+        }
         long long cval;
         if (!eval_const_expr(STMT_SWITCH(stmt).cases[i].expr, vars,
                              semantic_get_x86_64(), &cval)) {

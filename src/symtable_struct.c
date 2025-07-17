@@ -101,6 +101,15 @@ int symtable_add_union(symtable_t *table, const char *tag,
         }
         for (size_t i = 0; i < member_count; i++) {
             sym->members[i].name = vc_strdup(members[i].name);
+            if (!sym->members[i].name) {
+                for (size_t j = 0; j < i; j++)
+                    free(sym->members[j].name);
+                free(sym->members);
+                free(sym->name);
+                free(sym->ir_name);
+                free(sym);
+                return 0;
+            }
             sym->members[i].type = members[i].type;
             sym->members[i].elem_size = members[i].elem_size;
             sym->members[i].offset = members[i].offset;
@@ -148,6 +157,15 @@ int symtable_add_union_global(symtable_t *table, const char *tag,
         }
         for (size_t i = 0; i < member_count; i++) {
             sym->members[i].name = vc_strdup(members[i].name);
+            if (!sym->members[i].name) {
+                for (size_t j = 0; j < i; j++)
+                    free(sym->members[j].name);
+                free(sym->members);
+                free(sym->name);
+                free(sym->ir_name);
+                free(sym);
+                return 0;
+            }
             sym->members[i].type = members[i].type;
             sym->members[i].elem_size = members[i].elem_size;
             sym->members[i].offset = members[i].offset;
@@ -212,6 +230,15 @@ int symtable_add_struct(symtable_t *table, const char *tag,
         }
         for (size_t i = 0; i < member_count; i++) {
             sym->struct_members[i].name = vc_strdup(members[i].name);
+            if (!sym->struct_members[i].name) {
+                for (size_t j = 0; j < i; j++)
+                    free(sym->struct_members[j].name);
+                free(sym->struct_members);
+                free(sym->name);
+                free(sym->ir_name);
+                free(sym);
+                return 0;
+            }
             sym->struct_members[i].type = members[i].type;
             sym->struct_members[i].elem_size = members[i].elem_size;
             sym->struct_members[i].offset = members[i].offset;
@@ -268,6 +295,15 @@ int symtable_add_struct_global(symtable_t *table, const char *tag,
         }
         for (size_t i = 0; i < member_count; i++) {
             sym->struct_members[i].name = vc_strdup(members[i].name);
+            if (!sym->struct_members[i].name) {
+                for (size_t j = 0; j < i; j++)
+                    free(sym->struct_members[j].name);
+                free(sym->struct_members);
+                free(sym->name);
+                free(sym->ir_name);
+                free(sym);
+                return 0;
+            }
             sym->struct_members[i].type = members[i].type;
             sym->struct_members[i].elem_size = members[i].elem_size;
             sym->struct_members[i].offset = members[i].offset;

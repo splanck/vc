@@ -73,6 +73,8 @@ static const char *get_multiarch_dir(void)
 #else
             multiarch_cached = vc_strdup(MULTIARCH_FALLBACK);
 #endif
+            if (!multiarch_cached)
+                return NULL;
         }
     }
     return multiarch_cached;
@@ -118,6 +120,8 @@ static const char *get_gcc_include_dir(void)
             snprintf(gcc_include_cached, len + 1, "/usr/lib/gcc/%s/include", multi);
 #else
             gcc_include_cached = vc_strdup("/usr/lib/gcc/include");
+            if (!gcc_include_cached)
+                return NULL;
 #endif
         }
         if (gcc_query_failed && !sys_header_warned) {

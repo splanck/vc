@@ -33,7 +33,10 @@ static int mark_inline_emitted(const char *name)
     if (!tmp)
         return 0;
     inline_emitted = tmp;
-    inline_emitted[inline_emitted_count++] = vc_strdup(name ? name : "");
+    inline_emitted[inline_emitted_count] = vc_strdup(name ? name : "");
+    if (!inline_emitted[inline_emitted_count])
+        return 0;
+    inline_emitted_count++;
     return 1;
 }
 

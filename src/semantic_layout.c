@@ -133,6 +133,14 @@ int copy_union_metadata(symbol_t *sym, union_member_t *members,
     for (size_t i = 0; i < count; i++) {
         union_member_t *m = &members[i];
         sym->members[i].name = vc_strdup(m->name);
+        if (!sym->members[i].name) {
+            for (size_t j = 0; j < i; j++)
+                free(sym->members[j].name);
+            free(sym->members);
+            sym->members = NULL;
+            sym->member_count = 0;
+            return 0;
+        }
         sym->members[i].type = m->type;
         sym->members[i].elem_size = m->elem_size;
         sym->members[i].offset = m->offset;
@@ -157,6 +165,14 @@ int copy_struct_metadata(symbol_t *sym, struct_member_t *members,
     for (size_t i = 0; i < count; i++) {
         struct_member_t *m = &members[i];
         sym->struct_members[i].name = vc_strdup(m->name);
+        if (!sym->struct_members[i].name) {
+            for (size_t j = 0; j < i; j++)
+                free(sym->struct_members[j].name);
+            free(sym->struct_members);
+            sym->struct_members = NULL;
+            sym->struct_member_count = 0;
+            return 0;
+        }
         sym->struct_members[i].type = m->type;
         sym->struct_members[i].elem_size = m->elem_size;
         sym->struct_members[i].offset = m->offset;
