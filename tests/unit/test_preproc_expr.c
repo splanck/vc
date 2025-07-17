@@ -34,11 +34,12 @@ static void test_features_expr(void)
 {
     vector_t macros; vector_init(&macros, sizeof(macro_t));
 
-    ASSERT(eval_expr("defined FOO", &macros) == 0);
-    ASSERT(eval_expr("(11 << 16) + 1 >= (10 << 16) + 1", &macros));
-    ASSERT(eval_expr("199309L >= 2 || 0", &macros));
-    ASSERT(eval_expr("1 ? 2 : 3", &macros));
-    ASSERT(eval_expr("0 ? 2 : 3", &macros));
+    ASSERT(eval_expr_full("defined FOO", &macros, NULL, NULL, NULL) == 0);
+    ASSERT(eval_expr_full("(11 << 16) + 1 >= (10 << 16) + 1", &macros,
+                         NULL, NULL, NULL));
+    ASSERT(eval_expr_full("199309L >= 2 || 0", &macros, NULL, NULL, NULL));
+    ASSERT(eval_expr_full("1 ? 2 : 3", &macros, NULL, NULL, NULL));
+    ASSERT(eval_expr_full("0 ? 2 : 3", &macros, NULL, NULL, NULL));
 
     vector_free(&macros);
 }
@@ -47,9 +48,9 @@ static void test_large_constants(void)
 {
     vector_t macros; vector_init(&macros, sizeof(macro_t));
 
-    ASSERT(eval_expr("4294967296", &macros) == 4294967296LL);
-    ASSERT(eval_expr("9223372036854775807", &macros) == 9223372036854775807LL);
-    ASSERT(eval_expr("-9223372036854775807 - 1", &macros) == (-9223372036854775807LL - 1LL));
+    ASSERT(eval_expr_full("4294967296", &macros, NULL, NULL, NULL) == 4294967296LL);
+    ASSERT(eval_expr_full("9223372036854775807", &macros, NULL, NULL, NULL) == 9223372036854775807LL);
+    ASSERT(eval_expr_full("-9223372036854775807 - 1", &macros, NULL, NULL, NULL) == (-9223372036854775807LL - 1LL));
 
     vector_free(&macros);
 }
@@ -58,10 +59,10 @@ static void test_shift_clamp(void)
 {
     vector_t macros; vector_init(&macros, sizeof(macro_t));
 
-    ASSERT(eval_expr("1 << 70", &macros) == (long long)(1ULL << 63));
-    ASSERT(eval_expr("8 >> 70", &macros) == 0);
-    ASSERT(eval_expr("1 << -1", &macros) == 1);
-    ASSERT(eval_expr("8 >> -2", &macros) == 8);
+    ASSERT(eval_expr_full("1 << 70", &macros, NULL, NULL, NULL) == (long long)(1ULL << 63));
+    ASSERT(eval_expr_full("8 >> 70", &macros, NULL, NULL, NULL) == 0);
+    ASSERT(eval_expr_full("1 << -1", &macros, NULL, NULL, NULL) == 1);
+    ASSERT(eval_expr_full("8 >> -2", &macros, NULL, NULL, NULL) == 8);
 
     vector_free(&macros);
 }
