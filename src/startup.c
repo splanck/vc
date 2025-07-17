@@ -111,6 +111,8 @@ int write_startup_asm(int use_x86_64, asm_syntax_t syntax,
                 stub);
         }
     }
+    if (rc != EOF)
+        rc = fputs(".section .note.GNU-stack,\"\",@progbits\n", stub);
     if (rc == EOF) {
         perror("fputs");
         fclose(stub);
