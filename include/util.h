@@ -62,7 +62,11 @@ void free_glob_list_vector(vector_t *v);
  */
 char *create_temp_template(const cli_options_t *cli, const char *prefix);
 
-/* Create and open the temporary file described by tmpl */
+/*
+ * Create and open the temporary file described by tmpl.  The file is opened
+ * with O_CLOEXEC using mkostemp when available; otherwise mkstemp is used and
+ * FD_CLOEXEC is set via fcntl.
+ */
 int open_temp_file(char *tmpl);
 
 #endif /* VC_UTIL_H */

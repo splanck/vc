@@ -13,10 +13,17 @@ int test_compile_unit(const char *src, const cli_options_t *cli,
     return 1;
 }
 
-/* force mkstemp failure */
+/* force mkstemp/mkostemp failure */
 int mkstemp(char *template)
 {
     (void)template;
+    errno = EACCES;
+    return -1;
+}
+
+int mkostemp(char *template, int flags)
+{
+    (void)template; (void)flags;
     errno = EACCES;
     return -1;
 }

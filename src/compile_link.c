@@ -153,7 +153,7 @@ static int compile_source_obj(const char *source, const cli_options_t *cli,
     char *objname = NULL;
     int fd = create_temp_file(cli, "vcobj", &objname);
     if (fd < 0) {
-        perror("mkstemp");
+        perror("mkostemp");
         return 0;
     }
     close(fd);

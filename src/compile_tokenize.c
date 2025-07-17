@@ -154,7 +154,7 @@ static int read_stdin_source(const cli_options_t *cli,
     char *path = NULL;
     int fd = create_temp_file(cli, "vcstdin", &path);
     if (fd < 0) {
-        perror("mkstemp");
+        perror("mkostemp");
         return 0;
     }
     FILE *f = fdopen(fd, TEMP_FOPEN_MODE);
