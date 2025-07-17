@@ -32,6 +32,7 @@ long _vc_read(int, void *, unsigned long);
 long _vc_open(const char *, int, int);
 long _vc_close(int);
 void _vc_exit(int) __attribute__((noreturn));
+void _exit(int) __attribute__((noreturn));
 void *_vc_malloc(unsigned long);
 void _vc_free(void *);
 

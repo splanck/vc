@@ -9,7 +9,7 @@ CAN_COMPILE_32 := $(shell $(CC) -m32 -xc /dev/null -o /dev/null \
     >/dev/null 2>&1 && echo yes || echo no)
 
 SRC := src/stdio.c src/stdlib.c src/string.c src/syscalls.c src/file.c \
-       src/pthread.c
+       src/pthread.c src/_exit.c
 HDR := include/stdarg.h include/stddef.h include/stdio.h \
        include/stdlib.h include/string.h include/pthread.h
 OBJ32 := $(SRC:src/%.c=src/%.32.o)
