@@ -164,6 +164,8 @@ $CC -o "$DIR/preproc_counter_wrap" preproc_builtin_wrap.o strbuf_wrap.o util_wra
 rm -f preproc_builtin_wrap.o strbuf_wrap.o util_wrap.o "$DIR/test_preproc_counter_wrap.o"
 # build collect_funcs overflow regression test
 $CC -Iinclude -Wall -Wextra -std=c99 "$DIR/unit/test_collect_funcs_overflow.c" -o "$DIR/collect_funcs_overflow"
+# build parse_inline_hint descriptor close test
+$CC -Iinclude -Wall -Wextra -std=c99 -o "$DIR/parse_inline_hint_tests" "$DIR/unit/test_parse_inline_hint.c"
 # build waitpid EINTR regression test
 $CC -Iinclude -Wall -Wextra -std=c99 -c src/strbuf.c -o strbuf_eintr_impl.o
 $CC -Iinclude -Wall -Wextra -std=c99 -c src/util.c -o util_eintr.o
@@ -587,6 +589,7 @@ rm -f ir_licm.o util_licm.o label_licm.o error_licm.o opt_main_licm.o \
 "$DIR/append_env_paths_colon"
 "$DIR/append_env_paths_semicolon"
 "$DIR/append_env_paths_fail"
+"$DIR/parse_inline_hint_tests"
 "$DIR/temp_file_tests"
 "$DIR/compile_obj_fail"
 "$DIR/vc_names_tests"
