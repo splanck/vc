@@ -105,26 +105,34 @@ See the [README](../README.md) for an overview of the project.
 
 ## Running the test suite
 
-The project includes a small set of unit and integration tests. They can be
-executed from the repository root with:
+The project includes a small set of unit and integration tests. The entire
+suite can be executed from the repository root with:
 
 ```sh
 tests/run.sh
 ```
 
-Before running the suite ensure the bundled libc archives are available. Build
-them once with:
+This script builds the compiler, compiles the unit test harness for the lexer
+and parser, and then runs both the unit tests and the integration tests found
+under `tests/`.
+
+When only the integration tests are needed, use:
+
+```sh
+tests/run_tests.sh
+```
+
+This expects an existing `vc` binary and executes just the integration tests.
+
+Both scripts rely on the bundled libc archives. Ensure they are built before
+running either script:
 
 ```sh
 make libc
 ```
 
 The helper script `start.sh` performs this step automatically before invoking
-the tests.
-
-This script builds the compiler, compiles the unit test harness for the lexer
-and parser, and then runs both the unit tests and the integration tests found
-under `tests/`. It returns a non-zero status if any test fails.
+`tests/run.sh`. Both test scripts return a non-zero status if any test fails.
 
 ## Builtin preprocessor macros
 
