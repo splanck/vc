@@ -25,7 +25,7 @@ check_can_compile_32() {
 
 # Create a temporary file or directory safely
 safe_mktemp() {
-    tmp=$(mktemp "$@") || {
+    tmp=$(mktemp ${1:+"$@"}) || {
         echo "mktemp failed" >&2
         return 1
     }
