@@ -72,11 +72,11 @@ static type_kind_t check_ident_expr(expr_t *expr, symtable_t *vars,
     } else {
         if (out) {
             if (sym->param_index >= 0)
-                *out = ir_build_load_param(ir, sym->param_index);
+                *out = ir_build_load_param(ir, sym->param_index, sym->type);
             else if (sym->is_volatile)
-                *out = ir_build_load_vol(ir, sym->ir_name);
+                *out = ir_build_load_vol(ir, sym->ir_name, sym->type);
             else
-                *out = ir_build_load(ir, sym->ir_name);
+                *out = ir_build_load(ir, sym->ir_name, sym->type);
         }
         return sym->type;
     }
@@ -111,7 +111,7 @@ static int validate_cond_operands(expr_t *expr, symtable_t *vars,
 /* Emit IR for the conditional branches. */
 static int emit_cond_branches(expr_t *expr, symtable_t *vars,
                               symtable_t *funcs, ir_builder_t *ir,
-                              ir_value_t *out)
+                              ir_value_t *out, type_kind_t type)
 {
     ir_value_t cond_val;
     check_expr(expr->data.cond.cond, vars, funcs, ir, &cond_val);
@@ -126,17 +126,17 @@ static int emit_cond_branches(expr_t *expr, symtable_t *vars,
     ir_build_bcond(ir, cond_val, flabel);
     ir_value_t tval;
     check_expr(expr->data.cond.then_expr, vars, funcs, ir, &tval);
-    ir_build_store(ir, tmp, tval);
+    ir_build_store(ir, tmp, type, tval);
     ir_build_br(ir, endlabel);
 
     ir_build_label(ir, flabel);
     ir_value_t fval;
     check_expr(expr->data.cond.else_expr, vars, funcs, ir, &fval);
-    ir_build_store(ir, tmp, fval);
+    ir_build_store(ir, tmp, type, fval);
     ir_build_label(ir, endlabel);
 
     if (out)
-        *out = ir_build_load(ir, tmp);
+        *out = ir_build_load(ir, tmp, type);
     return 1;
 }
 
@@ -174,14 +174,15 @@ static type_kind_t check_cond_expr(expr_t *expr, symtable_t *vars,
         return TYPE_UNKNOWN;
     }
 
-    if (!emit_cond_branches(expr, vars, funcs, ir, out)) {
+    type_kind_t rtype = result_cond_type(tt, ft);
+    if (!emit_cond_branches(expr, vars, funcs, ir, out, rtype)) {
         if (out)
             *out = (ir_value_t){0};
         return TYPE_UNKNOWN;
     }
 
     (void)ct;
-    return result_cond_type(tt, ft);
+    return rtype;
 }
 
 /*
@@ -231,11 +232,11 @@ static type_kind_t check_assign_expr(expr_t *expr, symtable_t *vars,
 
     /* Step 4: IR emission */
     if (sym->param_index >= 0)
-        ir_build_store_param(ir, sym->param_index, val);
+        ir_build_store_param(ir, sym->param_index, sym->type, val);
     else if (sym->is_volatile)
-        ir_build_store_vol(ir, sym->ir_name, val);
+        ir_build_store_vol(ir, sym->ir_name, sym->type, val);
     else
-        ir_build_store(ir, sym->ir_name, val);
+        ir_build_store(ir, sym->ir_name, sym->type, val);
 
     if (out)
         *out = val;
@@ -360,7 +361,7 @@ static type_kind_t check_sizeof_expr(expr_t *expr, symtable_t *vars,
         if (sym && sym->vla_size.id) {
             ir_value_t eszv = ir_build_const(ir, (int)sym->elem_size);
             ir_value_t total = ir_build_binop(ir, IR_MUL,
-                                              sym->vla_size, eszv);
+                                              sym->vla_size, eszv, TYPE_INT);
             if (out)
                 *out = total;
         } else {

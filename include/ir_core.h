@@ -97,6 +97,7 @@ typedef struct ir_instr {
     int is_volatile;
     int is_restrict;
     int alias_set;
+    type_kind_t type;
     struct ir_instr *next;
     const char *file;
     size_t line;
@@ -139,13 +140,17 @@ ir_instr_t *ir_insert_after(ir_builder_t *b, ir_instr_t *pos);
 
 /* Emit the binary operation `op` with operands `left` and `right`. */
 ir_value_t ir_build_binop(ir_builder_t *b, ir_op_t op, ir_value_t left,
-                          ir_value_t right);
+                          ir_value_t right, type_kind_t type);
 
 /* Complex arithmetic helpers */
-ir_value_t ir_build_cplx_add(ir_builder_t *b, ir_value_t left, ir_value_t right);
-ir_value_t ir_build_cplx_sub(ir_builder_t *b, ir_value_t left, ir_value_t right);
-ir_value_t ir_build_cplx_mul(ir_builder_t *b, ir_value_t left, ir_value_t right);
-ir_value_t ir_build_cplx_div(ir_builder_t *b, ir_value_t left, ir_value_t right);
+ir_value_t ir_build_cplx_add(ir_builder_t *b, ir_value_t left, ir_value_t right,
+                             type_kind_t type);
+ir_value_t ir_build_cplx_sub(ir_builder_t *b, ir_value_t left, ir_value_t right,
+                             type_kind_t type);
+ir_value_t ir_build_cplx_mul(ir_builder_t *b, ir_value_t left, ir_value_t right,
+                             type_kind_t type);
+ir_value_t ir_build_cplx_div(ir_builder_t *b, ir_value_t left, ir_value_t right,
+                             type_kind_t type);
 
 /* Emit IR_LOGAND using `left` and `right`. */
 ir_value_t ir_build_logand(ir_builder_t *b, ir_value_t left, ir_value_t right);

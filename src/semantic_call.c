@@ -40,7 +40,7 @@ type_kind_t check_call_expr(expr_t *expr, symtable_t *vars,
             return TYPE_UNKNOWN;
         }
         via_ptr = 1;
-        func_val = ir_build_load(ir, fsym->ir_name);
+        func_val = ir_build_load(ir, fsym->ir_name, TYPE_PTR);
     }
     size_t expected = via_ptr ? fsym->func_param_count : fsym->param_count;
     int variadic = via_ptr ? fsym->func_variadic : fsym->is_variadic;

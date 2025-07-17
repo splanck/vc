@@ -70,7 +70,7 @@ static int handle_return_stmt(stmt_t *stmt, symtable_t *vars,
     if (func_ret_type == TYPE_STRUCT || func_ret_type == TYPE_UNION) {
         if (!validate_struct_return(stmt, vars, funcs, vt, func_ret_type))
             return 0;
-        ir_value_t ret_ptr = ir_build_load_param(ir, 0);
+        ir_value_t ret_ptr = ir_build_load_param(ir, 0, TYPE_PTR);
         ir_build_store_ptr(ir, ret_ptr, val);
         ir_build_return_agg(ir, ret_ptr);
         return 1;

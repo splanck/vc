@@ -47,9 +47,9 @@ static void init_dynamic_array(ir_builder_t *ir, const char *name,
         ir_value_t idxv = ir_build_const(ir, (int)i);
         ir_value_t valv = ir_build_const(ir, vals[i]);
         if (is_volatile)
-            ir_build_store_idx_vol(ir, name, idxv, valv);
+            ir_build_store_idx_vol(ir, name, idxv, valv, TYPE_INT);
         else
-            ir_build_store_idx(ir, name, idxv, valv);
+            ir_build_store_idx(ir, name, idxv, valv, TYPE_INT);
     }
 }
 
@@ -201,9 +201,9 @@ static int emit_dynamic_initializer(stmt_t *stmt, symbol_t *sym,
         return 0;
     }
     if (STMT_VAR_DECL(stmt).is_volatile)
-        ir_build_store_vol(ir, sym->ir_name, val);
+        ir_build_store_vol(ir, sym->ir_name, sym->type, val);
     else
-        ir_build_store(ir, sym->ir_name, val);
+        ir_build_store(ir, sym->ir_name, sym->type, val);
     return 1;
 }
 
@@ -234,7 +234,7 @@ int handle_vla_size(stmt_t *stmt, symbol_t *sym, symtable_t *vars,
         TYPE_UNKNOWN)
         return 0;
     ir_value_t eszv = ir_build_const(ir, (int)STMT_VAR_DECL(stmt).elem_size);
-    ir_value_t total = ir_build_binop(ir, IR_MUL, lenv, eszv);
+    ir_value_t total = ir_build_binop(ir, IR_MUL, lenv, eszv, TYPE_INT);
     sym->vla_addr = ir_build_alloca(ir, total);
     sym->vla_size = lenv;
     return 1;

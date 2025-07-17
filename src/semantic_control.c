@@ -164,7 +164,7 @@ static char **emit_case_branches(stmt_t *stmt, symtable_t *vars,
         }
         values[i] = cval;
         ir_value_t const_val = ir_build_const(ir, cval);
-        ir_value_t cmp = ir_build_binop(ir, IR_CMPEQ, expr_val, const_val);
+        ir_value_t cmp = ir_build_binop(ir, IR_CMPEQ, expr_val, const_val, TYPE_INT);
         ir_build_bcond(ir, cmp, labels[i]);
     }
 

@@ -71,7 +71,8 @@ void ir_builder_free(ir_builder_t *b)
  * Emit a binary arithmetic or comparison instruction. Operands are in
  * src1 and src2 and a new destination value id is returned.
  */
-ir_value_t ir_build_binop(ir_builder_t *b, ir_op_t op, ir_value_t left, ir_value_t right)
+ir_value_t ir_build_binop(ir_builder_t *b, ir_op_t op, ir_value_t left, ir_value_t right,
+                          type_kind_t type)
 {
     ir_instr_t *ins = append_instr(b);
     if (!ins)
@@ -80,27 +81,32 @@ ir_value_t ir_build_binop(ir_builder_t *b, ir_op_t op, ir_value_t left, ir_value
     ins->dest = alloc_value_id(b);
     ins->src1 = left.id;
     ins->src2 = right.id;
+    ins->type = type;
     return (ir_value_t){ins->dest};
 }
 
-ir_value_t ir_build_cplx_add(ir_builder_t *b, ir_value_t left, ir_value_t right)
+ir_value_t ir_build_cplx_add(ir_builder_t *b, ir_value_t left, ir_value_t right,
+                             type_kind_t type)
 {
-    return ir_build_binop(b, IR_CPLX_ADD, left, right);
+    return ir_build_binop(b, IR_CPLX_ADD, left, right, type);
 }
 
-ir_value_t ir_build_cplx_sub(ir_builder_t *b, ir_value_t left, ir_value_t right)
+ir_value_t ir_build_cplx_sub(ir_builder_t *b, ir_value_t left, ir_value_t right,
+                             type_kind_t type)
 {
-    return ir_build_binop(b, IR_CPLX_SUB, left, right);
+    return ir_build_binop(b, IR_CPLX_SUB, left, right, type);
 }
 
-ir_value_t ir_build_cplx_mul(ir_builder_t *b, ir_value_t left, ir_value_t right)
+ir_value_t ir_build_cplx_mul(ir_builder_t *b, ir_value_t left, ir_value_t right,
+                             type_kind_t type)
 {
-    return ir_build_binop(b, IR_CPLX_MUL, left, right);
+    return ir_build_binop(b, IR_CPLX_MUL, left, right, type);
 }
 
-ir_value_t ir_build_cplx_div(ir_builder_t *b, ir_value_t left, ir_value_t right)
+ir_value_t ir_build_cplx_div(ir_builder_t *b, ir_value_t left, ir_value_t right,
+                             type_kind_t type)
 {
-    return ir_build_binop(b, IR_CPLX_DIV, left, right);
+    return ir_build_binop(b, IR_CPLX_DIV, left, right, type);
 }
 
 /* Emit IR_LOGAND performing logical AND. */
@@ -113,6 +119,7 @@ ir_value_t ir_build_logand(ir_builder_t *b, ir_value_t left, ir_value_t right)
     ins->dest = alloc_value_id(b);
     ins->src1 = left.id;
     ins->src2 = right.id;
+    ins->type = TYPE_INT;
     return (ir_value_t){ins->dest};
 }
 
@@ -126,6 +133,7 @@ ir_value_t ir_build_logor(ir_builder_t *b, ir_value_t left, ir_value_t right)
     ins->dest = alloc_value_id(b);
     ins->src1 = left.id;
     ins->src2 = right.id;
+    ins->type = TYPE_INT;
     return (ir_value_t){ins->dest};
 }
 
