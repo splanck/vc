@@ -1028,7 +1028,7 @@ rm -rf "$long_tmpdir" "$err"
 
 # test reading source from stdin
 stdin_out=$(safe_mktemp)
-cat "$DIR/fixtures/simple_add.c" | "$BINARY" -o "${stdin_out}" -
+"$BINARY" -o "${stdin_out}" - < "$DIR/fixtures/simple_add.c"
 if ! diff -u "$DIR/fixtures/simple_add.s" "${stdin_out}" > /dev/null; then
     echo "Test stdin_source failed"
     fail=1
