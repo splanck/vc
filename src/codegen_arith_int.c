@@ -233,19 +233,24 @@ void emit_cmp(strbuf_t *sb, ir_instr_t *ins,
                    x86_loc_str(b2, ra, ins->dest, x64, syntax));
 }
 
-void emit_logand(strbuf_t *sb, ir_instr_t *ins,
-                 regalloc_t *ra, int x64,
-                 asm_syntax_t syntax)
+
+static void emit_logical_op(strbuf_t *sb, ir_instr_t *ins,
+                            regalloc_t *ra, int x64,
+                            asm_syntax_t syntax,
+                            const char *jcc, int val)
 {
     char b1[32];
     char b2[32];
     const char *sfx = x64 ? "q" : "l";
     int id = label_next_id();
-    char fl[32];
+    char lab[32];
     char end[32];
-    if (!label_format_suffix("L", id, "_false", fl) ||
+    const char *suf = val ? "_true" : "_false";
+
+    if (!label_format_suffix("L", id, suf, lab) ||
         !label_format_suffix("L", id, "_end", end))
         return;
+
     const char *al = x86_fmt_reg("%al", syntax);
     x86_emit_mov(sb, sfx,
                  x86_loc_str(b1, ra, ins->src1, x64, syntax),
@@ -256,7 +261,7 @@ void emit_logand(strbuf_t *sb, ir_instr_t *ins,
     else
         strbuf_appendf(sb, "    cmp%s $0, %s\n", sfx,
                        x86_loc_str(b2, ra, ins->dest, x64, syntax));
-    strbuf_appendf(sb, "    je %s\n", fl);
+    strbuf_appendf(sb, "    %s %s\n", jcc, lab);
     x86_emit_mov(sb, sfx,
                  x86_loc_str(b1, ra, ins->src2, x64, syntax),
                  x86_loc_str(b2, ra, ins->dest, x64, syntax), syntax);
@@ -270,61 +275,28 @@ void emit_logand(strbuf_t *sb, ir_instr_t *ins,
     strbuf_appendf(sb, "    %s %s, %s\n", x64 ? "movzbq" : "movzbl", al,
                    x86_loc_str(b2, ra, ins->dest, x64, syntax));
     strbuf_appendf(sb, "    jmp %s\n", end);
-    strbuf_appendf(sb, "%s:\n", fl);
+    strbuf_appendf(sb, "%s:\n", lab);
     if (syntax == ASM_INTEL)
-        strbuf_appendf(sb, "    mov%s %s, 0\n", sfx,
-                       x86_loc_str(b2, ra, ins->dest, x64, syntax));
+        strbuf_appendf(sb, "    mov%s %s, %d\n", sfx,
+                       x86_loc_str(b2, ra, ins->dest, x64, syntax), val);
     else
-        strbuf_appendf(sb, "    mov%s $0, %s\n", sfx,
+        strbuf_appendf(sb, "    mov%s $%d, %s\n", sfx, val,
                        x86_loc_str(b2, ra, ins->dest, x64, syntax));
     strbuf_appendf(sb, "%s:\n", end);
+}
+
+void emit_logand(strbuf_t *sb, ir_instr_t *ins,
+                 regalloc_t *ra, int x64,
+                 asm_syntax_t syntax)
+{
+    emit_logical_op(sb, ins, ra, x64, syntax, "je", 0);
 }
 
 void emit_logor(strbuf_t *sb, ir_instr_t *ins,
                 regalloc_t *ra, int x64,
                 asm_syntax_t syntax)
 {
-    char b1[32];
-    char b2[32];
-    const char *sfx = x64 ? "q" : "l";
-    int id = label_next_id();
-    char tl[32];
-    char end[32];
-    if (!label_format_suffix("L", id, "_true", tl) ||
-        !label_format_suffix("L", id, "_end", end))
-        return;
-    const char *al = x86_fmt_reg("%al", syntax);
-    x86_emit_mov(sb, sfx,
-                 x86_loc_str(b1, ra, ins->src1, x64, syntax),
-                 x86_loc_str(b2, ra, ins->dest, x64, syntax), syntax);
-    if (syntax == ASM_INTEL)
-        strbuf_appendf(sb, "    cmp%s %s, 0\n", sfx,
-                       x86_loc_str(b2, ra, ins->dest, x64, syntax));
-    else
-        strbuf_appendf(sb, "    cmp%s $0, %s\n", sfx,
-                       x86_loc_str(b2, ra, ins->dest, x64, syntax));
-    strbuf_appendf(sb, "    jne %s\n", tl);
-    x86_emit_mov(sb, sfx,
-                 x86_loc_str(b1, ra, ins->src2, x64, syntax),
-                 x86_loc_str(b2, ra, ins->dest, x64, syntax), syntax);
-    if (syntax == ASM_INTEL)
-        strbuf_appendf(sb, "    cmp%s %s, 0\n", sfx,
-                       x86_loc_str(b2, ra, ins->dest, x64, syntax));
-    else
-        strbuf_appendf(sb, "    cmp%s $0, %s\n", sfx,
-                       x86_loc_str(b2, ra, ins->dest, x64, syntax));
-    strbuf_appendf(sb, "    setne %s\n", al);
-    strbuf_appendf(sb, "    %s %s, %s\n", x64 ? "movzbq" : "movzbl", al,
-                   x86_loc_str(b2, ra, ins->dest, x64, syntax));
-    strbuf_appendf(sb, "    jmp %s\n", end);
-    strbuf_appendf(sb, "%s:\n", tl);
-    if (syntax == ASM_INTEL)
-        strbuf_appendf(sb, "    mov%s %s, 1\n", sfx,
-                       x86_loc_str(b2, ra, ins->dest, x64, syntax));
-    else
-        strbuf_appendf(sb, "    mov%s $1, %s\n", sfx,
-                       x86_loc_str(b2, ra, ins->dest, x64, syntax));
-    strbuf_appendf(sb, "%s:\n", end);
+    emit_logical_op(sb, ins, ra, x64, syntax, "jne", 1);
 }
 
 void emit_arith_instr(strbuf_t *sb, ir_instr_t *ins,
