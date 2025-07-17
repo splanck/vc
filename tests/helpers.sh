@@ -18,7 +18,7 @@ ensure_libc() {
 # Detect 32-bit compilation capability
 check_can_compile_32() {
     set +e
-    gcc -m32 -xc /dev/null -o /dev/null 2>/dev/null
+    ${CC:-gcc} -m32 -xc /dev/null -o /dev/null 2>/dev/null
     CAN_COMPILE_32=$?
     set -e
 }
