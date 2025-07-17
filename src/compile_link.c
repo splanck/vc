@@ -169,37 +169,50 @@ static int compile_source_obj(const char *source, const cli_options_t *cli,
     return 1;
 }
 
-/* Compile all sources to temporary object files. */
-static int compile_source_files(const cli_options_t *cli, vector_t *objs)
+/* Push a compiled object name into the vector. */
+static int push_object(vector_t *objs, char *obj)
 {
-    int ok = 1;
-    vector_init(objs, sizeof(char *));
+    if (!vector_push(objs, &obj)) {
+        vc_oom();
+        unlink(obj);
+        free(obj);
+        return 0;
+    }
+    return 1;
+}
 
+/* Compile all CLI sources and append objects to the vector. */
+static int compile_all_sources(const cli_options_t *cli, vector_t *objs)
+{
     for (size_t i = 0; i < cli->sources.count; i++) {
         const char *src = ((const char **)cli->sources.data)[i];
         char *obj = NULL;
-
-        if (!compile_source_obj(src, cli, &obj)) {
-            ok = 0;
-            break;
-        }
-
-        if (!vector_push(objs, &obj)) {
-            vc_oom();
-            ok = 0;
-            unlink(obj);
-            free(obj);
-            break;
-        }
+        if (!compile_source_obj(src, cli, &obj))
+            return 0;
+        if (!push_object(objs, obj))
+            return 0;
     }
+    return 1;
+}
 
-    if (!ok) {
-        for (size_t j = 0; j < objs->count; j++) {
-            unlink(((char **)objs->data)[j]);
-            free(((char **)objs->data)[j]);
-        }
-        objs->count = 0;
+/* Remove object files on failure and reset the vector. */
+static void cleanup_object_vector(vector_t *objs)
+{
+    for (size_t j = 0; j < objs->count; j++) {
+        unlink(((char **)objs->data)[j]);
+        free(((char **)objs->data)[j]);
     }
+    objs->count = 0;
+}
+
+/* Compile all sources to temporary object files. */
+static int compile_source_files(const cli_options_t *cli, vector_t *objs)
+{
+    vector_init(objs, sizeof(char *));
+
+    int ok = compile_all_sources(cli, objs);
+    if (!ok)
+        cleanup_object_vector(objs);
 
     return ok;
 }
