@@ -10,6 +10,15 @@ const char *x86_reg_str(int reg, asm_syntax_t syntax)
     return name;
 }
 
+/* Return 32-bit register name for an index regardless of mode. */
+const char *x86_reg_str32(int reg, asm_syntax_t syntax)
+{
+    const char *name = regalloc_reg_name32(reg);
+    if (syntax == ASM_INTEL && name[0] == '%')
+        return name + 1;
+    return name;
+}
+
 const char *x86_fmt_reg(const char *name, asm_syntax_t syntax)
 {
     if (syntax == ASM_INTEL && name[0] == '%')
@@ -17,14 +26,18 @@ const char *x86_fmt_reg(const char *name, asm_syntax_t syntax)
     return name;
 }
 
-const char *x86_loc_str(char buf[32], regalloc_t *ra, int id, int x64,
+const char *x86_loc_str(char buf[32], regalloc_t *ra, int id,
+                        type_kind_t type, int x64,
                         asm_syntax_t syntax)
 {
     if (!ra || id <= 0)
         return "";
     int loc = ra->loc[id];
-    if (loc >= 0)
+    if (loc >= 0) {
+        if (type == TYPE_INT)
+            return x86_reg_str32(loc, syntax);
         return x86_reg_str(loc, syntax);
+    }
     if (x64) {
         if (syntax == ASM_INTEL)
             snprintf(buf, 32, "[rbp-%d]", -loc * 8);

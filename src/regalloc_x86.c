@@ -61,6 +61,20 @@ const char *regalloc_reg_name(int idx)
     return name;
 }
 
+/*
+ * Return the 32-bit register name for allocator index `idx`
+ * regardless of the current naming mode.
+ */
+const char *regalloc_reg_name32(int idx)
+{
+    const char *name = "%eax";
+    if (idx >= 0 && idx < REGALLOC_NUM_REGS)
+        name = phys_regs_32[idx];
+    if (current_syntax == ASM_INTEL && name[0] == '%')
+        return name + 1;
+    return name;
+}
+
 /* Return textual name of an XMM register. */
 const char *regalloc_xmm_name(int idx)
 {
