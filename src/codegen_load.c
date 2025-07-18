@@ -45,15 +45,27 @@ static const char *reg_str(int reg, asm_syntax_t syntax)
     return name;
 }
 
+static const char *reg_str32(int reg, asm_syntax_t syntax)
+{
+    const char *name = regalloc_reg_name32(reg);
+    if (syntax == ASM_INTEL && name[0] == '%')
+        return name + 1;
+    return name;
+}
+
 /* Format the location for operand `id`. */
-static const char *loc_str(char buf[32], regalloc_t *ra, int id, int x64,
+static const char *loc_str(char buf[32], regalloc_t *ra, int id,
+                           type_kind_t type, int x64,
                            asm_syntax_t syntax)
 {
     if (!ra || id <= 0)
         return "";
     int loc = ra->loc[id];
-    if (loc >= 0)
+    if (loc >= 0) {
+        if (type == TYPE_INT)
+            return reg_str32(loc, syntax);
         return reg_str(loc, syntax);
+    }
     if (x64) {
         if (syntax == ASM_INTEL)
             snprintf(buf, 32, "[rbp-%d]", -loc * 8);
@@ -86,8 +98,8 @@ void emit_load(strbuf_t *sb, ir_instr_t *ins,
     const char *sfx = (x64 && ins->type != TYPE_INT) ? "q" : "l";
     int spill = (ra && ins->dest > 0 && ra->loc[ins->dest] < 0);
     const char *dest = spill ? reg_str(SCRATCH_REG, syntax)
-                             : loc_str(destb, ra, ins->dest, x64, syntax);
-    const char *slot = loc_str(mem, ra, ins->dest, x64, syntax);
+                             : loc_str(destb, ra, ins->dest, ins->type, x64, syntax);
+    const char *slot = loc_str(mem, ra, ins->dest, ins->type, x64, syntax);
     char sbuf[32];
     const char *src = fmt_stack(sbuf, ins->name, x64, syntax);
     emit_move_with_spill(sb, sfx, src, dest, slot, spill, syntax);
@@ -111,15 +123,15 @@ void emit_load_ptr(strbuf_t *sb, ir_instr_t *ins,
     const char *sfx = (x64 && ins->type != TYPE_INT) ? "q" : "l";
     int spill = (ra && ins->dest > 0 && ra->loc[ins->dest] < 0);
     const char *dest = spill ? reg_str(SCRATCH_REG, syntax)
-                             : loc_str(destb, ra, ins->dest, x64, syntax);
-    const char *slot = loc_str(mem, ra, ins->dest, x64, syntax);
+                             : loc_str(destb, ra, ins->dest, ins->type, x64, syntax);
+    const char *slot = loc_str(mem, ra, ins->dest, ins->type, x64, syntax);
     char srcbuf[32];
     if (syntax == ASM_INTEL)
         snprintf(srcbuf, sizeof(srcbuf), "[%s]",
-                 loc_str(b1, ra, ins->src1, x64, syntax));
+                 loc_str(b1, ra, ins->src1, ins->type, x64, syntax));
     else
         snprintf(srcbuf, sizeof(srcbuf), "(%s)",
-                 loc_str(b1, ra, ins->src1, x64, syntax));
+                 loc_str(b1, ra, ins->src1, ins->type, x64, syntax));
     emit_move_with_spill(sb, sfx, srcbuf, dest, slot, spill, syntax);
 }
 
@@ -140,13 +152,13 @@ void emit_load_idx(strbuf_t *sb, ir_instr_t *ins,
     const char *sfx = (x64 && ins->type != TYPE_INT) ? "q" : "l";
     int spill = (ra && ins->dest > 0 && ra->loc[ins->dest] < 0);
     const char *dest = spill ? reg_str(SCRATCH_REG, syntax)
-                             : loc_str(destb, ra, ins->dest, x64, syntax);
-    const char *slot = loc_str(mem, ra, ins->dest, x64, syntax);
+                             : loc_str(destb, ra, ins->dest, ins->type, x64, syntax);
+    const char *slot = loc_str(mem, ra, ins->dest, ins->type, x64, syntax);
     char srcbuf[64];
     char basebuf[32];
     const char *base = fmt_stack(basebuf, ins->name, x64, syntax);
     snprintf(srcbuf, sizeof(srcbuf), "%s(,%s,4)",
-             base, loc_str(b1, ra, ins->src1, x64, syntax));
+             base, loc_str(b1, ra, ins->src1, ins->type, x64, syntax));
     emit_move_with_spill(sb, sfx, srcbuf, dest, slot, spill, syntax);
 }
 

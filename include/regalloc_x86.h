@@ -33,6 +33,8 @@
  * the selected table.
  */
 const char *regalloc_reg_name(int idx);
+/* Return 32-bit register name regardless of current mode. */
+const char *regalloc_reg_name32(int idx);
 
 /* Allocate and release temporary XMM registers. */
 int regalloc_xmm_acquire(void);

@@ -51,6 +51,14 @@ static const char *reg_str(int reg, asm_syntax_t syntax)
     return name;
 }
 
+static const char *reg_str32(int reg, asm_syntax_t syntax)
+{
+    const char *name = regalloc_reg_name32(reg);
+    if (syntax == ASM_INTEL && name[0] == '%')
+        return name + 1;
+    return name;
+}
+
 static const char *fmt_reg(const char *name, asm_syntax_t syntax)
 {
     if (syntax == ASM_INTEL && name[0] == '%')
@@ -59,14 +67,18 @@ static const char *fmt_reg(const char *name, asm_syntax_t syntax)
 }
 
 /* Helper returning the textual location of operand `id`. */
-static const char *loc_str(char buf[32], regalloc_t *ra, int id, int x64,
+static const char *loc_str(char buf[32], regalloc_t *ra, int id,
+                           type_kind_t type, int x64,
                            asm_syntax_t syntax)
 {
     if (!ra || id <= 0)
         return "";
     int loc = ra->loc[id];
-    if (loc >= 0)
+    if (loc >= 0) {
+        if (type == TYPE_INT)
+            return reg_str32(loc, syntax);
         return reg_str(loc, syntax);
+    }
     if (x64) {
         if (syntax == ASM_INTEL)
             snprintf(buf, 32, "[rbp-%d]", -loc * 8);
@@ -91,17 +103,17 @@ static void emit_return(strbuf_t *sb, ir_instr_t *ins,
     if (ins->op == IR_RETURN) {
         if (syntax == ASM_INTEL)
             strbuf_appendf(sb, "    mov%s %s, %s\n", sfx, ax,
-                           loc_str(buf, ra, ins->src1, x64, syntax));
+                           loc_str(buf, ra, ins->src1, ins->type, x64, syntax));
         else
             strbuf_appendf(sb, "    mov%s %s, %s\n", sfx,
-                           loc_str(buf, ra, ins->src1, x64, syntax), ax);
+                           loc_str(buf, ra, ins->src1, ins->type, x64, syntax), ax);
     } else { /* IR_RETURN_AGG */
         if (syntax == ASM_INTEL)
             strbuf_appendf(sb, "    mov%s [%s], %s\n", sfx, ax,
-                           loc_str(buf, ra, ins->src1, x64, syntax));
+                           loc_str(buf, ra, ins->src1, ins->type, x64, syntax));
         else
             strbuf_appendf(sb, "    mov%s %s, (%s)\n", sfx,
-                           loc_str(buf, ra, ins->src1, x64, syntax), ax);
+                           loc_str(buf, ra, ins->src1, ins->type, x64, syntax), ax);
     }
     strbuf_append(sb, "    ret\n");
 }
@@ -127,10 +139,10 @@ static void emit_call(strbuf_t *sb, ir_instr_t *ins,
     if (ins->dest > 0) {
         if (syntax == ASM_INTEL)
             strbuf_appendf(sb, "    mov%s %s, %s\n", sfx,
-                           loc_str(buf, ra, ins->dest, x64, syntax), ax);
+                           loc_str(buf, ra, ins->dest, ins->type, x64, syntax), ax);
         else
             strbuf_appendf(sb, "    mov%s %s, %s\n", sfx, ax,
-                           loc_str(buf, ra, ins->dest, x64, syntax));
+                           loc_str(buf, ra, ins->dest, ins->type, x64, syntax));
     }
 }
 
@@ -142,9 +154,9 @@ static void emit_call_ptr(strbuf_t *sb, ir_instr_t *ins,
 {
     char buf[32];
     if (syntax == ASM_INTEL)
-        strbuf_appendf(sb, "    call %s\n", loc_str(buf, ra, ins->src1, x64, syntax));
+        strbuf_appendf(sb, "    call %s\n", loc_str(buf, ra, ins->src1, ins->type, x64, syntax));
     else
-        strbuf_appendf(sb, "    call *%s\n", loc_str(buf, ra, ins->src1, x64, syntax));
+        strbuf_appendf(sb, "    call *%s\n", loc_str(buf, ra, ins->src1, ins->type, x64, syntax));
     if (ins->imm > 0 && arg_stack_bytes > 0) {
         if (syntax == ASM_INTEL)
             strbuf_appendf(sb, "    add%s %s, %zu\n", sfx, sp,
@@ -158,10 +170,10 @@ static void emit_call_ptr(strbuf_t *sb, ir_instr_t *ins,
     if (ins->dest > 0) {
         if (syntax == ASM_INTEL)
             strbuf_appendf(sb, "    mov%s %s, %s\n", sfx,
-                           loc_str(buf, ra, ins->dest, x64, syntax), ax);
+                           loc_str(buf, ra, ins->dest, ins->type, x64, syntax), ax);
         else
             strbuf_appendf(sb, "    mov%s %s, %s\n", sfx, ax,
-                           loc_str(buf, ra, ins->dest, x64, syntax));
+                           loc_str(buf, ra, ins->dest, ins->type, x64, syntax));
     }
 }
 
@@ -217,10 +229,10 @@ static void emit_jumps(strbuf_t *sb, ir_instr_t *ins,
     } else if (ins->op == IR_BCOND) {
         if (syntax == ASM_INTEL)
             strbuf_appendf(sb, "    cmp%s %s, 0\n", sfx,
-                           loc_str(buf, ra, ins->src1, x64, syntax));
+                           loc_str(buf, ra, ins->src1, ins->type, x64, syntax));
         else
             strbuf_appendf(sb, "    cmp%s $0, %s\n", sfx,
-                           loc_str(buf, ra, ins->src1, x64, syntax));
+                           loc_str(buf, ra, ins->src1, ins->type, x64, syntax));
         strbuf_appendf(sb, "    je %s\n", ins->name);
     } else if (ins->op == IR_LABEL) {
         strbuf_appendf(sb, "%s:\n", ins->name);
@@ -237,14 +249,14 @@ static void emit_alloca(strbuf_t *sb, ir_instr_t *ins,
     char buf2[32];
     if (syntax == ASM_INTEL) {
         strbuf_appendf(sb, "    sub%s %s, %s\n", sfx, sp,
-                       loc_str(buf1, ra, ins->src1, x64, syntax));
+                       loc_str(buf1, ra, ins->src1, ins->type, x64, syntax));
         strbuf_appendf(sb, "    mov%s %s, %s\n", sfx,
-                       loc_str(buf2, ra, ins->dest, x64, syntax), sp);
+                       loc_str(buf2, ra, ins->dest, ins->type, x64, syntax), sp);
     } else {
         strbuf_appendf(sb, "    sub%s %s, %s\n", sfx,
-                       loc_str(buf1, ra, ins->src1, x64, syntax), sp);
+                       loc_str(buf1, ra, ins->src1, ins->type, x64, syntax), sp);
         strbuf_appendf(sb, "    mov%s %s, %s\n", sfx, sp,
-                       loc_str(buf2, ra, ins->dest, x64, syntax));
+                       loc_str(buf2, ra, ins->dest, ins->type, x64, syntax));
     }
 }
 
@@ -261,7 +273,7 @@ void emit_branch_instr(strbuf_t *sb, ir_instr_t *ins,
                        regalloc_t *ra, int x64,
                        asm_syntax_t syntax)
 {
-    const char *sfx = x64 ? "q" : "l";
+    const char *sfx = (x64 && ins->type != TYPE_INT) ? "q" : "l";
     const char *ax = fmt_reg(x64 ? "%rax" : "%eax", syntax);
     const char *bp = fmt_reg(x64 ? "%rbp" : "%ebp", syntax);
     const char *sp = fmt_reg(x64 ? "%rsp" : "%esp", syntax);

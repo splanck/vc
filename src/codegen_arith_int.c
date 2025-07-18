@@ -23,18 +23,18 @@ void emit_ptr_add(strbuf_t *sb, ir_instr_t *ins,
     const char *sfx = (x64 && ins->type != TYPE_INT) ? "q" : "l";
     int scale = (int)ins->imm;
     x86_emit_mov(sb, sfx,
-                 x86_loc_str(b1, ra, ins->src2, x64, syntax),
-                 x86_loc_str(b2, ra, ins->dest, x64, syntax),
+                 x86_loc_str(b1, ra, ins->src2, ins->type, x64, syntax),
+                 x86_loc_str(b2, ra, ins->dest, ins->type, x64, syntax),
                  syntax);
     if (syntax == ASM_INTEL)
         strbuf_appendf(sb, "    imul%s %s, %d\n", sfx,
-                       x86_loc_str(b2, ra, ins->dest, x64, syntax), scale);
+                       x86_loc_str(b2, ra, ins->dest, ins->type, x64, syntax), scale);
     else
         strbuf_appendf(sb, "    imul%s $%d, %s\n", sfx, scale,
-                       x86_loc_str(b2, ra, ins->dest, x64, syntax));
+                       x86_loc_str(b2, ra, ins->dest, ins->type, x64, syntax));
     x86_emit_op(sb, "add", sfx,
-                x86_loc_str(b1, ra, ins->src1, x64, syntax),
-                x86_loc_str(b2, ra, ins->dest, x64, syntax),
+                x86_loc_str(b1, ra, ins->src1, ins->type, x64, syntax),
+                x86_loc_str(b2, ra, ins->dest, ins->type, x64, syntax),
                 syntax);
 }
 
@@ -54,13 +54,13 @@ void emit_ptr_diff(strbuf_t *sb, ir_instr_t *ins,
 
     int dest_spill = (ra && ins->dest > 0 && ra->loc[ins->dest] < 0);
     const char *dest_reg = dest_spill ? x86_reg_str(SCRATCH_REG, syntax)
-                                      : x86_loc_str(b2, ra, ins->dest, x64, syntax);
-    const char *dest_mem = x86_loc_str(mem, ra, ins->dest, x64, syntax);
+                                      : x86_loc_str(b2, ra, ins->dest, ins->type, x64, syntax);
+    const char *dest_mem = x86_loc_str(mem, ra, ins->dest, ins->type, x64, syntax);
 
     x86_emit_mov(sb, sfx,
-                 x86_loc_str(b1, ra, ins->src1, x64, syntax), dest_reg, syntax);
+                 x86_loc_str(b1, ra, ins->src1, ins->type, x64, syntax), dest_reg, syntax);
     x86_emit_op(sb, "sub", sfx,
-                x86_loc_str(b1, ra, ins->src2, x64, syntax), dest_reg, syntax);
+                x86_loc_str(b1, ra, ins->src2, ins->type, x64, syntax), dest_reg, syntax);
 
     if (power_two) {
         if (syntax == ASM_INTEL)
@@ -112,12 +112,12 @@ void emit_int_arith(strbuf_t *sb, ir_instr_t *ins,
     const char *sfx = (x64 && ins->type != TYPE_INT) ? "q" : "l";
     int dest_spill = (ra && ins->dest > 0 && ra->loc[ins->dest] < 0);
     const char *dest_reg = dest_spill ? x86_reg_str(SCRATCH_REG, syntax)
-                                      : x86_loc_str(destb, ra, ins->dest, x64, syntax);
-    const char *dest_mem = x86_loc_str(mem, ra, ins->dest, x64, syntax);
+                                      : x86_loc_str(destb, ra, ins->dest, ins->type, x64, syntax);
+    const char *dest_mem = x86_loc_str(mem, ra, ins->dest, ins->type, x64, syntax);
     x86_emit_mov(sb, sfx,
-                 x86_loc_str(b1, ra, ins->src1, x64, syntax), dest_reg, syntax);
+                 x86_loc_str(b1, ra, ins->src1, ins->type, x64, syntax), dest_reg, syntax);
     x86_emit_op(sb, op, sfx,
-                x86_loc_str(b1, ra, ins->src2, x64, syntax), dest_reg, syntax);
+                x86_loc_str(b1, ra, ins->src2, ins->type, x64, syntax), dest_reg, syntax);
     if (dest_spill)
         x86_emit_mov(sb, sfx, dest_reg, dest_mem, syntax);
 }
@@ -130,16 +130,16 @@ void emit_div(strbuf_t *sb, ir_instr_t *ins,
     const char *sfx = (x64 && ins->type != TYPE_INT) ? "q" : "l";
     const char *ax = x86_fmt_reg(x64 ? "%rax" : "%eax", syntax);
     x86_emit_mov(sb, sfx,
-                 x86_loc_str(b1, ra, ins->src1, x64, syntax), ax,
+                 x86_loc_str(b1, ra, ins->src1, ins->type, x64, syntax), ax,
                  syntax);
     strbuf_appendf(sb, "    %s\n", x64 ? "cqto" : "cltd");
     strbuf_appendf(sb, "    idiv%s %s\n", sfx,
-                   x86_loc_str(b1, ra, ins->src2, x64, syntax));
+                   x86_loc_str(b1, ra, ins->src2, ins->type, x64, syntax));
     if (ra && ra->loc[ins->dest] >= 0 &&
         strcmp(regalloc_reg_name(ra->loc[ins->dest]), ax) != 0) {
         char b2[32];
         x86_emit_mov(sb, sfx, ax,
-                     x86_loc_str(b2, ra, ins->dest, x64, syntax),
+                     x86_loc_str(b2, ra, ins->dest, ins->type, x64, syntax),
                      syntax);
     }
 }
@@ -152,18 +152,18 @@ void emit_mod(strbuf_t *sb, ir_instr_t *ins,
     const char *sfx = (x64 && ins->type != TYPE_INT) ? "q" : "l";
     const char *ax = x86_fmt_reg(x64 ? "%rax" : "%eax", syntax);
     x86_emit_mov(sb, sfx,
-                 x86_loc_str(b1, ra, ins->src1, x64, syntax), ax,
+                 x86_loc_str(b1, ra, ins->src1, ins->type, x64, syntax), ax,
                  syntax);
     strbuf_appendf(sb, "    %s\n", x64 ? "cqto" : "cltd");
     strbuf_appendf(sb, "    idiv%s %s\n", sfx,
-                   x86_loc_str(b1, ra, ins->src2, x64, syntax));
+                   x86_loc_str(b1, ra, ins->src2, ins->type, x64, syntax));
     if (ra && ra->loc[ins->dest] >= 0 &&
         strcmp(regalloc_reg_name(ra->loc[ins->dest]),
                x64 ? "%rdx" : "%edx") != 0) {
         char b2[32];
         x86_emit_mov(sb, sfx,
                      x86_fmt_reg(x64 ? "%rdx" : "%edx", syntax),
-                     x86_loc_str(b2, ra, ins->dest, x64, syntax),
+                     x86_loc_str(b2, ra, ins->dest, ins->type, x64, syntax),
                      syntax);
     }
 }
@@ -177,16 +177,16 @@ void emit_shift(strbuf_t *sb, ir_instr_t *ins,
     const char *sfx = (x64 && ins->type != TYPE_INT) ? "q" : "l";
     const char *cx = x86_fmt_reg(x64 ? "%rcx" : "%ecx", syntax);
     x86_emit_mov(sb, sfx,
-                 x86_loc_str(b1, ra, ins->src1, x64, syntax),
-                 x86_loc_str(b2, ra, ins->dest, x64, syntax), syntax);
+                 x86_loc_str(b1, ra, ins->src1, ins->type, x64, syntax),
+                 x86_loc_str(b2, ra, ins->dest, ins->type, x64, syntax), syntax);
     x86_emit_mov(sb, sfx,
-                 x86_loc_str(b1, ra, ins->src2, x64, syntax), cx, syntax);
+                 x86_loc_str(b1, ra, ins->src2, ins->type, x64, syntax), cx, syntax);
     if (syntax == ASM_INTEL)
         strbuf_appendf(sb, "    %s%s %s, %s\n", op, sfx, cx,
-                       x86_loc_str(b2, ra, ins->dest, x64, syntax));
+                       x86_loc_str(b2, ra, ins->dest, ins->type, x64, syntax));
     else
         strbuf_appendf(sb, "    %s%s %s, %s\n", op, sfx, "%cl",
-                       x86_loc_str(b2, ra, ins->dest, x64, syntax));
+                       x86_loc_str(b2, ra, ins->dest, ins->type, x64, syntax));
 }
 
 void emit_bitwise(strbuf_t *sb, ir_instr_t *ins,
@@ -197,11 +197,11 @@ void emit_bitwise(strbuf_t *sb, ir_instr_t *ins,
     char b2[32];
     const char *sfx = (x64 && ins->type != TYPE_INT) ? "q" : "l";
     x86_emit_mov(sb, sfx,
-                 x86_loc_str(b1, ra, ins->src1, x64, syntax),
-                 x86_loc_str(b2, ra, ins->dest, x64, syntax), syntax);
+                 x86_loc_str(b1, ra, ins->src1, ins->type, x64, syntax),
+                 x86_loc_str(b2, ra, ins->dest, ins->type, x64, syntax), syntax);
     x86_emit_op(sb, op, sfx,
-                x86_loc_str(b1, ra, ins->src2, x64, syntax),
-                x86_loc_str(b2, ra, ins->dest, x64, syntax), syntax);
+                x86_loc_str(b1, ra, ins->src2, ins->type, x64, syntax),
+                x86_loc_str(b2, ra, ins->dest, ins->type, x64, syntax), syntax);
 }
 
 void emit_cmp(strbuf_t *sb, ir_instr_t *ins,
@@ -223,14 +223,14 @@ void emit_cmp(strbuf_t *sb, ir_instr_t *ins,
     }
     const char *al = x86_fmt_reg("%al", syntax);
     x86_emit_mov(sb, sfx,
-                 x86_loc_str(b1, ra, ins->src1, x64, syntax),
-                 x86_loc_str(b2, ra, ins->dest, x64, syntax), syntax);
+                 x86_loc_str(b1, ra, ins->src1, ins->type, x64, syntax),
+                 x86_loc_str(b2, ra, ins->dest, ins->type, x64, syntax), syntax);
     strbuf_appendf(sb, "    cmp%s %s, %s\n", sfx,
-                   x86_loc_str(b1, ra, ins->src2, x64, syntax),
-                   x86_loc_str(b2, ra, ins->dest, x64, syntax));
+                   x86_loc_str(b1, ra, ins->src2, ins->type, x64, syntax),
+                   x86_loc_str(b2, ra, ins->dest, ins->type, x64, syntax));
     strbuf_appendf(sb, "    set%s %s\n", cc, al);
     strbuf_appendf(sb, "    %s %s, %s\n", x64 ? "movzbq" : "movzbl", al,
-                   x86_loc_str(b2, ra, ins->dest, x64, syntax));
+                   x86_loc_str(b2, ra, ins->dest, ins->type, x64, syntax));
 }
 
 
@@ -253,35 +253,35 @@ static void emit_logical_op(strbuf_t *sb, ir_instr_t *ins,
 
     const char *al = x86_fmt_reg("%al", syntax);
     x86_emit_mov(sb, sfx,
-                 x86_loc_str(b1, ra, ins->src1, x64, syntax),
-                 x86_loc_str(b2, ra, ins->dest, x64, syntax), syntax);
+                 x86_loc_str(b1, ra, ins->src1, ins->type, x64, syntax),
+                 x86_loc_str(b2, ra, ins->dest, ins->type, x64, syntax), syntax);
     if (syntax == ASM_INTEL)
         strbuf_appendf(sb, "    cmp%s %s, 0\n", sfx,
-                       x86_loc_str(b2, ra, ins->dest, x64, syntax));
+                       x86_loc_str(b2, ra, ins->dest, ins->type, x64, syntax));
     else
         strbuf_appendf(sb, "    cmp%s $0, %s\n", sfx,
-                       x86_loc_str(b2, ra, ins->dest, x64, syntax));
+                       x86_loc_str(b2, ra, ins->dest, ins->type, x64, syntax));
     strbuf_appendf(sb, "    %s %s\n", jcc, lab);
     x86_emit_mov(sb, sfx,
-                 x86_loc_str(b1, ra, ins->src2, x64, syntax),
-                 x86_loc_str(b2, ra, ins->dest, x64, syntax), syntax);
+                 x86_loc_str(b1, ra, ins->src2, ins->type, x64, syntax),
+                 x86_loc_str(b2, ra, ins->dest, ins->type, x64, syntax), syntax);
     if (syntax == ASM_INTEL)
         strbuf_appendf(sb, "    cmp%s %s, 0\n", sfx,
-                       x86_loc_str(b2, ra, ins->dest, x64, syntax));
+                       x86_loc_str(b2, ra, ins->dest, ins->type, x64, syntax));
     else
         strbuf_appendf(sb, "    cmp%s $0, %s\n", sfx,
-                       x86_loc_str(b2, ra, ins->dest, x64, syntax));
+                       x86_loc_str(b2, ra, ins->dest, ins->type, x64, syntax));
     strbuf_appendf(sb, "    setne %s\n", al);
     strbuf_appendf(sb, "    %s %s, %s\n", x64 ? "movzbq" : "movzbl", al,
-                   x86_loc_str(b2, ra, ins->dest, x64, syntax));
+                   x86_loc_str(b2, ra, ins->dest, ins->type, x64, syntax));
     strbuf_appendf(sb, "    jmp %s\n", end);
     strbuf_appendf(sb, "%s:\n", lab);
     if (syntax == ASM_INTEL)
         strbuf_appendf(sb, "    mov%s %s, %d\n", sfx,
-                       x86_loc_str(b2, ra, ins->dest, x64, syntax), val);
+                       x86_loc_str(b2, ra, ins->dest, ins->type, x64, syntax), val);
     else
         strbuf_appendf(sb, "    mov%s $%d, %s\n", sfx, val,
-                       x86_loc_str(b2, ra, ins->dest, x64, syntax));
+                       x86_loc_str(b2, ra, ins->dest, ins->type, x64, syntax));
     strbuf_appendf(sb, "%s:\n", end);
 }
 

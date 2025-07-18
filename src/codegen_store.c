@@ -28,15 +28,27 @@ static const char *reg_str(int reg, asm_syntax_t syntax)
     return name;
 }
 
+static const char *reg_str32(int reg, asm_syntax_t syntax)
+{
+    const char *name = regalloc_reg_name32(reg);
+    if (syntax == ASM_INTEL && name[0] == '%')
+        return name + 1;
+    return name;
+}
+
 /* Format the location for operand `id`. */
-static const char *loc_str(char buf[32], regalloc_t *ra, int id, int x64,
+static const char *loc_str(char buf[32], regalloc_t *ra, int id,
+                           type_kind_t type, int x64,
                            asm_syntax_t syntax)
 {
     if (!ra || id <= 0)
         return "";
     int loc = ra->loc[id];
-    if (loc >= 0)
+    if (loc >= 0) {
+        if (type == TYPE_INT)
+            return reg_str32(loc, syntax);
         return reg_str(loc, syntax);
+    }
     if (x64) {
         if (syntax == ASM_INTEL)
             snprintf(buf, 32, "[rbp-%d]", -loc * 8);
@@ -69,10 +81,10 @@ void emit_store(strbuf_t *sb, ir_instr_t *ins,
     const char *dst = fmt_stack(sbuf, ins->name, x64, syntax);
     if (syntax == ASM_INTEL)
         strbuf_appendf(sb, "    mov%s %s, %s\n", sfx, dst,
-                       loc_str(b1, ra, ins->src1, x64, syntax));
+                       loc_str(b1, ra, ins->src1, ins->type, x64, syntax));
     else
         strbuf_appendf(sb, "    mov%s %s, %s\n", sfx,
-                       loc_str(b1, ra, ins->src1, x64, syntax), dst);
+                       loc_str(b1, ra, ins->src1, ins->type, x64, syntax), dst);
 }
 
 /*
@@ -91,13 +103,13 @@ void emit_store_ptr(strbuf_t *sb, ir_instr_t *ins,
     if (syntax == ASM_INTEL) {
         char b2[32];
         strbuf_appendf(sb, "    mov%s [%s], %s\n", sfx,
-                       loc_str(b2, ra, ins->src1, x64, syntax),
-                       loc_str(b1, ra, ins->src2, x64, syntax));
+                       loc_str(b2, ra, ins->src1, ins->type, x64, syntax),
+                       loc_str(b1, ra, ins->src2, ins->type, x64, syntax));
     } else {
         char b2[32];
         strbuf_appendf(sb, "    mov%s %s, (%s)\n", sfx,
-                       loc_str(b1, ra, ins->src2, x64, syntax),
-                       loc_str(b2, ra, ins->src1, x64, syntax));
+                       loc_str(b1, ra, ins->src2, ins->type, x64, syntax),
+                       loc_str(b2, ra, ins->src1, ins->type, x64, syntax));
     }
 }
 
@@ -119,14 +131,14 @@ void emit_store_idx(strbuf_t *sb, ir_instr_t *ins,
     if (syntax == ASM_INTEL) {
         char b2[32];
         strbuf_appendf(sb, "    mov%s %s(,%s,4), %s\n", sfx, base,
-                       loc_str(b2, ra, ins->src1, x64, syntax),
-                       loc_str(b1, ra, ins->src2, x64, syntax));
+                       loc_str(b2, ra, ins->src1, ins->type, x64, syntax),
+                       loc_str(b1, ra, ins->src2, ins->type, x64, syntax));
     } else {
         char b2[32];
         strbuf_appendf(sb, "    mov%s %s, %s(,%s,4)\n", sfx,
-                       loc_str(b1, ra, ins->src2, x64, syntax),
+                       loc_str(b1, ra, ins->src2, ins->type, x64, syntax),
                        base,
-                       loc_str(b2, ra, ins->src1, x64, syntax));
+                       loc_str(b2, ra, ins->src1, ins->type, x64, syntax));
     }
 }
 
