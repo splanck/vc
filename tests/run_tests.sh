@@ -214,6 +214,17 @@ if ! "$DIR/load_store_spill" >/dev/null; then
 fi
 rm -f "$DIR/load_store_spill"
 
+# verify indexed load/store scale handling
+cc -I "$DIR/../include" -Wall -Wextra -std=c99 \
+    "$DIR/unit/test_load_store_idx_scale.c" \
+    "$DIR/../src/codegen_load.c" "$DIR/../src/codegen_store.c" \
+    "$DIR/../src/strbuf.c" "$DIR/../src/regalloc_x86.c" -o "$DIR/load_store_idx_scale"
+if ! "$DIR/load_store_idx_scale" >/dev/null; then
+    echo "Test load_store_idx_scale failed"
+    fail=1
+fi
+rm -f "$DIR/load_store_idx_scale"
+
 # negative test for failing static assertion
 err=$(safe_mktemp)
 out=$(safe_mktemp)

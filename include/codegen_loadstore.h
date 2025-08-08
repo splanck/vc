@@ -16,6 +16,32 @@
 #include "regalloc.h"
 #include "cli.h"
 
+/* Determine the element size for indexed loads and stores. */
+static inline int idx_scale(const ir_instr_t *ins, int x64)
+{
+    if (ins->imm)
+        return (int)ins->imm;
+    switch (ins->type) {
+    case TYPE_CHAR: case TYPE_UCHAR: case TYPE_BOOL:
+        return 1;
+    case TYPE_SHORT: case TYPE_USHORT:
+        return 2;
+    case TYPE_DOUBLE: case TYPE_LLONG: case TYPE_ULLONG:
+    case TYPE_FLOAT_COMPLEX:
+        return 8;
+    case TYPE_LDOUBLE:
+        return 10;
+    case TYPE_DOUBLE_COMPLEX:
+        return 16;
+    case TYPE_LDOUBLE_COMPLEX:
+        return 20;
+    case TYPE_PTR:
+        return x64 ? 8 : 4;
+    default:
+        return 4;
+    }
+}
+
 void emit_load(strbuf_t *sb, ir_instr_t *ins,
                regalloc_t *ra, int x64,
                asm_syntax_t syntax);

@@ -316,9 +316,7 @@ static void emit_load_idx(strbuf_t *sb, ir_instr_t *ins,
     const char *dest = spill ? reg_str(SCRATCH_REG, syntax)
                              : loc_str(destb, ra, ins->dest, x64, syntax);
     const char *slot = loc_str(mem, ra, ins->dest, x64, syntax);
-    int scale = (int)ins->imm;
-    if (scale <= 0)
-        scale = 4;
+    int scale = idx_scale(ins, x64);
     char srcbuf[64];
     char basebuf[32];
     const char *base = fmt_stack(basebuf, ins->name, x64, syntax);

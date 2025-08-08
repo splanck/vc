@@ -68,32 +68,6 @@ static const char *loc_str(char buf[32], regalloc_t *ra, int id, int x64,
     return buf;
 }
 
-/* Determine the element size for indexed loads. */
-static int load_scale(const ir_instr_t *ins, int x64)
-{
-    if (ins->imm)
-        return (int)ins->imm;
-    switch (ins->type) {
-    case TYPE_CHAR: case TYPE_UCHAR: case TYPE_BOOL:
-        return 1;
-    case TYPE_SHORT: case TYPE_USHORT:
-        return 2;
-    case TYPE_DOUBLE: case TYPE_LLONG: case TYPE_ULLONG:
-    case TYPE_FLOAT_COMPLEX:
-        return 8;
-    case TYPE_LDOUBLE:
-        return 10;
-    case TYPE_DOUBLE_COMPLEX:
-        return 16;
-    case TYPE_LDOUBLE_COMPLEX:
-        return 20;
-    case TYPE_PTR:
-        return x64 ? 8 : 4;
-    default:
-        return 4;
-    }
-}
-
 /*
  * Load a value from memory into the destination location (IR_LOAD).
  *
@@ -176,7 +150,7 @@ void emit_load_idx(strbuf_t *sb, ir_instr_t *ins,
     char srcbuf[64];
     char basebuf[32];
     const char *base = fmt_stack(basebuf, ins->name, x64, syntax);
-    int scale = load_scale(ins, x64);
+    int scale = idx_scale(ins, x64);
     snprintf(srcbuf, sizeof(srcbuf), "%s(,%s,%d)",
              base, loc_str(b1, ra, ins->src1, x64, syntax), scale);
     emit_move_with_spill(sb, sfx, srcbuf, dest, slot, spill, syntax);
