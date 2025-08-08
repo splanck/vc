@@ -128,7 +128,7 @@ static int parse_octal(const char *src, size_t *i,
 }
 
 /* Parse an \x escape. Up to two hexadecimal digits are consumed. */
-static int parse_hex(const char *src, size_t *i)
+static int parse_hex(const char *src, size_t *i, size_t line, size_t column)
 {
     (*i)++;
     int value = 0;
@@ -138,6 +138,11 @@ static int parse_hex(const char *src, size_t *i)
         value = value * 16 + digit;
         (*i)++;
         digits++;
+    }
+    if (!digits) {
+        error_set(line, column, error_current_file, error_current_function);
+        error_print("Missing hexadecimal digits in escape sequence");
+        return 0;
     }
     return value;
 }
@@ -157,7 +162,7 @@ static int unescape_char(const char *src, size_t *i,
     }
 
     if (c == 'x')
-        return parse_hex(src, i);
+        return parse_hex(src, i, line, column);
     if (c >= '0' && c <= '7')
         return parse_octal(src, i, line, column);
 
