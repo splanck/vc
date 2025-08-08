@@ -437,7 +437,10 @@ static void emit_arg(strbuf_t *sb, ir_instr_t *ins,
     else if (t == TYPE_LDOUBLE)
         sz = x64 ? 16 : 10;
     static const char *arg_regs[6] = {"%rdi", "%rsi", "%rdx", "%rcx", "%r8", "%r9"};
-    if (x64 && arg_reg_idx < 6 && t != TYPE_FLOAT && t != TYPE_DOUBLE && t != TYPE_LDOUBLE) {
+    static const char *xmm_regs[8] = {"%xmm0", "%xmm1", "%xmm2", "%xmm3", "%xmm4", "%xmm5", "%xmm6", "%xmm7"};
+
+    if (x64 && t != TYPE_FLOAT && t != TYPE_DOUBLE && t != TYPE_LDOUBLE &&
+        arg_reg_idx < 6) {
         const char *reg = fmt_reg(arg_regs[arg_reg_idx], syntax);
         const char *src = loc_str(b1, ra, ins->src1, x64, syntax);
         const char *sfx = "q";
@@ -446,6 +449,18 @@ static void emit_arg(strbuf_t *sb, ir_instr_t *ins,
         else
             strbuf_appendf(sb, "    mov%s %s, %s\n", sfx, src, reg);
         arg_reg_idx++;
+        return;
+    }
+
+    if (x64 && (t == TYPE_FLOAT || t == TYPE_DOUBLE) && float_reg_idx < 8) {
+        const char *reg = fmt_reg(xmm_regs[float_reg_idx], syntax);
+        const char *src = loc_str(b1, ra, ins->src1, x64, syntax);
+        const char *mov = (t == TYPE_FLOAT) ? "movd" : "movq";
+        if (syntax == ASM_INTEL)
+            strbuf_appendf(sb, "    %s %s, %s\n", mov, reg, src);
+        else
+            strbuf_appendf(sb, "    %s %s, %s\n", mov, src, reg);
+        float_reg_idx++;
         return;
     }
 
