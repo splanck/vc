@@ -238,6 +238,17 @@ if ! "$DIR/load_store_idx_scale" >/dev/null; then
 fi
 rm -f "$DIR/load_store_idx_scale"
 
+# verify 64-bit int/float cast emission
+cc -I "$DIR/../include" -Wall -Wextra -std=c99 \
+    "$DIR/unit/test_emit_cast_int64.c" \
+    "$DIR/../src/codegen_arith_float.c" "$DIR/../src/strbuf.c" \
+    "$DIR/../src/regalloc_x86.c" -o "$DIR/emit_cast_int64"
+if ! "$DIR/emit_cast_int64" >/dev/null; then
+    echo "Test emit_cast_int64 failed"
+    fail=1
+fi
+rm -f "$DIR/emit_cast_int64"
+
 # negative test for failing static assertion
 err=$(safe_mktemp)
 out=$(safe_mktemp)
