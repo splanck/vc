@@ -144,8 +144,12 @@ char *vc_read_file(const char *path)
     }
     size_t len = (size_t)len_off;
     char *buf = vc_alloc_or_exit(len + 1);
+    errno = 0;
     if (fread(buf, 1, len, f) != len) {
-        perror("fread");
+        if (errno != 0 || ferror(f))
+            perror("fread");
+        else
+            fprintf(stderr, "%s: unexpected EOF\n", path);
         fclose(f);
         free(buf);
         return NULL;
