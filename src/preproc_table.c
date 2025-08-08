@@ -104,7 +104,7 @@ static int tokenize_param_list(char *list, vector_t *out)
         while (end > tok && (end[-1] == ' ' || end[-1] == '\t'))
             end--;
         char *dup = vc_strndup(tok, (size_t)(end - tok));
-        if (!vector_push(out, &dup)) {
+        if (!dup || !vector_push(out, &dup)) {
             free(dup);
             for (size_t i = 0; i < out->count; i++)
                 free(((char **)out->data)[i]);
