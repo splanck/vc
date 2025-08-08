@@ -27,14 +27,25 @@ static char *canonical_path(const char *path)
 void line_state_push(preproc_context_t *ctx, const char *file, long delta,
                      char **prev_file, long *prev_delta)
 {
+    char *dup = vc_strdup(file);
+    if (!dup) {
+        vc_oom();
+        *prev_file = NULL;
+        *prev_delta = 0;
+        return;
+    }
+
     *prev_file = ctx->current_file;
     *prev_delta = ctx->line_delta;
-    ctx->current_file = vc_strdup(file);
+    ctx->current_file = dup;
     ctx->line_delta = delta;
 }
 
 void line_state_pop(preproc_context_t *ctx, char *prev_file, long prev_delta)
 {
+    if (!prev_file)
+        return;
+
     free(ctx->current_file);
     ctx->current_file = prev_file;
     ctx->line_delta = prev_delta;
@@ -44,8 +55,13 @@ void preproc_apply_line_directive(preproc_context_t *ctx,
                                   const char *file, int line)
 {
     if (file) {
-        free(ctx->current_file);
-        ctx->current_file = vc_strdup(file);
+        char *dup = vc_strdup(file);
+        if (!dup) {
+            vc_oom();
+        } else {
+            free(ctx->current_file);
+            ctx->current_file = dup;
+        }
     }
     ctx->line_delta = line - ((long)preproc_get_line(ctx) + 1);
     preproc_set_location(ctx, ctx->current_file, (size_t)line - 1, 1);
