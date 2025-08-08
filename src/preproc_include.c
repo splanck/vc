@@ -71,7 +71,11 @@ static char *fd_realpath(int fd, const char *fallback)
 
 #ifdef __linux__
     char proc[64];
-    snprintf(proc, sizeof(proc), "/proc/self/fd/%d", fd);
+    int ret = snprintf(proc, sizeof(proc), "/proc/self/fd/%d", fd);
+    if (ret < 0 || (size_t)ret >= sizeof(proc)) {
+        abort();
+        return NULL;
+    }
     ssize_t len = readlink(proc, path, sizeof(path) - 1);
     if (len >= 0) {
         path[len] = '\0';
