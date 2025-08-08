@@ -29,10 +29,11 @@ void strbuf_init(strbuf_t *sb)
 }
 
 /*
- * Ensure the buffer can hold at least "extra" additional bytes.
- * Returns 0 on success and -1 on failure.  On failure an error message
- * is printed and no reallocation is performed.  Memory allocation
- * failures are fatal and terminate the process.
+ * Ensure the buffer can hold at least "extra" additional bytes.  The
+ * terminating NUL is handled internally, so "extra" should not include
+ * it.  Returns 0 on success and -1 on failure.  On failure an error
+ * message is printed and no reallocation is performed.  Memory
+ * allocation failures are fatal and terminate the process.
 */
 static int sb_ensure(strbuf_t *sb, size_t extra)
 {
@@ -72,6 +73,7 @@ int strbuf_append(strbuf_t *sb, const char *text)
     if (!sb || !text)
         return -1;
     size_t l = strlen(text);
+    /* sb_ensure() accounts for the terminating NUL. */
     if (sb_ensure(sb, l) < 0)
         return -1;
     memcpy(sb->data + sb->len, text, l + 1);
