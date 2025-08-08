@@ -68,6 +68,7 @@ compile_fixture "$DIR/fixtures/simple_add.c" "$DIR/fixtures/simple_add_intel.s" 
 compile_fixture "$DIR/fixtures/pointer_add.c" "$DIR/fixtures/pointer_add_intel.s" --intel-syntax
 compile_fixture "$DIR/fixtures/while_loop.c" "$DIR/fixtures/while_loop_intel.s" --intel-syntax
 compile_fixture "$DIR/fixtures/shift_var.c" "$DIR/fixtures/shift_var_intel.s" --intel-syntax
+compile_fixture "$DIR/fixtures/float_double_ldouble_args.c" "$DIR/fixtures/float_double_ldouble_args_intel.s" --intel-syntax
 
 # verify include search path option
 compile_fixture "$DIR/fixtures/include_search.c" "$DIR/fixtures/include_search.s" -I "$DIR/includes"
