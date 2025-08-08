@@ -28,7 +28,7 @@ int main(void) {
     ins.src1 = 1;
     ins.name = "base";
     ins.type = TYPE_PTR;
-    ins.imm = 0;
+    ins.imm = 4;
 
     /* 32-bit load */
     strbuf_init(&sb);
@@ -67,6 +67,7 @@ int main(void) {
     strbuf_free(&sb);
 
     /* 64-bit load */
+    ins.imm = 8;
     strbuf_init(&sb);
     emit_load_idx(&sb, &ins, &ra, 1, ASM_ATT);
     if (!strstr(sb.data, ",8)")) {
@@ -99,6 +100,52 @@ int main(void) {
         return 1;
     }
     strbuf_free(&sb);
+
+    /* Element size scaling for specific types */
+    size_t sizes[] = {1, 2, sizeof(long), sizeof(long long)};
+    const char *names[] = {"char", "short", "long", "long long"};
+    for (int i = 0; i < 4; ++i) {
+        char expect[32];
+        snprintf(expect, sizeof(expect), ",%zu)", sizes[i]);
+        ins.imm = (int)sizes[i];
+
+        /* load */
+        ins.op = IR_LOAD_IDX;
+        strbuf_init(&sb);
+        emit_load_idx(&sb, &ins, &ra, 1, ASM_ATT);
+        if (!strstr(sb.data, expect)) {
+            printf("load idx %s failed: %s\n", names[i], sb.data);
+            return 1;
+        }
+        strbuf_free(&sb);
+
+        strbuf_init(&sb);
+        emit_load_idx(&sb, &ins, &ra, 1, ASM_INTEL);
+        if (!strstr(sb.data, expect)) {
+            printf("load idx %s Intel failed: %s\n", names[i], sb.data);
+            return 1;
+        }
+        strbuf_free(&sb);
+
+        /* store */
+        ins.op = IR_STORE_IDX;
+        ins.src2 = 2;
+        strbuf_init(&sb);
+        emit_store_idx(&sb, &ins, &ra, 1, ASM_ATT);
+        if (!strstr(sb.data, expect)) {
+            printf("store idx %s failed: %s\n", names[i], sb.data);
+            return 1;
+        }
+        strbuf_free(&sb);
+
+        strbuf_init(&sb);
+        emit_store_idx(&sb, &ins, &ra, 1, ASM_INTEL);
+        if (!strstr(sb.data, expect)) {
+            printf("store idx %s Intel failed: %s\n", names[i], sb.data);
+            return 1;
+        }
+        strbuf_free(&sb);
+    }
 
     printf("load/store idx scale tests passed\n");
     return 0;
