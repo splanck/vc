@@ -38,7 +38,7 @@ static void emit_jumps(strbuf_t *sb, ir_instr_t *ins,
                        const char *sfx, asm_syntax_t syntax);
 static void emit_alloca(strbuf_t *sb, ir_instr_t *ins,
                         regalloc_t *ra, int x64,
-                        const char *sfx, const char *sp,
+                        const char *sfx, const char *sp, const char *ax,
                         asm_syntax_t syntax);
 
 /* Return the register or stack location string for `id`. */
@@ -232,21 +232,41 @@ static void emit_jumps(strbuf_t *sb, ir_instr_t *ins,
 /* Emit stack allocation instruction (IR_ALLOCA). */
 static void emit_alloca(strbuf_t *sb, ir_instr_t *ins,
                         regalloc_t *ra, int x64,
-                        const char *sfx, const char *sp,
+                        const char *sfx, const char *sp, const char *ax,
                         asm_syntax_t syntax)
 {
     char buf1[32];
     char buf2[32];
-    if (syntax == ASM_INTEL) {
-        strbuf_appendf(sb, "    sub%s %s, %s\n", sfx, sp,
-                       loc_str(buf1, ra, ins->src1, x64, syntax));
-        strbuf_appendf(sb, "    mov%s %s, %s\n", sfx,
-                       loc_str(buf2, ra, ins->dest, x64, syntax), sp);
+    if (x64) {
+        if (syntax == ASM_INTEL) {
+            strbuf_appendf(sb, "    mov%s %s, %s\n", sfx,
+                           loc_str(buf1, ra, ins->src1, x64, syntax), ax);
+            strbuf_appendf(sb, "    add%s %s, 15\n", sfx, ax);
+            strbuf_appendf(sb, "    and%s %s, -16\n", sfx, ax);
+            strbuf_appendf(sb, "    sub%s %s, %s\n", sfx, sp, ax);
+            strbuf_appendf(sb, "    mov%s %s, %s\n", sfx,
+                           loc_str(buf2, ra, ins->dest, x64, syntax), sp);
+        } else {
+            strbuf_appendf(sb, "    mov%s %s, %s\n", sfx,
+                           loc_str(buf1, ra, ins->src1, x64, syntax), ax);
+            strbuf_appendf(sb, "    add%s $15, %s\n", sfx, ax);
+            strbuf_appendf(sb, "    and%s $-16, %s\n", sfx, ax);
+            strbuf_appendf(sb, "    sub%s %s, %s\n", sfx, ax, sp);
+            strbuf_appendf(sb, "    mov%s %s, %s\n", sfx, sp,
+                           loc_str(buf2, ra, ins->dest, x64, syntax));
+        }
     } else {
-        strbuf_appendf(sb, "    sub%s %s, %s\n", sfx,
-                       loc_str(buf1, ra, ins->src1, x64, syntax), sp);
-        strbuf_appendf(sb, "    mov%s %s, %s\n", sfx, sp,
-                       loc_str(buf2, ra, ins->dest, x64, syntax));
+        if (syntax == ASM_INTEL) {
+            strbuf_appendf(sb, "    sub%s %s, %s\n", sfx, sp,
+                           loc_str(buf1, ra, ins->src1, x64, syntax));
+            strbuf_appendf(sb, "    mov%s %s, %s\n", sfx,
+                           loc_str(buf2, ra, ins->dest, x64, syntax), sp);
+        } else {
+            strbuf_appendf(sb, "    sub%s %s, %s\n", sfx,
+                           loc_str(buf1, ra, ins->src1, x64, syntax), sp);
+            strbuf_appendf(sb, "    mov%s %s, %s\n", sfx, sp,
+                           loc_str(buf2, ra, ins->dest, x64, syntax));
+        }
     }
 }
 
@@ -288,7 +308,7 @@ void emit_branch_instr(strbuf_t *sb, ir_instr_t *ins,
         emit_jumps(sb, ins, ra, x64, sfx, syntax);
         break;
     case IR_ALLOCA:
-        emit_alloca(sb, ins, ra, x64, sfx, sp, syntax);
+        emit_alloca(sb, ins, ra, x64, sfx, sp, ax, syntax);
         break;
     default:
         break;
