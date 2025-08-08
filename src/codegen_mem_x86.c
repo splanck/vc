@@ -469,25 +469,46 @@ static void emit_arg(strbuf_t *sb, ir_instr_t *ins,
             strbuf_appendf(sb, "    sub %s, 4\n", sp);
         else
             strbuf_appendf(sb, "    sub $4, %s\n", sp);
-        strbuf_appendf(sb, "    movd %s, %%xmm0\n",
-                       loc_str(b1, ra, ins->src1, x64, syntax));
-        strbuf_appendf(sb, "    movss %%xmm0, (%s)\n", sp);
+        const char *src = loc_str(b1, ra, ins->src1, x64, syntax);
+        const char *x0 = fmt_reg("%xmm0", syntax);
+        if (syntax == ASM_INTEL)
+            strbuf_appendf(sb, "    movd %s, %s\n", x0, src);
+        else
+            strbuf_appendf(sb, "    movd %s, %s\n", src, x0);
+        if (syntax == ASM_INTEL)
+            strbuf_appendf(sb, "    movss [%s], %s\n", sp, x0);
+        else
+            strbuf_appendf(sb, "    movss %s, (%s)\n", x0, sp);
     } else if (t == TYPE_DOUBLE) {
         if (syntax == ASM_INTEL)
             strbuf_appendf(sb, "    sub %s, 8\n", sp);
         else
             strbuf_appendf(sb, "    sub $8, %s\n", sp);
-        strbuf_appendf(sb, "    movq %s, %%xmm0\n",
-                       loc_str(b1, ra, ins->src1, x64, syntax));
-        strbuf_appendf(sb, "    movsd %%xmm0, (%s)\n", sp);
+        const char *src = loc_str(b1, ra, ins->src1, x64, syntax);
+        const char *x0 = fmt_reg("%xmm0", syntax);
+        if (syntax == ASM_INTEL)
+            strbuf_appendf(sb, "    movq %s, %s\n", x0, src);
+        else
+            strbuf_appendf(sb, "    movq %s, %s\n", src, x0);
+        if (syntax == ASM_INTEL)
+            strbuf_appendf(sb, "    movsd [%s], %s\n", sp, x0);
+        else
+            strbuf_appendf(sb, "    movsd %s, (%s)\n", x0, sp);
     } else if (t == TYPE_LDOUBLE) {
         size_t pad = x64 ? 16 : 10;
         if (syntax == ASM_INTEL)
             strbuf_appendf(sb, "    sub %s, %zu\n", sp, pad);
         else
             strbuf_appendf(sb, "    sub $%zu, %s\n", pad, sp);
-        strbuf_appendf(sb, "    fldt %s\n", loc_str(b1, ra, ins->src1, x64, syntax));
-        strbuf_appendf(sb, "    fstpt (%s)\n", sp);
+        const char *src = loc_str(b1, ra, ins->src1, x64, syntax);
+        if (syntax == ASM_INTEL)
+            strbuf_appendf(sb, "    fld tword ptr %s\n", src);
+        else
+            strbuf_appendf(sb, "    fldt %s\n", src);
+        if (syntax == ASM_INTEL)
+            strbuf_appendf(sb, "    fstp tword ptr [%s]\n", sp);
+        else
+            strbuf_appendf(sb, "    fstpt (%s)\n", sp);
     } else {
         const char *sfx = x64 ? "q" : "l";
         strbuf_appendf(sb, "    push%s %s\n", sfx,

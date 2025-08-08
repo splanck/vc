@@ -68,6 +68,7 @@ compile_fixture "$DIR/fixtures/simple_add.c" "$DIR/fixtures/simple_add_intel.s" 
 compile_fixture "$DIR/fixtures/pointer_add.c" "$DIR/fixtures/pointer_add_intel.s" --intel-syntax
 compile_fixture "$DIR/fixtures/while_loop.c" "$DIR/fixtures/while_loop_intel.s" --intel-syntax
 compile_fixture "$DIR/fixtures/shift_var.c" "$DIR/fixtures/shift_var_intel.s" --intel-syntax
+compile_fixture "$DIR/fixtures/float_double_ldouble_args.c" "$DIR/fixtures/float_double_ldouble_args_intel.s" --intel-syntax
 
 # verify include search path option
 compile_fixture "$DIR/fixtures/include_search.c" "$DIR/fixtures/include_search.s" -I "$DIR/includes"
@@ -237,6 +238,17 @@ if ! "$DIR/cast_mem2mem" >/dev/null; then
 fi
 rm -f "$DIR/cast_mem2mem"
 
+# verify compare emission for register and spilled destinations
+cc -I "$DIR/../include" -Wall -Wextra -std=c99 \
+    "$DIR/unit/test_cmp_spill.c" \
+    "$DIR/../src/codegen_arith_int.c" "$DIR/../src/codegen_x86.c" \
+    "$DIR/../src/strbuf.c" "$DIR/../src/regalloc_x86.c" -o "$DIR/cmp_spill"
+if ! "$DIR/cmp_spill" >/dev/null; then
+    echo "Test cmp_spill failed"
+    fail=1
+fi
+rm -f "$DIR/cmp_spill"
+
 # verify indexed load/store scale handling
 cc -I "$DIR/../include" -Wall -Wextra -std=c99 \
     "$DIR/unit/test_load_store_idx_scale.c" \
@@ -247,6 +259,17 @@ if ! "$DIR/load_store_idx_scale" >/dev/null; then
     fail=1
 fi
 rm -f "$DIR/load_store_idx_scale"
+
+# verify 64-bit int/float cast emission
+cc -I "$DIR/../include" -Wall -Wextra -std=c99 \
+    "$DIR/unit/test_emit_cast_int64.c" \
+    "$DIR/../src/codegen_arith_float.c" "$DIR/../src/strbuf.c" \
+    "$DIR/../src/regalloc_x86.c" -o "$DIR/emit_cast_int64"
+if ! "$DIR/emit_cast_int64" >/dev/null; then
+    echo "Test emit_cast_int64 failed"
+    fail=1
+fi
+rm -f "$DIR/emit_cast_int64"
 
 # negative test for failing static assertion
 err=$(safe_mktemp)
