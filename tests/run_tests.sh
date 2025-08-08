@@ -226,6 +226,17 @@ if ! "$DIR/ptr_diff_zero" >/dev/null; then
 fi
 rm -f "$DIR/ptr_diff_zero"
 
+# verify compare emission for register and spilled destinations
+cc -I "$DIR/../include" -Wall -Wextra -std=c99 \
+    "$DIR/unit/test_cmp_spill.c" \
+    "$DIR/../src/codegen_arith_int.c" "$DIR/../src/codegen_x86.c" \
+    "$DIR/../src/strbuf.c" "$DIR/../src/regalloc_x86.c" -o "$DIR/cmp_spill"
+if ! "$DIR/cmp_spill" >/dev/null; then
+    echo "Test cmp_spill failed"
+    fail=1
+fi
+rm -f "$DIR/cmp_spill"
+
 # verify indexed load/store scale handling
 cc -I "$DIR/../include" -Wall -Wextra -std=c99 \
     "$DIR/unit/test_load_store_idx_scale.c" \
