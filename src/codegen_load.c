@@ -151,6 +151,8 @@ void emit_load_idx(strbuf_t *sb, ir_instr_t *ins,
     char basebuf[32];
     const char *base = fmt_stack(basebuf, ins->name, x64, syntax);
     int scale = idx_scale(ins, x64);
+    if (scale != 1 && scale != 2 && scale != 4 && scale != 8)
+        scale = 1;
     snprintf(srcbuf, sizeof(srcbuf), "%s(,%s,%d)",
              base, loc_str(b1, ra, ins->src1, x64, syntax), scale);
     emit_move_with_spill(sb, sfx, srcbuf, dest, slot, spill, syntax);

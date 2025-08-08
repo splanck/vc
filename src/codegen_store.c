@@ -129,6 +129,8 @@ void emit_store_idx(strbuf_t *sb, ir_instr_t *ins,
     char basebuf[32];
     const char *base = fmt_stack(basebuf, ins->name, x64, syntax);
     int scale = idx_scale(ins, x64);
+    if (scale != 1 && scale != 2 && scale != 4 && scale != 8)
+        scale = 1;
     if (syntax == ASM_INTEL) {
         char b2[32];
         strbuf_appendf(sb, "    mov%s %s(,%s,%d), %s\n", sfx, base,
