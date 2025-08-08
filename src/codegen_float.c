@@ -26,16 +26,27 @@ static const char *loc_str(char buf[32], regalloc_t *ra, int id, int x64,
     int loc = ra->loc[id];
     if (loc >= 0)
         return reg_str(loc, syntax);
+    int n;
     if (x64) {
-        if (syntax == ASM_INTEL)
-            snprintf(buf, 32, "[rbp-%d]", -loc * 8);
-        else
-            snprintf(buf, 32, "-%d(%%rbp)", -loc * 8);
+        if (syntax == ASM_INTEL) {
+            n = snprintf(buf, 32, "[rbp-%d]", -loc * 8);
+            if (n < 0 || n >= 32)
+                return "";
+        } else {
+            n = snprintf(buf, 32, "-%d(%%rbp)", -loc * 8);
+            if (n < 0 || n >= 32)
+                return "";
+        }
     } else {
-        if (syntax == ASM_INTEL)
-            snprintf(buf, 32, "[ebp-%d]", -loc * 4);
-        else
-            snprintf(buf, 32, "-%d(%%ebp)", -loc * 4);
+        if (syntax == ASM_INTEL) {
+            n = snprintf(buf, 32, "[ebp-%d]", -loc * 4);
+            if (n < 0 || n >= 32)
+                return "";
+        } else {
+            n = snprintf(buf, 32, "-%d(%%ebp)", -loc * 4);
+            if (n < 0 || n >= 32)
+                return "";
+        }
     }
     return buf;
 }
