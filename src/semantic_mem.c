@@ -105,6 +105,8 @@ type_kind_t check_index_expr(expr_t *expr, symtable_t *vars,
             *out = sym->is_volatile
                      ? ir_build_load_idx_vol(ir, sym->ir_name, idx_val, sym->type)
                      : ir_build_load_idx(ir, sym->ir_name, idx_val, sym->type);
+            if (ir && ir->tail && ir->tail->op == IR_LOAD_IDX)
+                ir->tail->imm = sym->elem_size ? (int)sym->elem_size : 4;
         }
     }
     return TYPE_INT;
