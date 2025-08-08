@@ -134,10 +134,18 @@ char *codegen_ir_to_string(ir_builder_t *ir, int x64,
     strbuf_t sb;
     strbuf_init(&sb);
     if (debug_info && ir->head && ir->head->file)
-        strbuf_appendf(&sb, ".file 1 \"%s\"\n", ir->head->file);
+        if (strbuf_appendf(&sb, ".file 1 \"%s\"\n", ir->head->file) < 0) {
+            strbuf_free(&sb);
+            regalloc_free(&ra);
+            return NULL;
+        }
     for (ir_instr_t *ins = ir->head; ins; ins = ins->next) {
         if (debug_info && ins->file && ins->line)
-            strbuf_appendf(&sb, ".loc 1 %zu %zu\n", ins->line, ins->column);
+            if (strbuf_appendf(&sb, ".loc 1 %zu %zu\n", ins->line, ins->column) < 0) {
+                strbuf_free(&sb);
+                regalloc_free(&ra);
+                return NULL;
+            }
         emit_instr(&sb, ins, &ra, x64, syntax);
     }
 
