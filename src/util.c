@@ -274,8 +274,14 @@ create_temp_template(const cli_options_t *cli, const char *prefix)
 #endif
         }
     }
-    size_t len = strlen(dir) + strlen(prefix) + sizeof("/XXXXXX");
-    if (len >= PATH_MAX) {
+    size_t dirlen = strlen(dir);
+    size_t prefixlen = strlen(prefix);
+    if (dirlen > SIZE_MAX - prefixlen - 7) {
+        errno = ENAMETOOLONG;
+        return NULL;
+    }
+    size_t len = dirlen + prefixlen + 7; /* without terminating NUL */
+    if (len >= PATH_MAX) { /* +1 for trailing NUL */
         errno = ENAMETOOLONG;
         return NULL;
     }
