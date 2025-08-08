@@ -176,16 +176,17 @@ void emit_shift(strbuf_t *sb, ir_instr_t *ins,
     char b2[32];
     const char *sfx = (x64 && ins->type != TYPE_INT) ? "q" : "l";
     const char *cx = x86_fmt_reg(x64 ? "%rcx" : "%ecx", syntax);
+    const char *cl = x86_fmt_reg("%cl", syntax);
     x86_emit_mov(sb, sfx,
                  x86_loc_str(b1, ra, ins->src1, x64, syntax),
                  x86_loc_str(b2, ra, ins->dest, x64, syntax), syntax);
     x86_emit_mov(sb, sfx,
                  x86_loc_str(b1, ra, ins->src2, x64, syntax), cx, syntax);
     if (syntax == ASM_INTEL)
-        strbuf_appendf(sb, "    %s%s %s, %s\n", op, sfx, cx,
-                       x86_loc_str(b2, ra, ins->dest, x64, syntax));
+        strbuf_appendf(sb, "    %s %s, %s\n", op,
+                       x86_loc_str(b2, ra, ins->dest, x64, syntax), cl);
     else
-        strbuf_appendf(sb, "    %s%s %s, %s\n", op, sfx, "%cl",
+        strbuf_appendf(sb, "    %s%s %s, %s\n", op, sfx, cl,
                        x86_loc_str(b2, ra, ins->dest, x64, syntax));
 }
 
