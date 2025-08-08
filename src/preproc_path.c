@@ -298,6 +298,11 @@ int collect_include_dirs(vector_t *search_dirs,
 {
     include_path_cache_init();
     const char *gcc_dir = include_path_cache_gcc_dir();
+    if (!gcc_dir) {
+        fprintf(stderr,
+                "vc: system headers could not be located. Use --vc-sysinclude=<dir> or VC_SYSINCLUDE\n");
+        return 0;
+    }
     const char * const *std_include_dirs = include_path_cache_std_dirs();
     assert(strcspn(gcc_dir, " \t\n") == strlen(gcc_dir));
     vector_init(search_dirs, sizeof(char *));
