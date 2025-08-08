@@ -448,18 +448,25 @@ static int resolve_internal_libc(const char *prog, cli_options_t *opts)
             return 1;
         }
         memcpy(tmp, prog, prog_len + 1);
+        int ret;
         char *slash = strrchr(tmp, '/');
-        if (slash)
+        if (slash) {
             *slash = '\0';
-        else
-            strcpy(tmp, ".");
+        } else {
+            ret = snprintf(tmp, sizeof(tmp), "%s", ".");
+            if (ret < 0 || ret >= (int)sizeof(tmp)) {
+                fprintf(stderr, "Error: internal libc path too long.\n");
+                cli_free_opts(opts);
+                return 1;
+            }
+        }
         size_t dirlen = strlen(tmp);
-        if (dirlen + strlen("/libc/include") >= PATH_MAX) {
+        ret = snprintf(tmp + dirlen, sizeof(tmp) - dirlen, "/libc/include");
+        if (ret < 0 || ret >= (int)(sizeof(tmp) - dirlen)) {
             fprintf(stderr, "Error: internal libc path too long.\n");
             cli_free_opts(opts);
             return 1;
         }
-        strcat(tmp, "/libc/include");
         opts->vc_sysinclude = vc_strdup(tmp);
         if (!opts->vc_sysinclude) {
             vc_oom();
