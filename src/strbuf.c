@@ -72,7 +72,7 @@ int strbuf_append(strbuf_t *sb, const char *text)
     if (!sb || !text)
         return -1;
     size_t l = strlen(text);
-    if (sb_ensure(sb, l + 1) < 0)
+    if (sb_ensure(sb, l) < 0)
         return -1;
     memcpy(sb->data + sb->len, text, l + 1);
     sb->len += l;
