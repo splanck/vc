@@ -48,14 +48,13 @@ static int read_number(const char *src, size_t *i, size_t *col,
            src[*i] == 'l' || src[*i] == 'L')
         (*i)++;
 
-    token_type_t type = TOK_NUMBER;
+    token_type_t type = is_float ? TOK_FLOAT : TOK_NUMBER;
     if (src[*i] == 'i' || src[*i] == 'I') {
         (*i)++;
         type = TOK_IMAG_NUMBER;
     }
 
     size_t len = *i - start;
-    (void)is_float;
     if (!append_token(tokens, type, src + start, len, line, *col))
         return 0;
     *col += len;
