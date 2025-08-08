@@ -120,14 +120,23 @@ static const char *get_gcc_include_dir(void)
                         return NULL;
                     }
                 }
+                if (pclose(fp) == -1) {
+                    perror("pclose");
+                    gcc_query_failed = 1;
+                    free(gcc_include_cached);
+                    gcc_include_cached = NULL;
+                    return NULL;
+                }
             } else {
                 perror("fgets");
                 gcc_query_failed = 1;
-            }
-            if (pclose(fp) == -1) {
-                perror("pclose");
-                gcc_query_failed = 1;
-                return NULL;
+                if (pclose(fp) == -1) {
+                    perror("pclose");
+                    gcc_query_failed = 1;
+                    free(gcc_include_cached);
+                    gcc_include_cached = NULL;
+                    return NULL;
+                }
             }
         }
         if (!gcc_include_cached) {
