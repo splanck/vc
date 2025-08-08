@@ -124,6 +124,17 @@ static void test_lexer_imag_number(void)
     lexer_free_tokens(toks, count);
 }
 
+/* Lexing of a floating point constant. */
+static void test_lexer_float_number(void)
+{
+    const char *src = "1.0";
+    size_t count = 0;
+    token_t *toks = lexer_tokenize(src, &count);
+    ASSERT(toks[0].type == TOK_FLOAT);
+    ASSERT(strcmp(toks[0].lexeme, "1.0") == 0);
+    lexer_free_tokens(toks, count);
+}
+
 /* Parsing of an imaginary constant as a complex literal. */
 static void test_parser_imag_literal(void)
 {
@@ -511,8 +522,7 @@ static void test_parser_sizeof(void)
 /* Parse a simple variadic call expression. */
 static void test_parser_variadic_call(void)
 {
-    /* floating point literals are not yet recognized, so use integers */
-    const char *src = "foo(1, 2)";
+    const char *src = "foo(1.0, 2.0)";
     size_t count = 0;
     token_t *toks = lexer_tokenize(src, &count);
     ASSERT(count >= 6);
@@ -777,6 +787,7 @@ int main(void)
     test_lexer_new_types();
     test_lexer_complex_kw();
     test_lexer_imag_number();
+    test_lexer_float_number();
     test_parser_imag_literal();
     test_parser_complex_literal();
     test_parser_expr();

@@ -46,7 +46,7 @@ expr_t *parse_literal(parser_t *p)
     token_t *tok = peek(p);
     if (!tok)
         return NULL;
-    if (tok->type == TOK_NUMBER) {
+    if (tok->type == TOK_NUMBER || tok->type == TOK_FLOAT) {
         size_t save = p->pos;
         token_t *num_tok = tok;
         p->pos++; /* consume number */
@@ -70,6 +70,8 @@ expr_t *parse_literal(parser_t *p)
         double imag = strtod(tok->lexeme, NULL);
         return ast_make_complex_literal(0.0, imag, tok->line, tok->column);
     }
+    if (match(p, TOK_FLOAT))
+        return ast_make_number(tok->lexeme, tok->line, tok->column);
     if (match(p, TOK_NUMBER))
         return ast_make_number(tok->lexeme, tok->line, tok->column);
     expr_t *s = parse_string_literal(p);

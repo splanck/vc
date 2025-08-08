@@ -15,6 +15,7 @@ static const char *token_names[] = {
     [TOK_EOF] = "end of file",
     [TOK_IDENT] = "identifier",
     [TOK_NUMBER] = "number",
+    [TOK_FLOAT] = "float number",
     [TOK_IMAG_NUMBER] = "imaginary number",
     [TOK_STRING] = "string",
     [TOK_CHAR] = "character",

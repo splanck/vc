@@ -29,6 +29,7 @@ static const char *tok_names[] = {
     [TOK_EOF] = "end of file",
     [TOK_IDENT] = "identifier",
     [TOK_NUMBER] = "number",
+    [TOK_FLOAT] = "float number",
     [TOK_STRING] = "string",
     [TOK_CHAR] = "character",
     [TOK_WIDE_STRING] = "L\"string\"",

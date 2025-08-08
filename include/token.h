@@ -15,6 +15,7 @@ typedef enum {
     TOK_EOF = 0,
     TOK_IDENT,
     TOK_NUMBER,
+    TOK_FLOAT,
     TOK_IMAG_NUMBER,
     TOK_STRING,
     TOK_CHAR,
