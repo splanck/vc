@@ -34,7 +34,7 @@ for cfile in "$DIR"/fixtures/*.c; do
     base=$(basename "$cfile" .c)
 
     case "$base" in
-        *_x86-64|struct_*|bitfield_rw|include_search|include_angle|include_env|macro_bad_define|preproc_blank|macro_cli|macro_cli_quote|include_once|include_once_link|include_next|include_next_quote|libm_program|union_example|varargs_double|include_stdio|libc_puts|libc_puts_large|libc_printf|local_program|local_assign|libc_fileio|libc_short_write|libc_write_fail|libc_exit_fail|loops)
+        *_x86-64|struct_*|bitfield_rw|include_search|include_angle|include_env|macro_bad_define|preproc_blank|macro_cli|macro_cli_quote|include_once|include_once_link|include_next|include_next_quote|libm_program|union_example|varargs_double|include_stdio|libc_puts|libc_puts_large|libc_printf|local_program|local_assign|libc_fileio|libc_short_write|libc_write_fail|libc_exit_fail|loops|mixed_args)
             continue;;
     esac
     compile_fixture "$cfile" "$DIR/fixtures/$base.s"
@@ -67,6 +67,7 @@ compile_fixture "$DIR/fixtures/simple_add.c" "$DIR/fixtures/simple_add_intel.s" 
 # additional Intel syntax fixtures
 compile_fixture "$DIR/fixtures/pointer_add.c" "$DIR/fixtures/pointer_add_intel.s" --intel-syntax
 compile_fixture "$DIR/fixtures/while_loop.c" "$DIR/fixtures/while_loop_intel.s" --intel-syntax
+compile_fixture "$DIR/fixtures/shift_var.c" "$DIR/fixtures/shift_var_intel.s" --intel-syntax
 
 # verify include search path option
 compile_fixture "$DIR/fixtures/include_search.c" "$DIR/fixtures/include_search.s" -I "$DIR/includes"
@@ -224,6 +225,17 @@ if ! "$DIR/ptr_diff_zero" >/dev/null; then
     fail=1
 fi
 rm -f "$DIR/ptr_diff_zero"
+
+# verify indexed load/store scale handling
+cc -I "$DIR/../include" -Wall -Wextra -std=c99 \
+    "$DIR/unit/test_load_store_idx_scale.c" \
+    "$DIR/../src/codegen_load.c" "$DIR/../src/codegen_store.c" \
+    "$DIR/../src/strbuf.c" "$DIR/../src/regalloc_x86.c" -o "$DIR/load_store_idx_scale"
+if ! "$DIR/load_store_idx_scale" >/dev/null; then
+    echo "Test load_store_idx_scale failed"
+    fail=1
+fi
+rm -f "$DIR/load_store_idx_scale"
 
 # negative test for failing static assertion
 err=$(safe_mktemp)
@@ -665,6 +677,17 @@ if ! od -An -t x1 "${obj_out}" | head -n 1 | grep -q "7f 45 4c 46"; then
 fi
 rm -f "${obj_out}"
 
+# test -c/--compile with shift operations
+obj_tmp=$(safe_mktemp tmp.XXXXXX)
+obj_out="${obj_tmp}.o"
+rm -f "${obj_tmp}"
+"$BINARY" -c -o "${obj_out}" "$DIR/fixtures/shift_var.c"
+if ! od -An -t x1 "${obj_out}" | head -n 1 | grep -q "7f 45 4c 46"; then
+    echo "Test compile_option_shift failed"
+    fail=1
+fi
+rm -f "${obj_out}"
+
 # test --intel-syntax --compile option (requires nasm)
 if command -v nasm >/dev/null; then
     obj_tmp=$(safe_mktemp tmp.XXXXXX)
@@ -678,6 +701,21 @@ if command -v nasm >/dev/null; then
     rm -f "${obj_out}"
 else
     echo "Skipping compile_option_intel (nasm not found)"
+fi
+
+# test --intel-syntax --compile with shift operations (requires nasm)
+if command -v nasm >/dev/null; then
+    obj_tmp=$(safe_mktemp tmp.XXXXXX)
+    obj_out="${obj_tmp}.o"
+    rm -f "${obj_tmp}"
+    "$BINARY" --intel-syntax -c -o "${obj_out}" "$DIR/fixtures/shift_var.c"
+    if ! od -An -t x1 "${obj_out}" | head -n 1 | grep -q "7f 45 4c 46"; then
+        echo "Test compile_option_shift_intel failed"
+        fail=1
+    fi
+    rm -f "${obj_out}"
+else
+    echo "Skipping compile_option_shift_intel (nasm not found)"
 fi
 
 # test --emit-dwarf option

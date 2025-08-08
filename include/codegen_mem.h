@@ -39,6 +39,7 @@ void emit_memory_instr(strbuf_t *sb, ir_instr_t *ins,
 /* bytes pushed for the current argument list */
 extern size_t arg_stack_bytes;
 extern int arg_reg_idx;
+extern int float_reg_idx;
 
 const char *fmt_stack(char buf[32], const char *name, int x64,
                       asm_syntax_t syntax);
