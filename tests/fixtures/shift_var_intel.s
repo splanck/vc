@@ -6,9 +6,10 @@ main:
     movl [ebp-4], eax
     movl eax, 1
     movl ebx, [ebp-8]
-    movl ecx, eax
+    movl eax, eax
     movl ecx, ebx
-    sal ecx, cl
+    sal eax, cl
+    movl ecx, eax
     movl [ebp-12], ecx
     movl ecx, 1
     movl ebx, [ebp-8]

@@ -271,6 +271,17 @@ if ! "$DIR/emit_cast_int64" >/dev/null; then
 fi
 rm -f "$DIR/emit_cast_int64"
 
+# verify shifts with destination in %ecx/%rcx
+cc -I "$DIR/../include" -Wall -Wextra -std=c99 \
+    "$DIR/unit/test_shift_rcx.c" \
+    "$DIR/../src/codegen_arith_int.c" "$DIR/../src/codegen_x86.c" \
+    "$DIR/../src/strbuf.c" "$DIR/../src/regalloc_x86.c" -o "$DIR/shift_rcx"
+if ! "$DIR/shift_rcx" >/dev/null; then
+    echo "Test shift_rcx failed"
+    fail=1
+fi
+rm -f "$DIR/shift_rcx"
+
 # negative test for failing static assertion
 err=$(safe_mktemp)
 out=$(safe_mktemp)

@@ -6,9 +6,10 @@ main:
     movl %eax, -4(%ebp)
     movl $1, %eax
     movl -8(%ebp), %ebx
-    movl %eax, %ecx
+    movl %eax, %eax
     movl %ebx, %ecx
-    sall %cl, %ecx
+    sall %cl, %eax
+    movl %eax, %ecx
     movl %ecx, -12(%ebp)
     movl $1, %ecx
     movl -8(%ebp), %ebx
