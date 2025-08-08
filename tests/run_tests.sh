@@ -214,6 +214,17 @@ if ! "$DIR/load_store_spill" >/dev/null; then
 fi
 rm -f "$DIR/load_store_spill"
 
+# verify pointer difference with zero element size
+cc -I "$DIR/../include" -Wall -Wextra -std=c99 \
+    "$DIR/unit/test_ptr_diff_zero.c" \
+    "$DIR/../src/codegen_arith_int.c" "$DIR/../src/codegen_x86.c" \
+    "$DIR/../src/strbuf.c" "$DIR/../src/regalloc_x86.c" -o "$DIR/ptr_diff_zero"
+if ! "$DIR/ptr_diff_zero" >/dev/null; then
+    echo "Test ptr_diff_zero failed"
+    fail=1
+fi
+rm -f "$DIR/ptr_diff_zero"
+
 # negative test for failing static assertion
 err=$(safe_mktemp)
 out=$(safe_mktemp)
