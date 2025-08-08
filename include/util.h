@@ -12,7 +12,11 @@
 #include "vector.h"
 #include "cli.h"
 
-/* Duplicate a string using malloc. Returns NULL on allocation failure */
+/*
+ * Duplicate a string using malloc.
+ *
+ * Returns NULL on allocation failure or if 's' is NULL.
+ */
 char *vc_strdup(const char *s);
 
 /* Duplicate at most 'n' characters of a string. Returns NULL on allocation failure */
