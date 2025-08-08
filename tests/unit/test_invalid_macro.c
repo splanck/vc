@@ -17,7 +17,7 @@ static int tokenize_param_list(char *list, vector_t *out)
         while (end > tok && (end[-1] == ' ' || end[-1] == '\t'))
             end--;
         char *dup = vc_strndup(tok, (size_t)(end - tok));
-        if (!vector_push(out, &dup)) {
+        if (!dup || !vector_push(out, &dup)) {
             free(dup);
             for (size_t i = 0; i < out->count; i++)
                 free(((char **)out->data)[i]);
@@ -40,6 +40,8 @@ static char *parse_macro_params(char *p, vector_t *out)
             p++;
         if (*p == ')') {
             char *plist = vc_strndup(start, (size_t)(p - start));
+            if (!plist)
+                return NULL;
             if (!tokenize_param_list(plist, out)) {
                 free(plist);
                 return NULL;

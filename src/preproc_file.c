@@ -389,12 +389,16 @@ static int update_macros_from_cli(vector_t *macros, const vector_t *defines,
             char *unquoted = NULL;
             if (eq) {
                 name = vc_strndup(def, (size_t)(eq - def));
+                if (!name)
+                    return 0;
                 val = eq + 1;
                 unquoted = unquote_value(val);
                 if (unquoted)
                     val = unquoted;
             } else {
                 name = vc_strdup(def);
+                if (!name)
+                    return 0;
             }
             vector_t params;
             vector_init(&params, sizeof(char *));

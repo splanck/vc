@@ -79,6 +79,10 @@ int handle_line_directive(char *line, const char *dir, vector_t *macros,
             p++;
         if (*p == '"') {
             fname = vc_strndup(fstart, (size_t)(p - fstart));
+            if (!fname) {
+                strbuf_free(&exp);
+                return 0;
+            }
             p++;
         }
     }
