@@ -53,17 +53,20 @@ void emit_cast(strbuf_t *sb, ir_instr_t *ins,
     char b2[32];
     type_kind_t src = (type_kind_t)((unsigned long long)ins->imm >> 32);
     type_kind_t dst = (type_kind_t)(ins->imm & 0xffffffffu);
+    int src64 = (src == TYPE_LLONG || src == TYPE_ULLONG);
+    int dst64 = (dst == TYPE_LLONG || dst == TYPE_ULLONG);
 
     int r0 = regalloc_xmm_acquire();
     const char *reg0 = fmt_reg(regalloc_xmm_name(r0), syntax);
     const char *sfx = x64 ? "q" : "l";
 
     if (is_intlike(src) && dst == TYPE_FLOAT) {
+        const char *op = src64 ? "cvtsi2ssq" : "cvtsi2ss";
         if (syntax == ASM_INTEL)
-            strbuf_appendf(sb, "    cvtsi2ss %s, %s\n", reg0,
+            strbuf_appendf(sb, "    %s %s, %s\n", op, reg0,
                            loc_str(b1, ra, ins->src1, x64, syntax));
         else
-            strbuf_appendf(sb, "    cvtsi2ss %s, %s\n",
+            strbuf_appendf(sb, "    %s %s, %s\n", op,
                            loc_str(b1, ra, ins->src1, x64, syntax), reg0);
         if (ra && ra->loc[ins->dest] >= 0)
             strbuf_appendf(sb, "    movd %s, %s\n", reg0,
@@ -76,11 +79,12 @@ void emit_cast(strbuf_t *sb, ir_instr_t *ins,
     }
 
     if (is_intlike(src) && dst == TYPE_DOUBLE) {
+        const char *op = src64 ? "cvtsi2sdq" : "cvtsi2sd";
         if (syntax == ASM_INTEL)
-            strbuf_appendf(sb, "    cvtsi2sd %s, %s\n", reg0,
+            strbuf_appendf(sb, "    %s %s, %s\n", op, reg0,
                            loc_str(b1, ra, ins->src1, x64, syntax));
         else
-            strbuf_appendf(sb, "    cvtsi2sd %s, %s\n",
+            strbuf_appendf(sb, "    %s %s, %s\n", op,
                            loc_str(b1, ra, ins->src1, x64, syntax), reg0);
         if (ra && ra->loc[ins->dest] >= 0)
             strbuf_appendf(sb, "    movq %s, %s\n", reg0,
@@ -99,11 +103,12 @@ void emit_cast(strbuf_t *sb, ir_instr_t *ins,
         else
             strbuf_appendf(sb, "    movss %s, %s\n",
                            loc_str(b1, ra, ins->src1, x64, syntax), reg0);
+        const char *op = dst64 ? "cvttss2siq" : "cvttss2si";
         if (syntax == ASM_INTEL)
-            strbuf_appendf(sb, "    cvttss2si %s, %s\n", reg0,
+            strbuf_appendf(sb, "    %s %s, %s\n", op, reg0,
                            loc_str(b2, ra, ins->dest, x64, syntax));
         else
-            strbuf_appendf(sb, "    cvttss2si %s, %s\n", reg0,
+            strbuf_appendf(sb, "    %s %s, %s\n", op, reg0,
                            loc_str(b2, ra, ins->dest, x64, syntax));
         regalloc_xmm_release(r0);
         return;
@@ -116,11 +121,12 @@ void emit_cast(strbuf_t *sb, ir_instr_t *ins,
         else
             strbuf_appendf(sb, "    movsd %s, %s\n",
                            loc_str(b1, ra, ins->src1, x64, syntax), reg0);
+        const char *op = dst64 ? "cvttsd2siq" : "cvttsd2si";
         if (syntax == ASM_INTEL)
-            strbuf_appendf(sb, "    cvttsd2si %s, %s\n", reg0,
+            strbuf_appendf(sb, "    %s %s, %s\n", op, reg0,
                            loc_str(b2, ra, ins->dest, x64, syntax));
         else
-            strbuf_appendf(sb, "    cvttsd2si %s, %s\n", reg0,
+            strbuf_appendf(sb, "    %s %s, %s\n", op, reg0,
                            loc_str(b2, ra, ins->dest, x64, syntax));
         regalloc_xmm_release(r0);
         return;
