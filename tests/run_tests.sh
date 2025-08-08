@@ -226,6 +226,17 @@ if ! "$DIR/ptr_diff_zero" >/dev/null; then
 fi
 rm -f "$DIR/ptr_diff_zero"
 
+# verify memory to memory casts
+cc -I "$DIR/../include" -Wall -Wextra -std=c99 \
+    "$DIR/unit/test_cast_mem2mem.c" \
+    "$DIR/../src/codegen_arith_float.c" "$DIR/../src/strbuf.c" \
+    "$DIR/../src/regalloc_x86.c" -o "$DIR/cast_mem2mem"
+if ! "$DIR/cast_mem2mem" >/dev/null; then
+    echo "Test cast_mem2mem failed"
+    fail=1
+fi
+rm -f "$DIR/cast_mem2mem"
+
 # verify indexed load/store scale handling
 cc -I "$DIR/../include" -Wall -Wextra -std=c99 \
     "$DIR/unit/test_load_store_idx_scale.c" \
