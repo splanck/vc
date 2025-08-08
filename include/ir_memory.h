@@ -50,7 +50,8 @@ void ir_build_store_ptr_res(ir_builder_t *b, ir_value_t addr, ir_value_t val);
 ir_value_t ir_build_ptr_add(ir_builder_t *b, ir_value_t ptr, ir_value_t idx,
                             int elem_size);
 
-/* Emit IR_PTR_DIFF computing `a - bptr` in elements of size `elem_size`. */
+/* Emit IR_PTR_DIFF computing `a - bptr` in elements of size `elem_size`.
+ * A zero `elem_size` yields a result of zero. */
 ir_value_t ir_build_ptr_diff(ir_builder_t *b, ir_value_t a, ir_value_t bptr,
                              int elem_size);
 

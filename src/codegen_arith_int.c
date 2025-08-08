@@ -57,6 +57,13 @@ void emit_ptr_diff(strbuf_t *sb, ir_instr_t *ins,
                                       : x86_loc_str(b2, ra, ins->dest, x64, syntax);
     const char *dest_mem = x86_loc_str(mem, ra, ins->dest, x64, syntax);
 
+    if (esz == 0) {
+        x86_emit_op(sb, "xor", sfx, dest_reg, dest_reg, syntax);
+        if (dest_spill)
+            x86_emit_mov(sb, sfx, dest_reg, dest_mem, syntax);
+        return;
+    }
+
     x86_emit_mov(sb, sfx,
                  x86_loc_str(b1, ra, ins->src1, x64, syntax), dest_reg, syntax);
     x86_emit_op(sb, "sub", sfx,

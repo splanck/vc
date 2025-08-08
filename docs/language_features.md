@@ -318,7 +318,8 @@ vc -o ptr_arith.s ptr_arith.c
 Pointer subtraction of two pointers is also supported and returns the
 element distance between them.
 Pointer offsets are scaled by the size of the pointed-to type rather
-than the machine word size.
+than the machine word size. If the pointed-to type has size zero, the
+difference is defined to be zero.
 
 Pointer variables may also be incremented or decremented with `++` and
 `--`.  These operations are equivalent to adding or subtracting one
