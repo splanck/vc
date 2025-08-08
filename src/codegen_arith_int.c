@@ -237,8 +237,19 @@ void emit_cmp(strbuf_t *sb, ir_instr_t *ins,
                    x86_loc_str(b1, ra, ins->src2, x64, syntax),
                    x86_loc_str(b2, ra, ins->dest, x64, syntax));
     strbuf_appendf(sb, "    set%s %s\n", cc, al);
-    strbuf_appendf(sb, "    %s %s, %s\n", x64 ? "movzbq" : "movzbl", al,
-                   x86_loc_str(b2, ra, ins->dest, x64, syntax));
+    int loc = ra ? ra->loc[ins->dest] : 0;
+    const char *dest = x86_loc_str(b2, ra, ins->dest, x64, syntax);
+    if (loc < 0) {
+        /* Destination on stack: write byte, then zero-extend via scratch register. */
+        x86_emit_mov(sb, "b", al, dest, syntax);
+        const char *ax = x86_fmt_reg(x64 ? "%rax" : "%eax", syntax);
+        strbuf_appendf(sb, "    %s %s, %s\n", x64 ? "movzbq" : "movzbl", al, ax);
+        x86_emit_mov(sb, x64 ? "q" : "l", ax, dest, syntax);
+    } else {
+        /* Destination in register: zero-extend directly. */
+        strbuf_appendf(sb, "    %s %s, %s\n", x64 ? "movzbq" : "movzbl", al,
+                       dest);
+    }
 }
 
 
