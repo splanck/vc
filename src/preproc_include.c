@@ -78,6 +78,10 @@ static char *fd_realpath(int fd, const char *fallback)
     }
     ssize_t len = readlink(proc, path, sizeof(path) - 1);
     if (len >= 0) {
+        if (len == (ssize_t)sizeof(path) - 1) {
+            errno = ENAMETOOLONG;
+            return NULL;
+        }
         path[len] = '\0';
         char *canon = realpath(path, NULL);
         if (!canon)
