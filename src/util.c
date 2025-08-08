@@ -85,6 +85,8 @@ void *vc_realloc_or_exit(void *ptr, size_t size)
 /* Return a newly allocated copy of the given NUL terminated string. */
 char *vc_strdup(const char *s)
 {
+    if (!s)
+        return NULL;
     size_t len = strlen(s);
     char *out = malloc(len + 1);
     if (!out)
