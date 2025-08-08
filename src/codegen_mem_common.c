@@ -8,6 +8,8 @@
 size_t arg_stack_bytes = 0;
 /* Next argument register index used for x86-64 calls. */
 int arg_reg_idx = 0;
+/* Next XMM argument register index used for x86-64 calls. */
+int float_reg_idx = 0;
 
 /* Architecture specific memory emitters. */
 extern mem_emit_fn mem_emitters[];

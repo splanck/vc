@@ -124,6 +124,7 @@ static void emit_call(strbuf_t *sb, ir_instr_t *ins,
     }
     arg_stack_bytes = 0;
     arg_reg_idx = 0;
+    float_reg_idx = 0;
     if (ins->dest > 0) {
         if (syntax == ASM_INTEL)
             strbuf_appendf(sb, "    mov%s %s, %s\n", sfx,
@@ -155,6 +156,7 @@ static void emit_call_ptr(strbuf_t *sb, ir_instr_t *ins,
     }
     arg_stack_bytes = 0;
     arg_reg_idx = 0;
+    float_reg_idx = 0;
     if (ins->dest > 0) {
         if (syntax == ASM_INTEL)
             strbuf_appendf(sb, "    mov%s %s, %s\n", sfx,
