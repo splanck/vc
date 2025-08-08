@@ -113,14 +113,19 @@ void emit_load_ptr(strbuf_t *sb, ir_instr_t *ins,
     const char *dest = spill ? reg_str(SCRATCH_REG, syntax)
                              : loc_str(destb, ra, ins->dest, x64, syntax);
     const char *slot = loc_str(mem, ra, ins->dest, x64, syntax);
+    const char *addr = loc_str(b1, ra, ins->src1, x64, syntax);
     char srcbuf[32];
-    if (syntax == ASM_INTEL)
-        snprintf(srcbuf, sizeof(srcbuf), "[%s]",
-                 loc_str(b1, ra, ins->src1, x64, syntax));
-    else
-        snprintf(srcbuf, sizeof(srcbuf), "(%s)",
-                 loc_str(b1, ra, ins->src1, x64, syntax));
-    emit_move_with_spill(sb, sfx, srcbuf, dest, slot, spill, syntax);
+    const char *src;
+    if (ra && ins->src1 > 0 && ra->loc[ins->src1] >= 0) {
+        if (syntax == ASM_INTEL)
+            snprintf(srcbuf, sizeof(srcbuf), "[%s]", addr);
+        else
+            snprintf(srcbuf, sizeof(srcbuf), "(%s)", addr);
+        src = srcbuf;
+    } else {
+        src = addr;
+    }
+    emit_move_with_spill(sb, sfx, src, dest, slot, spill, syntax);
 }
 
 /*

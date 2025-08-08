@@ -90,14 +90,26 @@ void emit_store_ptr(strbuf_t *sb, ir_instr_t *ins,
     const char *sfx = (x64 && ins->type != TYPE_INT) ? "q" : "l";
     if (syntax == ASM_INTEL) {
         char b2[32];
-        strbuf_appendf(sb, "    mov%s [%s], %s\n", sfx,
-                       loc_str(b2, ra, ins->src1, x64, syntax),
+        const char *addr = loc_str(b2, ra, ins->src1, x64, syntax);
+        char buf[32];
+        const char *dst = addr;
+        if (ra && ins->src1 > 0 && ra->loc[ins->src1] >= 0) {
+            snprintf(buf, sizeof(buf), "[%s]", addr);
+            dst = buf;
+        }
+        strbuf_appendf(sb, "    mov%s %s, %s\n", sfx, dst,
                        loc_str(b1, ra, ins->src2, x64, syntax));
     } else {
         char b2[32];
-        strbuf_appendf(sb, "    mov%s %s, (%s)\n", sfx,
-                       loc_str(b1, ra, ins->src2, x64, syntax),
-                       loc_str(b2, ra, ins->src1, x64, syntax));
+        const char *addr = loc_str(b2, ra, ins->src1, x64, syntax);
+        char buf[32];
+        const char *dst = addr;
+        if (ra && ins->src1 > 0 && ra->loc[ins->src1] >= 0) {
+            snprintf(buf, sizeof(buf), "(%s)", addr);
+            dst = buf;
+        }
+        strbuf_appendf(sb, "    mov%s %s, %s\n", sfx,
+                       loc_str(b1, ra, ins->src2, x64, syntax), dst);
     }
 }
 

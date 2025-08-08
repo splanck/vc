@@ -203,6 +203,17 @@ if [ $ret -eq 0 ] || ! grep -q "Semantic error" "${err}"; then
 fi
 rm -f "${out}" "${err}"
 
+# verify pointer loads/stores from spilled addresses
+cc -I "$DIR/../include" -Wall -Wextra -std=c99 \
+    "$DIR/unit/test_load_store_spill.c" \
+    "$DIR/../src/codegen_load.c" "$DIR/../src/codegen_store.c" \
+    "$DIR/../src/strbuf.c" "$DIR/../src/regalloc_x86.c" -o "$DIR/load_store_spill"
+if ! "$DIR/load_store_spill" >/dev/null; then
+    echo "Test load_store_spill failed"
+    fail=1
+fi
+rm -f "$DIR/load_store_spill"
+
 # negative test for failing static assertion
 err=$(safe_mktemp)
 out=$(safe_mktemp)
