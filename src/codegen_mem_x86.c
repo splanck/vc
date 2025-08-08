@@ -437,7 +437,7 @@ static void emit_arg(strbuf_t *sb, ir_instr_t *ins,
     else if (t == TYPE_DOUBLE)
         sz = 8;
     else if (t == TYPE_LDOUBLE)
-        sz = 10;
+        sz = x64 ? 16 : 10;
     static const char *arg_regs[6] = {"%rdi", "%rsi", "%rdx", "%rcx", "%r8", "%r9"};
     if (x64 && arg_reg_idx < 6 && t != TYPE_FLOAT && t != TYPE_DOUBLE && t != TYPE_LDOUBLE) {
         const char *reg = fmt_reg(arg_regs[arg_reg_idx], syntax);
@@ -468,10 +468,11 @@ static void emit_arg(strbuf_t *sb, ir_instr_t *ins,
                        loc_str(b1, ra, ins->src1, x64, syntax));
         strbuf_appendf(sb, "    movsd %%xmm0, (%s)\n", sp);
     } else if (t == TYPE_LDOUBLE) {
+        size_t pad = x64 ? 16 : 10;
         if (syntax == ASM_INTEL)
-            strbuf_appendf(sb, "    sub %s, 10\n", sp);
+            strbuf_appendf(sb, "    sub %s, %zu\n", sp, pad);
         else
-            strbuf_appendf(sb, "    sub $10, %s\n", sp);
+            strbuf_appendf(sb, "    sub $%zu, %s\n", pad, sp);
         strbuf_appendf(sb, "    fldt %s\n", loc_str(b1, ra, ins->src1, x64, syntax));
         strbuf_appendf(sb, "    fstpt (%s)\n", sp);
     } else {
