@@ -109,9 +109,18 @@ int gather_varargs(vector_t *args, size_t fixed,
     strbuf_t sb;
     strbuf_init(&sb);
     for (size_t i = fixed; i < args->count; i++) {
-        if (i > fixed)
-            strbuf_append(&sb, ",");
-        strbuf_append(&sb, ((char **)args->data)[i]);
+        if (i > fixed) {
+            if (strbuf_append(&sb, ",") != 0) {
+                strbuf_free(&sb);
+                vc_oom();
+                return 0;
+            }
+        }
+        if (strbuf_append(&sb, ((char **)args->data)[i]) != 0) {
+            strbuf_free(&sb);
+            vc_oom();
+            return 0;
+        }
     }
     char *va = vc_strdup(sb.data ? sb.data : "");
     strbuf_free(&sb);
