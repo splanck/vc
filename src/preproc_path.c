@@ -383,8 +383,7 @@ int collect_include_dirs(vector_t *search_dirs,
                 return 0;
             }
             memcpy(dup, sysroot, root_len);
-            dup[root_len] = '\0';
-            strcat(dup, base);
+            memcpy(dup + root_len, base, strlen(base) + 1);
             if (!vector_push(dest, &dup)) {
                 free(dup);
                 free_string_vector(dest);
