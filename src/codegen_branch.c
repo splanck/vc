@@ -23,8 +23,7 @@ extern int dwarf_enabled;
 /* Forward declarations for small helpers. */
 static void emit_return(strbuf_t *sb, ir_instr_t *ins,
                         regalloc_t *ra, int x64,
-                        const char *sfx, const char *ax,
-                        asm_syntax_t syntax);
+                        const char *ax, asm_syntax_t syntax);
 static void emit_call(strbuf_t *sb, ir_instr_t *ins,
                       regalloc_t *ra, int x64,
                       const char *sfx, const char *ax, const char *sp,
@@ -81,26 +80,56 @@ static const char *loc_str(char buf[32], regalloc_t *ra, int id, int x64,
     return buf;
 }
 
+/* Map a type to the appropriate mov instruction suffix. */
+static const char *mov_sfx_from_type(type_kind_t t, int x64)
+{
+    size_t size;
+    switch (t) {
+    case TYPE_CHAR: case TYPE_UCHAR: case TYPE_BOOL:
+        size = 1; break;
+    case TYPE_SHORT: case TYPE_USHORT:
+        size = 2; break;
+    case TYPE_LLONG: case TYPE_ULLONG:
+    case TYPE_DOUBLE: case TYPE_LDOUBLE:
+    case TYPE_FLOAT_COMPLEX: case TYPE_DOUBLE_COMPLEX:
+    case TYPE_LDOUBLE_COMPLEX:
+        size = 8; break;
+    case TYPE_PTR: case TYPE_ARRAY:
+        size = x64 ? 8 : 4; break;
+    case TYPE_INT: case TYPE_UINT: case TYPE_LONG: case TYPE_ULONG:
+    case TYPE_ENUM: case TYPE_FLOAT:
+        size = 4; break;
+    default:
+        size = x64 ? 8 : 4; break;
+    }
+    switch (size) {
+    case 1: return "b";
+    case 2: return "w";
+    case 4: return "l";
+    default: return "q";
+    }
+}
+
 /* Emit a return instruction (IR_RETURN or IR_RETURN_AGG). */
 static void emit_return(strbuf_t *sb, ir_instr_t *ins,
                         regalloc_t *ra, int x64,
-                        const char *sfx, const char *ax,
-                        asm_syntax_t syntax)
+                        const char *ax, asm_syntax_t syntax)
 {
     char buf[32];
+    const char *msfx = mov_sfx_from_type(ins->type, x64);
     if (ins->op == IR_RETURN) {
         if (syntax == ASM_INTEL)
-            strbuf_appendf(sb, "    mov%s %s, %s\n", sfx, ax,
+            strbuf_appendf(sb, "    mov%s %s, %s\n", msfx, ax,
                            loc_str(buf, ra, ins->src1, x64, syntax));
         else
-            strbuf_appendf(sb, "    mov%s %s, %s\n", sfx,
+            strbuf_appendf(sb, "    mov%s %s, %s\n", msfx,
                            loc_str(buf, ra, ins->src1, x64, syntax), ax);
     } else { /* IR_RETURN_AGG */
         if (syntax == ASM_INTEL)
-            strbuf_appendf(sb, "    mov%s [%s], %s\n", sfx, ax,
+            strbuf_appendf(sb, "    mov%s [%s], %s\n", msfx, ax,
                            loc_str(buf, ra, ins->src1, x64, syntax));
         else
-            strbuf_appendf(sb, "    mov%s %s, (%s)\n", sfx,
+            strbuf_appendf(sb, "    mov%s %s, (%s)\n", msfx,
                            loc_str(buf, ra, ins->src1, x64, syntax), ax);
     }
     strbuf_append(sb, "    ret\n");
@@ -113,6 +142,7 @@ static void emit_call(strbuf_t *sb, ir_instr_t *ins,
                       asm_syntax_t syntax)
 {
     char buf[32];
+    const char *msfx = mov_sfx_from_type(ins->type, x64);
     strbuf_appendf(sb, "    call %s\n", ins->name);
     if (ins->imm > 0 && arg_stack_bytes > 0) {
         if (syntax == ASM_INTEL)
@@ -127,10 +157,10 @@ static void emit_call(strbuf_t *sb, ir_instr_t *ins,
     float_reg_idx = 0;
     if (ins->dest > 0) {
         if (syntax == ASM_INTEL)
-            strbuf_appendf(sb, "    mov%s %s, %s\n", sfx,
+            strbuf_appendf(sb, "    mov%s %s, %s\n", msfx,
                            loc_str(buf, ra, ins->dest, x64, syntax), ax);
         else
-            strbuf_appendf(sb, "    mov%s %s, %s\n", sfx, ax,
+            strbuf_appendf(sb, "    mov%s %s, %s\n", msfx, ax,
                            loc_str(buf, ra, ins->dest, x64, syntax));
     }
 }
@@ -142,6 +172,7 @@ static void emit_call_ptr(strbuf_t *sb, ir_instr_t *ins,
                           asm_syntax_t syntax)
 {
     char buf[32];
+    const char *msfx = mov_sfx_from_type(ins->type, x64);
     if (syntax == ASM_INTEL)
         strbuf_appendf(sb, "    call %s\n", loc_str(buf, ra, ins->src1, x64, syntax));
     else
@@ -159,10 +190,10 @@ static void emit_call_ptr(strbuf_t *sb, ir_instr_t *ins,
     float_reg_idx = 0;
     if (ins->dest > 0) {
         if (syntax == ASM_INTEL)
-            strbuf_appendf(sb, "    mov%s %s, %s\n", sfx,
+            strbuf_appendf(sb, "    mov%s %s, %s\n", msfx,
                            loc_str(buf, ra, ins->dest, x64, syntax), ax);
         else
-            strbuf_appendf(sb, "    mov%s %s, %s\n", sfx, ax,
+            strbuf_appendf(sb, "    mov%s %s, %s\n", msfx, ax,
                            loc_str(buf, ra, ins->dest, x64, syntax));
     }
 }
@@ -291,7 +322,7 @@ void emit_branch_instr(strbuf_t *sb, ir_instr_t *ins,
     switch (ins->op) {
     case IR_RETURN:
     case IR_RETURN_AGG:
-        emit_return(sb, ins, ra, x64, sfx, ax, syntax);
+        emit_return(sb, ins, ra, x64, ax, syntax);
         break;
     case IR_CALL:
     case IR_CALL_NR:
