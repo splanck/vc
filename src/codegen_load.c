@@ -116,7 +116,20 @@ void emit_load_ptr(strbuf_t *sb, ir_instr_t *ins,
     const char *addr = loc_str(b1, ra, ins->src1, x64, syntax);
     char srcbuf[32];
     const char *src;
-    if (ra && ins->src1 > 0 && ra->loc[ins->src1] >= 0) {
+    if (ra && ins->src1 > 0 && ra->loc[ins->src1] < 0) {
+        /* `src1` spilled: load address into scratch first. */
+        const char *scratch = reg_str(SCRATCH_REG, syntax);
+        const char *psfx = x64 ? "q" : "l";
+        if (syntax == ASM_INTEL)
+            strbuf_appendf(sb, "    mov%s %s, %s\n", psfx, scratch, addr);
+        else
+            strbuf_appendf(sb, "    mov%s %s, %s\n", psfx, addr, scratch);
+        if (syntax == ASM_INTEL)
+            snprintf(srcbuf, sizeof(srcbuf), "[%s]", scratch);
+        else
+            snprintf(srcbuf, sizeof(srcbuf), "(%s)", scratch);
+        src = srcbuf;
+    } else if (ra && ins->src1 > 0 && ra->loc[ins->src1] >= 0) {
         if (syntax == ASM_INTEL)
             snprintf(srcbuf, sizeof(srcbuf), "[%s]", addr);
         else
