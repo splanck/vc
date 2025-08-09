@@ -271,6 +271,17 @@ if ! "$DIR/emit_cast_int64" >/dev/null; then
 fi
 rm -f "$DIR/emit_cast_int64"
 
+# verify complex addition emission
+cc -I "$DIR/../include" -Wall -Wextra -std=c99 \
+    "$DIR/unit/test_emit_cplx_add.c" \
+    "$DIR/../src/codegen_complex.c" "$DIR/../src/codegen_x86.c" \
+    "$DIR/../src/strbuf.c" "$DIR/../src/regalloc_x86.c" -o "$DIR/emit_cplx_add"
+if ! "$DIR/emit_cplx_add" >/dev/null; then
+    echo "Test emit_cplx_add failed"
+    fail=1
+fi
+rm -f "$DIR/emit_cplx_add"
+
 # verify shifts with destination in %ecx/%rcx
 cc -I "$DIR/../include" -Wall -Wextra -std=c99 \
     "$DIR/unit/test_shift_rcx.c" \

@@ -64,38 +64,22 @@ void emit_cplx_addsub(strbuf_t *sb, ir_instr_t *ins, regalloc_t *ra,
     const char *reg1 = fmt_reg(regalloc_xmm_name(r1), syntax);
 
     /* real part */
-    if (syntax == ASM_INTEL) {
-        strbuf_appendf(sb, "    movsd %s, %s\n", reg0,
-                       loc_str_off(b1, ra, ins->src1, 0, x64, syntax));
-        strbuf_appendf(sb, "    movsd %s, %s\n", reg1,
-                       loc_str_off(b2, ra, ins->src2, 0, x64, syntax));
-        strbuf_appendf(sb, "    %s %s, %s\n", op, reg0, reg1);
-        strbuf_appendf(sb, "    movsd %s, %s\n",
-                       loc_str_off(b3, ra, ins->dest, 0, x64, syntax), reg0);
-        /* imag part */
-        strbuf_appendf(sb, "    movsd %s, %s\n", reg0,
-                       loc_str_off(b1, ra, ins->src1, 8, x64, syntax));
-        strbuf_appendf(sb, "    movsd %s, %s\n", reg1,
-                       loc_str_off(b2, ra, ins->src2, 8, x64, syntax));
-        strbuf_appendf(sb, "    %s %s, %s\n", op, reg0, reg1);
-        strbuf_appendf(sb, "    movsd %s, %s\n",
-                       loc_str_off(b3, ra, ins->dest, 8, x64, syntax), reg0);
-    } else {
-        strbuf_appendf(sb, "    movsd %s, %s\n",
-                       loc_str_off(b1, ra, ins->src1, 0, x64, syntax), reg0);
-        strbuf_appendf(sb, "    movsd %s, %s\n",
-                       loc_str_off(b2, ra, ins->src2, 0, x64, syntax), reg1);
-        strbuf_appendf(sb, "    %s %s, %s\n", op, reg1, reg0);
-        strbuf_appendf(sb, "    movsd %s, %s\n", reg0,
-                       loc_str_off(b3, ra, ins->dest, 0, x64, syntax));
-        strbuf_appendf(sb, "    movsd %s, %s\n",
-                       loc_str_off(b1, ra, ins->src1, 8, x64, syntax), reg0);
-        strbuf_appendf(sb, "    movsd %s, %s\n",
-                       loc_str_off(b2, ra, ins->src2, 8, x64, syntax), reg1);
-        strbuf_appendf(sb, "    %s %s, %s\n", op, reg1, reg0);
-        strbuf_appendf(sb, "    movsd %s, %s\n", reg0,
-                       loc_str_off(b3, ra, ins->dest, 8, x64, syntax));
-    }
+    emit_movsd(sb, loc_str_off(b1, ra, ins->src1, 0, x64, syntax), reg0,
+               syntax);
+    emit_movsd(sb, loc_str_off(b2, ra, ins->src2, 0, x64, syntax), reg1,
+               syntax);
+    emit_op_sd(sb, op, reg1, reg0, syntax);
+    emit_movsd(sb, reg0, loc_str_off(b3, ra, ins->dest, 0, x64, syntax),
+               syntax);
+
+    /* imag part */
+    emit_movsd(sb, loc_str_off(b1, ra, ins->src1, 8, x64, syntax), reg0,
+               syntax);
+    emit_movsd(sb, loc_str_off(b2, ra, ins->src2, 8, x64, syntax), reg1,
+               syntax);
+    emit_op_sd(sb, op, reg1, reg0, syntax);
+    emit_movsd(sb, reg0, loc_str_off(b3, ra, ins->dest, 8, x64, syntax),
+               syntax);
     regalloc_xmm_release(r1);
     regalloc_xmm_release(r0);
 }
