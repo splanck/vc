@@ -238,6 +238,7 @@ void emit_cmp(strbuf_t *sb, ir_instr_t *ins,
 {
     char b1[32];
     char b2[32];
+    char b3[32];
     const char *sfx = (x64 && ins->type != TYPE_INT) ? "q" : "l";
     const char *cc = "";
     switch (ins->op) {
@@ -249,21 +250,28 @@ void emit_cmp(strbuf_t *sb, ir_instr_t *ins,
     case IR_CMPGE: cc = "ge"; break;
     default: break;
     }
-    const char *al = x86_fmt_reg("%al", syntax);
-    x86_emit_mov(sb, sfx,
-                 x86_loc_str(b1, ra, ins->src1, x64, syntax),
-                 x86_loc_str(b2, ra, ins->dest, x64, syntax), syntax);
+
+    const char *src1 = x86_loc_str(b1, ra, ins->src1, x64, syntax);
+    const char *src2 = x86_loc_str(b2, ra, ins->src2, x64, syntax);
+    int src1_mem = ra && ins->src1 > 0 && ra->loc[ins->src1] < 0;
+    int src2_mem = ra && ins->src2 > 0 && ra->loc[ins->src2] < 0;
+    const char *op1 = src1;
+    const char *op2 = src2;
+    if (src1_mem && src2_mem) {
+        const char *scratch = x86_reg_str(SCRATCH_REG, syntax);
+        x86_emit_mov(sb, sfx, src1, scratch, syntax);
+        op1 = scratch;
+    }
+
     if (syntax == ASM_INTEL)
-        strbuf_appendf(sb, "    cmp%s %s, %s\n", sfx,
-                       x86_loc_str(b2, ra, ins->dest, x64, syntax),
-                       x86_loc_str(b1, ra, ins->src2, x64, syntax));
+        strbuf_appendf(sb, "    cmp%s %s, %s\n", sfx, op1, op2);
     else
-        strbuf_appendf(sb, "    cmp%s %s, %s\n", sfx,
-                       x86_loc_str(b1, ra, ins->src2, x64, syntax),
-                       x86_loc_str(b2, ra, ins->dest, x64, syntax));
+        strbuf_appendf(sb, "    cmp%s %s, %s\n", sfx, op2, op1);
+
+    const char *al = x86_fmt_reg("%al", syntax);
     strbuf_appendf(sb, "    set%s %s\n", cc, al);
     int loc = ra ? ra->loc[ins->dest] : 0;
-    const char *dest = x86_loc_str(b2, ra, ins->dest, x64, syntax);
+    const char *dest = x86_loc_str(b3, ra, ins->dest, x64, syntax);
     if (loc < 0) {
         /* Destination on stack: write byte, then zero-extend via scratch register. */
         x86_emit_mov(sb, "b", al, dest, syntax);
