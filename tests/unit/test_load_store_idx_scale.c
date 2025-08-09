@@ -8,7 +8,11 @@
 /* Provide minimal stubs required by codegen helpers. */
 const char *fmt_stack(char buf[32], const char *name, int x64,
                       asm_syntax_t syntax) {
-    (void)buf; (void)x64; (void)syntax;
+    (void)x64;
+    if (syntax == ASM_INTEL) {
+        snprintf(buf, 32, "[%s]", name);
+        return buf;
+    }
     return name;
 }
 
@@ -33,7 +37,7 @@ int main(void) {
     /* 32-bit load */
     strbuf_init(&sb);
     emit_load_idx(&sb, &ins, &ra, 0, ASM_ATT);
-    if (!strstr(sb.data, ",4)")) {
+    if (!strstr(sb.data, "base(,") || !strstr(sb.data, ",4)")) {
         printf("load idx 32 ATT failed: %s\n", sb.data);
         return 1;
     }
@@ -41,7 +45,7 @@ int main(void) {
 
     strbuf_init(&sb);
     emit_load_idx(&sb, &ins, &ra, 0, ASM_INTEL);
-    if (!strstr(sb.data, ",4)")) {
+    if (!(strstr(sb.data, "[base+") && strstr(sb.data, "*4]") && !strstr(sb.data, "[[base"))) {
         printf("load idx 32 Intel failed: %s\n", sb.data);
         return 1;
     }
@@ -52,7 +56,7 @@ int main(void) {
     ins.src2 = 2;
     strbuf_init(&sb);
     emit_store_idx(&sb, &ins, &ra, 0, ASM_ATT);
-    if (!strstr(sb.data, ",4)")) {
+    if (!strstr(sb.data, "base(,") || !strstr(sb.data, ",4)")) {
         printf("store idx 32 ATT failed: %s\n", sb.data);
         return 1;
     }
@@ -60,7 +64,7 @@ int main(void) {
 
     strbuf_init(&sb);
     emit_store_idx(&sb, &ins, &ra, 0, ASM_INTEL);
-    if (!strstr(sb.data, ",4)")) {
+    if (!(strstr(sb.data, "[base+") && strstr(sb.data, "*4]") && !strstr(sb.data, "[[base"))) {
         printf("store idx 32 Intel failed: %s\n", sb.data);
         return 1;
     }
@@ -70,7 +74,7 @@ int main(void) {
     ins.imm = 8;
     strbuf_init(&sb);
     emit_load_idx(&sb, &ins, &ra, 1, ASM_ATT);
-    if (!strstr(sb.data, ",8)")) {
+    if (!strstr(sb.data, "base(,") || !strstr(sb.data, ",8)")) {
         printf("load idx 64 ATT failed: %s\n", sb.data);
         return 1;
     }
@@ -78,7 +82,7 @@ int main(void) {
 
     strbuf_init(&sb);
     emit_load_idx(&sb, &ins, &ra, 1, ASM_INTEL);
-    if (!strstr(sb.data, ",8)")) {
+    if (!(strstr(sb.data, "[base+") && strstr(sb.data, "*8]") && !strstr(sb.data, "[[base"))) {
         printf("load idx 64 Intel failed: %s\n", sb.data);
         return 1;
     }
@@ -87,7 +91,7 @@ int main(void) {
     /* 64-bit store */
     strbuf_init(&sb);
     emit_store_idx(&sb, &ins, &ra, 1, ASM_ATT);
-    if (!strstr(sb.data, ",8)")) {
+    if (!strstr(sb.data, "base(,") || !strstr(sb.data, ",8)")) {
         printf("store idx 64 ATT failed: %s\n", sb.data);
         return 1;
     }
@@ -95,7 +99,7 @@ int main(void) {
 
     strbuf_init(&sb);
     emit_store_idx(&sb, &ins, &ra, 1, ASM_INTEL);
-    if (!strstr(sb.data, ",8)")) {
+    if (!(strstr(sb.data, "[base+") && strstr(sb.data, "*8]") && !strstr(sb.data, "[[base"))) {
         printf("store idx 64 Intel failed: %s\n", sb.data);
         return 1;
     }
@@ -105,15 +109,17 @@ int main(void) {
     size_t sizes[] = {1, 2, sizeof(long), sizeof(long long)};
     const char *names[] = {"char", "short", "long", "long long"};
     for (int i = 0; i < 4; ++i) {
-        char expect[32];
-        snprintf(expect, sizeof(expect), ",%zu)", sizes[i]);
+        char expect_att[32];
+        char expect_intel[32];
+        snprintf(expect_att, sizeof(expect_att), ",%zu)", sizes[i]);
+        snprintf(expect_intel, sizeof(expect_intel), "*%zu]", sizes[i]);
         ins.imm = (int)sizes[i];
 
         /* load */
         ins.op = IR_LOAD_IDX;
         strbuf_init(&sb);
         emit_load_idx(&sb, &ins, &ra, 1, ASM_ATT);
-        if (!strstr(sb.data, expect)) {
+        if (!strstr(sb.data, expect_att)) {
             printf("load idx %s failed: %s\n", names[i], sb.data);
             return 1;
         }
@@ -121,7 +127,9 @@ int main(void) {
 
         strbuf_init(&sb);
         emit_load_idx(&sb, &ins, &ra, 1, ASM_INTEL);
-        if (!strstr(sb.data, expect)) {
+        if (!strstr(sb.data, "[base+") ||
+            (sizes[i] != 1 && !strstr(sb.data, expect_intel)) ||
+            (sizes[i] == 1 && strstr(sb.data, "*"))) {
             printf("load idx %s Intel failed: %s\n", names[i], sb.data);
             return 1;
         }
@@ -132,7 +140,7 @@ int main(void) {
         ins.src2 = 2;
         strbuf_init(&sb);
         emit_store_idx(&sb, &ins, &ra, 1, ASM_ATT);
-        if (!strstr(sb.data, expect)) {
+        if (!strstr(sb.data, expect_att)) {
             printf("store idx %s failed: %s\n", names[i], sb.data);
             return 1;
         }
@@ -140,7 +148,9 @@ int main(void) {
 
         strbuf_init(&sb);
         emit_store_idx(&sb, &ins, &ra, 1, ASM_INTEL);
-        if (!strstr(sb.data, expect)) {
+        if (!strstr(sb.data, "[base+") ||
+            (sizes[i] != 1 && !strstr(sb.data, expect_intel)) ||
+            (sizes[i] == 1 && strstr(sb.data, "*"))) {
             printf("store idx %s Intel failed: %s\n", names[i], sb.data);
             return 1;
         }

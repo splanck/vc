@@ -146,9 +146,21 @@ void emit_store_idx(strbuf_t *sb, ir_instr_t *ins,
         scale = 1;
     if (syntax == ASM_INTEL) {
         char b2[32];
-        strbuf_appendf(sb, "    mov%s %s(,%s,%d), %s\n", sfx, base,
-                       loc_str(b2, ra, ins->src1, x64, syntax), scale,
-                       loc_str(b1, ra, ins->src2, x64, syntax));
+        const char *idx = loc_str(b2, ra, ins->src1, x64, syntax);
+        const char *b = base;
+        char inner[32];
+        size_t len = strlen(base);
+        if (len >= 2 && base[0] == '[' && base[len - 1] == ']') {
+            /* Remove surrounding brackets produced by fmt_stack. */
+            snprintf(inner, sizeof(inner), "%.*s", (int)(len - 2), base + 1);
+            b = inner;
+        }
+        if (scale == 1)
+            strbuf_appendf(sb, "    mov%s [%s+%s], %s\n", sfx, b, idx,
+                           loc_str(b1, ra, ins->src2, x64, syntax));
+        else
+            strbuf_appendf(sb, "    mov%s [%s+%s*%d], %s\n", sfx, b, idx, scale,
+                           loc_str(b1, ra, ins->src2, x64, syntax));
     } else {
         char b2[32];
         strbuf_appendf(sb, "    mov%s %s, %s(,%s,%d)\n", sfx,
