@@ -15,7 +15,7 @@ main:
     movl p, ecx
     movl ecx, 1
     movl ebx, 5
-    movl a(,ecx,4), ebx
+    movl [a+ecx*4], ebx
     movl ebx, p
     movl ecx, [ebx]
     movl eax, ecx
