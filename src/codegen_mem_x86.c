@@ -172,7 +172,7 @@ static void emit_const(strbuf_t *sb, ir_instr_t *ins,
 {
     char destb[32];
     char mem[32];
-    const char *sfx = x64 ? "q" : "l";
+    const char *sfx = type_sfx(ins->type, x64);
     int spill = (ra && ins->dest > 0 && ra->loc[ins->dest] < 0);
     const char *dest = spill ? reg_str(SCRATCH_REG, syntax)
                              : loc_str(destb, ra, ins->dest, x64, syntax);
@@ -215,7 +215,7 @@ static void emit_load_param(strbuf_t *sb, ir_instr_t *ins,
     const char *bp = (syntax == ASM_INTEL)
                      ? (x64 ? "rbp" : "ebp")
                      : (x64 ? "%rbp" : "%ebp");
-    const char *sfx = x64 ? "q" : "l";
+    const char *sfx = type_sfx(ins->type, x64);
     int spill = (ra && ins->dest > 0 && ra->loc[ins->dest] < 0);
     const char *dest = spill ? reg_str(SCRATCH_REG, syntax)
                              : loc_str(destb, ra, ins->dest, x64, syntax);
@@ -245,7 +245,7 @@ static void emit_store_param(strbuf_t *sb, ir_instr_t *ins,
     const char *bp = (syntax == ASM_INTEL)
                      ? (x64 ? "rbp" : "ebp")
                      : (x64 ? "%rbp" : "%ebp");
-    const char *sfx = x64 ? "q" : "l";
+    const char *sfx = type_sfx(ins->type, x64);
     int off = 8 + (int)ins->imm * (x64 ? 8 : 4);
     if (syntax == ASM_INTEL)
         strbuf_appendf(sb, "    mov%s %d(%s), %s\n", sfx,
@@ -267,7 +267,7 @@ static void emit_addr(strbuf_t *sb, ir_instr_t *ins,
 {
     char destb[32];
     char mem[32];
-    const char *sfx = x64 ? "q" : "l";
+    const char *sfx = type_sfx(ins->type, x64);
     int spill = (ra && ins->dest > 0 && ra->loc[ins->dest] < 0);
     const char *dest = spill ? reg_str(SCRATCH_REG, syntax)
                              : loc_str(destb, ra, ins->dest, x64, syntax);
@@ -311,7 +311,7 @@ static void emit_load_idx(strbuf_t *sb, ir_instr_t *ins,
     char b1[32];
     char destb[32];
     char mem[32];
-    const char *sfx = (x64 && ins->type != TYPE_INT) ? "q" : "l";
+    const char *sfx = type_sfx(ins->type, x64);
     int spill = (ra && ins->dest > 0 && ra->loc[ins->dest] < 0);
     const char *dest = spill ? reg_str(SCRATCH_REG, syntax)
                              : loc_str(destb, ra, ins->dest, x64, syntax);
@@ -356,7 +356,7 @@ static void emit_bfload(strbuf_t *sb, ir_instr_t *ins,
 {
     char destb[32];
     char mem[32];
-    const char *sfx = x64 ? "q" : "l";
+    const char *sfx = type_sfx(ins->type, x64);
     int spill = (ra && ins->dest > 0 && ra->loc[ins->dest] < 0);
     const char *dest = spill ? reg_str(SCRATCH_REG, syntax)
                              : loc_str(destb, ra, ins->dest, x64, syntax);
@@ -397,7 +397,7 @@ static void emit_bfstore(strbuf_t *sb, ir_instr_t *ins,
                          asm_syntax_t syntax)
 {
     char bval[32];
-    const char *sfx = x64 ? "q" : "l";
+    const char *sfx = type_sfx(ins->type, x64);
     unsigned shift = (unsigned)(ins->imm >> 32);
     unsigned width = (unsigned)(ins->imm & 0xffffffffu);
     /* Mask covering the bit-field width. */
@@ -533,7 +533,7 @@ static void emit_glob_string(strbuf_t *sb, ir_instr_t *ins,
 {
     char destb[32];
     char mem[32];
-    const char *sfx = x64 ? "q" : "l";
+    const char *sfx = type_sfx(ins->type, x64);
     int spill = (ra && ins->dest > 0 && ra->loc[ins->dest] < 0);
     const char *dest = spill ? reg_str(SCRATCH_REG, syntax)
                              : loc_str(destb, ra, ins->dest, x64, syntax);

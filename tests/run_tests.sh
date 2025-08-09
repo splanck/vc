@@ -260,6 +260,17 @@ if ! "$DIR/load_store_idx_scale" >/dev/null; then
 fi
 rm -f "$DIR/load_store_idx_scale"
 
+# verify load/store emission for char and short types
+cc -I "$DIR/../include" -Wall -Wextra -std=c99 \
+    "$DIR/unit/test_load_store_char_short.c" \
+    "$DIR/../src/codegen_load.c" "$DIR/../src/codegen_store.c" \
+    "$DIR/../src/strbuf.c" "$DIR/../src/regalloc_x86.c" -o "$DIR/load_store_char_short"
+if ! "$DIR/load_store_char_short" >/dev/null; then
+    echo "Test load_store_char_short failed"
+    fail=1
+fi
+rm -f "$DIR/load_store_char_short"
+
 # verify 64-bit int/float cast emission
 cc -I "$DIR/../include" -Wall -Wextra -std=c99 \
     "$DIR/unit/test_emit_cast_int64.c" \

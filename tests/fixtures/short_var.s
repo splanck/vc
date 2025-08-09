@@ -5,8 +5,8 @@ main:
     pushl %ebp
     movl %esp, %ebp
     movl $1, %eax
-    movl %eax, s
-    movl $1, %eax
+    movw %eax, s
+    movw $1, %eax
     movl %eax, %eax
     ret
     movl %ebp, %esp

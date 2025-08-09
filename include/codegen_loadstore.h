@@ -42,6 +42,19 @@ static inline int idx_scale(const ir_instr_t *ins, int x64)
     }
 }
 
+/* Map a type to the x86 instruction suffix. */
+static inline const char *type_sfx(type_kind_t t, int x64)
+{
+    switch (t) {
+    case TYPE_CHAR: case TYPE_UCHAR:
+        return "b";
+    case TYPE_SHORT: case TYPE_USHORT:
+        return "w";
+    default:
+        return x64 ? "q" : "l";
+    }
+}
+
 void emit_load(strbuf_t *sb, ir_instr_t *ins,
                regalloc_t *ra, int x64,
                asm_syntax_t syntax);
