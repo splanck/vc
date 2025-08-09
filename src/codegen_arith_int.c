@@ -366,10 +366,10 @@ void emit_arith_instr(strbuf_t *sb, ir_instr_t *ins,
         emit_long_float_binop(sb, ins, ra, x64, "fdivp", syntax);
         break;
     case IR_CPLX_ADD:
-        emit_cplx_addsub(sb, ins, ra, x64, "addsd", syntax);
+        emit_cplx_addsub(sb, ins, ra, x64, "add", syntax);
         break;
     case IR_CPLX_SUB:
-        emit_cplx_addsub(sb, ins, ra, x64, "subsd", syntax);
+        emit_cplx_addsub(sb, ins, ra, x64, "sub", syntax);
         break;
     case IR_CPLX_MUL:
         emit_cplx_mul(sb, ins, ra, x64, syntax);
