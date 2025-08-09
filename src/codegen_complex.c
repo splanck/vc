@@ -59,7 +59,18 @@ void emit_cplx_addsub(strbuf_t *sb, ir_instr_t *ins, regalloc_t *ra,
     char b2[32];
     char b3[32];
     int r0 = regalloc_xmm_acquire();
+    if (r0 < 0) {
+        fprintf(stderr, "emit_cplx_addsub: XMM register allocation failed\n");
+        strbuf_appendf(sb, "    # XMM register allocation failed\n");
+        return;
+    }
     int r1 = regalloc_xmm_acquire();
+    if (r1 < 0) {
+        regalloc_xmm_release(r0);
+        fprintf(stderr, "emit_cplx_addsub: XMM register allocation failed\n");
+        strbuf_appendf(sb, "    # XMM register allocation failed\n");
+        return;
+    }
     const char *reg0 = fmt_reg(regalloc_xmm_name(r0), syntax);
     const char *reg1 = fmt_reg(regalloc_xmm_name(r1), syntax);
 
@@ -90,9 +101,35 @@ void emit_cplx_mul(strbuf_t *sb, ir_instr_t *ins, regalloc_t *ra,
 {
     char a[32], c[32], d[32], out[32];
     int r0 = regalloc_xmm_acquire();
+    if (r0 < 0) {
+        fprintf(stderr, "emit_cplx_mul: XMM register allocation failed\n");
+        strbuf_appendf(sb, "    # XMM register allocation failed\n");
+        return;
+    }
     int r1 = regalloc_xmm_acquire();
+    if (r1 < 0) {
+        regalloc_xmm_release(r0);
+        fprintf(stderr, "emit_cplx_mul: XMM register allocation failed\n");
+        strbuf_appendf(sb, "    # XMM register allocation failed\n");
+        return;
+    }
     int r2 = regalloc_xmm_acquire();
+    if (r2 < 0) {
+        regalloc_xmm_release(r1);
+        regalloc_xmm_release(r0);
+        fprintf(stderr, "emit_cplx_mul: XMM register allocation failed\n");
+        strbuf_appendf(sb, "    # XMM register allocation failed\n");
+        return;
+    }
     int r3 = regalloc_xmm_acquire();
+    if (r3 < 0) {
+        regalloc_xmm_release(r2);
+        regalloc_xmm_release(r1);
+        regalloc_xmm_release(r0);
+        fprintf(stderr, "emit_cplx_mul: XMM register allocation failed\n");
+        strbuf_appendf(sb, "    # XMM register allocation failed\n");
+        return;
+    }
     const char *x0 = fmt_reg(regalloc_xmm_name(r0), syntax);
     const char *x1 = fmt_reg(regalloc_xmm_name(r1), syntax);
     const char *x2 = fmt_reg(regalloc_xmm_name(r2), syntax);
@@ -127,10 +164,45 @@ void emit_cplx_div(strbuf_t *sb, ir_instr_t *ins, regalloc_t *ra,
 {
     char a[32], c[32], d[32], out[32];
     int r0 = regalloc_xmm_acquire();
+    if (r0 < 0) {
+        fprintf(stderr, "emit_cplx_div: XMM register allocation failed\n");
+        strbuf_appendf(sb, "    # XMM register allocation failed\n");
+        return;
+    }
     int r1 = regalloc_xmm_acquire();
+    if (r1 < 0) {
+        regalloc_xmm_release(r0);
+        fprintf(stderr, "emit_cplx_div: XMM register allocation failed\n");
+        strbuf_appendf(sb, "    # XMM register allocation failed\n");
+        return;
+    }
     int r2 = regalloc_xmm_acquire();
+    if (r2 < 0) {
+        regalloc_xmm_release(r1);
+        regalloc_xmm_release(r0);
+        fprintf(stderr, "emit_cplx_div: XMM register allocation failed\n");
+        strbuf_appendf(sb, "    # XMM register allocation failed\n");
+        return;
+    }
     int r3 = regalloc_xmm_acquire();
+    if (r3 < 0) {
+        regalloc_xmm_release(r2);
+        regalloc_xmm_release(r1);
+        regalloc_xmm_release(r0);
+        fprintf(stderr, "emit_cplx_div: XMM register allocation failed\n");
+        strbuf_appendf(sb, "    # XMM register allocation failed\n");
+        return;
+    }
     int r4 = regalloc_xmm_acquire();
+    if (r4 < 0) {
+        regalloc_xmm_release(r3);
+        regalloc_xmm_release(r2);
+        regalloc_xmm_release(r1);
+        regalloc_xmm_release(r0);
+        fprintf(stderr, "emit_cplx_div: XMM register allocation failed\n");
+        strbuf_appendf(sb, "    # XMM register allocation failed\n");
+        return;
+    }
     const char *x0 = fmt_reg(regalloc_xmm_name(r0), syntax);
     const char *x1 = fmt_reg(regalloc_xmm_name(r1), syntax);
     const char *x2 = fmt_reg(regalloc_xmm_name(r2), syntax);
