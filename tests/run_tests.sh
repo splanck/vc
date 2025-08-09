@@ -326,6 +326,17 @@ if ! "$DIR/shift_rcx" >/dev/null; then
 fi
 rm -f "$DIR/shift_rcx"
 
+# verify fallback when XMM registers are exhausted
+cc -I "$DIR/../include" -Wall -Wextra -std=c99 \
+    "$DIR/unit/test_xmm_fallback.c" \
+    "$DIR/../src/codegen_float.c" "$DIR/../src/codegen_complex.c" \
+    "$DIR/../src/codegen_x86.c" "$DIR/../src/strbuf.c" "$DIR/../src/regalloc_x86.c" -o "$DIR/xmm_fallback"
+if ! "$DIR/xmm_fallback" >/dev/null; then
+    echo "Test xmm_fallback failed"
+    fail=1
+fi
+rm -f "$DIR/xmm_fallback"
+
 # negative test for failing static assertion
 err=$(safe_mktemp)
 out=$(safe_mktemp)

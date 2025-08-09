@@ -58,7 +58,18 @@ void emit_float_binop(strbuf_t *sb, ir_instr_t *ins,
 {
     char b1[32];
     int r0 = regalloc_xmm_acquire();
+    if (r0 < 0) {
+        fprintf(stderr, "emit_float_binop: XMM register allocation failed\n");
+        strbuf_appendf(sb, "    # XMM register allocation failed\n");
+        return;
+    }
     int r1 = regalloc_xmm_acquire();
+    if (r1 < 0) {
+        regalloc_xmm_release(r0);
+        fprintf(stderr, "emit_float_binop: XMM register allocation failed\n");
+        strbuf_appendf(sb, "    # XMM register allocation failed\n");
+        return;
+    }
     const char *reg0 = fmt_reg(regalloc_xmm_name(r0), syntax);
     const char *reg1 = fmt_reg(regalloc_xmm_name(r1), syntax);
     if (syntax == ASM_INTEL) {
