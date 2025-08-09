@@ -249,6 +249,17 @@ if ! "$DIR/cmp_spill" >/dev/null; then
 fi
 rm -f "$DIR/cmp_spill"
 
+# verify compare emission order under Intel syntax
+cc -I "$DIR/../include" -Wall -Wextra -std=c99 \
+    "$DIR/unit/test_cmp_intel.c" \
+    "$DIR/../src/codegen_arith_int.c" "$DIR/../src/codegen_x86.c" \
+    "$DIR/../src/strbuf.c" "$DIR/../src/regalloc_x86.c" -o "$DIR/cmp_intel"
+if ! "$DIR/cmp_intel" >/dev/null; then
+    echo "Test cmp_intel failed"
+    fail=1
+fi
+rm -f "$DIR/cmp_intel"
+
 # verify indexed load/store scale handling
 cc -I "$DIR/../include" -Wall -Wextra -std=c99 \
     "$DIR/unit/test_load_store_idx_scale.c" \

@@ -248,9 +248,14 @@ void emit_cmp(strbuf_t *sb, ir_instr_t *ins,
     x86_emit_mov(sb, sfx,
                  x86_loc_str(b1, ra, ins->src1, x64, syntax),
                  x86_loc_str(b2, ra, ins->dest, x64, syntax), syntax);
-    strbuf_appendf(sb, "    cmp%s %s, %s\n", sfx,
-                   x86_loc_str(b1, ra, ins->src2, x64, syntax),
-                   x86_loc_str(b2, ra, ins->dest, x64, syntax));
+    if (syntax == ASM_INTEL)
+        strbuf_appendf(sb, "    cmp%s %s, %s\n", sfx,
+                       x86_loc_str(b2, ra, ins->dest, x64, syntax),
+                       x86_loc_str(b1, ra, ins->src2, x64, syntax));
+    else
+        strbuf_appendf(sb, "    cmp%s %s, %s\n", sfx,
+                       x86_loc_str(b1, ra, ins->src2, x64, syntax),
+                       x86_loc_str(b2, ra, ins->dest, x64, syntax));
     strbuf_appendf(sb, "    set%s %s\n", cc, al);
     int loc = ra ? ra->loc[ins->dest] : 0;
     const char *dest = x86_loc_str(b2, ra, ins->dest, x64, syntax);
