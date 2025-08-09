@@ -88,29 +88,42 @@ void emit_store_ptr(strbuf_t *sb, ir_instr_t *ins,
 {
     char b1[32];
     const char *sfx = (x64 && ins->type != TYPE_INT) ? "q" : "l";
-    if (syntax == ASM_INTEL) {
-        char b2[32];
-        const char *addr = loc_str(b2, ra, ins->src1, x64, syntax);
-        char buf[32];
-        const char *dst = addr;
+    char addrbuf[32];
+    char dstbuf[32];
+    const char *dst;
+
+    if (ra && ins->src1 > 0 && ra->loc[ins->src1] < 0) {
+        /* `src1` spilled: load address into scratch first. */
+        const char *scratch = reg_str(SCRATCH_REG, syntax);
+        const char *slot = loc_str(addrbuf, ra, ins->src1, x64, syntax);
+        const char *psfx = x64 ? "q" : "l";
+        if (syntax == ASM_INTEL)
+            strbuf_appendf(sb, "    mov%s %s, %s\n", psfx, scratch, slot);
+        else
+            strbuf_appendf(sb, "    mov%s %s, %s\n", psfx, slot, scratch);
+        if (syntax == ASM_INTEL)
+            snprintf(dstbuf, sizeof(dstbuf), "[%s]", scratch);
+        else
+            snprintf(dstbuf, sizeof(dstbuf), "(%s)", scratch);
+        dst = dstbuf;
+    } else {
+        const char *addr = loc_str(addrbuf, ra, ins->src1, x64, syntax);
+        dst = addr;
         if (ra && ins->src1 > 0 && ra->loc[ins->src1] >= 0) {
-            snprintf(buf, sizeof(buf), "[%s]", addr);
-            dst = buf;
+            if (syntax == ASM_INTEL)
+                snprintf(dstbuf, sizeof(dstbuf), "[%s]", addr);
+            else
+                snprintf(dstbuf, sizeof(dstbuf), "(%s)", addr);
+            dst = dstbuf;
         }
+    }
+
+    if (syntax == ASM_INTEL)
         strbuf_appendf(sb, "    mov%s %s, %s\n", sfx, dst,
                        loc_str(b1, ra, ins->src2, x64, syntax));
-    } else {
-        char b2[32];
-        const char *addr = loc_str(b2, ra, ins->src1, x64, syntax);
-        char buf[32];
-        const char *dst = addr;
-        if (ra && ins->src1 > 0 && ra->loc[ins->src1] >= 0) {
-            snprintf(buf, sizeof(buf), "(%s)", addr);
-            dst = buf;
-        }
+    else
         strbuf_appendf(sb, "    mov%s %s, %s\n", sfx,
                        loc_str(b1, ra, ins->src2, x64, syntax), dst);
-    }
 }
 
 /*

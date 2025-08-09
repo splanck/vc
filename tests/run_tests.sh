@@ -216,6 +216,17 @@ if ! "$DIR/load_store_spill" >/dev/null; then
 fi
 rm -f "$DIR/load_store_spill"
 
+# verify storing through a stack-resident pointer
+cc -I "$DIR/../include" -Wall -Wextra -std=c99 \
+    "$DIR/unit/test_store_ptr_stack.c" \
+    "$DIR/../src/codegen_store.c" \
+    "$DIR/../src/strbuf.c" "$DIR/../src/regalloc_x86.c" -o "$DIR/store_ptr_stack"
+if ! "$DIR/store_ptr_stack" >/dev/null; then
+    echo "Test store_ptr_stack failed"
+    fail=1
+fi
+rm -f "$DIR/store_ptr_stack"
+
 # verify pointer difference with zero element size
 cc -I "$DIR/../include" -Wall -Wextra -std=c99 \
     "$DIR/unit/test_ptr_diff_zero.c" \
