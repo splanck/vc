@@ -248,8 +248,8 @@ static void emit_store_param(strbuf_t *sb, ir_instr_t *ins,
     const char *sfx = x64 ? "q" : "l";
     int off = 8 + (int)ins->imm * (x64 ? 8 : 4);
     if (syntax == ASM_INTEL)
-        strbuf_appendf(sb, "    mov%s %d(%s), %s\n", sfx,
-                       off, bp, loc_str(b1, ra, ins->src1, x64, syntax));
+        strbuf_appendf(sb, "    mov%s [%s+%d], %s\n", sfx,
+                       bp, off, loc_str(b1, ra, ins->src1, x64, syntax));
     else
         strbuf_appendf(sb, "    mov%s %s, %d(%s)\n", sfx,
                        loc_str(b1, ra, ins->src1, x64, syntax), off, bp);
