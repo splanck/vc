@@ -142,19 +142,39 @@ void emit_store_idx(strbuf_t *sb, ir_instr_t *ins,
     char basebuf[32];
     const char *base = fmt_stack(basebuf, ins->name, x64, syntax);
     int scale = idx_scale(ins, x64);
-    if (scale != 1 && scale != 2 && scale != 4 && scale != 8)
-        scale = 1;
+    const char *idx = loc_str(b1, ra, ins->src1, x64, syntax);
+    if (scale == 1 || scale == 2 || scale == 4 || scale == 8) {
+        if (syntax == ASM_INTEL) {
+            char b2[32];
+            strbuf_appendf(sb, "    mov%s %s(,%s,%d), %s\n", sfx, base,
+                           loc_str(b2, ra, ins->src1, x64, syntax), scale,
+                           loc_str(b1, ra, ins->src2, x64, syntax));
+        } else {
+            char b2[32];
+            strbuf_appendf(sb, "    mov%s %s, %s(,%s,%d)\n", sfx,
+                           loc_str(b1, ra, ins->src2, x64, syntax),
+                           base,
+                           loc_str(b2, ra, ins->src1, x64, syntax), scale);
+        }
+        return;
+    }
+
+    const char *psfx = x64 ? "q" : "l";
+    const char *scratch = reg_str(SCRATCH_REG, syntax);
+    if (syntax == ASM_INTEL)
+        strbuf_appendf(sb, "    mov%s %s, %s\n", psfx, scratch, idx);
+    else
+        strbuf_appendf(sb, "    mov%s %s, %s\n", psfx, idx, scratch);
+    if (syntax == ASM_INTEL)
+        strbuf_appendf(sb, "    imul%s %s, %s, %d\n", psfx, scratch, scratch, scale);
+    else
+        strbuf_appendf(sb, "    imul%s $%d, %s, %s\n", psfx, scale, scratch, scratch);
     if (syntax == ASM_INTEL) {
-        char b2[32];
-        strbuf_appendf(sb, "    mov%s %s(,%s,%d), %s\n", sfx, base,
-                       loc_str(b2, ra, ins->src1, x64, syntax), scale,
+        strbuf_appendf(sb, "    mov%s [%s+%s], %s\n", sfx, base, scratch,
                        loc_str(b1, ra, ins->src2, x64, syntax));
     } else {
-        char b2[32];
-        strbuf_appendf(sb, "    mov%s %s, %s(,%s,%d)\n", sfx,
-                       loc_str(b1, ra, ins->src2, x64, syntax),
-                       base,
-                       loc_str(b2, ra, ins->src1, x64, syntax), scale);
+        strbuf_appendf(sb, "    mov%s %s, %s(,%s,1)\n", sfx,
+                       loc_str(b1, ra, ins->src2, x64, syntax), base, scratch);
     }
 }
 

@@ -147,6 +147,52 @@ int main(void) {
         strbuf_free(&sb);
     }
 
+    if (sizeof(long double) > 8) {
+        /* long double index requires multiply */
+        ins.imm = 0;
+        ins.type = TYPE_LDOUBLE;
+
+        char bad_att[32];
+        snprintf(bad_att, sizeof(bad_att), ",%zu)", sizeof(long double));
+        char bad_intel[32];
+        snprintf(bad_intel, sizeof(bad_intel), "*%zu", sizeof(long double));
+
+        ins.op = IR_LOAD_IDX;
+        strbuf_init(&sb);
+        emit_load_idx(&sb, &ins, &ra, 1, ASM_ATT);
+        if (!strstr(sb.data, "imul") || strstr(sb.data, bad_att)) {
+            printf("load idx long double ATT failed: %s\n", sb.data);
+            return 1;
+        }
+        strbuf_free(&sb);
+
+        strbuf_init(&sb);
+        emit_load_idx(&sb, &ins, &ra, 1, ASM_INTEL);
+        if (!strstr(sb.data, "imul") || strstr(sb.data, bad_intel)) {
+            printf("load idx long double Intel failed: %s\n", sb.data);
+            return 1;
+        }
+        strbuf_free(&sb);
+
+        ins.op = IR_STORE_IDX;
+        ins.src2 = 2;
+        strbuf_init(&sb);
+        emit_store_idx(&sb, &ins, &ra, 1, ASM_ATT);
+        if (!strstr(sb.data, "imul") || strstr(sb.data, bad_att)) {
+            printf("store idx long double ATT failed: %s\n", sb.data);
+            return 1;
+        }
+        strbuf_free(&sb);
+
+        strbuf_init(&sb);
+        emit_store_idx(&sb, &ins, &ra, 1, ASM_INTEL);
+        if (!strstr(sb.data, "imul") || strstr(sb.data, bad_intel)) {
+            printf("store idx long double Intel failed: %s\n", sb.data);
+            return 1;
+        }
+        strbuf_free(&sb);
+    }
+
     printf("load/store idx scale tests passed\n");
     return 0;
 }

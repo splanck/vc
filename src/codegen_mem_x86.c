@@ -321,6 +321,20 @@ static void emit_load_idx(strbuf_t *sb, ir_instr_t *ins,
     char basebuf[32];
     const char *base = fmt_stack(basebuf, ins->name, x64, syntax);
     const char *idx = loc_str(b1, ra, ins->src1, x64, syntax);
+    const char *psfx = x64 ? "q" : "l";
+    const char *scratch = reg_str(SCRATCH_REG, syntax);
+    if (!(scale == 1 || scale == 2 || scale == 4 || scale == 8)) {
+        if (syntax == ASM_INTEL)
+            strbuf_appendf(sb, "    mov%s %s, %s\n", psfx, scratch, idx);
+        else
+            strbuf_appendf(sb, "    mov%s %s, %s\n", psfx, idx, scratch);
+        if (syntax == ASM_INTEL)
+            strbuf_appendf(sb, "    imul%s %s, %s, %d\n", psfx, scratch, scratch, scale);
+        else
+            strbuf_appendf(sb, "    imul%s $%d, %s, %s\n", psfx, scale, scratch, scratch);
+        idx = scratch;
+        scale = 1;
+    }
     if (syntax == ASM_INTEL) {
         char inner[32];
         const char *b = base;

@@ -30,11 +30,11 @@ static inline int idx_scale(const ir_instr_t *ins, int x64)
     case TYPE_FLOAT_COMPLEX:
         return 8;
     case TYPE_LDOUBLE:
-        return 10;
+        return (int)sizeof(long double);
     case TYPE_DOUBLE_COMPLEX:
-        return 16;
+        return 2 * (int)sizeof(double);
     case TYPE_LDOUBLE_COMPLEX:
-        return 20;
+        return 2 * (int)sizeof(long double);
     case TYPE_PTR:
         return x64 ? 8 : 4;
     default:

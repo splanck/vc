@@ -164,10 +164,27 @@ void emit_load_idx(strbuf_t *sb, ir_instr_t *ins,
     char basebuf[32];
     const char *base = fmt_stack(basebuf, ins->name, x64, syntax);
     int scale = idx_scale(ins, x64);
-    if (scale != 1 && scale != 2 && scale != 4 && scale != 8)
-        scale = 1;
-    snprintf(srcbuf, sizeof(srcbuf), "%s(,%s,%d)",
-             base, loc_str(b1, ra, ins->src1, x64, syntax), scale);
+    const char *idx = loc_str(b1, ra, ins->src1, x64, syntax);
+    if (scale == 1 || scale == 2 || scale == 4 || scale == 8) {
+        snprintf(srcbuf, sizeof(srcbuf), "%s(,%s,%d)", base, idx, scale);
+        emit_move_with_spill(sb, sfx, srcbuf, dest, slot, spill, syntax);
+        return;
+    }
+
+    const char *psfx = x64 ? "q" : "l";
+    const char *scratch = reg_str(SCRATCH_REG, syntax);
+    if (syntax == ASM_INTEL)
+        strbuf_appendf(sb, "    mov%s %s, %s\n", psfx, scratch, idx);
+    else
+        strbuf_appendf(sb, "    mov%s %s, %s\n", psfx, idx, scratch);
+    if (syntax == ASM_INTEL)
+        strbuf_appendf(sb, "    imul%s %s, %s, %d\n", psfx, scratch, scratch, scale);
+    else
+        strbuf_appendf(sb, "    imul%s $%d, %s, %s\n", psfx, scale, scratch, scratch);
+    if (syntax == ASM_INTEL)
+        snprintf(srcbuf, sizeof(srcbuf), "[%s+%s]", base, scratch);
+    else
+        snprintf(srcbuf, sizeof(srcbuf), "%s(,%s,1)", base, scratch);
     emit_move_with_spill(sb, sfx, srcbuf, dest, slot, spill, syntax);
 }
 
