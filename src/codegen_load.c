@@ -83,7 +83,7 @@ void emit_load(strbuf_t *sb, ir_instr_t *ins,
 {
     char destb[32];
     char mem[32];
-    const char *sfx = (x64 && ins->type != TYPE_INT) ? "q" : "l";
+    const char *sfx = type_sfx(ins->type, x64);
     int spill = (ra && ins->dest > 0 && ra->loc[ins->dest] < 0);
     const char *dest = spill ? reg_str(SCRATCH_REG, syntax)
                              : loc_str(destb, ra, ins->dest, x64, syntax);
@@ -108,7 +108,7 @@ void emit_load_ptr(strbuf_t *sb, ir_instr_t *ins,
     char b1[32];
     char destb[32];
     char mem[32];
-    const char *sfx = (x64 && ins->type != TYPE_INT) ? "q" : "l";
+    const char *sfx = type_sfx(ins->type, x64);
     int spill = (ra && ins->dest > 0 && ra->loc[ins->dest] < 0);
     const char *dest = spill ? reg_str(SCRATCH_REG, syntax)
                              : loc_str(destb, ra, ins->dest, x64, syntax);
@@ -142,7 +142,7 @@ void emit_load_idx(strbuf_t *sb, ir_instr_t *ins,
     char b1[32];
     char destb[32];
     char mem[32];
-    const char *sfx = (x64 && ins->type != TYPE_INT) ? "q" : "l";
+    const char *sfx = type_sfx(ins->type, x64);
     int spill = (ra && ins->dest > 0 && ra->loc[ins->dest] < 0);
     const char *dest = spill ? reg_str(SCRATCH_REG, syntax)
                              : loc_str(destb, ra, ins->dest, x64, syntax);

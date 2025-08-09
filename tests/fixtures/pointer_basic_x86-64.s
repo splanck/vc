@@ -8,7 +8,7 @@ main:
     movq $x, %rax
     movq %rax, p
     movq $42, %rax
-    movl %rax, x
+    movq %rax, x
     movq p, %rax
     movq (%rax), %rbx
     movq %rbx, %rax

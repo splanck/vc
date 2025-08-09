@@ -1,7 +1,7 @@
 id:
     pushl %ebp
     movl %esp, %ebp
-    movl 8(%ebp), %eax
+    movb 8(%ebp), %eax
     movl %eax, %eax
     ret
     movl %ebp, %esp

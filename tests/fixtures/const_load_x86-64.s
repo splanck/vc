@@ -6,9 +6,9 @@ main:
     pushq %rbp
     movq %rsp, %rbp
     movq $5, %rax
-    movl %rax, x
+    movq %rax, x
     movq $5, %rax
-    movl %rax, y
+    movq %rax, y
     movq $5, %rax
     movq %rax, %rax
     ret
