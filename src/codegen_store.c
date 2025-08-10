@@ -67,12 +67,25 @@ void emit_store(strbuf_t *sb, ir_instr_t *ins,
     const char *sfx = (x64 && ins->type != TYPE_INT) ? "q" : "l";
     char sbuf[32];
     const char *dst = fmt_stack(sbuf, ins->name, x64, syntax);
+    const char *src;
+
+    if (ra && ins->src1 > 0 && ra->loc[ins->src1] < 0) {
+        /* `src1` spilled: move through scratch register to avoid mem-to-mem. */
+        const char *scratch = reg_str(SCRATCH_REG, syntax);
+        const char *slot = loc_str(b1, ra, ins->src1, x64, syntax);
+        if (syntax == ASM_INTEL)
+            strbuf_appendf(sb, "    mov%s %s, %s\n", sfx, scratch, slot);
+        else
+            strbuf_appendf(sb, "    mov%s %s, %s\n", sfx, slot, scratch);
+        src = scratch;
+    } else {
+        src = loc_str(b1, ra, ins->src1, x64, syntax);
+    }
+
     if (syntax == ASM_INTEL)
-        strbuf_appendf(sb, "    mov%s %s, %s\n", sfx, dst,
-                       loc_str(b1, ra, ins->src1, x64, syntax));
+        strbuf_appendf(sb, "    mov%s %s, %s\n", sfx, dst, src);
     else
-        strbuf_appendf(sb, "    mov%s %s, %s\n", sfx,
-                       loc_str(b1, ra, ins->src1, x64, syntax), dst);
+        strbuf_appendf(sb, "    mov%s %s, %s\n", sfx, src, dst);
 }
 
 /*
