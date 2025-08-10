@@ -407,6 +407,17 @@ if ! "$DIR/xmm_fallback" >/dev/null; then
 fi
 rm -f "$DIR/xmm_fallback"
 
+# verify stack cleanup after function calls
+cc -I "$DIR/../include" -Wall -Wextra -std=c99 \
+    "$DIR/unit/test_call_stack_cleanup.c" \
+    "$DIR/../src/codegen_branch.c" "$DIR/../src/strbuf.c" \
+    "$DIR/../src/regalloc_x86.c" -o "$DIR/call_stack_cleanup"
+if ! "$DIR/call_stack_cleanup" >/dev/null; then
+    echo "Test call_stack_cleanup failed"
+    fail=1
+fi
+rm -f "$DIR/call_stack_cleanup"
+
 # negative test for failing static assertion
 err=$(safe_mktemp)
 out=$(safe_mktemp)

@@ -135,7 +135,9 @@ static void emit_return(strbuf_t *sb, ir_instr_t *ins,
     strbuf_append(sb, "    ret\n");
 }
 
-/* Emit a call instruction (IR_CALL). */
+/* Emit a call instruction (IR_CALL).
+ * Stack space for arguments and alignment is always restored with an
+ * add instruction when non-zero. */
 static void emit_call(strbuf_t *sb, ir_instr_t *ins,
                       regalloc_t *ra, int x64,
                       const char *sfx, const char *ax, const char *sp,
@@ -154,7 +156,9 @@ static void emit_call(strbuf_t *sb, ir_instr_t *ins,
     }
     strbuf_appendf(sb, "    call %s\n", ins->name);
     size_t total = arg_stack_bytes + align;
-    if (ins->imm > 0 && total > 0) {
+    /* Always restore any stack space used for arguments or alignment,
+       regardless of the instruction's immediate. */
+    if (total > 0) {
         if (syntax == ASM_INTEL)
             strbuf_appendf(sb, "    add%s %s, %zu\n", sfx, sp, total);
         else
@@ -173,7 +177,9 @@ static void emit_call(strbuf_t *sb, ir_instr_t *ins,
     }
 }
 
-/* Emit an indirect call instruction (IR_CALL_PTR). */
+/* Emit an indirect call instruction (IR_CALL_PTR).
+ * Stack space for arguments and alignment is always restored with an
+ * add instruction when non-zero. */
 static void emit_call_ptr(strbuf_t *sb, ir_instr_t *ins,
                           regalloc_t *ra, int x64,
                           const char *sfx, const char *ax, const char *sp,
@@ -195,7 +201,9 @@ static void emit_call_ptr(strbuf_t *sb, ir_instr_t *ins,
     else
         strbuf_appendf(sb, "    call *%s\n", loc_str(buf, ra, ins->src1, x64, syntax));
     size_t total = arg_stack_bytes + align;
-    if (ins->imm > 0 && total > 0) {
+    /* Always restore any stack space used for arguments or alignment,
+       regardless of the instruction's immediate. */
+    if (total > 0) {
         if (syntax == ASM_INTEL)
             strbuf_appendf(sb, "    add%s %s, %zu\n", sfx, sp, total);
         else
