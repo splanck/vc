@@ -341,10 +341,28 @@ static void emit_load_idx(strbuf_t *sb, ir_instr_t *ins,
                              : loc_str(destb, ra, ins->dest, x64, syntax);
     const char *slot = loc_str(mem, ra, ins->dest, x64, syntax);
     int scale = idx_scale(ins, x64);
+    int manual = (scale != 1 && scale != 2 && scale != 4 && scale != 8);
     char srcbuf[64];
     char basebuf[32];
     const char *base = fmt_stack(basebuf, ins->name, x64, syntax);
-    const char *idx = loc_str(b1, ra, ins->src1, x64, syntax);
+    const char *idx;
+    const char *psfx = x64 ? "q" : "l";
+    if (manual) {
+        const char *scratch = reg_str(SCRATCH_REG, syntax);
+        const char *src = loc_str(b1, ra, ins->src1, x64, syntax);
+        if (syntax == ASM_INTEL)
+            strbuf_appendf(sb, "    mov%s %s, %s\n", psfx, scratch, src);
+        else
+            strbuf_appendf(sb, "    mov%s %s, %s\n", psfx, src, scratch);
+        if (syntax == ASM_INTEL)
+            strbuf_appendf(sb, "    imul%s %s, %s, %d\n", psfx, scratch, scratch, scale);
+        else
+            strbuf_appendf(sb, "    imul%s $%d, %s, %s\n", psfx, scale, scratch, scratch);
+        idx = scratch;
+        scale = 1;
+    } else {
+        idx = loc_str(b1, ra, ins->src1, x64, syntax);
+    }
     if (syntax == ASM_INTEL) {
         char inner[32];
         const char *b = base;
