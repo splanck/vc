@@ -1,0 +1,14 @@
+sub:
+    pushl %ebp
+    movl %esp, %ebp
+    movl 8(%ebp), %eax
+    movl 12(%ebp), %ebx
+    movd %eax, %xmm0
+    movd %ebx, %xmm1
+    subss %xmm0, %xmm1
+    movd %xmm1, %ecx
+    movl %ecx, %eax
+    ret
+    movl %ebp, %esp
+    popl %ebp
+    ret
