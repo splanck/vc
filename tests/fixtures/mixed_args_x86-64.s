@@ -2,7 +2,7 @@ main:
     pushq %rbp
     movq %rsp, %rbp
     movq $2, %rax
-    movq %rax, -0(%rbp)
+    movl %rax, -0(%rbp)
     movq $3, %rax
     movq %rax, -0(%rbp)
     movq $1, %rax
