@@ -246,7 +246,7 @@ static void emit_store_param(strbuf_t *sb, ir_instr_t *ins,
                      ? (x64 ? "rbp" : "ebp")
                      : (x64 ? "%rbp" : "%ebp");
     const char *sfx = x64 ? "q" : "l";
-    int off = 8 + (int)ins->imm * (x64 ? 8 : 4);
+    int off = (x64 ? 16 : 8) + (int)ins->imm * (x64 ? 8 : 4);
     const char *src;
     if (ra && ins->src1 > 0 && ra->loc[ins->src1] < 0) {
         /* `src1` spilled: move through scratch register to avoid mem-to-mem. */
