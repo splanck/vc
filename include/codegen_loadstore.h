@@ -42,6 +42,63 @@ static inline int idx_scale(const ir_instr_t *ins, int x64)
     }
 }
 
+/*
+ * Determine the instruction suffix for loads/stores of the given type and
+ * return an optional sign/zero extension instruction for loads of small
+ * integers.  The returned suffix selects the memory operand size while the
+ * extension instruction loads a byte/word into a full register with the
+ * correct signedness.
+ */
+static inline const char *type_suffix_ext(type_kind_t t, int x64,
+                                          const char **ext)
+{
+    switch (t) {
+    case TYPE_CHAR:
+        *ext = x64 ? "movsbq" : "movsbl";
+        return "b";
+    case TYPE_UCHAR:
+    case TYPE_BOOL:
+        *ext = x64 ? "movzbq" : "movzbl";
+        return "b";
+    case TYPE_SHORT:
+        *ext = x64 ? "movswq" : "movswl";
+        return "w";
+    case TYPE_USHORT:
+        *ext = x64 ? "movzwq" : "movzwl";
+        return "w";
+    case TYPE_LLONG: case TYPE_ULLONG:
+    case TYPE_PTR:
+        *ext = NULL;
+        return x64 ? "q" : "l";
+    default:
+        *ext = NULL;
+        return "l";
+    }
+}
+
+/* Return the textual name of register `reg` for the given operand size. */
+static inline const char *reg_str_sized(int reg, char sfx, int x64,
+                                        asm_syntax_t syntax)
+{
+    (void)x64;
+    static const char *regs8[6]  = {"%al", "%bl", "%cl", "%dl", "%sil", "%dil"};
+    static const char *regs16[6] = {"%ax", "%bx", "%cx", "%dx", "%si", "%di"};
+    static const char *regs32[6] = {"%eax", "%ebx", "%ecx", "%edx", "%esi", "%edi"};
+    static const char *regs64[6] = {"%rax", "%rbx", "%rcx", "%rdx", "%rsi", "%rdi"};
+    const char *name;
+    if (reg < 0 || reg >= 6)
+        reg = 0;
+    switch (sfx) {
+    case 'b': name = regs8[reg]; break;
+    case 'w': name = regs16[reg]; break;
+    case 'q': name = regs64[reg]; break;
+    default:  name = regs32[reg]; break;
+    }
+    if (syntax == ASM_INTEL && name[0] == '%')
+        return name + 1;
+    return name;
+}
+
 void emit_load(strbuf_t *sb, ir_instr_t *ins,
                regalloc_t *ra, int x64,
                asm_syntax_t syntax);

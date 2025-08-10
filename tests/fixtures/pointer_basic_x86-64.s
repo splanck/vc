@@ -10,7 +10,7 @@ main:
     movq $42, %rax
     movl %rax, x
     movq p, %rax
-    movq (%rax), %rbx
+    movl (%rax), %rbx
     movq %rbx, %rax
     ret
     movq %rbp, %rsp

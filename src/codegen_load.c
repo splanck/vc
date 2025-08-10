@@ -83,14 +83,29 @@ void emit_load(strbuf_t *sb, ir_instr_t *ins,
 {
     char destb[32];
     char mem[32];
-    const char *sfx = (x64 && ins->type != TYPE_INT) ? "q" : "l";
+    const char *ext;
+    const char *sfx = type_suffix_ext(ins->type, x64, &ext);
     int spill = (ra && ins->dest > 0 && ra->loc[ins->dest] < 0);
     const char *dest = spill ? reg_str(SCRATCH_REG, syntax)
                              : loc_str(destb, ra, ins->dest, x64, syntax);
     const char *slot = loc_str(mem, ra, ins->dest, x64, syntax);
     char sbuf[32];
     const char *src = fmt_stack(sbuf, ins->name, x64, syntax);
-    emit_move_with_spill(sb, sfx, src, dest, slot, spill, syntax);
+    if (ext) {
+        const char *wsfx = x64 ? "q" : "l";
+        if (syntax == ASM_INTEL)
+            strbuf_appendf(sb, "    %s %s, %s\n", ext, dest, src);
+        else
+            strbuf_appendf(sb, "    %s %s, %s\n", ext, src, dest);
+        if (spill) {
+            if (syntax == ASM_INTEL)
+                strbuf_appendf(sb, "    mov%s %s, %s\n", wsfx, slot, dest);
+            else
+                strbuf_appendf(sb, "    mov%s %s, %s\n", wsfx, dest, slot);
+        }
+    } else {
+        emit_move_with_spill(sb, sfx, src, dest, slot, spill, syntax);
+    }
 }
 
 /*
@@ -108,7 +123,8 @@ void emit_load_ptr(strbuf_t *sb, ir_instr_t *ins,
     char b1[32];
     char destb[32];
     char mem[32];
-    const char *sfx = (x64 && ins->type != TYPE_INT) ? "q" : "l";
+    const char *ext;
+    const char *sfx = type_suffix_ext(ins->type, x64, &ext);
     int spill = (ra && ins->dest > 0 && ra->loc[ins->dest] < 0);
     const char *dest = spill ? reg_str(SCRATCH_REG, syntax)
                              : loc_str(destb, ra, ins->dest, x64, syntax);
@@ -138,7 +154,21 @@ void emit_load_ptr(strbuf_t *sb, ir_instr_t *ins,
     } else {
         src = addr;
     }
-    emit_move_with_spill(sb, sfx, src, dest, slot, spill, syntax);
+    if (ext) {
+        const char *wsfx = x64 ? "q" : "l";
+        if (syntax == ASM_INTEL)
+            strbuf_appendf(sb, "    %s %s, %s\n", ext, dest, src);
+        else
+            strbuf_appendf(sb, "    %s %s, %s\n", ext, src, dest);
+        if (spill) {
+            if (syntax == ASM_INTEL)
+                strbuf_appendf(sb, "    mov%s %s, %s\n", wsfx, slot, dest);
+            else
+                strbuf_appendf(sb, "    mov%s %s, %s\n", wsfx, dest, slot);
+        }
+    } else {
+        emit_move_with_spill(sb, sfx, src, dest, slot, spill, syntax);
+    }
 }
 
 /*
@@ -155,7 +185,8 @@ void emit_load_idx(strbuf_t *sb, ir_instr_t *ins,
     char b1[32];
     char destb[32];
     char mem[32];
-    const char *sfx = (x64 && ins->type != TYPE_INT) ? "q" : "l";
+    const char *ext;
+    const char *sfx = type_suffix_ext(ins->type, x64, &ext);
     int spill = (ra && ins->dest > 0 && ra->loc[ins->dest] < 0);
     const char *dest = spill ? reg_str(SCRATCH_REG, syntax)
                              : loc_str(destb, ra, ins->dest, x64, syntax);
@@ -183,6 +214,20 @@ void emit_load_idx(strbuf_t *sb, ir_instr_t *ins,
     } else {
         snprintf(srcbuf, sizeof(srcbuf), "%s(,%s,%d)", base, idx, scale);
     }
-    emit_move_with_spill(sb, sfx, srcbuf, dest, slot, spill, syntax);
+    if (ext) {
+        const char *wsfx = x64 ? "q" : "l";
+        if (syntax == ASM_INTEL)
+            strbuf_appendf(sb, "    %s %s, %s\n", ext, dest, srcbuf);
+        else
+            strbuf_appendf(sb, "    %s %s, %s\n", ext, srcbuf, dest);
+        if (spill) {
+            if (syntax == ASM_INTEL)
+                strbuf_appendf(sb, "    mov%s %s, %s\n", wsfx, slot, dest);
+            else
+                strbuf_appendf(sb, "    mov%s %s, %s\n", wsfx, dest, slot);
+        }
+    } else {
+        emit_move_with_spill(sb, sfx, srcbuf, dest, slot, spill, syntax);
+    }
 }
 

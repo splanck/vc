@@ -64,15 +64,36 @@ void emit_store(strbuf_t *sb, ir_instr_t *ins,
                 asm_syntax_t syntax)
 {
     char b1[32];
-    const char *sfx = (x64 && ins->type != TYPE_INT) ? "q" : "l";
+    const char *ext;
+    const char *sfx = type_suffix_ext(ins->type, x64, &ext);
+    (void)ext;
     char sbuf[32];
     const char *dst = fmt_stack(sbuf, ins->name, x64, syntax);
-    if (syntax == ASM_INTEL)
-        strbuf_appendf(sb, "    mov%s %s, %s\n", sfx, dst,
-                       loc_str(b1, ra, ins->src1, x64, syntax));
-    else
-        strbuf_appendf(sb, "    mov%s %s, %s\n", sfx,
-                       loc_str(b1, ra, ins->src1, x64, syntax), dst);
+    const char *src = loc_str(b1, ra, ins->src1, x64, syntax);
+    if (sfx[0] == 'b' || sfx[0] == 'w') {
+        int reg = (ra && ins->src1 > 0) ? ra->loc[ins->src1] : -1;
+        const char *low;
+        if (reg >= 0)
+            low = reg_str_sized(reg, sfx[0], x64, syntax);
+        else {
+            const char *scratch = reg_str(SCRATCH_REG, syntax);
+            const char *wsfx = x64 ? "q" : "l";
+            if (syntax == ASM_INTEL)
+                strbuf_appendf(sb, "    mov%s %s, %s\n", wsfx, scratch, src);
+            else
+                strbuf_appendf(sb, "    mov%s %s, %s\n", wsfx, src, scratch);
+            low = reg_str_sized(SCRATCH_REG, sfx[0], x64, syntax);
+        }
+        if (syntax == ASM_INTEL)
+            strbuf_appendf(sb, "    mov%s %s, %s\n", sfx, dst, low);
+        else
+            strbuf_appendf(sb, "    mov%s %s, %s\n", sfx, low, dst);
+    } else {
+        if (syntax == ASM_INTEL)
+            strbuf_appendf(sb, "    mov%s %s, %s\n", sfx, dst, src);
+        else
+            strbuf_appendf(sb, "    mov%s %s, %s\n", sfx, src, dst);
+    }
 }
 
 /*
@@ -87,7 +108,9 @@ void emit_store_ptr(strbuf_t *sb, ir_instr_t *ins,
                     asm_syntax_t syntax)
 {
     char b1[32];
-    const char *sfx = (x64 && ins->type != TYPE_INT) ? "q" : "l";
+    const char *ext;
+    const char *sfx = type_suffix_ext(ins->type, x64, &ext);
+    (void)ext;
     char addrbuf[32];
     char dstbuf[32];
     const char *dst;
@@ -118,12 +141,31 @@ void emit_store_ptr(strbuf_t *sb, ir_instr_t *ins,
         }
     }
 
-    if (syntax == ASM_INTEL)
-        strbuf_appendf(sb, "    mov%s %s, %s\n", sfx, dst,
-                       loc_str(b1, ra, ins->src2, x64, syntax));
-    else
-        strbuf_appendf(sb, "    mov%s %s, %s\n", sfx,
-                       loc_str(b1, ra, ins->src2, x64, syntax), dst);
+    const char *src = loc_str(b1, ra, ins->src2, x64, syntax);
+    if (sfx[0] == 'b' || sfx[0] == 'w') {
+        int reg = (ra && ins->src2 > 0) ? ra->loc[ins->src2] : -1;
+        const char *low;
+        if (reg >= 0)
+            low = reg_str_sized(reg, sfx[0], x64, syntax);
+        else {
+            const char *scratch = reg_str(SCRATCH_REG, syntax);
+            const char *wsfx = x64 ? "q" : "l";
+            if (syntax == ASM_INTEL)
+                strbuf_appendf(sb, "    mov%s %s, %s\n", wsfx, scratch, src);
+            else
+                strbuf_appendf(sb, "    mov%s %s, %s\n", wsfx, src, scratch);
+            low = reg_str_sized(SCRATCH_REG, sfx[0], x64, syntax);
+        }
+        if (syntax == ASM_INTEL)
+            strbuf_appendf(sb, "    mov%s %s, %s\n", sfx, dst, low);
+        else
+            strbuf_appendf(sb, "    mov%s %s, %s\n", sfx, low, dst);
+    } else {
+        if (syntax == ASM_INTEL)
+            strbuf_appendf(sb, "    mov%s %s, %s\n", sfx, dst, src);
+        else
+            strbuf_appendf(sb, "    mov%s %s, %s\n", sfx, src, dst);
+    }
 }
 
 /*
@@ -138,35 +180,72 @@ void emit_store_idx(strbuf_t *sb, ir_instr_t *ins,
                     asm_syntax_t syntax)
 {
     char b1[32];
-    const char *sfx = (x64 && ins->type != TYPE_INT) ? "q" : "l";
+    const char *ext;
+    const char *sfx = type_suffix_ext(ins->type, x64, &ext);
+    (void)ext;
     char basebuf[32];
     const char *base = fmt_stack(basebuf, ins->name, x64, syntax);
     int scale = idx_scale(ins, x64);
     if (scale != 1 && scale != 2 && scale != 4 && scale != 8)
         scale = 1;
-    if (syntax == ASM_INTEL) {
-        char b2[32];
-        const char *idx = loc_str(b2, ra, ins->src1, x64, syntax);
-        const char *b = base;
-        char inner[32];
-        size_t len = strlen(base);
-        if (len >= 2 && base[0] == '[' && base[len - 1] == ']') {
-            /* Remove surrounding brackets produced by fmt_stack. */
-            snprintf(inner, sizeof(inner), "%.*s", (int)(len - 2), base + 1);
-            b = inner;
+    if (sfx[0] == 'b' || sfx[0] == 'w') {
+        const char *src = loc_str(b1, ra, ins->src2, x64, syntax);
+        int reg = (ra && ins->src2 > 0) ? ra->loc[ins->src2] : -1;
+        const char *low;
+        if (reg >= 0) {
+            low = reg_str_sized(reg, sfx[0], x64, syntax);
+        } else {
+            const char *scratch = reg_str(SCRATCH_REG, syntax);
+            const char *wsfx = x64 ? "q" : "l";
+            if (syntax == ASM_INTEL)
+                strbuf_appendf(sb, "    mov%s %s, %s\n", wsfx, scratch, src);
+            else
+                strbuf_appendf(sb, "    mov%s %s, %s\n", wsfx, src, scratch);
+            low = reg_str_sized(SCRATCH_REG, sfx[0], x64, syntax);
         }
-        if (scale == 1)
-            strbuf_appendf(sb, "    mov%s [%s+%s], %s\n", sfx, b, idx,
-                           loc_str(b1, ra, ins->src2, x64, syntax));
-        else
-            strbuf_appendf(sb, "    mov%s [%s+%s*%d], %s\n", sfx, b, idx, scale,
-                           loc_str(b1, ra, ins->src2, x64, syntax));
+        if (syntax == ASM_INTEL) {
+            char b2[32];
+            const char *idx = loc_str(b2, ra, ins->src1, x64, syntax);
+            const char *b = base;
+            char inner[32];
+            size_t len = strlen(base);
+            if (len >= 2 && base[0] == '[' && base[len - 1] == ']') {
+                snprintf(inner, sizeof(inner), "%.*s", (int)(len - 2), base + 1);
+                b = inner;
+            }
+            if (scale == 1)
+                strbuf_appendf(sb, "    mov%s [%s+%s], %s\n", sfx, b, idx, low);
+            else
+                strbuf_appendf(sb, "    mov%s [%s+%s*%d], %s\n", sfx, b, idx, scale, low);
+        } else {
+            char b2[32];
+            strbuf_appendf(sb, "    mov%s %s, %s(,%s,%d)\n", sfx, low,
+                           base, loc_str(b2, ra, ins->src1, x64, syntax), scale);
+        }
     } else {
-        char b2[32];
-        strbuf_appendf(sb, "    mov%s %s, %s(,%s,%d)\n", sfx,
-                       loc_str(b1, ra, ins->src2, x64, syntax),
-                       base,
-                       loc_str(b2, ra, ins->src1, x64, syntax), scale);
+        if (syntax == ASM_INTEL) {
+            char b2[32];
+            const char *idx = loc_str(b2, ra, ins->src1, x64, syntax);
+            const char *b = base;
+            char inner[32];
+            size_t len = strlen(base);
+            if (len >= 2 && base[0] == '[' && base[len - 1] == ']') {
+                snprintf(inner, sizeof(inner), "%.*s", (int)(len - 2), base + 1);
+                b = inner;
+            }
+            if (scale == 1)
+                strbuf_appendf(sb, "    mov%s [%s+%s], %s\n", sfx, b, idx,
+                               loc_str(b1, ra, ins->src2, x64, syntax));
+            else
+                strbuf_appendf(sb, "    mov%s [%s+%s*%d], %s\n", sfx, b, idx, scale,
+                               loc_str(b1, ra, ins->src2, x64, syntax));
+        } else {
+            char b2[32];
+            strbuf_appendf(sb, "    mov%s %s, %s(,%s,%d)\n", sfx,
+                           loc_str(b1, ra, ins->src2, x64, syntax),
+                           base,
+                           loc_str(b2, ra, ins->src1, x64, syntax), scale);
+        }
     }
 }
 
