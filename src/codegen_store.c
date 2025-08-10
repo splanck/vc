@@ -170,6 +170,20 @@ void emit_store_idx(strbuf_t *sb, ir_instr_t *ins,
     if (scale != 1 && scale != 2 && scale != 4 && scale != 8)
         scale = 1;
 
+    const char *val;
+    if (ra && ins->src2 > 0 && ra->loc[ins->src2] < 0) {
+        /* `src2` spilled: move value through scratch register. */
+        const char *scratch = reg_str(SCRATCH_REG, syntax);
+        const char *slot = loc_str(b1, ra, ins->src2, x64, syntax);
+        if (syntax == ASM_INTEL)
+            strbuf_appendf(sb, "    mov%s %s, %s\n", sfx, scratch, slot);
+        else
+            strbuf_appendf(sb, "    mov%s %s, %s\n", sfx, slot, scratch);
+        val = scratch;
+    } else {
+        val = loc_str(b1, ra, ins->src2, x64, syntax);
+    }
+
     char b2[32];
     const char *idx;
     if (ra && ins->src1 > 0 && ra->loc[ins->src1] < 0) {
@@ -184,20 +198,6 @@ void emit_store_idx(strbuf_t *sb, ir_instr_t *ins,
         idx = scratch;
     } else {
         idx = loc_str(b2, ra, ins->src1, x64, syntax);
-    }
-
-    const char *val;
-    if (ra && ins->src2 > 0 && ra->loc[ins->src2] < 0) {
-        /* Load spilled value into scratch register. */
-        const char *scratch = reg_str(SCRATCH_REG, syntax);
-        const char *slot = loc_str(b1, ra, ins->src2, x64, syntax);
-        if (syntax == ASM_INTEL)
-            strbuf_appendf(sb, "    mov%s %s, %s\n", sfx, scratch, slot);
-        else
-            strbuf_appendf(sb, "    mov%s %s, %s\n", sfx, slot, scratch);
-        val = scratch;
-    } else {
-        val = loc_str(b1, ra, ins->src2, x64, syntax);
     }
 
     if (syntax == ASM_INTEL) {
