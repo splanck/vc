@@ -304,6 +304,17 @@ if ! "$DIR/emit_cast_int64" >/dev/null; then
 fi
 rm -f "$DIR/emit_cast_int64"
 
+# verify float/double to integer cast operand order
+cc -I "$DIR/../include" -Wall -Wextra -std=c99 \
+    "$DIR/unit/test_emit_cast_float_int.c" \
+    "$DIR/../src/codegen_arith_float.c" "$DIR/../src/strbuf.c" \
+    "$DIR/../src/regalloc_x86.c" -o "$DIR/emit_cast_float_int"
+if ! "$DIR/emit_cast_float_int" >/dev/null; then
+    echo "Test emit_cast_float_int failed"
+    fail=1
+fi
+rm -f "$DIR/emit_cast_float_int"
+
 # verify complex addition emission
 cc -I "$DIR/../include" -Wall -Wextra -std=c99 \
     "$DIR/unit/test_emit_cplx_add.c" \
