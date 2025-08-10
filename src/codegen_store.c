@@ -18,6 +18,7 @@
 
 
 #define SCRATCH_REG 0
+#define SCRATCH_REG2 1
 
 /* Forward declaration for register name helper. */
 static const char *reg_str(int reg, asm_syntax_t syntax);
@@ -175,7 +176,10 @@ void emit_store_ptr(strbuf_t *sb, ir_instr_t *ins,
     char dstbuf[32];
     const char *dst;
 
-    if (ra && ins->src1 > 0 && ra->loc[ins->src1] < 0) {
+    int addr_spill = ra && ins->src1 > 0 && ra->loc[ins->src1] < 0;
+    int val_spill = ra && ins->src2 > 0 && ra->loc[ins->src2] < 0;
+
+    if (addr_spill) {
         /* `src1` spilled: load address into scratch first. */
         const char *scratch = reg_str(SCRATCH_REG, syntax);
         const char *slot = loc_str(addrbuf, ra, ins->src1, x64, syntax);
@@ -202,11 +206,12 @@ void emit_store_ptr(strbuf_t *sb, ir_instr_t *ins,
     }
 
     const char *src;
-    if (ra && ins->src2 > 0 && ra->loc[ins->src2] < 0) {
+    if (val_spill) {
         /* Load spilled value into scratch register. */
+        int scratch_idx = addr_spill ? SCRATCH_REG2 : SCRATCH_REG;
         const char *scratch = (size <= 2)
-                                  ? reg_subreg(SCRATCH_REG, size, syntax)
-                                  : reg_str(SCRATCH_REG, syntax);
+                                  ? reg_subreg(scratch_idx, size, syntax)
+                                  : reg_str(scratch_idx, syntax);
         const char *slot = loc_str(b1, ra, ins->src2, x64, syntax);
         if (syntax == ASM_INTEL)
             strbuf_appendf(sb, "    mov%s %s, %s\n", sfx, scratch, slot);
