@@ -142,11 +142,21 @@ void emit_store_idx(strbuf_t *sb, ir_instr_t *ins,
     char basebuf[32];
     const char *base = fmt_stack(basebuf, ins->name, x64, syntax);
     int scale = idx_scale(ins, x64);
-    if (scale != 1 && scale != 2 && scale != 4 && scale != 8)
+    int mul = 0;
+    if (scale != 1 && scale != 2 && scale != 4 && scale != 8) {
+        mul = scale;
         scale = 1;
+    }
+    char b2[32];
+    const char *idx = loc_str(b2, ra, ins->src1, x64, syntax);
+    if (mul) {
+        const char *psfx = x64 ? "q" : "l";
+        if (syntax == ASM_INTEL)
+            strbuf_appendf(sb, "    imul%s %s, %d\n", psfx, idx, mul);
+        else
+            strbuf_appendf(sb, "    imul%s $%d, %s\n", psfx, mul, idx);
+    }
     if (syntax == ASM_INTEL) {
-        char b2[32];
-        const char *idx = loc_str(b2, ra, ins->src1, x64, syntax);
         const char *b = base;
         char inner[32];
         size_t len = strlen(base);
@@ -162,11 +172,10 @@ void emit_store_idx(strbuf_t *sb, ir_instr_t *ins,
             strbuf_appendf(sb, "    mov%s [%s+%s*%d], %s\n", sfx, b, idx, scale,
                            loc_str(b1, ra, ins->src2, x64, syntax));
     } else {
-        char b2[32];
         strbuf_appendf(sb, "    mov%s %s, %s(,%s,%d)\n", sfx,
                        loc_str(b1, ra, ins->src2, x64, syntax),
                        base,
-                       loc_str(b2, ra, ins->src1, x64, syntax), scale);
+                       idx, scale);
     }
 }
 

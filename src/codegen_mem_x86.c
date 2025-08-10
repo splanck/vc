@@ -317,10 +317,22 @@ static void emit_load_idx(strbuf_t *sb, ir_instr_t *ins,
                              : loc_str(destb, ra, ins->dest, x64, syntax);
     const char *slot = loc_str(mem, ra, ins->dest, x64, syntax);
     int scale = idx_scale(ins, x64);
+    int mul = 0;
+    if (scale != 1 && scale != 2 && scale != 4 && scale != 8) {
+        mul = scale;
+        scale = 1;
+    }
     char srcbuf[64];
     char basebuf[32];
     const char *base = fmt_stack(basebuf, ins->name, x64, syntax);
     const char *idx = loc_str(b1, ra, ins->src1, x64, syntax);
+    if (mul) {
+        const char *psfx = x64 ? "q" : "l";
+        if (syntax == ASM_INTEL)
+            strbuf_appendf(sb, "    imul%s %s, %d\n", psfx, idx, mul);
+        else
+            strbuf_appendf(sb, "    imul%s $%d, %s\n", psfx, mul, idx);
+    }
     if (syntax == ASM_INTEL) {
         char inner[32];
         const char *b = base;

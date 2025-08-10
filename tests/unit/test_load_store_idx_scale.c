@@ -157,6 +157,49 @@ int main(void) {
         strbuf_free(&sb);
     }
 
+    /* non power-of-two scale triggers an explicit multiply */
+    ins.imm = 3;
+
+    ins.op = IR_LOAD_IDX;
+    strbuf_init(&sb);
+    emit_load_idx(&sb, &ins, &ra, 1, ASM_ATT);
+    if (!strstr(sb.data, "imul") || !strstr(sb.data, ",1)") ||
+        strstr(sb.data, ",3)")) {
+        printf("load idx mul ATT failed: %s\n", sb.data);
+        return 1;
+    }
+    strbuf_free(&sb);
+
+    strbuf_init(&sb);
+    emit_load_idx(&sb, &ins, &ra, 1, ASM_INTEL);
+    if (!strstr(sb.data, "imul") || !strstr(sb.data, "[base+") ||
+        strstr(sb.data, "*3]")) {
+        printf("load idx mul Intel failed: %s\n", sb.data);
+        return 1;
+    }
+    strbuf_free(&sb);
+
+    ins.op = IR_STORE_IDX;
+    ins.src2 = 2;
+
+    strbuf_init(&sb);
+    emit_store_idx(&sb, &ins, &ra, 1, ASM_ATT);
+    if (!strstr(sb.data, "imul") || !strstr(sb.data, ",1)") ||
+        strstr(sb.data, ",3)")) {
+        printf("store idx mul ATT failed: %s\n", sb.data);
+        return 1;
+    }
+    strbuf_free(&sb);
+
+    strbuf_init(&sb);
+    emit_store_idx(&sb, &ins, &ra, 1, ASM_INTEL);
+    if (!strstr(sb.data, "imul") || !strstr(sb.data, "[base+") ||
+        strstr(sb.data, "*3]")) {
+        printf("store idx mul Intel failed: %s\n", sb.data);
+        return 1;
+    }
+    strbuf_free(&sb);
+
     printf("load/store idx scale tests passed\n");
     return 0;
 }
