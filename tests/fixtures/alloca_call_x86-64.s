@@ -17,7 +17,7 @@ caller:
     movq %rax, %rsi
     imulq $1, %rsi
     addq %rbx, %rsi
-    movq %rdx, (%rsi)
+    movl %rdx, (%rsi)
     movq %rbp, %rsp
     popq %rbp
     ret

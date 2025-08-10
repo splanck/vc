@@ -19,6 +19,53 @@
 
 #define SCRATCH_REG 0
 
+/* Forward declaration for register name helper. */
+static const char *reg_str(int reg, asm_syntax_t syntax);
+
+/* Determine operand size from the IR type. */
+static int op_size(type_kind_t t, int x64)
+{
+    switch (t) {
+    case TYPE_CHAR: case TYPE_UCHAR: case TYPE_BOOL:
+        return 1;
+    case TYPE_SHORT: case TYPE_USHORT:
+        return 2;
+    case TYPE_DOUBLE: case TYPE_LLONG: case TYPE_ULLONG:
+    case TYPE_FLOAT_COMPLEX:
+        return 8;
+    case TYPE_LDOUBLE:
+        return 10;
+    case TYPE_DOUBLE_COMPLEX:
+        return 16;
+    case TYPE_LDOUBLE_COMPLEX:
+        return 20;
+    case TYPE_PTR:
+        return x64 ? 8 : 4;
+    default:
+        return 4;
+    }
+}
+
+/* Return subregister name for register `reg` and size. */
+static const char *reg_subreg(int reg, int size, asm_syntax_t syntax)
+{
+    if (reg < 0 || reg >= REGALLOC_NUM_REGS)
+        reg = 0;
+    static const char *regs8_att[REGALLOC_NUM_REGS] =
+        {"%al", "%bl", "%cl", "%dl", "%sil", "%dil"};
+    static const char *regs8_intel[REGALLOC_NUM_REGS] =
+        {"al", "bl", "cl", "dl", "sil", "dil"};
+    static const char *regs16_att[REGALLOC_NUM_REGS] =
+        {"%ax", "%bx", "%cx", "%dx", "%si", "%di"};
+    static const char *regs16_intel[REGALLOC_NUM_REGS] =
+        {"ax", "bx", "cx", "dx", "si", "di"};
+    if (size == 1)
+        return (syntax == ASM_INTEL) ? regs8_intel[reg] : regs8_att[reg];
+    if (size == 2)
+        return (syntax == ASM_INTEL) ? regs16_intel[reg] : regs16_att[reg];
+    return reg_str(reg, syntax);
+}
+
 /* Helper to format a register name. */
 static const char *reg_str(int reg, asm_syntax_t syntax)
 {
@@ -64,14 +111,25 @@ void emit_store(strbuf_t *sb, ir_instr_t *ins,
                 asm_syntax_t syntax)
 {
     char b1[32];
-    const char *sfx = (x64 && ins->type != TYPE_INT) ? "q" : "l";
+    int size = op_size(ins->type, x64);
+    const char *sfx;
+    if (size == 1)
+        sfx = "b";
+    else if (size == 2)
+        sfx = "w";
+    else if (size == 8 && x64)
+        sfx = "q";
+    else
+        sfx = "l";
     char sbuf[32];
     const char *dst = fmt_stack(sbuf, ins->name, x64, syntax);
     const char *src;
 
     if (ra && ins->src1 > 0 && ra->loc[ins->src1] < 0) {
         /* `src1` spilled: move through scratch register to avoid mem-to-mem. */
-        const char *scratch = reg_str(SCRATCH_REG, syntax);
+        const char *scratch = (size <= 2)
+                                  ? reg_subreg(SCRATCH_REG, size, syntax)
+                                  : reg_str(SCRATCH_REG, syntax);
         const char *slot = loc_str(b1, ra, ins->src1, x64, syntax);
         if (syntax == ASM_INTEL)
             strbuf_appendf(sb, "    mov%s %s, %s\n", sfx, scratch, slot);
@@ -79,7 +137,10 @@ void emit_store(strbuf_t *sb, ir_instr_t *ins,
             strbuf_appendf(sb, "    mov%s %s, %s\n", sfx, slot, scratch);
         src = scratch;
     } else {
-        src = loc_str(b1, ra, ins->src1, x64, syntax);
+        if (ra && ins->src1 > 0 && ra->loc[ins->src1] >= 0 && size <= 2)
+            src = reg_subreg(ra->loc[ins->src1], size, syntax);
+        else
+            src = loc_str(b1, ra, ins->src1, x64, syntax);
     }
 
     if (syntax == ASM_INTEL)
@@ -100,7 +161,16 @@ void emit_store_ptr(strbuf_t *sb, ir_instr_t *ins,
                     asm_syntax_t syntax)
 {
     char b1[32];
-    const char *sfx = (x64 && ins->type != TYPE_INT) ? "q" : "l";
+    int size = op_size(ins->type, x64);
+    const char *sfx;
+    if (size == 1)
+        sfx = "b";
+    else if (size == 2)
+        sfx = "w";
+    else if (size == 8 && x64)
+        sfx = "q";
+    else
+        sfx = "l";
     char addrbuf[32];
     char dstbuf[32];
     const char *dst;
@@ -134,7 +204,9 @@ void emit_store_ptr(strbuf_t *sb, ir_instr_t *ins,
     const char *src;
     if (ra && ins->src2 > 0 && ra->loc[ins->src2] < 0) {
         /* Load spilled value into scratch register. */
-        const char *scratch = reg_str(SCRATCH_REG, syntax);
+        const char *scratch = (size <= 2)
+                                  ? reg_subreg(SCRATCH_REG, size, syntax)
+                                  : reg_str(SCRATCH_REG, syntax);
         const char *slot = loc_str(b1, ra, ins->src2, x64, syntax);
         if (syntax == ASM_INTEL)
             strbuf_appendf(sb, "    mov%s %s, %s\n", sfx, scratch, slot);
@@ -142,7 +214,10 @@ void emit_store_ptr(strbuf_t *sb, ir_instr_t *ins,
             strbuf_appendf(sb, "    mov%s %s, %s\n", sfx, slot, scratch);
         src = scratch;
     } else {
-        src = loc_str(b1, ra, ins->src2, x64, syntax);
+        if (ra && ins->src2 > 0 && ra->loc[ins->src2] >= 0 && size <= 2)
+            src = reg_subreg(ra->loc[ins->src2], size, syntax);
+        else
+            src = loc_str(b1, ra, ins->src2, x64, syntax);
     }
 
     if (syntax == ASM_INTEL)
@@ -163,7 +238,16 @@ void emit_store_idx(strbuf_t *sb, ir_instr_t *ins,
                     asm_syntax_t syntax)
 {
     char b1[32];
-    const char *sfx = (x64 && ins->type != TYPE_INT) ? "q" : "l";
+    int size = op_size(ins->type, x64);
+    const char *sfx;
+    if (size == 1)
+        sfx = "b";
+    else if (size == 2)
+        sfx = "w";
+    else if (size == 8 && x64)
+        sfx = "q";
+    else
+        sfx = "l";
     char basebuf[32];
     const char *base = fmt_stack(basebuf, ins->name, x64, syntax);
     int scale = idx_scale(ins, x64);
@@ -172,7 +256,9 @@ void emit_store_idx(strbuf_t *sb, ir_instr_t *ins,
     const char *val;
     if (ra && ins->src2 > 0 && ra->loc[ins->src2] < 0) {
         /* `src2` spilled: move value through scratch register. */
-        const char *scratch = reg_str(SCRATCH_REG, syntax);
+        const char *scratch = (size <= 2)
+                                  ? reg_subreg(SCRATCH_REG, size, syntax)
+                                  : reg_str(SCRATCH_REG, syntax);
         const char *slot = loc_str(b1, ra, ins->src2, x64, syntax);
         if (syntax == ASM_INTEL)
             strbuf_appendf(sb, "    mov%s %s, %s\n", sfx, scratch, slot);
@@ -180,7 +266,10 @@ void emit_store_idx(strbuf_t *sb, ir_instr_t *ins,
             strbuf_appendf(sb, "    mov%s %s, %s\n", sfx, slot, scratch);
         val = scratch;
     } else {
-        val = loc_str(b1, ra, ins->src2, x64, syntax);
+        if (ra && ins->src2 > 0 && ra->loc[ins->src2] >= 0 && size <= 2)
+            val = reg_subreg(ra->loc[ins->src2], size, syntax);
+        else
+            val = loc_str(b1, ra, ins->src2, x64, syntax);
     }
 
     char b2[32];
