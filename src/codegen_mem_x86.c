@@ -540,7 +540,7 @@ static void emit_glob_string(strbuf_t *sb, ir_instr_t *ins,
     const char *slot = loc_str(mem, ra, ins->dest, x64, syntax);
     char srcbuf[32];
     if (syntax == ASM_INTEL)
-        snprintf(srcbuf, sizeof(srcbuf), "%s", ins->name);
+        snprintf(srcbuf, sizeof(srcbuf), "OFFSET FLAT:%s", ins->name);
     else
         snprintf(srcbuf, sizeof(srcbuf), "$%s", ins->name);
     emit_move_with_spill(sb, sfx, srcbuf, dest, slot, spill, syntax);
