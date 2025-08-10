@@ -144,9 +144,24 @@ void emit_store_idx(strbuf_t *sb, ir_instr_t *ins,
     int scale = idx_scale(ins, x64);
     if (scale != 1 && scale != 2 && scale != 4 && scale != 8)
         scale = 1;
+
+    char b2[32];
+    const char *idx;
+    if (ra && ins->src1 > 0 && ra->loc[ins->src1] < 0) {
+        /* Load spilled index into scratch register. */
+        const char *scratch = reg_str(SCRATCH_REG, syntax);
+        const char *src = loc_str(b2, ra, ins->src1, x64, syntax);
+        const char *psfx = x64 ? "q" : "l";
+        if (syntax == ASM_INTEL)
+            strbuf_appendf(sb, "    mov%s %s, %s\n", psfx, scratch, src);
+        else
+            strbuf_appendf(sb, "    mov%s %s, %s\n", psfx, src, scratch);
+        idx = scratch;
+    } else {
+        idx = loc_str(b2, ra, ins->src1, x64, syntax);
+    }
+
     if (syntax == ASM_INTEL) {
-        char b2[32];
-        const char *idx = loc_str(b2, ra, ins->src1, x64, syntax);
         const char *b = base;
         char inner[32];
         size_t len = strlen(base);
@@ -162,11 +177,9 @@ void emit_store_idx(strbuf_t *sb, ir_instr_t *ins,
             strbuf_appendf(sb, "    mov%s [%s+%s*%d], %s\n", sfx, b, idx, scale,
                            loc_str(b1, ra, ins->src2, x64, syntax));
     } else {
-        char b2[32];
         strbuf_appendf(sb, "    mov%s %s, %s(,%s,%d)\n", sfx,
                        loc_str(b1, ra, ins->src2, x64, syntax),
-                       base,
-                       loc_str(b2, ra, ins->src1, x64, syntax), scale);
+                       base, idx, scale);
     }
 }
 

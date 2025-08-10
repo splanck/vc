@@ -304,6 +304,17 @@ if ! "$DIR/load_idx_spill" >/dev/null; then
 fi
 rm -f "$DIR/load_idx_spill"
 
+# verify indexed store with spilled index operand
+cc -I "$DIR/../include" -Wall -Wextra -std=c99 \
+    "$DIR/unit/test_store_idx_spill.c" \
+    "$DIR/../src/codegen_store.c" \
+    "$DIR/../src/strbuf.c" "$DIR/../src/regalloc_x86.c" -o "$DIR/store_idx_spill"
+if ! "$DIR/store_idx_spill" >/dev/null; then
+    echo "Test store_idx_spill failed"
+    fail=1
+fi
+rm -f "$DIR/store_idx_spill"
+
 # verify 64-bit int/float cast emission
 cc -I "$DIR/../include" -Wall -Wextra -std=c99 \
     "$DIR/unit/test_emit_cast_int64.c" \
