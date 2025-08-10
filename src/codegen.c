@@ -304,76 +304,16 @@ static int emit_global_data(FILE *out, const ir_builder_t *ir, int x64)
  * operations.  Emit a `.lcomm` directive for each such name so that the
  * resulting assembly has a definition for every symbol referenced.
  */
-static int emit_local_comm(FILE *out, const ir_builder_t *ir, int x64)
+static int emit_local_comm(FILE *out, const ir_builder_t *ir)
 {
-    vector_t names;
-    vector_init(&names, sizeof(char *));
-
-    vector_t globals;
-    vector_init(&globals, sizeof(char *));
-
-    for (ir_instr_t *ins = ir->head; ins; ins = ins->next) {
-        if (ins->name && ins->name[0]) {
-            if (strncmp(ins->name, "stack:", 6) == 0)
-                continue;
-            if (ins->op == IR_GLOB_VAR || ins->op == IR_GLOB_STRING ||
-                ins->op == IR_GLOB_WSTRING || ins->op == IR_GLOB_ARRAY ||
-                ins->op == IR_GLOB_UNION || ins->op == IR_GLOB_STRUCT ||
-                ins->op == IR_GLOB_ADDR) {
-                int exists = 0;
-                for (size_t i = 0; i < globals.count && !exists; i++)
-                    if (strcmp(((char **)globals.data)[i], ins->name) == 0)
-                        exists = 1;
-                if (!exists)
-                    vector_push(&globals, &ins->name);
-            }
-        }
+    if (!ir || ir->locals.count == 0)
+        return 0;
+    fputs(".bss\n", out);
+    for (size_t i = 0; i < ir->locals.count; i++) {
+        const ir_local_t *l = &((ir_local_t *)ir->locals.data)[i];
+        fprintf(out, ".lcomm %s, %zu\n", l->name, l->size);
     }
-
-    for (ir_instr_t *ins = ir->head; ins; ins = ins->next) {
-        const char *name = ins->name;
-        if (!name || !name[0] || strncmp(name, "tmp", 3) == 0)
-            continue;
-        if (strncmp(name, "stack:", 6) == 0)
-            continue;
-
-        if (ins->op == IR_GLOB_VAR || ins->op == IR_GLOB_STRING ||
-            ins->op == IR_GLOB_WSTRING || ins->op == IR_GLOB_ARRAY ||
-            ins->op == IR_GLOB_UNION || ins->op == IR_GLOB_STRUCT ||
-            ins->op == IR_GLOB_ADDR || ins->op == IR_FUNC_BEGIN ||
-            ins->op == IR_FUNC_END || ins->op == IR_LABEL ||
-            ins->op == IR_BR || ins->op == IR_BCOND ||
-            ins->op == IR_CALL || ins->op == IR_CALL_PTR ||
-            ins->op == IR_CALL_NR || ins->op == IR_CALL_PTR_NR)
-            continue;
-
-        int is_global = 0;
-        for (size_t i = 0; i < globals.count && !is_global; i++)
-            if (strcmp(((char **)globals.data)[i], name) == 0)
-                is_global = 1;
-        if (is_global)
-            continue;
-
-        int exists = 0;
-        for (size_t i = 0; i < names.count && !exists; i++)
-            if (strcmp(((char **)names.data)[i], name) == 0)
-                exists = 1;
-        if (!exists)
-            vector_push(&names, &name);
-    }
-
-    int emitted = 0;
-    for (size_t i = 0; i < names.count; i++) {
-        const char *n = ((char **)names.data)[i];
-        if (!emitted)
-            fputs(".bss\n", out);
-        fprintf(out, ".lcomm %s, %d\n", n, x64 ? 8 : 4);
-        emitted = 1;
-    }
-
-    vector_free(&names);
-    vector_free(&globals);
-    return emitted;
+    return 1;
 }
 
 /*
@@ -409,7 +349,7 @@ void codegen_emit_x86(FILE *out, ir_builder_t *ir, int x64,
 
     /* Stage 1: emit global and local data directives */
     int has_data = emit_global_data(out, ir, x64);
-    int has_comm = emit_local_comm(out, ir, x64);
+    int has_comm = emit_local_comm(out, ir);
     if (has_data || has_comm)
         fputs(".text\n", out);
 

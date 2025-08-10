@@ -9,6 +9,7 @@
 #define VC_IR_CORE_H
 
 #include "ast.h"
+#include "vector.h"
 
 /* IR operation codes */
 typedef enum {
@@ -112,6 +113,11 @@ typedef struct alias_ent {
 } alias_ent_t;
 
 typedef struct {
+    char *name;
+    size_t size;
+} ir_local_t;
+
+typedef struct {
     ir_instr_t *head;
     ir_instr_t *tail;
     size_t next_value_id;
@@ -120,6 +126,7 @@ typedef struct {
     size_t cur_column;
     alias_ent_t *aliases;
     int next_alias_id;
+    vector_t locals;
 } ir_builder_t;
 
 /*
@@ -133,6 +140,8 @@ void ir_builder_set_loc(ir_builder_t *b, const char *file, size_t line, size_t c
 
 /* Release all memory owned by the builder, including instruction nodes. */
 void ir_builder_free(ir_builder_t *b);
+
+void ir_builder_add_local(ir_builder_t *b, const char *name, size_t size);
 
 /* Allocate and insert a blank instruction after `pos`. */
 ir_instr_t *ir_insert_after(ir_builder_t *b, ir_instr_t *pos);

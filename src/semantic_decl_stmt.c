@@ -129,7 +129,7 @@ static symbol_t *insert_var_symbol(stmt_t *stmt, symtable_t *vars,
     return sym;
 }
 
-static symbol_t *register_var_symbol(stmt_t *stmt, symtable_t *vars)
+static symbol_t *register_var_symbol(stmt_t *stmt, symtable_t *vars, ir_builder_t *ir)
 {
     char ir_name_buf[32];
     const char *ir_name = STMT_VAR_DECL(stmt).name;
@@ -174,6 +174,10 @@ static symbol_t *register_var_symbol(stmt_t *stmt, symtable_t *vars)
         snprintf(sbuf, sizeof(sbuf), "stack:%d", sym->stack_offset);
         free(sym->ir_name);
         sym->ir_name = vc_strdup(sbuf);
+    } else if (STMT_VAR_DECL(stmt).is_static && !STMT_VAR_DECL(stmt).init &&
+               !STMT_VAR_DECL(stmt).init_list) {
+        size_t sz = local_sym_size(sym);
+        ir_builder_add_local(ir, sym->ir_name, sz);
     }
 
     return sym;
@@ -182,7 +186,7 @@ static symbol_t *register_var_symbol(stmt_t *stmt, symtable_t *vars)
 static int check_var_decl_stmt(stmt_t *stmt, symtable_t *vars,
                                symtable_t *funcs, ir_builder_t *ir)
 {
-    symbol_t *sym = register_var_symbol(stmt, vars);
+    symbol_t *sym = register_var_symbol(stmt, vars, ir);
     if (!sym)
         return 0;
     if (STMT_VAR_DECL(stmt).type == TYPE_ARRAY && STMT_VAR_DECL(stmt).array_size == 0 &&
