@@ -326,6 +326,17 @@ if ! "$DIR/emit_cast_float_int" >/dev/null; then
 fi
 rm -f "$DIR/emit_cast_float_int"
 
+# verify float binary operation emission
+cc -I "$DIR/../include" -Wall -Wextra -std=c99 \
+    "$DIR/unit/test_emit_float_binop.c" \
+    "$DIR/../src/codegen_float.c" "$DIR/../src/strbuf.c" \
+    "$DIR/../src/regalloc_x86.c" -o "$DIR/emit_float_binop"
+if ! "$DIR/emit_float_binop" >/dev/null; then
+    echo "Test emit_float_binop failed"
+    fail=1
+fi
+rm -f "$DIR/emit_float_binop"
+
 # verify complex addition emission
 cc -I "$DIR/../include" -Wall -Wextra -std=c99 \
     "$DIR/unit/test_emit_cplx_add.c" \
