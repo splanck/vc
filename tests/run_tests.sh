@@ -296,6 +296,18 @@ if ! "$DIR/glob_string" >/dev/null; then
 fi
 rm -f "$DIR/glob_string"
 
+# verify address emission uses movabs in x86-64 mode
+cc -I "$DIR/../include" -Wall -Wextra -std=c99 \
+    "$DIR/unit/test_addr_movabs.c" \
+    "$DIR/../src/codegen_mem_x86.c" "$DIR/../src/codegen_mem_common.c" \
+    "$DIR/../src/codegen_load.c" "$DIR/../src/codegen_store.c" \
+    "$DIR/../src/strbuf.c" "$DIR/../src/regalloc_x86.c" -o "$DIR/addr_movabs"
+if ! "$DIR/addr_movabs" >/dev/null; then
+    echo "Test addr_movabs failed"
+    fail=1
+fi
+rm -f "$DIR/addr_movabs"
+
 # verify indexed load/store scale handling
 cc -I "$DIR/../include" -Wall -Wextra -std=c99 \
     "$DIR/unit/test_load_store_idx_scale.c" \
