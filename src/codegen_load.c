@@ -18,6 +18,85 @@
 
 #define SCRATCH_REG 0
 
+/* Determine operand size from the IR type. */
+static int op_size(type_kind_t t, int x64)
+{
+    switch (t) {
+    case TYPE_CHAR: case TYPE_UCHAR: case TYPE_BOOL:
+        return 1;
+    case TYPE_SHORT: case TYPE_USHORT:
+        return 2;
+    case TYPE_DOUBLE: case TYPE_LLONG: case TYPE_ULLONG:
+    case TYPE_FLOAT_COMPLEX:
+        return 8;
+    case TYPE_LDOUBLE:
+        return 10;
+    case TYPE_DOUBLE_COMPLEX:
+        return 16;
+    case TYPE_LDOUBLE_COMPLEX:
+        return 20;
+    case TYPE_PTR:
+        return x64 ? 8 : 4;
+    default:
+        return 4;
+    }
+}
+
+static int is_signed(type_kind_t t)
+{
+    return t == TYPE_CHAR || t == TYPE_SHORT;
+}
+
+static const char *scratch_subreg(int size, asm_syntax_t syntax)
+{
+    if (size == 1)
+        return (syntax == ASM_INTEL) ? "al" : "%al";
+    return (syntax == ASM_INTEL) ? "ax" : "%ax";
+}
+
+static void emit_ins(strbuf_t *sb, const char *insn,
+                     const char *src, const char *dest,
+                     asm_syntax_t syntax)
+{
+    if (syntax == ASM_INTEL)
+        strbuf_appendf(sb, "    %s %s, %s\n", insn, dest, src);
+    else
+        strbuf_appendf(sb, "    %s %s, %s\n", insn, src, dest);
+}
+
+static void emit_move_with_spill(strbuf_t *sb, const char *sfx,
+                                 const char *src, const char *dest,
+                                 const char *slot, int spill,
+                                 asm_syntax_t syntax);
+
+static void emit_typed_load(strbuf_t *sb, type_kind_t type, int x64,
+                            const char *src, const char *dest,
+                            const char *slot, int spill,
+                            asm_syntax_t syntax)
+{
+    int size = op_size(type, x64);
+    if (size == 1 || size == 2) {
+        const char *inst;
+        const char *spill_inst = (size == 1) ? "movb" : "movw";
+        if (size == 1)
+            inst = is_signed(type)
+                       ? (x64 ? "movsbq" : "movsbl")
+                       : (x64 ? "movzbq" : "movzbl");
+        else
+            inst = is_signed(type)
+                       ? (x64 ? "movswq" : "movswl")
+                       : (x64 ? "movzwq" : "movzwl");
+        emit_ins(sb, inst, src, dest, syntax);
+        if (spill) {
+            const char *low = scratch_subreg(size, syntax);
+            emit_ins(sb, spill_inst, low, slot, syntax);
+        }
+    } else {
+        const char *sfx = (x64 && type != TYPE_INT) ? "q" : "l";
+        emit_move_with_spill(sb, sfx, src, dest, slot, spill, syntax);
+    }
+}
+
 /* Move from `src` to `dest` and optionally spill to `slot`. */
 static void emit_move_with_spill(strbuf_t *sb, const char *sfx,
                                  const char *src, const char *dest,
@@ -83,14 +162,13 @@ void emit_load(strbuf_t *sb, ir_instr_t *ins,
 {
     char destb[32];
     char mem[32];
-    const char *sfx = (x64 && ins->type != TYPE_INT) ? "q" : "l";
     int spill = (ra && ins->dest > 0 && ra->loc[ins->dest] < 0);
     const char *dest = spill ? reg_str(SCRATCH_REG, syntax)
                              : loc_str(destb, ra, ins->dest, x64, syntax);
     const char *slot = loc_str(mem, ra, ins->dest, x64, syntax);
     char sbuf[32];
     const char *src = fmt_stack(sbuf, ins->name, x64, syntax);
-    emit_move_with_spill(sb, sfx, src, dest, slot, spill, syntax);
+    emit_typed_load(sb, ins->type, x64, src, dest, slot, spill, syntax);
 }
 
 /*
@@ -108,7 +186,6 @@ void emit_load_ptr(strbuf_t *sb, ir_instr_t *ins,
     char b1[32];
     char destb[32];
     char mem[32];
-    const char *sfx = (x64 && ins->type != TYPE_INT) ? "q" : "l";
     int spill = (ra && ins->dest > 0 && ra->loc[ins->dest] < 0);
     const char *dest = spill ? reg_str(SCRATCH_REG, syntax)
                              : loc_str(destb, ra, ins->dest, x64, syntax);
@@ -138,7 +215,7 @@ void emit_load_ptr(strbuf_t *sb, ir_instr_t *ins,
     } else {
         src = addr;
     }
-    emit_move_with_spill(sb, sfx, src, dest, slot, spill, syntax);
+    emit_typed_load(sb, ins->type, x64, src, dest, slot, spill, syntax);
 }
 
 /*
@@ -155,7 +232,6 @@ void emit_load_idx(strbuf_t *sb, ir_instr_t *ins,
     char b1[32];
     char destb[32];
     char mem[32];
-    const char *sfx = (x64 && ins->type != TYPE_INT) ? "q" : "l";
     int spill = (ra && ins->dest > 0 && ra->loc[ins->dest] < 0);
     const char *dest = spill ? reg_str(SCRATCH_REG, syntax)
                              : loc_str(destb, ra, ins->dest, x64, syntax);
@@ -197,6 +273,6 @@ void emit_load_idx(strbuf_t *sb, ir_instr_t *ins,
     } else {
         snprintf(srcbuf, sizeof(srcbuf), "%s(,%s,%d)", base, idx, scale);
     }
-    emit_move_with_spill(sb, sfx, srcbuf, dest, slot, spill, syntax);
+    emit_typed_load(sb, ins->type, x64, srcbuf, dest, slot, spill, syntax);
 }
 
