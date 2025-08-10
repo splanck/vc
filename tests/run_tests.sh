@@ -282,6 +282,18 @@ if ! "$DIR/cmp_intel" >/dev/null; then
 fi
 rm -f "$DIR/cmp_intel"
 
+# verify global string address emission
+cc -I "$DIR/../include" -Wall -Wextra -std=c99 \
+    "$DIR/unit/test_glob_string.c" \
+    "$DIR/../src/codegen_mem_x86.c" "$DIR/../src/codegen_mem_common.c" \
+    "$DIR/../src/codegen_load.c" "$DIR/../src/codegen_store.c" \
+    "$DIR/../src/strbuf.c" "$DIR/../src/regalloc_x86.c" -o "$DIR/glob_string"
+if ! "$DIR/glob_string" >/dev/null; then
+    echo "Test glob_string failed"
+    fail=1
+fi
+rm -f "$DIR/glob_string"
+
 # verify indexed load/store scale handling
 cc -I "$DIR/../include" -Wall -Wextra -std=c99 \
     "$DIR/unit/test_load_store_idx_scale.c" \
