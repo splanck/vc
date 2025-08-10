@@ -143,14 +143,22 @@ static void emit_call(strbuf_t *sb, ir_instr_t *ins,
 {
     char buf[32];
     const char *msfx = mov_sfx_from_type(ins->type, x64);
-    strbuf_appendf(sb, "    call %s\n", ins->name);
-    if (ins->imm > 0 && arg_stack_bytes > 0) {
+    size_t align = 0;
+    if (x64)
+        align = (16 - (arg_stack_bytes % 16)) % 16;
+    if (align > 0) {
         if (syntax == ASM_INTEL)
-            strbuf_appendf(sb, "    add%s %s, %zu\n", sfx, sp,
-                           arg_stack_bytes);
+            strbuf_appendf(sb, "    sub%s %s, %zu\n", sfx, sp, align);
         else
-            strbuf_appendf(sb, "    add%s $%zu, %s\n", sfx,
-                           arg_stack_bytes, sp);
+            strbuf_appendf(sb, "    sub%s $%zu, %s\n", sfx, align, sp);
+    }
+    strbuf_appendf(sb, "    call %s\n", ins->name);
+    size_t total = arg_stack_bytes + align;
+    if (ins->imm > 0 && total > 0) {
+        if (syntax == ASM_INTEL)
+            strbuf_appendf(sb, "    add%s %s, %zu\n", sfx, sp, total);
+        else
+            strbuf_appendf(sb, "    add%s $%zu, %s\n", sfx, total, sp);
     }
     arg_stack_bytes = 0;
     arg_reg_idx = 0;
@@ -173,17 +181,25 @@ static void emit_call_ptr(strbuf_t *sb, ir_instr_t *ins,
 {
     char buf[32];
     const char *msfx = mov_sfx_from_type(ins->type, x64);
+    size_t align = 0;
+    if (x64)
+        align = (16 - (arg_stack_bytes % 16)) % 16;
+    if (align > 0) {
+        if (syntax == ASM_INTEL)
+            strbuf_appendf(sb, "    sub%s %s, %zu\n", sfx, sp, align);
+        else
+            strbuf_appendf(sb, "    sub%s $%zu, %s\n", sfx, align, sp);
+    }
     if (syntax == ASM_INTEL)
         strbuf_appendf(sb, "    call %s\n", loc_str(buf, ra, ins->src1, x64, syntax));
     else
         strbuf_appendf(sb, "    call *%s\n", loc_str(buf, ra, ins->src1, x64, syntax));
-    if (ins->imm > 0 && arg_stack_bytes > 0) {
+    size_t total = arg_stack_bytes + align;
+    if (ins->imm > 0 && total > 0) {
         if (syntax == ASM_INTEL)
-            strbuf_appendf(sb, "    add%s %s, %zu\n", sfx, sp,
-                           arg_stack_bytes);
+            strbuf_appendf(sb, "    add%s %s, %zu\n", sfx, sp, total);
         else
-            strbuf_appendf(sb, "    add%s $%zu, %s\n", sfx,
-                           arg_stack_bytes, sp);
+            strbuf_appendf(sb, "    add%s $%zu, %s\n", sfx, total, sp);
     }
     arg_stack_bytes = 0;
     arg_reg_idx = 0;
