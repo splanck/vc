@@ -240,15 +240,29 @@ void emit_load_idx(strbuf_t *sb, ir_instr_t *ins,
     char basebuf[32];
     const char *base = fmt_stack(basebuf, ins->name, x64, syntax);
     int scale = idx_scale(ins, x64);
-    if (scale != 1 && scale != 2 && scale != 4 && scale != 8)
-        scale = 1;
+    int manual = (scale != 1 && scale != 2 && scale != 4 && scale != 8);
+    int idx_spill = ra && ins->src1 > 0 && ra->loc[ins->src1] < 0;
 
     const char *idx;
-    if (ra && ins->src1 > 0 && ra->loc[ins->src1] < 0) {
+    const char *psfx = x64 ? "q" : "l";
+    if (manual) {
+        /* Multiply index into scratch register for arbitrary scales. */
+        const char *scratch = reg_str(SCRATCH_REG, syntax);
+        const char *src = loc_str(b1, ra, ins->src1, x64, syntax);
+        if (syntax == ASM_INTEL)
+            strbuf_appendf(sb, "    mov%s %s, %s\n", psfx, scratch, src);
+        else
+            strbuf_appendf(sb, "    mov%s %s, %s\n", psfx, src, scratch);
+        if (syntax == ASM_INTEL)
+            strbuf_appendf(sb, "    imul%s %s, %s, %d\n", psfx, scratch, scratch, scale);
+        else
+            strbuf_appendf(sb, "    imul%s $%d, %s, %s\n", psfx, scale, scratch, scratch);
+        idx = scratch;
+        scale = 1;
+    } else if (idx_spill) {
         /* Load spilled index into scratch register. */
         const char *scratch = reg_str(SCRATCH_REG, syntax);
         const char *src = loc_str(b1, ra, ins->src1, x64, syntax);
-        const char *psfx = x64 ? "q" : "l";
         if (syntax == ASM_INTEL)
             strbuf_appendf(sb, "    mov%s %s, %s\n", psfx, scratch, src);
         else

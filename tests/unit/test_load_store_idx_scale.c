@@ -157,6 +157,52 @@ int main(void) {
         strbuf_free(&sb);
     }
 
+    /* manual scale not supported by addressing modes */
+    ins.imm = 3;
+
+    /* load */
+    ins.op = IR_LOAD_IDX;
+    strbuf_init(&sb);
+    emit_load_idx(&sb, &ins, &ra, 1, ASM_ATT);
+    if (!strstr(sb.data, "imulq") || !strstr(sb.data, "$3") ||
+        !strstr(sb.data, ",1)") || strstr(sb.data, ",3)")) {
+        printf("load idx manual ATT failed: %s\n", sb.data);
+        return 1;
+    }
+    strbuf_free(&sb);
+
+    strbuf_init(&sb);
+    emit_load_idx(&sb, &ins, &ra, 1, ASM_INTEL);
+    if (!strstr(sb.data, "imulq") || !strstr(sb.data, ", 3") ||
+        !strstr(sb.data, "[base+") || strstr(sb.data, "*3") ||
+        strstr(sb.data, "[[base")) {
+        printf("load idx manual Intel failed: %s\n", sb.data);
+        return 1;
+    }
+    strbuf_free(&sb);
+
+    /* store */
+    ins.op = IR_STORE_IDX;
+    ins.src2 = 2;
+    strbuf_init(&sb);
+    emit_store_idx(&sb, &ins, &ra, 1, ASM_ATT);
+    if (!strstr(sb.data, "imulq") || !strstr(sb.data, "$3") ||
+        !strstr(sb.data, ",1)") || strstr(sb.data, ",3)")) {
+        printf("store idx manual ATT failed: %s\n", sb.data);
+        return 1;
+    }
+    strbuf_free(&sb);
+
+    strbuf_init(&sb);
+    emit_store_idx(&sb, &ins, &ra, 1, ASM_INTEL);
+    if (!strstr(sb.data, "imulq") || !strstr(sb.data, ", 3") ||
+        !strstr(sb.data, "[base+") || strstr(sb.data, "*3") ||
+        strstr(sb.data, "[[base")) {
+        printf("store idx manual Intel failed: %s\n", sb.data);
+        return 1;
+    }
+    strbuf_free(&sb);
+
     printf("load/store idx scale tests passed\n");
     return 0;
 }
