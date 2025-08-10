@@ -3,7 +3,8 @@ main:
     movl %esp, %ebp
     subl $4, %esp
     movl $97, %eax
-    movl %eax, -4(%ebp)
+    movl %eax, %eax
+    movb %al, -4(%ebp)
     movl $97, %eax
     movl %eax, %eax
     ret

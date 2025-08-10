@@ -209,6 +209,7 @@ rm -f "${out}" "${err}"
 cc -I "$DIR/../include" -Wall -Wextra -std=c99 \
     "$DIR/unit/test_load_store_spill.c" \
     "$DIR/../src/codegen_load.c" "$DIR/../src/codegen_store.c" \
+    "$DIR/../src/codegen_x86.c" \
     "$DIR/../src/strbuf.c" "$DIR/../src/regalloc_x86.c" -o "$DIR/load_store_spill"
 if ! "$DIR/load_store_spill" >/dev/null; then
     echo "Test load_store_spill failed"
@@ -219,7 +220,7 @@ rm -f "$DIR/load_store_spill"
 # verify storing through a stack-resident pointer
 cc -I "$DIR/../include" -Wall -Wextra -std=c99 \
     "$DIR/unit/test_store_ptr_stack.c" \
-    "$DIR/../src/codegen_store.c" \
+    "$DIR/../src/codegen_store.c" "$DIR/../src/codegen_x86.c" \
     "$DIR/../src/strbuf.c" "$DIR/../src/regalloc_x86.c" -o "$DIR/store_ptr_stack"
 if ! "$DIR/store_ptr_stack" >/dev/null; then
     echo "Test store_ptr_stack failed"
@@ -286,12 +287,25 @@ rm -f "$DIR/cmp_intel"
 cc -I "$DIR/../include" -Wall -Wextra -std=c99 \
     "$DIR/unit/test_load_store_idx_scale.c" \
     "$DIR/../src/codegen_load.c" "$DIR/../src/codegen_store.c" \
+    "$DIR/../src/codegen_x86.c" \
     "$DIR/../src/strbuf.c" "$DIR/../src/regalloc_x86.c" -o "$DIR/load_store_idx_scale"
 if ! "$DIR/load_store_idx_scale" >/dev/null; then
     echo "Test load_store_idx_scale failed"
     fail=1
 fi
 rm -f "$DIR/load_store_idx_scale"
+
+# verify loads/stores for small integer types
+cc -I "$DIR/../include" -Wall -Wextra -std=c99 \
+    "$DIR/unit/test_small_int_load_store.c" \
+    "$DIR/../src/codegen_load.c" "$DIR/../src/codegen_store.c" \
+    "$DIR/../src/codegen_x86.c" \
+    "$DIR/../src/strbuf.c" "$DIR/../src/regalloc_x86.c" -o "$DIR/load_store_small"
+if ! "$DIR/load_store_small" >/dev/null; then
+    echo "Test load_store_small failed"
+    fail=1
+fi
+rm -f "$DIR/load_store_small"
 
 # verify 64-bit int/float cast emission
 cc -I "$DIR/../include" -Wall -Wextra -std=c99 \
