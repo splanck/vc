@@ -220,7 +220,8 @@ static void emit_load_param(strbuf_t *sb, ir_instr_t *ins,
     const char *dest = spill ? reg_str(SCRATCH_REG, syntax)
                              : loc_str(destb, ra, ins->dest, x64, syntax);
     const char *slot = loc_str(mem, ra, ins->dest, x64, syntax);
-    int off = 8 + (int)ins->imm * (x64 ? 8 : 4);
+    int off = x64 ? 16 + (int)ins->imm * 8
+                  : 8 + (int)ins->imm * 4;
     char srcbuf[32];
     if (syntax == ASM_INTEL)
         snprintf(srcbuf, sizeof(srcbuf), "[%s+%d]", bp, off);
