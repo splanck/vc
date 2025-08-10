@@ -257,13 +257,17 @@ void emit_store_idx(strbuf_t *sb, ir_instr_t *ins,
     const char *base = fmt_stack(basebuf, ins->name, x64, syntax);
     int scale = idx_scale(ins, x64);
     int manual = (scale != 1 && scale != 2 && scale != 4 && scale != 8);
+    int idx_spill = ra && ins->src1 > 0 && ra->loc[ins->src1] < 0;
+    int val_spill = ra && ins->src2 > 0 && ra->loc[ins->src2] < 0;
+    int idx_needs_scratch = manual || idx_spill;
 
     const char *val;
-    if (ra && ins->src2 > 0 && ra->loc[ins->src2] < 0) {
-        /* `src2` spilled: move value through scratch register. */
+    if (val_spill) {
+        /* `src2` spilled: move value through a scratch register. */
+        int scratch_idx = idx_needs_scratch ? SCRATCH_REG2 : SCRATCH_REG;
         const char *scratch = (size <= 2)
-                                  ? reg_subreg(SCRATCH_REG, size, syntax)
-                                  : reg_str(SCRATCH_REG, syntax);
+                                  ? reg_subreg(scratch_idx, size, syntax)
+                                  : reg_str(scratch_idx, syntax);
         const char *slot = loc_str(b1, ra, ins->src2, x64, syntax);
         if (syntax == ASM_INTEL)
             strbuf_appendf(sb, "    mov%s %s, %s\n", sfx, scratch, slot);
@@ -294,7 +298,7 @@ void emit_store_idx(strbuf_t *sb, ir_instr_t *ins,
             strbuf_appendf(sb, "    imul%s $%d, %s, %s\n", psfx, scale, scratch, scratch);
         idx = scratch;
         scale = 1;
-    } else if (ra && ins->src1 > 0 && ra->loc[ins->src1] < 0) {
+    } else if (idx_spill) {
         /* Load spilled index into scratch register. */
         const char *scratch = reg_str(SCRATCH_REG, syntax);
         const char *src = loc_str(b2, ra, ins->src1, x64, syntax);
