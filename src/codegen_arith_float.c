@@ -106,8 +106,8 @@ void emit_cast(strbuf_t *sb, ir_instr_t *ins,
                            loc_str(b1, ra, ins->src1, x64, syntax), reg0);
         const char *op = dst64 ? "cvttss2siq" : "cvttss2si";
         if (syntax == ASM_INTEL)
-            strbuf_appendf(sb, "    %s %s, %s\n", op, reg0,
-                           loc_str(b2, ra, ins->dest, x64, syntax));
+            strbuf_appendf(sb, "    %s %s, %s\n", op,
+                           loc_str(b2, ra, ins->dest, x64, syntax), reg0);
         else
             strbuf_appendf(sb, "    %s %s, %s\n", op, reg0,
                            loc_str(b2, ra, ins->dest, x64, syntax));
@@ -124,8 +124,8 @@ void emit_cast(strbuf_t *sb, ir_instr_t *ins,
                            loc_str(b1, ra, ins->src1, x64, syntax), reg0);
         const char *op = dst64 ? "cvttsd2siq" : "cvttsd2si";
         if (syntax == ASM_INTEL)
-            strbuf_appendf(sb, "    %s %s, %s\n", op, reg0,
-                           loc_str(b2, ra, ins->dest, x64, syntax));
+            strbuf_appendf(sb, "    %s %s, %s\n", op,
+                           loc_str(b2, ra, ins->dest, x64, syntax), reg0);
         else
             strbuf_appendf(sb, "    %s %s, %s\n", op, reg0,
                            loc_str(b2, ra, ins->dest, x64, syntax));
