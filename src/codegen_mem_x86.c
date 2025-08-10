@@ -295,11 +295,24 @@ static void emit_addr(strbuf_t *sb, ir_instr_t *ins,
             strbuf_appendf(sb, "    mov%s %s, %s\n", sfx, slot, dest);
         return;
     }
-    if (syntax == ASM_INTEL)
-        snprintf(srcbuf, sizeof(srcbuf), "%s", name);
-    else
-        snprintf(srcbuf, sizeof(srcbuf), "$%s", name);
-    emit_move_with_spill(sb, sfx, srcbuf, dest, slot, spill, syntax);
+    if (x64) {
+        if (syntax == ASM_INTEL)
+            strbuf_appendf(sb, "    movabs %s, %s\n", dest, name);
+        else
+            strbuf_appendf(sb, "    movabsq $%s, %s\n", name, dest);
+        if (spill) {
+            if (syntax == ASM_INTEL)
+                strbuf_appendf(sb, "    mov%s %s, %s\n", sfx, slot, dest);
+            else
+                strbuf_appendf(sb, "    mov%s %s, %s\n", sfx, dest, slot);
+        }
+    } else {
+        if (syntax == ASM_INTEL)
+            snprintf(srcbuf, sizeof(srcbuf), "%s", name);
+        else
+            snprintf(srcbuf, sizeof(srcbuf), "$%s", name);
+        emit_move_with_spill(sb, sfx, srcbuf, dest, slot, spill, syntax);
+    }
 }
 
 /* Load from a pointer (IR_LOAD_PTR).

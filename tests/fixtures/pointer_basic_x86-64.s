@@ -5,7 +5,7 @@
 main:
     pushq %rbp
     movq %rsp, %rbp
-    movq $x, %rax
+    movabsq $x, %rax
     movq %rax, p
     movq $42, %rax
     movl %rax, x
