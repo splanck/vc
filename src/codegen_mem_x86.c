@@ -519,12 +519,25 @@ static void emit_glob_string(strbuf_t *sb, ir_instr_t *ins,
     const char *dest = spill ? reg_str(SCRATCH_REG, syntax)
                              : loc_str(destb, ra, ins->dest, x64, syntax);
     const char *slot = loc_str(mem, ra, ins->dest, x64, syntax);
-    char srcbuf[32];
-    if (syntax == ASM_INTEL)
-        snprintf(srcbuf, sizeof(srcbuf), "OFFSET FLAT:%s", ins->name);
-    else
-        snprintf(srcbuf, sizeof(srcbuf), "$%s", ins->name);
-    emit_move_with_spill(sb, sfx, srcbuf, dest, slot, spill, syntax);
+    if (x64) {
+        if (syntax == ASM_INTEL)
+            strbuf_appendf(sb, "    movabs %s, %s\n", dest, ins->name);
+        else
+            strbuf_appendf(sb, "    movabsq $%s, %s\n", ins->name, dest);
+        if (spill) {
+            if (syntax == ASM_INTEL)
+                strbuf_appendf(sb, "    mov%s %s, %s\n", sfx, slot, dest);
+            else
+                strbuf_appendf(sb, "    mov%s %s, %s\n", sfx, dest, slot);
+        }
+    } else {
+        char srcbuf[32];
+        if (syntax == ASM_INTEL)
+            snprintf(srcbuf, sizeof(srcbuf), "OFFSET FLAT:%s", ins->name);
+        else
+            snprintf(srcbuf, sizeof(srcbuf), "$%s", ins->name);
+        emit_move_with_spill(sb, sfx, srcbuf, dest, slot, spill, syntax);
+    }
 }
 
 /* Mapping of IR opcodes to emitter helpers */
