@@ -451,30 +451,74 @@ static void emit_arg(strbuf_t *sb, ir_instr_t *ins,
         else
             strbuf_appendf(sb, "    sub $4, %s\n", sp);
         const char *src = loc_str(b1, ra, ins->src1, x64, syntax);
-        const char *x0 = fmt_reg("%xmm0", syntax);
-        if (syntax == ASM_INTEL)
-            strbuf_appendf(sb, "    movd %s, %s\n", x0, src);
-        else
-            strbuf_appendf(sb, "    movd %s, %s\n", src, x0);
-        if (syntax == ASM_INTEL)
-            strbuf_appendf(sb, "    movss [%s], %s\n", sp, x0);
-        else
-            strbuf_appendf(sb, "    movss %s, (%s)\n", x0, sp);
+        int tmp_idx = (float_reg_idx < 8) ? float_reg_idx : -1;
+        const char *tmp = (tmp_idx >= 0) ? fmt_reg(xmm_regs[tmp_idx], syntax)
+                                         : NULL;
+        if (tmp) {
+            if (syntax == ASM_INTEL)
+                strbuf_appendf(sb, "    movd %s, %s\n", tmp, src);
+            else
+                strbuf_appendf(sb, "    movd %s, %s\n", src, tmp);
+            if (syntax == ASM_INTEL)
+                strbuf_appendf(sb, "    movss [%s], %s\n", sp, tmp);
+            else
+                strbuf_appendf(sb, "    movss %s, (%s)\n", tmp, sp);
+        } else {
+            const char *scratch = fmt_reg("%eax", syntax);
+            const char *load = src;
+            if ((syntax == ASM_INTEL && src[0] != '[') ||
+                (syntax == ASM_ATT && src[0] == '%')) {
+                if (strcmp(src, fmt_reg("%rax", syntax)) == 0)
+                    load = fmt_reg("%eax", syntax);
+                else if (strcmp(src, fmt_reg("%rbx", syntax)) == 0)
+                    load = fmt_reg("%ebx", syntax);
+                else if (strcmp(src, fmt_reg("%rcx", syntax)) == 0)
+                    load = fmt_reg("%ecx", syntax);
+                else if (strcmp(src, fmt_reg("%rdx", syntax)) == 0)
+                    load = fmt_reg("%edx", syntax);
+                else if (strcmp(src, fmt_reg("%rsi", syntax)) == 0)
+                    load = fmt_reg("%esi", syntax);
+                else if (strcmp(src, fmt_reg("%rdi", syntax)) == 0)
+                    load = fmt_reg("%edi", syntax);
+            }
+            if (syntax == ASM_INTEL)
+                strbuf_appendf(sb, "    movl %s, %s\n", scratch, load);
+            else
+                strbuf_appendf(sb, "    movl %s, %s\n", load, scratch);
+            if (syntax == ASM_INTEL)
+                strbuf_appendf(sb, "    movl [%s], %s\n", sp, scratch);
+            else
+                strbuf_appendf(sb, "    movl %s, (%s)\n", scratch, sp);
+        }
     } else if (t == TYPE_DOUBLE) {
         if (syntax == ASM_INTEL)
             strbuf_appendf(sb, "    sub %s, 8\n", sp);
         else
             strbuf_appendf(sb, "    sub $8, %s\n", sp);
         const char *src = loc_str(b1, ra, ins->src1, x64, syntax);
-        const char *x0 = fmt_reg("%xmm0", syntax);
-        if (syntax == ASM_INTEL)
-            strbuf_appendf(sb, "    movq %s, %s\n", x0, src);
-        else
-            strbuf_appendf(sb, "    movq %s, %s\n", src, x0);
-        if (syntax == ASM_INTEL)
-            strbuf_appendf(sb, "    movsd [%s], %s\n", sp, x0);
-        else
-            strbuf_appendf(sb, "    movsd %s, (%s)\n", x0, sp);
+        int tmp_idx = (float_reg_idx < 8) ? float_reg_idx : -1;
+        const char *tmp = (tmp_idx >= 0) ? fmt_reg(xmm_regs[tmp_idx], syntax)
+                                         : NULL;
+        if (tmp) {
+            if (syntax == ASM_INTEL)
+                strbuf_appendf(sb, "    movq %s, %s\n", tmp, src);
+            else
+                strbuf_appendf(sb, "    movq %s, %s\n", src, tmp);
+            if (syntax == ASM_INTEL)
+                strbuf_appendf(sb, "    movsd [%s], %s\n", sp, tmp);
+            else
+                strbuf_appendf(sb, "    movsd %s, (%s)\n", tmp, sp);
+        } else {
+            const char *scratch = fmt_reg("%rax", syntax);
+            if (syntax == ASM_INTEL)
+                strbuf_appendf(sb, "    movq %s, %s\n", scratch, src);
+            else
+                strbuf_appendf(sb, "    movq %s, %s\n", src, scratch);
+            if (syntax == ASM_INTEL)
+                strbuf_appendf(sb, "    movq [%s], %s\n", sp, scratch);
+            else
+                strbuf_appendf(sb, "    movq %s, (%s)\n", scratch, sp);
+        }
     } else if (t == TYPE_LDOUBLE) {
         size_t pad = x64 ? 16 : 10;
         if (syntax == ASM_INTEL)
