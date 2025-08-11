@@ -13,11 +13,11 @@
 /* Push `val` as an argument via IR_ARG. The argument's type is stored in imm. */
 void ir_build_arg(ir_builder_t *b, ir_value_t val, type_kind_t type);
 
-/* Emit IR_RETURN of `val`. */
-void ir_build_return(ir_builder_t *b, ir_value_t val);
+/* Emit IR_RETURN of `val` with result type `type`. */
+void ir_build_return(ir_builder_t *b, ir_value_t val, type_kind_t type);
 
-/* Emit IR_RETURN_AGG writing the aggregate pointed to by `ptr`. */
-void ir_build_return_agg(ir_builder_t *b, ir_value_t ptr);
+/* Emit IR_RETURN_AGG writing the aggregate pointed to by `ptr` of type `type`. */
+void ir_build_return_agg(ir_builder_t *b, ir_value_t ptr, type_kind_t type);
 
 /* Emit IR_CALL to `name` expecting `arg_count` previously pushed args. */
 ir_value_t ir_build_call(ir_builder_t *b, const char *name, size_t arg_count);

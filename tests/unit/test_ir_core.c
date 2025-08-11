@@ -133,7 +133,7 @@ static void test_return_agg_opcode(void)
     ir_builder_t b;
     ir_builder_init(&b);
     ir_value_t p = ir_build_const(&b, 0);
-    ir_build_return_agg(&b, p);
+    ir_build_return_agg(&b, p, TYPE_INT);
     ir_instr_t *i = b.head;
     ASSERT(i && i->op == IR_CONST); i = i->next;
     ASSERT(i && i->op == IR_RETURN_AGG && i->src1 == p.id);

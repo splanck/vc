@@ -7,7 +7,7 @@ sub:
     movd %ebx, %xmm1
     subss %xmm0, %xmm1
     movd %xmm1, %ecx
-    movl %ecx, %eax
+    movd %ecx, %xmm0
     ret
     movl %ebp, %esp
     popl %ebp

@@ -12,7 +12,7 @@ foo:
     movd %ebx, %xmm1
     addss %xmm0, %xmm1
     movd %xmm1, %eax
-    movl %eax, %eax
+    movd %eax, %xmm0
     ret
     movl %ebp, %esp
     popl %ebp

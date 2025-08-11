@@ -23,7 +23,7 @@ static void test_hoist_simple(void)
     ir_value_t mul = ir_build_binop(&ir, IR_MUL, p, p);
     ir_build_br(&ir, "L1");
     ir_build_label(&ir, "L2");
-    ir_build_return(&ir, mul);
+    ir_build_return(&ir, mul, TYPE_INT);
     ir_build_func_end(&ir);
 
     opt_run(&ir, NULL);
