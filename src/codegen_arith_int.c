@@ -11,8 +11,8 @@
 #include "codegen_x86.h"
 #include "regalloc_x86.h"
 #include "label.h"
+#include "regalloc.h"
 
-#define SCRATCH_REG 0
 
 void emit_ptr_add(strbuf_t *sb, ir_instr_t *ins,
                   regalloc_t *ra, int x64,
@@ -53,7 +53,7 @@ void emit_ptr_diff(strbuf_t *sb, ir_instr_t *ins,
     while (power_two && (tmp >>= 1) > 0) shift++;
 
     int dest_spill = (ra && ins->dest > 0 && ra->loc[ins->dest] < 0);
-    const char *dest_reg = dest_spill ? x86_reg_str(SCRATCH_REG, syntax)
+    const char *dest_reg = dest_spill ? x86_reg_str(REGALLOC_SCRATCH_REG, syntax)
                                       : x86_loc_str(b2, ra, ins->dest, x64, syntax);
     const char *dest_mem = x86_loc_str(mem, ra, ins->dest, x64, syntax);
 
@@ -118,7 +118,7 @@ void emit_int_arith(strbuf_t *sb, ir_instr_t *ins,
     char mem[32];
     const char *sfx = (x64 && ins->type != TYPE_INT) ? "q" : "l";
     int dest_spill = (ra && ins->dest > 0 && ra->loc[ins->dest] < 0);
-    const char *dest_reg = dest_spill ? x86_reg_str(SCRATCH_REG, syntax)
+    const char *dest_reg = dest_spill ? x86_reg_str(REGALLOC_SCRATCH_REG, syntax)
                                       : x86_loc_str(destb, ra, ins->dest, x64, syntax);
     const char *dest_mem = x86_loc_str(mem, ra, ins->dest, x64, syntax);
     x86_emit_mov(sb, sfx,
@@ -186,7 +186,7 @@ void emit_shift(strbuf_t *sb, ir_instr_t *ins,
     const char *cl = x86_fmt_reg("%cl", syntax);
     int dest_is_cx = (ra && ins->dest > 0 && ra->loc[ins->dest] == 2);
     if (dest_is_cx) {
-        const char *scratch = x86_reg_str(SCRATCH_REG, syntax);
+        const char *scratch = x86_reg_str(REGALLOC_SCRATCH_REG, syntax);
         const char *dest = x86_loc_str(b2, ra, ins->dest, x64, syntax);
         x86_emit_mov(sb, sfx,
                      x86_loc_str(b1, ra, ins->src1, x64, syntax), scratch, syntax);
@@ -221,7 +221,7 @@ void emit_bitwise(strbuf_t *sb, ir_instr_t *ins,
     char mem[32];
     const char *sfx = (x64 && ins->type != TYPE_INT) ? "q" : "l";
     int dest_spill = (ra && ins->dest > 0 && ra->loc[ins->dest] < 0);
-    const char *dest_reg = dest_spill ? x86_reg_str(SCRATCH_REG, syntax)
+    const char *dest_reg = dest_spill ? x86_reg_str(REGALLOC_SCRATCH_REG, syntax)
                                       : x86_loc_str(destb, ra, ins->dest, x64, syntax);
     const char *dest_mem = x86_loc_str(mem, ra, ins->dest, x64, syntax);
     x86_emit_mov(sb, sfx,

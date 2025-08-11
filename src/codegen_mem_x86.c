@@ -19,8 +19,8 @@
 #include "codegen_loadstore.h"
 #include "regalloc_x86.h"
 #include "ast.h"
+#include "regalloc.h"
 
-#define SCRATCH_REG 0
 
 /* The table `mem_emitters` maps IR opcodes to the helpers below. */
 
@@ -101,7 +101,7 @@ static void load_dest_scratch(strbuf_t *sb, const char *sfx,
                               unsigned long long clear,
                               int x64, asm_syntax_t syntax)
 {
-    const char *scratch = regalloc_reg_name(SCRATCH_REG);
+    const char *scratch = regalloc_reg_name(REGALLOC_SCRATCH_REG);
     char buf[32];
     const char *src = fmt_stack(buf, name, x64, syntax);
     if (syntax == ASM_INTEL)
@@ -143,7 +143,7 @@ static void write_back_value(strbuf_t *sb, const char *sfx,
                              const char *name, int x64,
                              asm_syntax_t syntax)
 {
-    const char *scratch = regalloc_reg_name(SCRATCH_REG);
+    const char *scratch = regalloc_reg_name(REGALLOC_SCRATCH_REG);
     const char *reg = tmp_reg(x64, syntax);
     strbuf_appendf(sb, "    or%s %s, %s\n", sfx, reg, scratch);
     char buf[32];
@@ -172,7 +172,7 @@ static void emit_const(strbuf_t *sb, ir_instr_t *ins,
     char mem[32];
     const char *sfx = x64 ? "q" : "l";
     int spill = (ra && ins->dest > 0 && ra->loc[ins->dest] < 0);
-    const char *dest = spill ? reg_str(SCRATCH_REG, syntax)
+    const char *dest = spill ? reg_str(REGALLOC_SCRATCH_REG, syntax)
                              : loc_str(destb, ra, ins->dest, x64, syntax);
     const char *slot = loc_str(mem, ra, ins->dest, x64, syntax);
     char srcbuf[32];
@@ -215,7 +215,7 @@ static void emit_load_param(strbuf_t *sb, ir_instr_t *ins,
                      : (x64 ? "%rbp" : "%ebp");
     const char *sfx = x64 ? "q" : "l";
     int spill = (ra && ins->dest > 0 && ra->loc[ins->dest] < 0);
-    const char *dest = spill ? reg_str(SCRATCH_REG, syntax)
+    const char *dest = spill ? reg_str(REGALLOC_SCRATCH_REG, syntax)
                              : loc_str(destb, ra, ins->dest, x64, syntax);
     const char *slot = loc_str(mem, ra, ins->dest, x64, syntax);
     int off = 8 + (int)ins->imm * (x64 ? 8 : 4);
@@ -248,7 +248,7 @@ static void emit_store_param(strbuf_t *sb, ir_instr_t *ins,
     const char *src;
     if (ra && ins->src1 > 0 && ra->loc[ins->src1] < 0) {
         /* `src1` spilled: move through scratch register to avoid mem-to-mem. */
-        const char *scratch = reg_str(SCRATCH_REG, syntax);
+        const char *scratch = reg_str(REGALLOC_SCRATCH_REG, syntax);
         const char *slot = loc_str(b1, ra, ins->src1, x64, syntax);
         if (syntax == ASM_INTEL)
             strbuf_appendf(sb, "    mov%s %s, %s\n", sfx, scratch, slot);
@@ -278,7 +278,7 @@ static void emit_addr(strbuf_t *sb, ir_instr_t *ins,
     char mem[32];
     const char *sfx = x64 ? "q" : "l";
     int spill = (ra && ins->dest > 0 && ra->loc[ins->dest] < 0);
-    const char *dest = spill ? reg_str(SCRATCH_REG, syntax)
+    const char *dest = spill ? reg_str(REGALLOC_SCRATCH_REG, syntax)
                              : loc_str(destb, ra, ins->dest, x64, syntax);
     const char *slot = loc_str(mem, ra, ins->dest, x64, syntax);
     char srcbuf[32];
@@ -328,7 +328,7 @@ static void emit_addr(strbuf_t *sb, ir_instr_t *ins,
  * Load a bit-field value (IR_BFLOAD).
  *
  * Register allocation expectations:
- *   - `dest` may be spilled; SCRATCH_REG is used when necessary.
+ *   - `dest` may be spilled; REGALLOC_SCRATCH_REG is used when necessary.
  *   - %ecx/%rcx is used as a temporary when masking and shifting.
  */
 static void emit_bfload(strbuf_t *sb, ir_instr_t *ins,
@@ -339,7 +339,7 @@ static void emit_bfload(strbuf_t *sb, ir_instr_t *ins,
     char mem[32];
     const char *sfx = x64 ? "q" : "l";
     int spill = (ra && ins->dest > 0 && ra->loc[ins->dest] < 0);
-    const char *dest = spill ? reg_str(SCRATCH_REG, syntax)
+    const char *dest = spill ? reg_str(REGALLOC_SCRATCH_REG, syntax)
                              : loc_str(destb, ra, ins->dest, x64, syntax);
     const char *slot = loc_str(mem, ra, ins->dest, x64, syntax);
     unsigned shift = (unsigned)(ins->imm >> 32);
@@ -371,7 +371,7 @@ static void emit_bfload(strbuf_t *sb, ir_instr_t *ins,
  *
  * Register allocation expectations:
  *   - `src1` is the value to insert into the field.
- *   - Uses SCRATCH_REG and %ecx/%rcx as temporaries when updating the field.
+ *   - Uses REGALLOC_SCRATCH_REG and %ecx/%rcx as temporaries when updating the field.
  */
 static void emit_bfstore(strbuf_t *sb, ir_instr_t *ins,
                          regalloc_t *ra, int x64,
@@ -550,7 +550,7 @@ static void emit_arg(strbuf_t *sb, ir_instr_t *ins,
  * Load address of a string literal (IR_GLOB_STRING).
  *
  * Register allocation expectations:
- *   - `dest` may be spilled in which case SCRATCH_REG is used.
+ *   - `dest` may be spilled in which case REGALLOC_SCRATCH_REG is used.
  */
 static void emit_glob_string(strbuf_t *sb, ir_instr_t *ins,
                              regalloc_t *ra, int x64,
@@ -560,7 +560,7 @@ static void emit_glob_string(strbuf_t *sb, ir_instr_t *ins,
     char mem[32];
     const char *sfx = x64 ? "q" : "l";
     int spill = (ra && ins->dest > 0 && ra->loc[ins->dest] < 0);
-    const char *dest = spill ? reg_str(SCRATCH_REG, syntax)
+    const char *dest = spill ? reg_str(REGALLOC_SCRATCH_REG, syntax)
                              : loc_str(destb, ra, ins->dest, x64, syntax);
     const char *slot = loc_str(mem, ra, ins->dest, x64, syntax);
     if (x64) {

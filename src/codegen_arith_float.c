@@ -6,7 +6,7 @@
 #include "codegen_arith_float.h"
 #include "regalloc_x86.h"
 #include "consteval.h"
-#define SCRATCH_REG 0
+#include "regalloc.h"
 
 static const char *reg_str(int reg, asm_syntax_t syntax)
 {
@@ -172,7 +172,7 @@ void emit_cast(strbuf_t *sb, ir_instr_t *ins,
     int spill_src = ra && ra->loc[ins->src1] < 0;
     int spill_dest = ra && ra->loc[ins->dest] < 0;
     if (spill_src && spill_dest) {
-        const char *tmp = reg_str(SCRATCH_REG, syntax);
+        const char *tmp = reg_str(REGALLOC_SCRATCH_REG, syntax);
         if (syntax == ASM_INTEL) {
             strbuf_appendf(sb, "    mov%s %s, %s\n", sfx, tmp,
                            loc_str(b1, ra, ins->src1, x64, syntax));

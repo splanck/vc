@@ -15,8 +15,8 @@
 #include "codegen_mem.h"
 #include "codegen_loadstore.h"
 #include "regalloc_x86.h"
+#include "regalloc.h"
 
-#define SCRATCH_REG 0
 
 /* Determine operand size from the IR type. */
 static int op_size(type_kind_t t, int x64)
@@ -46,12 +46,38 @@ static int is_signed(type_kind_t t)
 {
     return t == TYPE_CHAR || t == TYPE_SHORT;
 }
+/* Helper to format a register name. */
+static const char *reg_str(int reg, asm_syntax_t syntax)
+{
+    const char *name = regalloc_reg_name(reg);
+    if (syntax == ASM_INTEL && name[0] == '%')
+        return name + 1;
+    return name;
+}
+
+/* Return subregister name for register `reg` and size. */
+static const char *reg_subreg(int reg, int size, asm_syntax_t syntax)
+{
+    if (reg < 0 || reg >= REGALLOC_NUM_REGS)
+        reg = 0;
+    static const char *regs8_att[REGALLOC_NUM_REGS] =
+        {"%al", "%bl", "%cl", "%dl", "%sil", "%dil"};
+    static const char *regs8_intel[REGALLOC_NUM_REGS] =
+        {"al", "bl", "cl", "dl", "sil", "dil"};
+    static const char *regs16_att[REGALLOC_NUM_REGS] =
+        {"%ax", "%bx", "%cx", "%dx", "%si", "%di"};
+    static const char *regs16_intel[REGALLOC_NUM_REGS] =
+        {"ax", "bx", "cx", "dx", "si", "di"};
+    if (size == 1)
+        return (syntax == ASM_INTEL) ? regs8_intel[reg] : regs8_att[reg];
+    if (size == 2)
+        return (syntax == ASM_INTEL) ? regs16_intel[reg] : regs16_att[reg];
+    return reg_str(reg, syntax);
+}
 
 static const char *scratch_subreg(int size, asm_syntax_t syntax)
 {
-    if (size == 1)
-        return (syntax == ASM_INTEL) ? "al" : "%al";
-    return (syntax == ASM_INTEL) ? "ax" : "%ax";
+    return reg_subreg(REGALLOC_SCRATCH_REG, size, syntax);
 }
 
 static void emit_ins(strbuf_t *sb, const char *insn,
@@ -116,14 +142,6 @@ static void emit_move_with_spill(strbuf_t *sb, const char *sfx,
 }
 
 /* Helper to format a register name. */
-static const char *reg_str(int reg, asm_syntax_t syntax)
-{
-    const char *name = regalloc_reg_name(reg);
-    if (syntax == ASM_INTEL && name[0] == '%')
-        return name + 1;
-    return name;
-}
-
 /* Format the location for operand `id`. */
 static const char *loc_str(char buf[32], regalloc_t *ra, int id, int x64,
                            asm_syntax_t syntax)
@@ -152,7 +170,7 @@ static const char *loc_str(char buf[32], regalloc_t *ra, int id, int x64,
  *
  * Register allocation expectations:
  *   - `dest` may reside in a register or a stack slot as determined by `ra`.
- *     When spilled, SCRATCH_REG is used and the result is written back.
+ *     When spilled, REGALLOC_SCRATCH_REG is used and the result is written back.
  *   - `name` is the memory operand to load from and does not require a
  *     register.
  */
@@ -163,7 +181,7 @@ void emit_load(strbuf_t *sb, ir_instr_t *ins,
     char destb[32];
     char mem[32];
     int spill = (ra && ins->dest > 0 && ra->loc[ins->dest] < 0);
-    const char *dest = spill ? reg_str(SCRATCH_REG, syntax)
+    const char *dest = spill ? reg_str(REGALLOC_SCRATCH_REG, syntax)
                              : loc_str(destb, ra, ins->dest, x64, syntax);
     const char *slot = loc_str(mem, ra, ins->dest, x64, syntax);
     char sbuf[32];
@@ -187,7 +205,7 @@ void emit_load_ptr(strbuf_t *sb, ir_instr_t *ins,
     char destb[32];
     char mem[32];
     int spill = (ra && ins->dest > 0 && ra->loc[ins->dest] < 0);
-    const char *dest = spill ? reg_str(SCRATCH_REG, syntax)
+    const char *dest = spill ? reg_str(REGALLOC_SCRATCH_REG, syntax)
                              : loc_str(destb, ra, ins->dest, x64, syntax);
     const char *slot = loc_str(mem, ra, ins->dest, x64, syntax);
     const char *addr = loc_str(b1, ra, ins->src1, x64, syntax);
@@ -195,7 +213,7 @@ void emit_load_ptr(strbuf_t *sb, ir_instr_t *ins,
     const char *src;
     if (ra && ins->src1 > 0 && ra->loc[ins->src1] < 0) {
         /* `src1` spilled: load address into scratch first. */
-        const char *scratch = reg_str(SCRATCH_REG, syntax);
+        const char *scratch = reg_str(REGALLOC_SCRATCH_REG, syntax);
         const char *psfx = x64 ? "q" : "l";
         if (syntax == ASM_INTEL)
             strbuf_appendf(sb, "    mov%s %s, %s\n", psfx, scratch, addr);
@@ -233,7 +251,7 @@ void emit_load_idx(strbuf_t *sb, ir_instr_t *ins,
     char destb[32];
     char mem[32];
     int spill = (ra && ins->dest > 0 && ra->loc[ins->dest] < 0);
-    const char *dest = spill ? reg_str(SCRATCH_REG, syntax)
+    const char *dest = spill ? reg_str(REGALLOC_SCRATCH_REG, syntax)
                              : loc_str(destb, ra, ins->dest, x64, syntax);
     const char *slot = loc_str(mem, ra, ins->dest, x64, syntax);
     char srcbuf[64];
@@ -247,7 +265,7 @@ void emit_load_idx(strbuf_t *sb, ir_instr_t *ins,
     const char *psfx = x64 ? "q" : "l";
     if (manual) {
         /* Multiply index into scratch register for arbitrary scales. */
-        const char *scratch = reg_str(SCRATCH_REG, syntax);
+        const char *scratch = reg_str(REGALLOC_SCRATCH_REG, syntax);
         const char *src = loc_str(b1, ra, ins->src1, x64, syntax);
         if (syntax == ASM_INTEL)
             strbuf_appendf(sb, "    mov%s %s, %s\n", psfx, scratch, src);
@@ -261,7 +279,7 @@ void emit_load_idx(strbuf_t *sb, ir_instr_t *ins,
         scale = 1;
     } else if (idx_spill) {
         /* Load spilled index into scratch register. */
-        const char *scratch = reg_str(SCRATCH_REG, syntax);
+        const char *scratch = reg_str(REGALLOC_SCRATCH_REG, syntax);
         const char *src = loc_str(b1, ra, ins->src1, x64, syntax);
         if (syntax == ASM_INTEL)
             strbuf_appendf(sb, "    mov%s %s, %s\n", psfx, scratch, src);
