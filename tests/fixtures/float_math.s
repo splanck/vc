@@ -6,7 +6,7 @@ main:
     movl $2, %eax
     movl %eax, -0(%ebp)
     movl $4, %eax
-    movl %eax, %eax
+    movd %eax, %xmm0
     ret
     movl %ebp, %esp
     popl %ebp

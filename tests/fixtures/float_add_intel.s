@@ -7,7 +7,7 @@ add:
     movd xmm1, ebx
     addss xmm0, xmm1
     movd ecx, xmm0
-    movl eax, ecx
+    movd xmm0, ecx
     ret
     movl esp, ebp
     popl ebp

@@ -116,21 +116,67 @@ static void emit_return(strbuf_t *sb, ir_instr_t *ins,
                         const char *ax, asm_syntax_t syntax)
 {
     char buf[32];
+    int loc = ra ? ra->loc[ins->src1] : -1;
+    const char *src = loc_str(buf, ra, ins->src1, x64, syntax);
+
+    if (ins->type == TYPE_FLOAT || ins->type == TYPE_DOUBLE) {
+        const char *xmm0 = fmt_reg("%xmm0", syntax);
+        const char *ld = (ins->type == TYPE_FLOAT) ? "movss" : "movsd";
+        const char *ldint = (ins->type == TYPE_FLOAT) ? "movd" : (x64 ? "movq" : "movd");
+        if (loc >= 0) {
+            if (syntax == ASM_INTEL)
+                strbuf_appendf(sb, "    %s %s, %s\n", ldint, xmm0, src);
+            else
+                strbuf_appendf(sb, "    %s %s, %s\n", ldint, src, xmm0);
+        } else {
+            if (syntax == ASM_INTEL)
+                strbuf_appendf(sb, "    %s %s, %s\n", ld, xmm0, src);
+            else
+                strbuf_appendf(sb, "    %s %s, %s\n", ld, src, xmm0);
+        }
+        if (ins->op == IR_RETURN_AGG) {
+            if (syntax == ASM_INTEL)
+                strbuf_appendf(sb, "    %s [%s], %s\n", ld, ax, xmm0);
+            else
+                strbuf_appendf(sb, "    %s %s, (%s)\n", ld, xmm0, ax);
+        }
+        strbuf_append(sb, "    ret\n");
+        return;
+    } else if (ins->type == TYPE_LDOUBLE) {
+        if (syntax == ASM_INTEL)
+            strbuf_appendf(sb, "    fld tword ptr %s\n", src);
+        else
+            strbuf_appendf(sb, "    fldt %s\n", src);
+        if (ins->op == IR_RETURN_AGG) {
+            if (syntax == ASM_INTEL)
+                strbuf_appendf(sb, "    fstp tword ptr [%s]\n", ax);
+            else
+                strbuf_appendf(sb, "    fstpt (%s)\n", ax);
+        }
+        strbuf_append(sb, "    ret\n");
+        return;
+    }
+
     const char *msfx = mov_sfx_from_type(ins->type, x64);
+    const char *retreg = ax;
+    const char *src_reg = src;
+    static const char *reg32[6] = {"%eax","%ebx","%ecx","%edx","%esi","%edi"};
+    if (x64 && msfx[0] == 'l') {
+        if (ins->op == IR_RETURN)
+            retreg = fmt_reg("%eax", syntax);
+        if (loc >= 0 && loc < 6)
+            src_reg = fmt_reg(reg32[loc], syntax);
+    }
     if (ins->op == IR_RETURN) {
         if (syntax == ASM_INTEL)
-            strbuf_appendf(sb, "    mov%s %s, %s\n", msfx, ax,
-                           loc_str(buf, ra, ins->src1, x64, syntax));
+            strbuf_appendf(sb, "    mov%s %s, %s\n", msfx, retreg, src_reg);
         else
-            strbuf_appendf(sb, "    mov%s %s, %s\n", msfx,
-                           loc_str(buf, ra, ins->src1, x64, syntax), ax);
+            strbuf_appendf(sb, "    mov%s %s, %s\n", msfx, src_reg, retreg);
     } else { /* IR_RETURN_AGG */
         if (syntax == ASM_INTEL)
-            strbuf_appendf(sb, "    mov%s [%s], %s\n", msfx, ax,
-                           loc_str(buf, ra, ins->src1, x64, syntax));
+            strbuf_appendf(sb, "    mov%s [%s], %s\n", msfx, ax, src_reg);
         else
-            strbuf_appendf(sb, "    mov%s %s, (%s)\n", msfx,
-                           loc_str(buf, ra, ins->src1, x64, syntax), ax);
+            strbuf_appendf(sb, "    mov%s %s, (%s)\n", msfx, src_reg, ax);
     }
     strbuf_append(sb, "    ret\n");
 }
@@ -168,12 +214,37 @@ static void emit_call(strbuf_t *sb, ir_instr_t *ins,
     arg_reg_idx = 0;
     float_reg_idx = 0;
     if (ins->dest > 0) {
-        if (syntax == ASM_INTEL)
-            strbuf_appendf(sb, "    mov%s %s, %s\n", msfx,
-                           loc_str(buf, ra, ins->dest, x64, syntax), ax);
-        else
-            strbuf_appendf(sb, "    mov%s %s, %s\n", msfx, ax,
-                           loc_str(buf, ra, ins->dest, x64, syntax));
+        const char *dst = loc_str(buf, ra, ins->dest, x64, syntax);
+        int dloc = ra ? ra->loc[ins->dest] : -1;
+        if (ins->type == TYPE_FLOAT || ins->type == TYPE_DOUBLE) {
+            const char *xmm0 = fmt_reg("%xmm0", syntax);
+            const char *movm = (ins->type == TYPE_FLOAT) ? "movss" : "movsd";
+            const char *movi = (ins->type == TYPE_FLOAT) ? "movd" : (x64 ? "movq" : "movd");
+            if (dloc >= 0) {
+                if (syntax == ASM_INTEL)
+                    strbuf_appendf(sb, "    %s %s, %s\n", movi, dst, xmm0);
+                else
+                    strbuf_appendf(sb, "    %s %s, %s\n", movi, xmm0, dst);
+            } else {
+                if (syntax == ASM_INTEL)
+                    strbuf_appendf(sb, "    %s %s, %s\n", movm, dst, xmm0);
+                else
+                    strbuf_appendf(sb, "    %s %s, %s\n", movm, xmm0, dst);
+            }
+        } else if (ins->type == TYPE_LDOUBLE) {
+            if (syntax == ASM_INTEL)
+                strbuf_appendf(sb, "    fstp tword ptr %s\n", dst);
+            else
+                strbuf_appendf(sb, "    fstpt %s\n", dst);
+        } else {
+            const char *retreg = ax;
+            if (x64 && msfx[0] == 'l')
+                retreg = fmt_reg("%eax", syntax);
+            if (syntax == ASM_INTEL)
+                strbuf_appendf(sb, "    mov%s %s, %s\n", msfx, dst, retreg);
+            else
+                strbuf_appendf(sb, "    mov%s %s, %s\n", msfx, retreg, dst);
+        }
     }
 }
 
@@ -213,12 +284,37 @@ static void emit_call_ptr(strbuf_t *sb, ir_instr_t *ins,
     arg_reg_idx = 0;
     float_reg_idx = 0;
     if (ins->dest > 0) {
-        if (syntax == ASM_INTEL)
-            strbuf_appendf(sb, "    mov%s %s, %s\n", msfx,
-                           loc_str(buf, ra, ins->dest, x64, syntax), ax);
-        else
-            strbuf_appendf(sb, "    mov%s %s, %s\n", msfx, ax,
-                           loc_str(buf, ra, ins->dest, x64, syntax));
+        const char *dst = loc_str(buf, ra, ins->dest, x64, syntax);
+        int dloc = ra ? ra->loc[ins->dest] : -1;
+        if (ins->type == TYPE_FLOAT || ins->type == TYPE_DOUBLE) {
+            const char *xmm0 = fmt_reg("%xmm0", syntax);
+            const char *movm = (ins->type == TYPE_FLOAT) ? "movss" : "movsd";
+            const char *movi = (ins->type == TYPE_FLOAT) ? "movd" : (x64 ? "movq" : "movd");
+            if (dloc >= 0) {
+                if (syntax == ASM_INTEL)
+                    strbuf_appendf(sb, "    %s %s, %s\n", movi, dst, xmm0);
+                else
+                    strbuf_appendf(sb, "    %s %s, %s\n", movi, xmm0, dst);
+            } else {
+                if (syntax == ASM_INTEL)
+                    strbuf_appendf(sb, "    %s %s, %s\n", movm, dst, xmm0);
+                else
+                    strbuf_appendf(sb, "    %s %s, %s\n", movm, xmm0, dst);
+            }
+        } else if (ins->type == TYPE_LDOUBLE) {
+            if (syntax == ASM_INTEL)
+                strbuf_appendf(sb, "    fstp tword ptr %s\n", dst);
+            else
+                strbuf_appendf(sb, "    fstpt %s\n", dst);
+        } else {
+            const char *retreg = ax;
+            if (x64 && msfx[0] == 'l')
+                retreg = fmt_reg("%eax", syntax);
+            if (syntax == ASM_INTEL)
+                strbuf_appendf(sb, "    mov%s %s, %s\n", msfx, dst, retreg);
+            else
+                strbuf_appendf(sb, "    mov%s %s, %s\n", msfx, retreg, dst);
+        }
     }
 }
 

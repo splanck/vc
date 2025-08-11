@@ -374,6 +374,17 @@ if ! "$DIR/emit_float_binop" >/dev/null; then
 fi
 rm -f "$DIR/emit_float_binop"
 
+# verify double return emission
+cc -I "$DIR/../include" -Wall -Wextra -std=c99 \
+    "$DIR/unit/test_return_double.c" \
+    "$DIR/../src/codegen_branch.c" "$DIR/../src/strbuf.c" \
+    "$DIR/../src/regalloc_x86.c" -o "$DIR/return_double"
+if ! "$DIR/return_double" >/dev/null; then
+    echo "Test return_double failed"
+    fail=1
+fi
+rm -f "$DIR/return_double"
+
 # verify complex addition emission
 cc -I "$DIR/../include" -Wall -Wextra -std=c99 \
     "$DIR/unit/test_emit_cplx_add.c" \

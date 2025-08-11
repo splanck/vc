@@ -7,7 +7,7 @@ sub:
     movd xmm1, ebx
     subss xmm0, xmm1
     movd ecx, xmm0
-    movl eax, ecx
+    movd xmm0, ecx
     ret
     movl esp, ebp
     popl ebp

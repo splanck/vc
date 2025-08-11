@@ -11,7 +11,7 @@ main:
     fldt %ebx
     faddp
     fstpt %ecx
-    movl %ecx, %eax
+    fldt %ecx
     ret
     movl %ebp, %esp
     popl %ebp

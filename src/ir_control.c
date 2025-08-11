@@ -14,22 +14,24 @@ void ir_build_arg(ir_builder_t *b, ir_value_t val, type_kind_t type)
     ins->imm = (long long)type;
 }
 
-void ir_build_return(ir_builder_t *b, ir_value_t val)
+void ir_build_return(ir_builder_t *b, ir_value_t val, type_kind_t type)
 {
     ir_instr_t *ins = append_instr(b);
     if (!ins)
         return;
     ins->op = IR_RETURN;
     ins->src1 = val.id;
+    ins->type = type;
 }
 
-void ir_build_return_agg(ir_builder_t *b, ir_value_t ptr)
+void ir_build_return_agg(ir_builder_t *b, ir_value_t ptr, type_kind_t type)
 {
     ir_instr_t *ins = append_instr(b);
     if (!ins)
         return;
     ins->op = IR_RETURN_AGG;
     ins->src1 = ptr.id;
+    ins->type = type;
 }
 
 ir_value_t ir_build_call(ir_builder_t *b, const char *name, size_t arg_count)

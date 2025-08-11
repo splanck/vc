@@ -55,7 +55,7 @@ static int handle_return_stmt(stmt_t *stmt, symtable_t *vars,
             return 0;
         }
         ir_value_t zero = ir_build_const(ir, 0);
-        ir_build_return(ir, zero);
+        ir_build_return(ir, zero, TYPE_UNKNOWN);
         return 1;
     }
 
@@ -72,11 +72,12 @@ static int handle_return_stmt(stmt_t *stmt, symtable_t *vars,
             return 0;
         ir_value_t ret_ptr = ir_build_load_param(ir, 0, TYPE_PTR);
         ir_build_store_ptr(ir, ret_ptr, val);
-        ir_build_return_agg(ir, ret_ptr);
+        ir_build_return_agg(ir, ret_ptr, TYPE_UNKNOWN);
         return 1;
     }
 
-    ir_build_return(ir, val);
+    type_kind_t rtype = (vt == TYPE_FLOAT || vt == TYPE_DOUBLE || vt == TYPE_LDOUBLE) ? vt : TYPE_UNKNOWN;
+    ir_build_return(ir, val, rtype);
     return 1;
 }
 

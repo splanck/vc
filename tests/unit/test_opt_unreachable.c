@@ -20,7 +20,7 @@ static void test_remove_blocks(void)
     ir_build_br(&ir, "L1");
     ir_build_store(&ir, "x", v); /* unreachable */
     ir_build_label(&ir, "L1");
-    ir_build_return(&ir, v);
+    ir_build_return(&ir, v, TYPE_INT);
     ir_build_store(&ir, "x", v); /* unreachable */
     ir_build_func_end(&ir);
 
