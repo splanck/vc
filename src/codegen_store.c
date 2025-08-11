@@ -15,10 +15,9 @@
 #include "codegen_mem.h"
 #include "codegen_loadstore.h"
 #include "regalloc_x86.h"
+#include "regalloc.h"
 
 
-#define SCRATCH_REG 0
-#define SCRATCH_REG2 1
 
 /* Forward declaration for register name helper. */
 static const char *reg_str(int reg, asm_syntax_t syntax);
@@ -129,8 +128,8 @@ void emit_store(strbuf_t *sb, ir_instr_t *ins,
     if (ra && ins->src1 > 0 && ra->loc[ins->src1] < 0) {
         /* `src1` spilled: move through scratch register to avoid mem-to-mem. */
         const char *scratch = (size <= 2)
-                                  ? reg_subreg(SCRATCH_REG, size, syntax)
-                                  : reg_str(SCRATCH_REG, syntax);
+                                  ? reg_subreg(REGALLOC_SCRATCH_REG, size, syntax)
+                                  : reg_str(REGALLOC_SCRATCH_REG, syntax);
         const char *slot = loc_str(b1, ra, ins->src1, x64, syntax);
         if (syntax == ASM_INTEL)
             strbuf_appendf(sb, "    mov%s %s, %s\n", sfx, scratch, slot);
@@ -181,7 +180,7 @@ void emit_store_ptr(strbuf_t *sb, ir_instr_t *ins,
 
     if (addr_spill) {
         /* `src1` spilled: load address into scratch first. */
-        const char *scratch = reg_str(SCRATCH_REG, syntax);
+        const char *scratch = reg_str(REGALLOC_SCRATCH_REG, syntax);
         const char *slot = loc_str(addrbuf, ra, ins->src1, x64, syntax);
         const char *psfx = x64 ? "q" : "l";
         if (syntax == ASM_INTEL)
@@ -208,7 +207,7 @@ void emit_store_ptr(strbuf_t *sb, ir_instr_t *ins,
     const char *src;
     if (val_spill) {
         /* Load spilled value into scratch register. */
-        int scratch_idx = addr_spill ? SCRATCH_REG2 : SCRATCH_REG;
+        int scratch_idx = addr_spill ? REGALLOC_SCRATCH_REG2 : REGALLOC_SCRATCH_REG;
         const char *scratch = (size <= 2)
                                   ? reg_subreg(scratch_idx, size, syntax)
                                   : reg_str(scratch_idx, syntax);
@@ -264,7 +263,7 @@ void emit_store_idx(strbuf_t *sb, ir_instr_t *ins,
     const char *val;
     if (val_spill) {
         /* `src2` spilled: move value through a scratch register. */
-        int scratch_idx = idx_needs_scratch ? SCRATCH_REG2 : SCRATCH_REG;
+        int scratch_idx = idx_needs_scratch ? REGALLOC_SCRATCH_REG2 : REGALLOC_SCRATCH_REG;
         const char *scratch = (size <= 2)
                                   ? reg_subreg(scratch_idx, size, syntax)
                                   : reg_str(scratch_idx, syntax);
@@ -286,7 +285,7 @@ void emit_store_idx(strbuf_t *sb, ir_instr_t *ins,
     const char *psfx = x64 ? "q" : "l";
     if (manual) {
         /* Multiply index into scratch register for arbitrary scales. */
-        const char *scratch = reg_str(SCRATCH_REG, syntax);
+        const char *scratch = reg_str(REGALLOC_SCRATCH_REG, syntax);
         const char *src = loc_str(b2, ra, ins->src1, x64, syntax);
         if (syntax == ASM_INTEL)
             strbuf_appendf(sb, "    mov%s %s, %s\n", psfx, scratch, src);
@@ -300,7 +299,7 @@ void emit_store_idx(strbuf_t *sb, ir_instr_t *ins,
         scale = 1;
     } else if (idx_spill) {
         /* Load spilled index into scratch register. */
-        const char *scratch = reg_str(SCRATCH_REG, syntax);
+        const char *scratch = reg_str(REGALLOC_SCRATCH_REG, syntax);
         const char *src = loc_str(b2, ra, ins->src1, x64, syntax);
         if (syntax == ASM_INTEL)
             strbuf_appendf(sb, "    mov%s %s, %s\n", psfx, scratch, src);

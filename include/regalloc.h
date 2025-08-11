@@ -18,6 +18,16 @@
 #include "ir_core.h"
 
 /*
+ * Indices of scratch registers kept out of the general allocation pool.
+ *
+ * REGALLOC_SCRATCH_REG is always available for temporary values. Some
+ * store operations may require a second temporary register which is
+ * provided by REGALLOC_SCRATCH_REG2.
+ */
+#define REGALLOC_SCRATCH_REG  0
+#define REGALLOC_SCRATCH_REG2 1
+
+/*
  * Location mapping for IR values returned by the allocator.
  *
  * `loc[i]` holds the location assigned to value `i`.  Non-negative

@@ -26,8 +26,12 @@
 #include "regalloc.h"
 #include "regalloc_x86.h"
 
-#define SCRATCH_REG (REGALLOC_NUM_REGS - 1)
-#define NUM_REGS REGALLOC_NUM_REGS
+/*
+ * One register is reserved for temporary values during code generation.
+ * The allocator itself never hands out this register so that codegen can
+ * freely use it for spills.  Its index is exposed via REGALLOC_SCRATCH_REG
+ * in regalloc.h.
+ */
 #define NUM_ALLOC_REGS (REGALLOC_NUM_REGS - 1)
 
 /*
