@@ -232,10 +232,13 @@ static void emit_call(strbuf_t *sb, ir_instr_t *ins,
                     strbuf_appendf(sb, "    %s %s, %s\n", movm, xmm0, dst);
             }
         } else if (ins->type == TYPE_LDOUBLE) {
-            if (syntax == ASM_INTEL)
+            if (syntax == ASM_INTEL) {
                 strbuf_appendf(sb, "    fstp tword ptr %s\n", dst);
-            else
+                strbuf_appendf(sb, "    fld tword ptr %s\n", dst);
+            } else {
                 strbuf_appendf(sb, "    fstpt %s\n", dst);
+                strbuf_appendf(sb, "    fldt %s\n", dst);
+            }
         } else {
             const char *retreg = ax;
             if (x64 && msfx[0] == 'l')
@@ -302,10 +305,13 @@ static void emit_call_ptr(strbuf_t *sb, ir_instr_t *ins,
                     strbuf_appendf(sb, "    %s %s, %s\n", movm, xmm0, dst);
             }
         } else if (ins->type == TYPE_LDOUBLE) {
-            if (syntax == ASM_INTEL)
+            if (syntax == ASM_INTEL) {
                 strbuf_appendf(sb, "    fstp tword ptr %s\n", dst);
-            else
+                strbuf_appendf(sb, "    fld tword ptr %s\n", dst);
+            } else {
                 strbuf_appendf(sb, "    fstpt %s\n", dst);
+                strbuf_appendf(sb, "    fldt %s\n", dst);
+            }
         } else {
             const char *retreg = ax;
             if (x64 && msfx[0] == 'l')
