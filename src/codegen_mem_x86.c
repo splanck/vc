@@ -295,9 +295,9 @@ static void emit_addr(strbuf_t *sb, ir_instr_t *ins,
     }
     if (x64) {
         if (syntax == ASM_INTEL)
-            strbuf_appendf(sb, "    movabs %s, %s\n", dest, name);
+            strbuf_appendf(sb, "    lea%s %s, [rip+%s]\n", sfx, dest, name);
         else
-            strbuf_appendf(sb, "    movabsq $%s, %s\n", name, dest);
+            strbuf_appendf(sb, "    lea%s %s(%%rip), %s\n", sfx, name, dest);
         if (spill) {
             if (syntax == ASM_INTEL)
                 strbuf_appendf(sb, "    mov%s %s, %s\n", sfx, slot, dest);
