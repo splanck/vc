@@ -341,6 +341,28 @@ if ! "$DIR/store_idx_spill" >/dev/null; then
 fi
 rm -f "$DIR/store_idx_spill"
 
+# verify long double load/store handling
+cc -I "$DIR/../include" -Wall -Wextra -std=c99 \
+    "$DIR/unit/test_ldouble_load_store.c" \
+    "$DIR/../src/codegen_load.c" "$DIR/../src/codegen_store.c" \
+    "$DIR/../src/strbuf.c" "$DIR/../src/regalloc_x86.c" -o "$DIR/ldouble_load_store"
+if ! "$DIR/ldouble_load_store" >/dev/null; then
+    echo "Test ldouble_load_store failed"
+    fail=1
+fi
+rm -f "$DIR/ldouble_load_store"
+
+# verify complex load/store handling
+cc -I "$DIR/../include" -Wall -Wextra -std=c99 \
+    "$DIR/unit/test_complex_load_store.c" \
+    "$DIR/../src/codegen_load.c" "$DIR/../src/codegen_store.c" \
+    "$DIR/../src/strbuf.c" "$DIR/../src/regalloc_x86.c" -o "$DIR/complex_load_store"
+if ! "$DIR/complex_load_store" >/dev/null; then
+    echo "Test complex_load_store failed"
+    fail=1
+fi
+rm -f "$DIR/complex_load_store"
+
 # verify 64-bit int/float cast emission
 cc -I "$DIR/../include" -Wall -Wextra -std=c99 \
     "$DIR/unit/test_emit_cast_int64.c" \

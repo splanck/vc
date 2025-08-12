@@ -95,6 +95,34 @@ static void emit_move_with_spill(strbuf_t *sb, const char *sfx,
                                  const char *slot, int spill,
                                  asm_syntax_t syntax);
 
+/* Format memory operand `base` with additional byte offset. */
+static void fmt_mem_off(char buf[64], const char *base, int off,
+                        asm_syntax_t syntax)
+{
+    if (syntax == ASM_INTEL) {
+        size_t len = strlen(base);
+        if (len >= 2 && base[0] == '[' && base[len - 1] == ']')
+            snprintf(buf, 64, "[%.*s+%d]", (int)(len - 2), base + 1, off);
+        else
+            snprintf(buf, 64, "%s+%d", base, off);
+    } else {
+        const char *paren = strchr(base, '(');
+        if (paren) {
+            char num[32];
+            snprintf(num, sizeof(num), "%.*s", (int)(paren - base), base);
+            long val = strtol(num, NULL, 10);
+            snprintf(buf, 64, "%ld%s", val + off, paren);
+        } else {
+            snprintf(buf, 64, "%s+%d", base, off);
+        }
+    }
+}
+
+static int is_memop(const char *s)
+{
+    return s && (strchr(s, '[') || strchr(s, '('));
+}
+
 static void emit_typed_load(strbuf_t *sb, type_kind_t type, int x64,
                             const char *src, const char *dest,
                             const char *slot, int spill,
@@ -116,6 +144,42 @@ static void emit_typed_load(strbuf_t *sb, type_kind_t type, int x64,
         if (spill) {
             const char *low = scratch_subreg(size, syntax);
             emit_ins(sb, spill_inst, low, slot, syntax);
+        }
+    } else if (size == 10 && is_memop(src) && is_memop(spill ? slot : dest)) {
+        const char *dst = spill ? slot : dest;
+        if (syntax == ASM_INTEL) {
+            strbuf_appendf(sb, "    fld tword ptr %s\n", src);
+            strbuf_appendf(sb, "    fstp tword ptr %s\n", dst);
+        } else {
+            strbuf_appendf(sb, "    fldt %s\n", src);
+            strbuf_appendf(sb, "    fstpt %s\n", dst);
+        }
+    } else if ((size == 16 || size == 20) && is_memop(src) &&
+               is_memop(spill ? slot : dest)) {
+        const char *dst = spill ? slot : dest;
+        int xr = regalloc_xmm_acquire();
+        const char *xreg = regalloc_xmm_name(xr);
+        if (syntax == ASM_INTEL) {
+            strbuf_appendf(sb, "    movdqu %s, %s\n", xreg, src);
+            strbuf_appendf(sb, "    movdqu %s, %s\n", dst, xreg);
+        } else {
+            strbuf_appendf(sb, "    movdqu %s, %s\n", src, xreg);
+            strbuf_appendf(sb, "    movdqu %s, %s\n", xreg, dst);
+        }
+        regalloc_xmm_release(xr);
+        if (size == 20) {
+            char soff[64];
+            char doff[64];
+            fmt_mem_off(soff, src, 16, syntax);
+            fmt_mem_off(doff, dst, 16, syntax);
+            const char *scratch = reg_str(REGALLOC_SCRATCH_REG, syntax);
+            if (syntax == ASM_INTEL) {
+                strbuf_appendf(sb, "    movl %s, %s\n", scratch, soff);
+                strbuf_appendf(sb, "    movl %s, %s\n", doff, scratch);
+            } else {
+                strbuf_appendf(sb, "    movl %s, %s\n", soff, scratch);
+                strbuf_appendf(sb, "    movl %s, %s\n", scratch, doff);
+            }
         }
     } else {
         const char *sfx = (x64 && type != TYPE_INT) ? "q" : "l";

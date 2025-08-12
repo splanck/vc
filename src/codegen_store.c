@@ -98,6 +98,34 @@ static const char *loc_str(char buf[32], regalloc_t *ra, int id, int x64,
     return buf;
 }
 
+/* Format memory operand `base` with additional byte offset. */
+static void fmt_mem_off(char buf[64], const char *base, int off,
+                        asm_syntax_t syntax)
+{
+    if (syntax == ASM_INTEL) {
+        size_t len = strlen(base);
+        if (len >= 2 && base[0] == '[' && base[len - 1] == ']')
+            snprintf(buf, 64, "[%.*s+%d]", (int)(len - 2), base + 1, off);
+        else
+            snprintf(buf, 64, "%s+%d", base, off);
+    } else {
+        const char *paren = strchr(base, '(');
+        if (paren) {
+            char num[32];
+            snprintf(num, sizeof(num), "%.*s", (int)(paren - base), base);
+            long val = strtol(num, NULL, 10);
+            snprintf(buf, 64, "%ld%s", val + off, paren);
+        } else {
+            snprintf(buf, 64, "%s+%d", base, off);
+        }
+    }
+}
+
+static int is_memop(const char *s)
+{
+    return s && (strchr(s, '[') || strchr(s, '('));
+}
+
 /*
  * Store a value to a named location (IR_STORE).
  *
@@ -112,6 +140,53 @@ void emit_store(strbuf_t *sb, ir_instr_t *ins,
 {
     char b1[32];
     int size = op_size(ins->type, x64);
+    char sbuf[32];
+    const char *dst = fmt_stack(sbuf, ins->name, x64, syntax);
+
+    if (size == 10) {
+        const char *src = loc_str(b1, ra, ins->src1, x64, syntax);
+        if (is_memop(src) && is_memop(dst)) {
+            if (syntax == ASM_INTEL) {
+                strbuf_appendf(sb, "    fld tword ptr %s\n", src);
+                strbuf_appendf(sb, "    fstp tword ptr %s\n", dst);
+            } else {
+                strbuf_appendf(sb, "    fldt %s\n", src);
+                strbuf_appendf(sb, "    fstpt %s\n", dst);
+            }
+            return;
+        }
+    }
+
+    const char *src0 = loc_str(b1, ra, ins->src1, x64, syntax);
+    if ((size == 16 || size == 20) && is_memop(dst) && is_memop(src0)) {
+        const char *src = src0;
+        int xr = regalloc_xmm_acquire();
+        const char *xreg = regalloc_xmm_name(xr);
+        if (syntax == ASM_INTEL) {
+            strbuf_appendf(sb, "    movdqu %s, %s\n", xreg, src);
+            strbuf_appendf(sb, "    movdqu %s, %s\n", dst, xreg);
+        } else {
+            strbuf_appendf(sb, "    movdqu %s, %s\n", src, xreg);
+            strbuf_appendf(sb, "    movdqu %s, %s\n", xreg, dst);
+        }
+        regalloc_xmm_release(xr);
+        if (size == 20) {
+            char soff[64];
+            char doff[64];
+            fmt_mem_off(soff, src, 16, syntax);
+            fmt_mem_off(doff, dst, 16, syntax);
+            const char *scratch = reg_str(REGALLOC_SCRATCH_REG, syntax);
+            if (syntax == ASM_INTEL) {
+                strbuf_appendf(sb, "    movl %s, %s\n", scratch, soff);
+                strbuf_appendf(sb, "    movl %s, %s\n", doff, scratch);
+            } else {
+                strbuf_appendf(sb, "    movl %s, %s\n", soff, scratch);
+                strbuf_appendf(sb, "    movl %s, %s\n", scratch, doff);
+            }
+        }
+        return;
+    }
+
     const char *sfx;
     if (size == 1)
         sfx = "b";
@@ -121,8 +196,6 @@ void emit_store(strbuf_t *sb, ir_instr_t *ins,
         sfx = "q";
     else
         sfx = "l";
-    char sbuf[32];
-    const char *dst = fmt_stack(sbuf, ins->name, x64, syntax);
     const char *src;
 
     if (ra && ins->src1 > 0 && ra->loc[ins->src1] < 0) {
