@@ -294,14 +294,13 @@ static void emit_addr(strbuf_t *sb, ir_instr_t *ins,
         return;
     }
     if (x64) {
-        if (syntax == ASM_INTEL)
-            strbuf_appendf(sb, "    movabs %s, %s\n", dest, name);
-        else
-            strbuf_appendf(sb, "    movabsq $%s, %s\n", name, dest);
-        if (spill) {
-            if (syntax == ASM_INTEL)
-                strbuf_appendf(sb, "    mov%s %s, %s\n", sfx, slot, dest);
-            else
+        if (syntax == ASM_INTEL) {
+            char abuf[64];
+            snprintf(abuf, sizeof(abuf), "OFFSET FLAT:%s", name);
+            emit_move_with_spill(sb, sfx, abuf, dest, slot, spill, syntax);
+        } else {
+            strbuf_appendf(sb, "    leaq %s(%%rip), %s\n", name, dest);
+            if (spill)
                 strbuf_appendf(sb, "    mov%s %s, %s\n", sfx, dest, slot);
         }
     } else {
@@ -564,14 +563,13 @@ static void emit_glob_string(strbuf_t *sb, ir_instr_t *ins,
                              : loc_str(destb, ra, ins->dest, x64, syntax);
     const char *slot = loc_str(mem, ra, ins->dest, x64, syntax);
     if (x64) {
-        if (syntax == ASM_INTEL)
-            strbuf_appendf(sb, "    movabs %s, %s\n", dest, ins->name);
-        else
-            strbuf_appendf(sb, "    movabsq $%s, %s\n", ins->name, dest);
-        if (spill) {
-            if (syntax == ASM_INTEL)
-                strbuf_appendf(sb, "    mov%s %s, %s\n", sfx, slot, dest);
-            else
+        if (syntax == ASM_INTEL) {
+            char abuf[64];
+            snprintf(abuf, sizeof(abuf), "OFFSET FLAT:%s", ins->name);
+            emit_move_with_spill(sb, sfx, abuf, dest, slot, spill, syntax);
+        } else {
+            strbuf_appendf(sb, "    leaq %s(%%rip), %s\n", ins->name, dest);
+            if (spill)
                 strbuf_appendf(sb, "    mov%s %s, %s\n", sfx, dest, slot);
         }
     } else {
