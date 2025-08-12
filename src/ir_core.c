@@ -37,6 +37,7 @@ void ir_builder_init(ir_builder_t *b)
     b->cur_column = 0;
     b->aliases = NULL;
     b->next_alias_id = 1;
+    vector_init(&b->locals, sizeof(ir_local_t));
 }
 
 void ir_builder_set_loc(ir_builder_t *b, const char *file, size_t line, size_t column)
@@ -66,6 +67,28 @@ void ir_builder_free(ir_builder_t *b)
         b->aliases = n;
     }
     b->next_alias_id = 0;
+    for (size_t i = 0; i < b->locals.count; i++)
+        free(((ir_local_t *)b->locals.data)[i].name);
+    vector_free(&b->locals);
+}
+
+void ir_builder_add_local(ir_builder_t *b, const char *name, size_t size)
+{
+    if (!b || !name || !size)
+        return;
+    for (size_t i = 0; i < b->locals.count; i++) {
+        ir_local_t *loc = &((ir_local_t *)b->locals.data)[i];
+        if (strcmp(loc->name, name) == 0) {
+            loc->size = size;
+            return;
+        }
+    }
+    ir_local_t loc;
+    loc.name = vc_strdup(name);
+    if (!loc.name)
+        return;
+    loc.size = size;
+    vector_push(&b->locals, &loc);
 }
 /*
  * Emit a binary arithmetic or comparison instruction. Operands are in
