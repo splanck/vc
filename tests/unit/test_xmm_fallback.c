@@ -8,8 +8,8 @@
 void *vc_alloc_or_exit(size_t sz) { return malloc(sz); }
 void *vc_realloc_or_exit(void *p, size_t sz) { return realloc(p, sz); }
 
-static int has_fail(const char *s) {
-    return strstr(s, "XMM register allocation failed") != NULL;
+static int has_spill(const char *s) {
+    return strstr(s, "movaps") != NULL;
 }
 
 int main(void) {
@@ -24,8 +24,8 @@ int main(void) {
         ;
     strbuf_init(&sb);
     emit_float_binop(&sb, &ins, NULL, 0, "addss", ASM_ATT);
-    if (!has_fail(sb.data)) {
-        printf("float binop fallback missing: %s\n", sb.data);
+    if (!has_spill(sb.data)) {
+        printf("float binop spill missing: %s\n", sb.data);
         return 1;
     }
     strbuf_free(&sb);
@@ -36,12 +36,12 @@ int main(void) {
         ;
     strbuf_init(&sb);
     emit_cplx_mul(&sb, &ins, NULL, 0, ASM_ATT);
-    if (!has_fail(sb.data)) {
-        printf("complex mul fallback missing: %s\n", sb.data);
+    if (!has_spill(sb.data)) {
+        printf("complex mul spill missing: %s\n", sb.data);
         return 1;
     }
     strbuf_free(&sb);
 
-    printf("xmm fallback tests passed\n");
+    printf("xmm spill tests passed\n");
     return 0;
 }

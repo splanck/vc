@@ -18,6 +18,37 @@ static const char *fmt_reg(const char *name, asm_syntax_t syntax)
     return name;
 }
 
+static int acquire_xmm_temp(strbuf_t *sb, asm_syntax_t syntax, int *spilled)
+{
+    int r = regalloc_xmm_acquire();
+    if (r >= 0) {
+        *spilled = 0;
+        return r;
+    }
+    r = 0;
+    const char *name = fmt_reg(regalloc_xmm_name(r), syntax);
+    if (syntax == ASM_INTEL)
+        strbuf_appendf(sb, "    sub rsp, 16\n    movaps %s, [rsp]\n", name);
+    else
+        strbuf_appendf(sb, "    sub $16, %rsp\n    movaps %s, (%rsp)\n", name);
+    *spilled = 1;
+    return r;
+}
+
+static void release_xmm_temp(strbuf_t *sb, asm_syntax_t syntax,
+                             int reg, int spilled)
+{
+    const char *name = fmt_reg(regalloc_xmm_name(reg), syntax);
+    if (spilled) {
+        if (syntax == ASM_INTEL)
+            strbuf_appendf(sb, "    movaps [rsp], %s\n    add rsp, 16\n", name);
+        else
+            strbuf_appendf(sb, "    movaps (%rsp), %s\n    add $16, %rsp\n", name);
+    } else {
+        regalloc_xmm_release(reg);
+    }
+}
+
 static const char *loc_str(char buf[32], regalloc_t *ra, int id, int x64,
                            asm_syntax_t syntax)
 {
@@ -57,19 +88,10 @@ void emit_float_binop(strbuf_t *sb, ir_instr_t *ins,
                       asm_syntax_t syntax)
 {
     char b1[32];
-    int r0 = regalloc_xmm_acquire();
-    if (r0 < 0) {
-        fprintf(stderr, "emit_float_binop: XMM register allocation failed\n");
-        strbuf_appendf(sb, "    # XMM register allocation failed\n");
-        return;
-    }
-    int r1 = regalloc_xmm_acquire();
-    if (r1 < 0) {
-        regalloc_xmm_release(r0);
-        fprintf(stderr, "emit_float_binop: XMM register allocation failed\n");
-        strbuf_appendf(sb, "    # XMM register allocation failed\n");
-        return;
-    }
+    int spill0 = 0;
+    int r0 = acquire_xmm_temp(sb, syntax, &spill0);
+    int spill1 = 0;
+    int r1 = acquire_xmm_temp(sb, syntax, &spill1);
     const char *reg0 = fmt_reg(regalloc_xmm_name(r0), syntax);
     const char *reg1 = fmt_reg(regalloc_xmm_name(r1), syntax);
 
@@ -110,6 +132,6 @@ void emit_float_binop(strbuf_t *sb, ir_instr_t *ins,
             strbuf_appendf(sb, "    movss %s, %s\n", result,
                            loc_str(b2, ra, ins->dest, x64, syntax));
     }
-    regalloc_xmm_release(r1);
-    regalloc_xmm_release(r0);
+    release_xmm_temp(sb, syntax, r1, spill1);
+    release_xmm_temp(sb, syntax, r0, spill0);
 }

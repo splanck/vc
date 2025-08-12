@@ -19,6 +19,37 @@ static const char *fmt_reg(const char *name, asm_syntax_t syntax)
     return name;
 }
 
+static int acquire_xmm_temp(strbuf_t *sb, asm_syntax_t syntax, int *spilled)
+{
+    int r = regalloc_xmm_acquire();
+    if (r >= 0) {
+        *spilled = 0;
+        return r;
+    }
+    r = 0;
+    const char *name = fmt_reg(regalloc_xmm_name(r), syntax);
+    if (syntax == ASM_INTEL)
+        strbuf_appendf(sb, "    sub rsp, 16\n    movaps %s, [rsp]\n", name);
+    else
+        strbuf_appendf(sb, "    sub $16, %rsp\n    movaps %s, (%rsp)\n", name);
+    *spilled = 1;
+    return r;
+}
+
+static void release_xmm_temp(strbuf_t *sb, asm_syntax_t syntax,
+                             int reg, int spilled)
+{
+    const char *name = fmt_reg(regalloc_xmm_name(reg), syntax);
+    if (spilled) {
+        if (syntax == ASM_INTEL)
+            strbuf_appendf(sb, "    movaps [rsp], %s\n    add rsp, 16\n", name);
+        else
+            strbuf_appendf(sb, "    movaps (%rsp), %s\n    add $16, %rsp\n", name);
+    } else {
+        regalloc_xmm_release(reg);
+    }
+}
+
 /* Compute the location of the imaginary or real part of a complex value. */
 static const char *loc_str_off(char buf[32], regalloc_t *ra, int id,
                                int off, int x64, asm_syntax_t syntax)
@@ -58,19 +89,10 @@ void emit_cplx_addsub(strbuf_t *sb, ir_instr_t *ins, regalloc_t *ra,
     char b1[32];
     char b2[32];
     char b3[32];
-    int r0 = regalloc_xmm_acquire();
-    if (r0 < 0) {
-        fprintf(stderr, "emit_cplx_addsub: XMM register allocation failed\n");
-        strbuf_appendf(sb, "    # XMM register allocation failed\n");
-        return;
-    }
-    int r1 = regalloc_xmm_acquire();
-    if (r1 < 0) {
-        regalloc_xmm_release(r0);
-        fprintf(stderr, "emit_cplx_addsub: XMM register allocation failed\n");
-        strbuf_appendf(sb, "    # XMM register allocation failed\n");
-        return;
-    }
+    int spill0 = 0;
+    int r0 = acquire_xmm_temp(sb, syntax, &spill0);
+    int spill1 = 0;
+    int r1 = acquire_xmm_temp(sb, syntax, &spill1);
     const char *reg0 = fmt_reg(regalloc_xmm_name(r0), syntax);
     const char *reg1 = fmt_reg(regalloc_xmm_name(r1), syntax);
 
@@ -91,8 +113,8 @@ void emit_cplx_addsub(strbuf_t *sb, ir_instr_t *ins, regalloc_t *ra,
     emit_op_sd(sb, op, reg1, reg0, syntax);
     emit_movsd(sb, reg0, loc_str_off(b3, ra, ins->dest, 8, x64, syntax),
                syntax);
-    regalloc_xmm_release(r1);
-    regalloc_xmm_release(r0);
+    release_xmm_temp(sb, syntax, r1, spill1);
+    release_xmm_temp(sb, syntax, r0, spill0);
 }
 
 /* Complex multiplication using SSE2. */
@@ -100,36 +122,11 @@ void emit_cplx_mul(strbuf_t *sb, ir_instr_t *ins, regalloc_t *ra,
                    int x64, asm_syntax_t syntax)
 {
     char a[32], c[32], d[32], out[32];
-    int r0 = regalloc_xmm_acquire();
-    if (r0 < 0) {
-        fprintf(stderr, "emit_cplx_mul: XMM register allocation failed\n");
-        strbuf_appendf(sb, "    # XMM register allocation failed\n");
-        return;
-    }
-    int r1 = regalloc_xmm_acquire();
-    if (r1 < 0) {
-        regalloc_xmm_release(r0);
-        fprintf(stderr, "emit_cplx_mul: XMM register allocation failed\n");
-        strbuf_appendf(sb, "    # XMM register allocation failed\n");
-        return;
-    }
-    int r2 = regalloc_xmm_acquire();
-    if (r2 < 0) {
-        regalloc_xmm_release(r1);
-        regalloc_xmm_release(r0);
-        fprintf(stderr, "emit_cplx_mul: XMM register allocation failed\n");
-        strbuf_appendf(sb, "    # XMM register allocation failed\n");
-        return;
-    }
-    int r3 = regalloc_xmm_acquire();
-    if (r3 < 0) {
-        regalloc_xmm_release(r2);
-        regalloc_xmm_release(r1);
-        regalloc_xmm_release(r0);
-        fprintf(stderr, "emit_cplx_mul: XMM register allocation failed\n");
-        strbuf_appendf(sb, "    # XMM register allocation failed\n");
-        return;
-    }
+    int s0 = 0, s1 = 0, s2 = 0, s3 = 0;
+    int r0 = acquire_xmm_temp(sb, syntax, &s0);
+    int r1 = acquire_xmm_temp(sb, syntax, &s1);
+    int r2 = acquire_xmm_temp(sb, syntax, &s2);
+    int r3 = acquire_xmm_temp(sb, syntax, &s3);
     const char *x0 = fmt_reg(regalloc_xmm_name(r0), syntax);
     const char *x1 = fmt_reg(regalloc_xmm_name(r1), syntax);
     const char *x2 = fmt_reg(regalloc_xmm_name(r2), syntax);
@@ -152,10 +149,10 @@ void emit_cplx_mul(strbuf_t *sb, ir_instr_t *ins, regalloc_t *ra,
     emit_op_sd(sb, "mul", x2, x1, syntax);
     emit_op_sd(sb, "add", x1, x0, syntax);
     emit_movsd(sb, x0, loc_str_off(out, ra, ins->dest, 8, x64, syntax), syntax);
-    regalloc_xmm_release(r3);
-    regalloc_xmm_release(r2);
-    regalloc_xmm_release(r1);
-    regalloc_xmm_release(r0);
+    release_xmm_temp(sb, syntax, r3, s3);
+    release_xmm_temp(sb, syntax, r2, s2);
+    release_xmm_temp(sb, syntax, r1, s1);
+    release_xmm_temp(sb, syntax, r0, s0);
 }
 
 /* Complex division using SSE2. */
@@ -163,46 +160,12 @@ void emit_cplx_div(strbuf_t *sb, ir_instr_t *ins, regalloc_t *ra,
                    int x64, asm_syntax_t syntax)
 {
     char a[32], c[32], d[32], out[32];
-    int r0 = regalloc_xmm_acquire();
-    if (r0 < 0) {
-        fprintf(stderr, "emit_cplx_div: XMM register allocation failed\n");
-        strbuf_appendf(sb, "    # XMM register allocation failed\n");
-        return;
-    }
-    int r1 = regalloc_xmm_acquire();
-    if (r1 < 0) {
-        regalloc_xmm_release(r0);
-        fprintf(stderr, "emit_cplx_div: XMM register allocation failed\n");
-        strbuf_appendf(sb, "    # XMM register allocation failed\n");
-        return;
-    }
-    int r2 = regalloc_xmm_acquire();
-    if (r2 < 0) {
-        regalloc_xmm_release(r1);
-        regalloc_xmm_release(r0);
-        fprintf(stderr, "emit_cplx_div: XMM register allocation failed\n");
-        strbuf_appendf(sb, "    # XMM register allocation failed\n");
-        return;
-    }
-    int r3 = regalloc_xmm_acquire();
-    if (r3 < 0) {
-        regalloc_xmm_release(r2);
-        regalloc_xmm_release(r1);
-        regalloc_xmm_release(r0);
-        fprintf(stderr, "emit_cplx_div: XMM register allocation failed\n");
-        strbuf_appendf(sb, "    # XMM register allocation failed\n");
-        return;
-    }
-    int r4 = regalloc_xmm_acquire();
-    if (r4 < 0) {
-        regalloc_xmm_release(r3);
-        regalloc_xmm_release(r2);
-        regalloc_xmm_release(r1);
-        regalloc_xmm_release(r0);
-        fprintf(stderr, "emit_cplx_div: XMM register allocation failed\n");
-        strbuf_appendf(sb, "    # XMM register allocation failed\n");
-        return;
-    }
+    int s0 = 0, s1 = 0, s2 = 0, s3 = 0, s4 = 0;
+    int r0 = acquire_xmm_temp(sb, syntax, &s0);
+    int r1 = acquire_xmm_temp(sb, syntax, &s1);
+    int r2 = acquire_xmm_temp(sb, syntax, &s2);
+    int r3 = acquire_xmm_temp(sb, syntax, &s3);
+    int r4 = acquire_xmm_temp(sb, syntax, &s4);
     const char *x0 = fmt_reg(regalloc_xmm_name(r0), syntax);
     const char *x1 = fmt_reg(regalloc_xmm_name(r1), syntax);
     const char *x2 = fmt_reg(regalloc_xmm_name(r2), syntax);
@@ -237,9 +200,9 @@ void emit_cplx_div(strbuf_t *sb, ir_instr_t *ins, regalloc_t *ra,
     emit_op_sd(sb, "div", x2, x0, syntax);
     emit_movsd(sb, x0, loc_str_off(out, ra, ins->dest, 8, x64, syntax), syntax);
 
-    regalloc_xmm_release(r4);
-    regalloc_xmm_release(r3);
-    regalloc_xmm_release(r2);
-    regalloc_xmm_release(r1);
-    regalloc_xmm_release(r0);
+    release_xmm_temp(sb, syntax, r4, s4);
+    release_xmm_temp(sb, syntax, r3, s3);
+    release_xmm_temp(sb, syntax, r2, s2);
+    release_xmm_temp(sb, syntax, r1, s1);
+    release_xmm_temp(sb, syntax, r0, s0);
 }
