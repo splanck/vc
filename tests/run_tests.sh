@@ -440,6 +440,17 @@ if ! "$DIR/xmm_fallback" >/dev/null; then
 fi
 rm -f "$DIR/xmm_fallback"
 
+# verify store fallback when XMM registers are exhausted
+cc -I "$DIR/../include" -Wall -Wextra -std=c99 \
+    "$DIR/unit/test_store_xmm_fallback.c" \
+    "$DIR/../src/codegen_store.c" "$DIR/../src/strbuf.c" \
+    "$DIR/../src/regalloc_x86.c" -o "$DIR/store_xmm_fallback"
+if ! "$DIR/store_xmm_fallback" >/dev/null; then
+    echo "Test store_xmm_fallback failed"
+    fail=1
+fi
+rm -f "$DIR/store_xmm_fallback"
+
 # verify stack cleanup after function calls
 cc -I "$DIR/../include" -Wall -Wextra -std=c99 \
     "$DIR/unit/test_call_stack_cleanup.c" \
