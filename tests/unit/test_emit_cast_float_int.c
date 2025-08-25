@@ -34,6 +34,8 @@ int main(void) {
     int locs[3] = {0};
     int fail = 0;
 
+    regalloc_xmm_reset();
+
     ra.loc = locs;
     ra.stack_slots = 0;
     ra.loc[1] = 0; /* dest register index */

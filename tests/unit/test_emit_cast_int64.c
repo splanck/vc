@@ -24,6 +24,7 @@ int main(void) {
     strbuf_t sb;
     int fail = 0;
 
+    regalloc_xmm_reset();
     strbuf_init(&sb);
 
     ins.imm = ((long long)TYPE_LLONG << 32) | TYPE_FLOAT;
