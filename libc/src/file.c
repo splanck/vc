@@ -47,9 +47,18 @@ int fclose(FILE *stream)
 static int flush_buf_fd(int fd, const char *buf, size_t *pos, int *total)
 {
     if (*pos > 0) {
-        long ret = _vc_write(fd, buf, *pos);
-        if (ret < (long)(*pos))
-            return -1;
+        size_t remaining = *pos;
+        const char *p = buf;
+        while (remaining > 0) {
+            long ret = _vc_write(fd, p, remaining);
+            if (ret < 0) {
+                if (errno == EINTR)
+                    continue;
+                return -1;
+            }
+            p += (size_t)ret;
+            remaining -= (size_t)ret;
+        }
         if (total)
             *total += (int)(*pos);
         *pos = 0;
