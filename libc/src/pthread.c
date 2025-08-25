@@ -16,11 +16,13 @@ int pthread_create(pthread_t *thread, const pthread_attr_t *attr,
     const char msg[] =
         "vc libc is single-threaded; pthread_create unsupported\n";
     _vc_write(2, msg, sizeof(msg) - 1);
-    void (*exit_ptr)(int) = _vc_exit;
-    exit_ptr(1);
-    const char fail[] = "vc libc: exit syscall failed\n";
-    _vc_write(2, fail, sizeof(fail) - 1);
-    exit_ptr(1);
-    _exit(1);
+    long (*exit_ptr)(int) = _vc_exit;
+    long ret = exit_ptr(1);
+    if (ret < 0) {
+        const char fail[] = "vc libc: exit syscall failed\n";
+        _vc_write(2, fail, sizeof(fail) - 1);
+        _exit(1);
+    }
+    return -1;
 }
 
