@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <string.h>
 #include "codegen_x86.h"
 #include "regalloc_x86.h"
 
@@ -43,19 +44,29 @@ void x86_emit_mov(strbuf_t *sb, const char *sfx,
                   const char *src, const char *dest,
                   asm_syntax_t syntax)
 {
-    if (syntax == ASM_INTEL)
-        strbuf_appendf(sb, "    mov%s %s, %s\n", sfx, dest, src);
-    else
+    if (syntax == ASM_INTEL) {
+        if (strcmp(sfx, "b") == 0 || strcmp(sfx, "w") == 0 ||
+            strcmp(sfx, "l") == 0 || strcmp(sfx, "q") == 0)
+            strbuf_appendf(sb, "    mov %s, %s\n", dest, src);
+        else
+            strbuf_appendf(sb, "    mov%s %s, %s\n", sfx, dest, src);
+    } else {
         strbuf_appendf(sb, "    mov%s %s, %s\n", sfx, src, dest);
+    }
 }
 
 void x86_emit_op(strbuf_t *sb, const char *op, const char *sfx,
                  const char *src, const char *dest,
                  asm_syntax_t syntax)
 {
-    if (syntax == ASM_INTEL)
-        strbuf_appendf(sb, "    %s%s %s, %s\n", op, sfx, dest, src);
-    else
+    if (syntax == ASM_INTEL) {
+        if (strcmp(sfx, "b") == 0 || strcmp(sfx, "w") == 0 ||
+            strcmp(sfx, "l") == 0 || strcmp(sfx, "q") == 0)
+            strbuf_appendf(sb, "    %s %s, %s\n", op, dest, src);
+        else
+            strbuf_appendf(sb, "    %s%s %s, %s\n", op, sfx, dest, src);
+    } else {
         strbuf_appendf(sb, "    %s%s %s, %s\n", op, sfx, src, dest);
+    }
 }
 

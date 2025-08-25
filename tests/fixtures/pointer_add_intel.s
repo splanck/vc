@@ -9,9 +9,9 @@ main:
     movl p, eax
     movl eax, p
     movl ebx, 1
-    movl ecx, ebx
+    mov ecx, ebx
     imull ecx, 4
-    addl ecx, eax
+    add ecx, eax
     movl p, ecx
     movl ecx, 1
     movl ebx, 5

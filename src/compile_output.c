@@ -50,6 +50,8 @@ static const char nasm_macros[] =
     "%macro imulq 2\n    imul %1, %2\n%endmacro\n"
     "%macro cmpl 2\n    cmp %1, %2\n%endmacro\n"
     "%macro cmpq 2\n    cmp %1, %2\n%endmacro\n"
+    "%macro leal 2\n    lea %1, %2\n%endmacro\n"
+    "%macro leaq 2\n    lea %1, %2\n%endmacro\n"
     "%macro pushl 1\n    push %1\n%endmacro\n"
     "%macro pushq 1\n    push %1\n%endmacro\n"
     "%macro popl 1\n    pop %1\n%endmacro\n"
