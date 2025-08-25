@@ -92,7 +92,10 @@ void *_vc_malloc(unsigned long size)
             return 0;
         cur_brk = (unsigned long)ret;
     }
-    if (size > ULONG_MAX - cur_brk - sizeof(unsigned long))
+    /* Compare against remaining space without subtracting cur_brk from
+     * ULONG_MAX first. Subtracting constants before size prevents an
+     * intermediate unsigned underflow when cur_brk is near the limit. */
+    if (cur_brk > ULONG_MAX - sizeof(unsigned long) - size)
         return 0;
     unsigned long prev = cur_brk;
     unsigned long new_brk = cur_brk + sizeof(unsigned long) + size;
