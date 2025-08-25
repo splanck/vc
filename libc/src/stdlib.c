@@ -6,12 +6,14 @@ void _exit(int) __attribute__((noreturn));
 void exit(int status) __attribute__((noreturn));
 void exit(int status)
 {
-    void (*vc_exit_ptr)(int) = _vc_exit;
-    vc_exit_ptr(status);
-    const char msg[] = "vc libc: exit syscall failed\n";
-    _vc_write(2, msg, sizeof(msg) - 1);
-    vc_exit_ptr(1);
-    _exit(1);
+    long (*vc_exit_ptr)(int) = _vc_exit;
+    long ret = vc_exit_ptr(status);
+    if (ret < 0) {
+        const char msg[] = "vc libc: exit syscall failed\n";
+        _vc_write(2, msg, sizeof(msg) - 1);
+        _exit(1);
+    }
+    __builtin_unreachable();
 }
 
 void *malloc(size_t size)
