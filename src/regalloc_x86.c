@@ -61,6 +61,24 @@ const char *regalloc_reg_name(int idx)
     return name;
 }
 
+/*
+ * Return the 32-bit textual CPU register name for the allocator index `idx`.
+ *
+ * This helper always consults the 32-bit register table, ignoring the
+ * global 64-bit naming mode.  It is useful when a canonical 32-bit name
+ * ("%eax", "%ebx", ...) is required even when 64-bit mode has been
+ * selected globally.
+ */
+const char *regalloc_reg_name32(int idx)
+{
+    const char *name = "%eax";
+    if (idx >= 0 && idx < REGALLOC_NUM_REGS)
+        name = phys_regs_32[idx];
+    if (current_syntax == ASM_INTEL && name[0] == '%')
+        return name + 1;
+    return name;
+}
+
 /* Return textual name of an XMM register. */
 const char *regalloc_xmm_name(int idx)
 {

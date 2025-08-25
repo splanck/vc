@@ -34,6 +34,12 @@
  */
 const char *regalloc_reg_name(int idx);
 
+/*
+ * Return the 32-bit CPU register name for allocator index `idx` regardless
+ * of the current 64-bit naming mode.
+ */
+const char *regalloc_reg_name32(int idx);
+
 /* Allocate and release temporary XMM registers. */
 int regalloc_xmm_acquire(void);
 void regalloc_xmm_release(int reg);
