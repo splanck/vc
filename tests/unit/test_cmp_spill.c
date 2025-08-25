@@ -66,6 +66,39 @@ int main(void) {
     }
     strbuf_free(&sb);
 
+    /* Both operands spilled, register destination */
+    ra.loc[1] = -1; /* stack slot */
+    ra.loc[2] = -2; /* stack slot */
+    ra.loc[3] = 2;  /* %ecx */
+
+    strbuf_init(&sb);
+    emit_cmp(&sb, &ins, &ra, 0, ASM_ATT);
+    out = sb.data;
+    if (!contains(out, "movl -4(%ebp), %eax") ||
+        !contains(out, "cmpl -8(%ebp), %eax") ||
+        contains(out, "cmpl -8(%ebp), -4(%ebp)")) {
+        printf("both spill ATT reg dest failed: %s\n", out);
+        return 1;
+    }
+    strbuf_free(&sb);
+
+    /* Both operands spilled, spilled destination */
+    ra.loc[3] = -3; /* stack slot */
+
+    strbuf_init(&sb);
+    emit_cmp(&sb, &ins, &ra, 0, ASM_ATT);
+    out = sb.data;
+    if (!contains(out, "movl -4(%ebp), %eax") ||
+        !contains(out, "cmpl -8(%ebp), %eax") ||
+        !contains(out, "movb %al, -12(%ebp)") ||
+        !contains(out, "movzbl %al, %eax") ||
+        !contains(out, "movl %eax, -12(%ebp)") ||
+        contains(out, "cmpl -8(%ebp), -4(%ebp)")) {
+        printf("both spill ATT spill dest failed: %s\n", out);
+        return 1;
+    }
+    strbuf_free(&sb);
+
     printf("emit_cmp tests passed\n");
     return 0;
 }

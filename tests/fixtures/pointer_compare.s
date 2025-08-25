@@ -16,8 +16,7 @@ main:
     movl %ecx, p2
     movl p1, %ecx
     movl p2, %ebx
-    movl %ecx, %eax
-    cmpl %ebx, %eax
+    cmpl %ebx, %ecx
     setl %al
     movzbl %al, %eax
     movl %eax, %eax

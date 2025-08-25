@@ -10,8 +10,7 @@ L0_start:
 L0_cond:
     movl -4(%ebp), %eax
     movl $3, %ebx
-    movl %eax, %ecx
-    cmpl %ebx, %ecx
+    cmpl %ebx, %eax
     setl %al
     movzbl %al, %ecx
     cmpl $0, %ecx

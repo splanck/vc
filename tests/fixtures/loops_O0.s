@@ -15,8 +15,7 @@ main:
 L0_start:
     movl -12(%ebp), %eax
     movl -4(%ebp), %ebx
-    movl %eax, %ecx
-    cmpl %ebx, %ecx
+    cmpl %ebx, %eax
     setle %al
     movzbl %al, %ecx
     cmpl $0, %ecx
