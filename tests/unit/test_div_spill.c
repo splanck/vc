@@ -88,8 +88,55 @@ int main(void) {
     }
     strbuf_free(&sb);
 
-    /* Signed modulus with register destination */
+    /* Signed modulus with spilled destination */
     ins.op = IR_MOD;
+    ins.type = TYPE_INT;
+    ra.loc[3] = -1; /* spilled destination */
+    strbuf_init(&sb);
+    emit_mod(&sb, &ins, &ra, 0, ASM_ATT);
+    out = sb.data;
+    if (!contains(out, "idivl %ecx") ||
+        !contains(out, "movl %edx, -4(%ebp)")) {
+        printf("mod spill ATT failed: %s\n", out);
+        return 1;
+    }
+    strbuf_free(&sb);
+
+    strbuf_init(&sb);
+    emit_mod(&sb, &ins, &ra, 0, ASM_INTEL);
+    out = sb.data;
+    if (!contains(out, "idivl ecx") ||
+        !contains(out, "mov [ebp-4], edx")) {
+        printf("mod spill Intel failed: %s\n", out);
+        return 1;
+    }
+    strbuf_free(&sb);
+
+    /* Unsigned modulus with spilled destination */
+    ins.type = TYPE_UINT;
+    strbuf_init(&sb);
+    emit_mod(&sb, &ins, &ra, 0, ASM_ATT);
+    out = sb.data;
+    if (!contains(out, "divl %ecx") ||
+        !contains(out, "xorl %edx, %edx") ||
+        !contains(out, "movl %edx, -4(%ebp)")) {
+        printf("mod spill unsigned ATT failed: %s\n", out);
+        return 1;
+    }
+    strbuf_free(&sb);
+
+    strbuf_init(&sb);
+    emit_mod(&sb, &ins, &ra, 0, ASM_INTEL);
+    out = sb.data;
+    if (!contains(out, "divl ecx") ||
+        !contains(out, "xor edx, edx") ||
+        !contains(out, "mov [ebp-4], edx")) {
+        printf("mod spill unsigned Intel failed: %s\n", out);
+        return 1;
+    }
+    strbuf_free(&sb);
+
+    /* Signed modulus with register destination */
     ins.type = TYPE_INT;
     ra.loc[3] = 1;  /* %ebx holds result */
     strbuf_init(&sb);

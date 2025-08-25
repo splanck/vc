@@ -198,14 +198,17 @@ void emit_mod(strbuf_t *sb, ir_instr_t *ins,
         strbuf_appendf(sb, "    idiv%s %s\n", sfx,
                        x86_loc_str(b1, ra, ins->src2, x64, syntax));
     }
-    if (ra && ra->loc[ins->dest] >= 0 &&
-        strcmp(regalloc_reg_name(ra->loc[ins->dest]),
-               x64 ? "%rdx" : "%edx") != 0) {
-        char b2[32];
-        x86_emit_mov(sb, sfx,
-                     x86_fmt_reg(x64 ? "%rdx" : "%edx", syntax),
-                     x86_loc_str(b2, ra, ins->dest, x64, syntax),
-                     syntax);
+    if (ra && ins->dest > 0) {
+        int dest_loc = ra->loc[ins->dest];
+        if (dest_loc < 0 ||
+            strcmp(regalloc_reg_name(dest_loc),
+                   x64 ? "%rdx" : "%edx") != 0) {
+            char b2[32];
+            x86_emit_mov(sb, sfx,
+                         x86_fmt_reg(x64 ? "%rdx" : "%edx", syntax),
+                         x86_loc_str(b2, ra, ins->dest, x64, syntax),
+                         syntax);
+        }
     }
 }
 
