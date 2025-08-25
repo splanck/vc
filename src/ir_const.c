@@ -37,7 +37,7 @@ ir_value_t ir_build_cplx_const(ir_builder_t *b, double real, double imag)
     return (ir_value_t){ins->dest};
 }
 
-ir_value_t ir_build_string(ir_builder_t *b, const char *str)
+ir_value_t ir_build_string(ir_builder_t *b, const char *str, size_t len)
 {
     ir_instr_t *ins = append_instr(b);
     if (!ins)
@@ -55,11 +55,16 @@ ir_value_t ir_build_string(ir_builder_t *b, const char *str)
         remove_instr(b, ins);
         return (ir_value_t){0};
     }
-    ins->data = vc_strdup(str ? str : "");
+    size_t sz = len + 1;
+    ins->data = malloc(sz);
     if (!ins->data) {
         remove_instr(b, ins);
         return (ir_value_t){0};
     }
+    if (str && len > 0)
+        memcpy(ins->data, str, len);
+    ins->data[len] = '\0';
+    ins->imm = (long long)sz;
     return (ir_value_t){ins->dest};
 }
 

@@ -318,6 +318,26 @@ if ! "$DIR/glob_string" >/dev/null; then
 fi
 rm -f "$DIR/glob_string"
 
+# verify global string emission with embedded NUL
+cc -I "$DIR/../include" -Wall -Wextra -std=c99 -DUNIT_TESTING -DNO_VECTOR_FREE_STUB \
+    "$DIR/unit/test_glob_string_nul.c" \
+    "$DIR/../src/codegen.c" \
+    "$DIR/../src/codegen_mem_common.c" "$DIR/../src/codegen_mem_x86.c" \
+    "$DIR/../src/codegen_load.c" "$DIR/../src/codegen_store.c" \
+    "$DIR/../src/codegen_arith_int.c" "$DIR/../src/codegen_arith_float.c" \
+    "$DIR/../src/codegen_branch.c" "$DIR/../src/codegen_float.c" \
+    "$DIR/../src/codegen_complex.c" "$DIR/../src/codegen_x86.c" \
+    "$DIR/../src/regalloc.c" "$DIR/../src/regalloc_x86.c" \
+    "$DIR/../src/strbuf.c" "$DIR/../src/ir_const.c" "$DIR/../src/ir_builder.c" \
+    "$DIR/../src/ir_core.c" "$DIR/../src/ir_global.c" \
+    "$DIR/../src/vector.c" "$DIR/../src/util.c" "$DIR/../src/label.c" "$DIR/../src/error.c" \
+    -o "$DIR/glob_string_nul"
+if ! "$DIR/glob_string_nul" >/dev/null; then
+    echo "Test glob_string_nul failed"
+    fail=1
+fi
+rm -f "$DIR/glob_string_nul"
+
 # verify address emission uses movabs in x86-64 mode
 cc -I "$DIR/../include" -Wall -Wextra -std=c99 \
     "$DIR/unit/test_addr_movabs.c" \

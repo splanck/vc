@@ -179,10 +179,13 @@ static void emit_global_string(ir_instr_t *ins,
                                FILE *out)
 {
     (void)size_directive;
-    const char *s = ins->data;
+    const unsigned char *s = (const unsigned char *)ins->data;
+    long long len = ins->imm;
+    if (len <= 0)
+        len = 1;
     fputs("    .asciz \"", out);
-    for (; *s; s++) {
-        unsigned char c = (unsigned char)*s;
+    for (long long i = 0; i < len - 1; i++) {
+        unsigned char c = s[i];
         switch (c) {
         case '\\': fputs("\\\\", out); break;
         case '"':  fputs("\\\"", out); break;

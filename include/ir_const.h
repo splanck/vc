@@ -16,8 +16,10 @@ ir_value_t ir_build_const(ir_builder_t *b, long long value);
 /* Emit IR_CPLX_CONST building a complex literal. */
 ir_value_t ir_build_cplx_const(ir_builder_t *b, double real, double imag);
 
-/* Define a global string literal and return its value id (IR_GLOB_STRING). */
-ir_value_t ir_build_string(ir_builder_t *b, const char *data);
+/* Define a global string literal and return its value id (IR_GLOB_STRING).
+ * `len` specifies the number of characters excluding the trailing NUL byte.
+ */
+ir_value_t ir_build_string(ir_builder_t *b, const char *data, size_t len);
 
 /* Define a global wide string literal and return its value id (IR_GLOB_WSTRING). */
 ir_value_t ir_build_wstring(ir_builder_t *b, const char *data);

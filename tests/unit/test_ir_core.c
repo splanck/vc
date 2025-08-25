@@ -104,11 +104,11 @@ static void test_strdup_fail_string(void)
     ir_builder_init(&b);
     fail_malloc = 1;
     fail_after = 1; /* fail duplicating label */
-    ir_value_t v = ir_build_string(&b, "abc");
+    ir_value_t v = ir_build_string(&b, "abc", 3);
     ASSERT(v.id == 0);
     ASSERT(b.head == NULL && b.tail == NULL);
     fail_after = 2; /* fail duplicating data */
-    v = ir_build_string(&b, "abc");
+    v = ir_build_string(&b, "abc", 3);
     ASSERT(v.id == 0);
     ASSERT(b.head == NULL && b.tail == NULL);
     fail_malloc = 0;
