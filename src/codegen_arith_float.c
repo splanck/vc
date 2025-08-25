@@ -58,6 +58,11 @@ void emit_cast(strbuf_t *sb, ir_instr_t *ins,
     int dst64 = (dst == TYPE_LLONG || dst == TYPE_ULLONG);
 
     int r0 = regalloc_xmm_acquire();
+    if (r0 < 0) {
+        fprintf(stderr, "emit_cast: XMM register allocation failed\n");
+        strbuf_appendf(sb, "    # XMM register allocation failed\n");
+        return;
+    }
     const char *reg0 = fmt_reg(regalloc_xmm_name(r0), syntax);
     const char *sfx = x64 ? "q" : "l";
 

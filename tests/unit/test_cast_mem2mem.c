@@ -14,6 +14,7 @@ void *vc_realloc_or_exit(void *p, size_t sz) { return realloc(p, sz); }
 int main(void) {
     int locs[3] = {0, -1, -2};
     regalloc_set_x86_64(1);
+    regalloc_xmm_reset();
     regalloc_t ra = { .loc = locs, .stack_slots = 0 };
     ir_instr_t ins;
     strbuf_t sb;
