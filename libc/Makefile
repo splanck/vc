@@ -1,6 +1,6 @@
 CC ?= gcc
 PROJECT_ROOT := $(abspath ..)
-CFLAGS ?= -Wall -Wextra -std=c99 -DPROJECT_ROOT=\"$(PROJECT_ROOT)\"
+CFLAGS ?= -Wall -Wextra -std=c99 -DPROJECT_ROOT=\"$(PROJECT_ROOT)\" -fno-stack-protector
 PREFIX ?= /usr/local
 INCLUDEDIR ?= $(PREFIX)/include/vc
 
