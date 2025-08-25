@@ -1,47 +1,74 @@
 #include "../internal/_vc_syscalls.h"
 #include <limits.h>
+#include "errno.h"
 
 #ifdef __x86_64__
 #define SYSCALL_INVOKE(num, a1, a2, a3) \
-    long ret; \
     __asm__ volatile ("syscall" \
                       : "=a"(ret) \
                       : "a"(num), "D"(a1), "S"(a2), "d"(a3) \
-                      : "rcx", "r11", "memory"); \
-    return ret
+                      : "rcx", "r11", "memory")
 #elif defined(__i386__)
 #define SYSCALL_INVOKE(num, a1, a2, a3) \
-    long ret; \
     __asm__ volatile ("int $0x80" \
                       : "=a"(ret) \
                       : "a"(num), "b"(a1), "c"(a2), "d"(a3) \
-                      : "memory"); \
-    return ret
+                      : "memory")
 #endif
 
 long _vc_write(int fd, const void *buf, unsigned long count)
 {
+    long ret;
     SYSCALL_INVOKE(VC_SYS_WRITE, fd, buf, count);
+    if (ret < 0) {
+        errno = -ret;
+        return -1;
+    }
+    return ret;
 }
 
 long _vc_read(int fd, void *buf, unsigned long count)
 {
+    long ret;
     SYSCALL_INVOKE(VC_SYS_READ, fd, buf, count);
+    if (ret < 0) {
+        errno = -ret;
+        return -1;
+    }
+    return ret;
 }
 
 long _vc_open(const char *path, int flags, int mode)
 {
+    long ret;
     SYSCALL_INVOKE(VC_SYS_OPEN, path, flags, mode);
+    if (ret < 0) {
+        errno = -ret;
+        return -1;
+    }
+    return ret;
 }
 
 long _vc_close(int fd)
 {
+    long ret;
     SYSCALL_INVOKE(VC_SYS_CLOSE, fd, 0, 0);
+    if (ret < 0) {
+        errno = -ret;
+        return -1;
+    }
+    return ret;
 }
 
 long _vc_exit(int status)
 {
+    long ret;
     SYSCALL_INVOKE(VC_SYS_EXIT, status, 0, 0);
+    if (ret < 0) {
+        errno = -ret;
+        return -1;
+    }
+    return ret;
 }
 
 static unsigned long cur_brk = 0;
