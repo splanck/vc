@@ -137,12 +137,27 @@ void emit_div(strbuf_t *sb, ir_instr_t *ins,
     char b1[32];
     const char *sfx = (x64 && ins->type != TYPE_INT) ? "q" : "l";
     const char *ax = x86_fmt_reg(x64 ? "%rax" : "%eax", syntax);
+    const char *dx32 = x86_fmt_reg("%edx", syntax);
+    int is_unsigned = (ins->type == TYPE_UINT || ins->type == TYPE_ULONG ||
+                       ins->type == TYPE_USHORT || ins->type == TYPE_UCHAR ||
+                       ins->type == TYPE_ULLONG);
+
     x86_emit_mov(sb, sfx,
                  x86_loc_str(b1, ra, ins->src1, x64, syntax), ax,
                  syntax);
-    strbuf_appendf(sb, "    %s\n", x64 ? "cqto" : "cltd");
-    strbuf_appendf(sb, "    idiv%s %s\n", sfx,
-                   x86_loc_str(b1, ra, ins->src2, x64, syntax));
+
+    if (is_unsigned) {
+        if (x64)
+            strbuf_appendf(sb, "    cqo\n");
+        else
+            x86_emit_op(sb, "xor", "l", dx32, dx32, syntax);
+        strbuf_appendf(sb, "    div%s %s\n", sfx,
+                       x86_loc_str(b1, ra, ins->src2, x64, syntax));
+    } else {
+        strbuf_appendf(sb, "    %s\n", x64 ? "cqto" : "cltd");
+        strbuf_appendf(sb, "    idiv%s %s\n", sfx,
+                       x86_loc_str(b1, ra, ins->src2, x64, syntax));
+    }
     if (ra && ins->dest > 0) {
         int dest_loc = ra->loc[ins->dest];
         if (dest_loc < 0 ||
@@ -162,12 +177,27 @@ void emit_mod(strbuf_t *sb, ir_instr_t *ins,
     char b1[32];
     const char *sfx = (x64 && ins->type != TYPE_INT) ? "q" : "l";
     const char *ax = x86_fmt_reg(x64 ? "%rax" : "%eax", syntax);
+    const char *dx32 = x86_fmt_reg("%edx", syntax);
+    int is_unsigned = (ins->type == TYPE_UINT || ins->type == TYPE_ULONG ||
+                       ins->type == TYPE_USHORT || ins->type == TYPE_UCHAR ||
+                       ins->type == TYPE_ULLONG);
+
     x86_emit_mov(sb, sfx,
                  x86_loc_str(b1, ra, ins->src1, x64, syntax), ax,
                  syntax);
-    strbuf_appendf(sb, "    %s\n", x64 ? "cqto" : "cltd");
-    strbuf_appendf(sb, "    idiv%s %s\n", sfx,
-                   x86_loc_str(b1, ra, ins->src2, x64, syntax));
+
+    if (is_unsigned) {
+        if (x64)
+            strbuf_appendf(sb, "    cqo\n");
+        else
+            x86_emit_op(sb, "xor", "l", dx32, dx32, syntax);
+        strbuf_appendf(sb, "    div%s %s\n", sfx,
+                       x86_loc_str(b1, ra, ins->src2, x64, syntax));
+    } else {
+        strbuf_appendf(sb, "    %s\n", x64 ? "cqto" : "cltd");
+        strbuf_appendf(sb, "    idiv%s %s\n", sfx,
+                       x86_loc_str(b1, ra, ins->src2, x64, syntax));
+    }
     if (ra && ra->loc[ins->dest] >= 0 &&
         strcmp(regalloc_reg_name(ra->loc[ins->dest]),
                x64 ? "%rdx" : "%edx") != 0) {

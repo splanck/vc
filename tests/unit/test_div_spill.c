@@ -31,6 +31,7 @@ int main(void) {
     regalloc_t ra = { .loc = locs, .stack_slots = 0 };
     ir_instr_t ins;
     strbuf_t sb;
+    const char *out;
 
     ins.op = IR_DIV;
     ins.dest = 3;
@@ -42,9 +43,10 @@ int main(void) {
     ra.loc[2] = 2;  /* %ecx */
     ra.loc[3] = -1; /* spilled destination */
 
+    /* Signed division */
     strbuf_init(&sb);
     emit_div(&sb, &ins, &ra, 0, ASM_ATT);
-    const char *out = sb.data;
+    out = sb.data;
     if (!contains(out, "idivl %ecx") ||
         !contains(out, "movl %eax, -4(%ebp)")) {
         printf("div spill ATT failed: %s\n", out);
@@ -62,6 +64,78 @@ int main(void) {
     }
     strbuf_free(&sb);
 
-    printf("div spill tests passed\n");
+    /* Unsigned division */
+    ins.type = TYPE_UINT;
+    strbuf_init(&sb);
+    emit_div(&sb, &ins, &ra, 0, ASM_ATT);
+    out = sb.data;
+    if (!contains(out, "divl %ecx") ||
+        !contains(out, "xorl %edx, %edx") ||
+        !contains(out, "movl %eax, -4(%ebp)")) {
+        printf("div spill unsigned ATT failed: %s\n", out);
+        return 1;
+    }
+    strbuf_free(&sb);
+
+    strbuf_init(&sb);
+    emit_div(&sb, &ins, &ra, 0, ASM_INTEL);
+    out = sb.data;
+    if (!contains(out, "divl ecx") ||
+        !contains(out, "xor edx, edx") ||
+        !contains(out, "mov [ebp-4], eax")) {
+        printf("div spill unsigned Intel failed: %s\n", out);
+        return 1;
+    }
+    strbuf_free(&sb);
+
+    /* Signed modulus with register destination */
+    ins.op = IR_MOD;
+    ins.type = TYPE_INT;
+    ra.loc[3] = 1;  /* %ebx holds result */
+    strbuf_init(&sb);
+    emit_mod(&sb, &ins, &ra, 0, ASM_ATT);
+    out = sb.data;
+    if (!contains(out, "idivl %ecx") ||
+        !contains(out, "movl %edx, %ebx")) {
+        printf("mod ATT failed: %s\n", out);
+        return 1;
+    }
+    strbuf_free(&sb);
+
+    strbuf_init(&sb);
+    emit_mod(&sb, &ins, &ra, 0, ASM_INTEL);
+    out = sb.data;
+    if (!contains(out, "idivl ecx") ||
+        !contains(out, "mov ebx, edx")) {
+        printf("mod Intel failed: %s\n", out);
+        return 1;
+    }
+    strbuf_free(&sb);
+
+    /* Unsigned modulus */
+    ins.type = TYPE_UINT;
+    strbuf_init(&sb);
+    emit_mod(&sb, &ins, &ra, 0, ASM_ATT);
+    out = sb.data;
+    if (!contains(out, "divl %ecx") ||
+        !contains(out, "xorl %edx, %edx") ||
+        !contains(out, "movl %edx, %ebx")) {
+        printf("mod unsigned ATT failed: %s\n", out);
+        return 1;
+    }
+    strbuf_free(&sb);
+
+    strbuf_init(&sb);
+    emit_mod(&sb, &ins, &ra, 0, ASM_INTEL);
+    out = sb.data;
+    if (!contains(out, "divl ecx") ||
+        !contains(out, "xor edx, edx") ||
+        !contains(out, "mov ebx, edx")) {
+        printf("mod unsigned Intel failed: %s\n", out);
+        return 1;
+    }
+    strbuf_free(&sb);
+
+    printf("div tests passed\n");
     return 0;
 }
