@@ -10,12 +10,30 @@
 
 FILE *fopen(const char *path, const char *mode)
 {
+    if (!mode || !mode[0])
+        return NULL;
+
     int flags = 0;
     int perm = 0;
-    if (mode && mode[0] == 'r') {
-        flags = 0; /* O_RDONLY */
-    } else if (mode && mode[0] == 'w') {
-        flags = O_WRONLY | O_CREAT | O_TRUNC;
+    int plus = 0;
+
+    for (const char *p = mode + 1; *p; ++p) {
+        if (*p == '+') {
+            plus = 1;
+        } else if (*p == 'b') {
+            /* ignore */
+        } else {
+            return NULL;
+        }
+    }
+
+    if (mode[0] == 'r') {
+        flags = plus ? O_RDWR : 0; /* O_RDONLY */
+    } else if (mode[0] == 'w') {
+        flags = (plus ? O_RDWR : O_WRONLY) | O_CREAT | O_TRUNC;
+        perm = 0666;
+    } else if (mode[0] == 'a') {
+        flags = (plus ? O_RDWR : O_WRONLY) | O_CREAT | O_APPEND;
         perm = 0666;
     } else {
         return NULL;
