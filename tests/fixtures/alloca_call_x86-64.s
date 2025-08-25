@@ -1,7 +1,7 @@
 caller:
     pushq %rbp
     movq %rsp, %rbp
-    movq 8(%rbp), %rax
+    movq 16(%rbp), %rax
     movq $1, %rbx
     movl %rax, %rcx
     imull %rbx, %rcx
