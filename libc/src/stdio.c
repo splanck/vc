@@ -24,7 +24,7 @@ int puts(const char *s)
     return (int)(len + 1);
 }
 
-static int flush_buf(const char *buf, size_t *pos, int *total)
+static int flush_buf(const char *buf, size_t *pos, long *total)
 {
     if (*pos > 0) {
         size_t remaining = *pos;
@@ -40,8 +40,11 @@ static int flush_buf(const char *buf, size_t *pos, int *total)
             p += (size_t)ret;
             remaining -= (size_t)ret;
         }
-        if (total)
-            *total += (int)(*pos);
+        if (total) {
+            *total += (long)(*pos);
+            if (*total > INT_MAX)
+                *total = INT_MAX;
+        }
         *pos = 0;
     }
     return 0;
@@ -52,7 +55,7 @@ int printf(const char *fmt, ...)
     va_list ap;
     char out[64];
     size_t pos = 0;
-    int written = 0;
+    long written = 0;
 
     va_start(ap, fmt);
     for (const char *p = fmt; *p; ++p) {
@@ -150,6 +153,8 @@ int printf(const char *fmt, ...)
                     return -1;
                 }
                 written += 1;
+                if (written > INT_MAX)
+                    written = INT_MAX;
             }
 
             long ret = _vc_write(1, s, len);
@@ -158,7 +163,9 @@ int printf(const char *fmt, ...)
                 va_end(ap);
                 return -1;
             }
-            written += (int)len;
+            written += (long)len;
+            if (written > INT_MAX)
+                written = INT_MAX;
         } else {
             /* unsupported specifier, print literally */
             long ret = _vc_write(1, "%", 1);
@@ -168,6 +175,8 @@ int printf(const char *fmt, ...)
                 return -1;
             }
             written += 1;
+            if (written > INT_MAX)
+                written = INT_MAX;
             if (width) {
                 const char *q = start;
                 size_t l = (size_t)(p - start);
@@ -177,7 +186,9 @@ int printf(const char *fmt, ...)
                     va_end(ap);
                     return -1;
                 }
-                written += (int)l;
+                written += (long)l;
+                if (written > INT_MAX)
+                    written = INT_MAX;
             }
             ret = _vc_write(1, p, 1);
             if (ret < 1) {
@@ -186,6 +197,8 @@ int printf(const char *fmt, ...)
                 return -1;
             }
             written += 1;
+            if (written > INT_MAX)
+                written = INT_MAX;
         }
     }
 
@@ -194,5 +207,7 @@ int printf(const char *fmt, ...)
         return -1;
     }
     va_end(ap);
-    return written;
+    if (written > INT_MAX)
+        return INT_MAX;
+    return (int)written;
 }
