@@ -71,11 +71,28 @@ long _vc_exit(int status)
     return ret;
 }
 
+typedef struct block {
+    unsigned long size;
+    struct block *next;
+} block_t;
+
 static unsigned long cur_brk = 0;
+static block_t *free_list = 0;
 
 void *_vc_malloc(unsigned long size)
 {
     long ret;
+    block_t **prevp = &free_list;
+    block_t *curr = free_list;
+    while (curr) {
+        if (curr->size >= size) {
+            *prevp = curr->next;
+            return (void *)(curr + 1);
+        }
+        prevp = &curr->next;
+        curr = curr->next;
+    }
+
     if (cur_brk == 0) {
 #ifdef __x86_64__
         __asm__ volatile ("syscall"
@@ -92,13 +109,10 @@ void *_vc_malloc(unsigned long size)
             return 0;
         cur_brk = (unsigned long)ret;
     }
-    /* Compare against remaining space without subtracting cur_brk from
-     * ULONG_MAX first. Subtracting constants before size prevents an
-     * intermediate unsigned underflow when cur_brk is near the limit. */
-    if (cur_brk > ULONG_MAX - sizeof(unsigned long) - size)
+    if (cur_brk > ULONG_MAX - sizeof(block_t) - size)
         return 0;
     unsigned long prev = cur_brk;
-    unsigned long new_brk = cur_brk + sizeof(unsigned long) + size;
+    unsigned long new_brk = cur_brk + sizeof(block_t) + size;
 #ifdef __x86_64__
     __asm__ volatile ("syscall"
                       : "=a"(ret)
@@ -113,35 +127,35 @@ void *_vc_malloc(unsigned long size)
     if (ret < 0 || (unsigned long)ret < new_brk) {
         return 0;
     }
-    *(unsigned long *)prev = size;
+    block_t *blk = (block_t *)prev;
+    blk->size = size;
     cur_brk = new_brk;
-    return (void *)(prev + sizeof(unsigned long));
+    return (void *)(blk + 1);
 }
 
 void _vc_free(void *ptr)
 {
-    if (!ptr || cur_brk == 0)
+    if (!ptr)
         return;
 
-    unsigned long start = (unsigned long)ptr - sizeof(unsigned long);
-    unsigned long size = *(unsigned long *)start;
-    unsigned long end = start + sizeof(unsigned long) + size;
+    block_t *blk = (block_t *)ptr - 1;
+    block_t **prevp = &free_list;
+    block_t *curr = free_list;
+    while (curr && (unsigned long)curr < (unsigned long)blk) {
+        prevp = &curr->next;
+        curr = curr->next;
+    }
 
-    if (end != cur_brk)
-        return;
+    blk->next = curr;
+    if (curr && (unsigned long)blk + sizeof(block_t) + blk->size == (unsigned long)curr) {
+        blk->size += sizeof(block_t) + curr->size;
+        blk->next = curr->next;
+    }
 
-    long ret;
-#ifdef __x86_64__
-    __asm__ volatile ("syscall"
-                      : "=a"(ret)
-                      : "a"(VC_SYS_BRK), "D"(start)
-                      : "rcx", "r11", "memory");
-#elif defined(__i386__)
-    __asm__ volatile ("int $0x80"
-                      : "=a"(ret)
-                      : "a"(VC_SYS_BRK), "b"(start)
-                      : "memory");
-#endif
-    if (ret >= 0 && (unsigned long)ret >= start)
-        cur_brk = start;
+    if (*prevp && (unsigned long)*prevp + sizeof(block_t) + (*prevp)->size == (unsigned long)blk) {
+        (*prevp)->size += sizeof(block_t) + blk->size;
+        (*prevp)->next = blk->next;
+    } else {
+        *prevp = blk;
+    }
 }
