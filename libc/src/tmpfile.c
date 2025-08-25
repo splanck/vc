@@ -9,10 +9,12 @@ FILE *tmpfile(void)
 #ifdef O_TMPFILE
     long fd = _vc_open(".", O_TMPFILE | O_RDWR, 0600);
     if (fd < 0) {
+        errno = -fd;
         return NULL;
     }
     FILE *f = malloc(sizeof(FILE));
     if (!f) {
+        errno = ENOMEM;
         _vc_close(fd);
         return NULL;
     }
