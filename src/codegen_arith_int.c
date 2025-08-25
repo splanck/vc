@@ -20,22 +20,23 @@ void emit_ptr_add(strbuf_t *sb, ir_instr_t *ins,
 {
     char b1[32];
     char b2[32];
+    char mem[32];
     const char *sfx = (x64 && ins->type != TYPE_INT) ? "q" : "l";
     int scale = (int)ins->imm;
+    int dest_spill = (ra && ins->dest > 0 && ra->loc[ins->dest] < 0);
+    const char *dest_reg = dest_spill ? x86_reg_str(REGALLOC_SCRATCH_REG, syntax)
+                                      : x86_loc_str(b2, ra, ins->dest, x64, syntax);
+    const char *dest_mem = x86_loc_str(mem, ra, ins->dest, x64, syntax);
     x86_emit_mov(sb, sfx,
-                 x86_loc_str(b1, ra, ins->src2, x64, syntax),
-                 x86_loc_str(b2, ra, ins->dest, x64, syntax),
-                 syntax);
+                 x86_loc_str(b1, ra, ins->src2, x64, syntax), dest_reg, syntax);
     if (syntax == ASM_INTEL)
-        strbuf_appendf(sb, "    imul%s %s, %d\n", sfx,
-                       x86_loc_str(b2, ra, ins->dest, x64, syntax), scale);
+        strbuf_appendf(sb, "    imul%s %s, %d\n", sfx, dest_reg, scale);
     else
-        strbuf_appendf(sb, "    imul%s $%d, %s\n", sfx, scale,
-                       x86_loc_str(b2, ra, ins->dest, x64, syntax));
+        strbuf_appendf(sb, "    imul%s $%d, %s\n", sfx, scale, dest_reg);
     x86_emit_op(sb, "add", sfx,
-                x86_loc_str(b1, ra, ins->src1, x64, syntax),
-                x86_loc_str(b2, ra, ins->dest, x64, syntax),
-                syntax);
+                x86_loc_str(b1, ra, ins->src1, x64, syntax), dest_reg, syntax);
+    if (dest_spill)
+        x86_emit_mov(sb, sfx, dest_reg, dest_mem, syntax);
 }
 
 void emit_ptr_diff(strbuf_t *sb, ir_instr_t *ins,

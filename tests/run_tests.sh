@@ -251,6 +251,17 @@ if ! "$DIR/ptr_diff_zero" >/dev/null; then
 fi
 rm -f "$DIR/ptr_diff_zero"
 
+# verify pointer addition with spilled destination
+cc -I "$DIR/../include" -Wall -Wextra -std=c99 \
+    "$DIR/unit/test_ptr_add_spill.c" \
+    "$DIR/../src/codegen_arith_int.c" "$DIR/../src/codegen_x86.c" \
+    "$DIR/../src/strbuf.c" "$DIR/../src/regalloc_x86.c" -o "$DIR/ptr_add_spill"
+if ! "$DIR/ptr_add_spill" >/dev/null; then
+    echo "Test ptr_add_spill failed"
+    fail=1
+fi
+rm -f "$DIR/ptr_add_spill"
+
 # verify memory to memory casts
 cc -I "$DIR/../include" -Wall -Wextra -std=c99 \
     "$DIR/unit/test_cast_mem2mem.c" \
