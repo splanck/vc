@@ -44,7 +44,7 @@ int fclose(FILE *stream)
     return ret;
 }
 
-static int flush_buf_fd(int fd, const char *buf, size_t *pos, int *total)
+static int flush_buf_fd(int fd, const char *buf, size_t *pos, long *total)
 {
     if (*pos > 0) {
         size_t remaining = *pos;
@@ -59,8 +59,11 @@ static int flush_buf_fd(int fd, const char *buf, size_t *pos, int *total)
             p += (size_t)ret;
             remaining -= (size_t)ret;
         }
-        if (total)
-            *total += (int)(*pos);
+        if (total) {
+            *total += (long)(*pos);
+            if (*total > INT_MAX)
+                *total = INT_MAX;
+        }
         *pos = 0;
     }
     return 0;
@@ -71,7 +74,7 @@ int fprintf(FILE *stream, const char *fmt, ...)
     va_list ap;
     char out[64];
     size_t pos = 0;
-    int written = 0;
+    long written = 0;
 
     va_start(ap, fmt);
     for (const char *p = fmt; *p; ++p) {
@@ -165,6 +168,8 @@ int fprintf(FILE *stream, const char *fmt, ...)
                     return -1;
                 }
                 written += 1;
+                if (written > INT_MAX)
+                    written = INT_MAX;
             }
 
             long ret = _vc_write(stream->fd, s, len);
@@ -172,7 +177,9 @@ int fprintf(FILE *stream, const char *fmt, ...)
                 va_end(ap);
                 return -1;
             }
-            written += (int)len;
+            written += (long)len;
+            if (written > INT_MAX)
+                written = INT_MAX;
         } else {
             long ret = _vc_write(stream->fd, "%", 1);
             if (ret < 1) {
@@ -180,6 +187,8 @@ int fprintf(FILE *stream, const char *fmt, ...)
                 return -1;
             }
             written += 1;
+            if (written > INT_MAX)
+                written = INT_MAX;
             if (width) {
                 const char *q = start;
                 size_t l = (size_t)(p - start);
@@ -188,7 +197,9 @@ int fprintf(FILE *stream, const char *fmt, ...)
                     va_end(ap);
                     return -1;
                 }
-                written += (int)l;
+                written += (long)l;
+                if (written > INT_MAX)
+                    written = INT_MAX;
             }
             ret = _vc_write(stream->fd, p, 1);
             if (ret < 1) {
@@ -196,6 +207,8 @@ int fprintf(FILE *stream, const char *fmt, ...)
                 return -1;
             }
             written += 1;
+            if (written > INT_MAX)
+                written = INT_MAX;
         }
     }
 
@@ -204,5 +217,7 @@ int fprintf(FILE *stream, const char *fmt, ...)
         return -1;
     }
     va_end(ap);
-    return written;
+    if (written > INT_MAX)
+        return INT_MAX;
+    return (int)written;
 }

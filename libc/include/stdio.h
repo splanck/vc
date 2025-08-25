@@ -13,6 +13,8 @@
 /* Returns the number of characters written including the newline. If the
  * length would overflow an int, INT_MAX is returned instead. */
 int puts(const char *s);
+/* Returns the number of characters written. If the length would overflow an
+ * int, INT_MAX is returned instead. */
 int printf(const char *format, ...);
 
 struct FILE_struct {
@@ -23,6 +25,8 @@ struct FILE_struct {
 
 FILE *fopen(const char *path, const char *mode);
 int fclose(FILE *stream);
+/* Returns the number of characters written. If the length would overflow an
+ * int, INT_MAX is returned instead. */
 int fprintf(FILE *stream, const char *format, ...);
 char *fgets(char *s, int size, FILE *stream);
 FILE *tmpfile(void);
