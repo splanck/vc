@@ -61,7 +61,7 @@ type_kind_t check_string_expr(expr_t *expr, symtable_t *vars,
         if (expr->data.string.is_wide)
             *out = ir_build_wstring(ir, text);
         else
-            *out = ir_build_string(ir, text);
+            *out = ir_build_string(ir, text, strlen(text));
     }
     return TYPE_PTR;
 }
