@@ -262,6 +262,17 @@ if ! "$DIR/ptr_add_spill" >/dev/null; then
 fi
 rm -f "$DIR/ptr_add_spill"
 
+# verify division with spilled destination
+cc -I "$DIR/../include" -Wall -Wextra -std=c99 \
+    "$DIR/unit/test_div_spill.c" \
+    "$DIR/../src/codegen_arith_int.c" "$DIR/../src/codegen_x86.c" \
+    "$DIR/../src/strbuf.c" "$DIR/../src/regalloc_x86.c" -o "$DIR/div_spill"
+if ! "$DIR/div_spill" >/dev/null; then
+    echo "Test div_spill failed"
+    fail=1
+fi
+rm -f "$DIR/div_spill"
+
 # verify memory to memory casts
 cc -I "$DIR/../include" -Wall -Wextra -std=c99 \
     "$DIR/unit/test_cast_mem2mem.c" \
