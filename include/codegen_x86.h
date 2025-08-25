@@ -6,10 +6,10 @@
 #include "regalloc.h"
 #include "cli.h"
 
-const char *x86_reg_str(int reg, asm_syntax_t syntax);
+const char *x86_reg_str(int reg, const char *sfx, asm_syntax_t syntax);
 const char *x86_fmt_reg(const char *name, asm_syntax_t syntax);
 const char *x86_loc_str(char buf[32], regalloc_t *ra, int id, int x64,
-                        asm_syntax_t syntax);
+                        const char *sfx, asm_syntax_t syntax);
 
 void x86_emit_mov(strbuf_t *sb, const char *sfx,
                   const char *src, const char *dest,
