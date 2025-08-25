@@ -28,7 +28,7 @@ FILE *fopen(const char *path, const char *mode)
     }
 
     if (mode[0] == 'r') {
-        flags = plus ? O_RDWR : 0; /* O_RDONLY */
+        flags = plus ? O_RDWR : O_RDONLY;
     } else if (mode[0] == 'w') {
         flags = (plus ? O_RDWR : O_WRONLY) | O_CREAT | O_TRUNC;
         perm = 0666;
