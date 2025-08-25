@@ -20,8 +20,7 @@ sum:
 L0_start:
     movl $0, %ecx
     movl 8(%ebp), %ebx
-    movl %ecx, %eax
-    cmpl %ebx, %eax
+    cmpl %ebx, %ecx
     setl %al
     movzbl %al, %eax
     cmpl $0, %eax

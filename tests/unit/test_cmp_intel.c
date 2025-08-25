@@ -47,8 +47,24 @@ int main(void) {
     emit_cmp(&sb, &ins, &ra, 0, ASM_INTEL);
     const char *out = sb.data;
     int fail = 0;
-    if (!contains(out, "cmpl ecx, ebx") || contains(out, "cmpl ebx, ecx")) {
+    if (!contains(out, "cmpl eax, ebx") || contains(out, "cmpl ebx, eax")) {
         printf("intel cmp order failed: %s\n", out);
+        fail = 1;
+    }
+    strbuf_free(&sb);
+
+    /* Both operands spilled */
+    ra.loc[1] = -1; /* stack slot */
+    ra.loc[2] = -2; /* stack slot */
+    ra.loc[3] = 2;  /* %ecx */
+
+    strbuf_init(&sb);
+    emit_cmp(&sb, &ins, &ra, 0, ASM_INTEL);
+    out = sb.data;
+    if (!contains(out, "movl eax, [ebp-4]") ||
+        !contains(out, "cmpl eax, [ebp-8]") ||
+        contains(out, "cmpl [ebp-8], [ebp-4]")) {
+        printf("intel double spill failed: %s\n", out);
         fail = 1;
     }
     strbuf_free(&sb);
