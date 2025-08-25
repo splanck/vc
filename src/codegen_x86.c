@@ -3,9 +3,13 @@
 #include "codegen_x86.h"
 #include "regalloc_x86.h"
 
-const char *x86_reg_str(int reg, asm_syntax_t syntax)
+const char *x86_reg_str(int reg, const char *sfx, asm_syntax_t syntax)
 {
-    const char *name = regalloc_reg_name(reg);
+    const char *name;
+    if (sfx && strcmp(sfx, "l") == 0)
+        name = regalloc_reg_name32(reg);
+    else
+        name = regalloc_reg_name(reg);
     if (syntax == ASM_INTEL && name[0] == '%')
         return name + 1;
     return name;
@@ -19,13 +23,13 @@ const char *x86_fmt_reg(const char *name, asm_syntax_t syntax)
 }
 
 const char *x86_loc_str(char buf[32], regalloc_t *ra, int id, int x64,
-                        asm_syntax_t syntax)
+                        const char *sfx, asm_syntax_t syntax)
 {
     if (!ra || id <= 0)
         return "";
     int loc = ra->loc[id];
     if (loc >= 0)
-        return x86_reg_str(loc, syntax);
+        return x86_reg_str(loc, sfx, syntax);
     if (x64) {
         if (syntax == ASM_INTEL)
             snprintf(buf, 32, "[rbp-%d]", -loc * 8);
