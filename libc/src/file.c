@@ -40,11 +40,14 @@ FILE *fopen(const char *path, const char *mode)
     }
 
     long fd = _vc_open(path, flags, perm);
-    if (fd < 0)
+    if (fd < 0) {
+        errno = -fd;
         return NULL;
+    }
 
     FILE *f = malloc(sizeof(FILE));
     if (!f) {
+        errno = ENOMEM;
         _vc_close(fd);
         return NULL;
     }
