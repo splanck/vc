@@ -158,6 +158,11 @@ static void emit_typed_load(strbuf_t *sb, type_kind_t type, int x64,
                is_memop(spill ? slot : dest)) {
         const char *dst = spill ? slot : dest;
         int xr = regalloc_xmm_acquire();
+        if (xr < 0) {
+            fprintf(stderr, "emit_typed_load: XMM register allocation failed\n");
+            strbuf_appendf(sb, "    # XMM register allocation failed\n");
+            return;
+        }
         const char *xreg = regalloc_xmm_name(xr);
         if (syntax == ASM_INTEL) {
             strbuf_appendf(sb, "    movdqu %s, %s\n", xreg, src);
