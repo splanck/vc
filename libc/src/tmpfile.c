@@ -9,7 +9,6 @@ FILE *tmpfile(void)
 #ifdef O_TMPFILE
     long fd = _vc_open(".", O_TMPFILE | O_RDWR, 0600);
     if (fd < 0) {
-        errno = ENOSYS;
         return NULL;
     }
     FILE *f = malloc(sizeof(FILE));
