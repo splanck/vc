@@ -85,3 +85,10 @@ Counts the number of lines in `example.txt`. Run with:
 ```sh
 ./file_count
 ```
+
+### movl_32bit.s
+Demonstrates assembling a single 32-bit instruction. Assemble with:
+
+```sh
+as movl_32bit.s -o movl_32bit.o
+```

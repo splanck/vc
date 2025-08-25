@@ -471,6 +471,17 @@ if ! "$DIR/shift_rcx" >/dev/null; then
 fi
 rm -f "$DIR/shift_rcx"
 
+# verify assembling generated 32-bit code with system as
+cc -I "$DIR/../include" -Wall -Wextra -std=c99 \
+    "$DIR/unit/test_code_gen_32bit_as.c" \
+    "$DIR/../src/codegen_arith_int.c" "$DIR/../src/codegen_x86.c" \
+    "$DIR/../src/strbuf.c" "$DIR/../src/regalloc_x86.c" -o "$DIR/code_gen_32bit_as"
+if ! "$DIR/code_gen_32bit_as" >/dev/null; then
+    echo "Test code_gen_32bit_as failed"
+    fail=1
+fi
+rm -f "$DIR/code_gen_32bit_as"
+
 # verify fallback when XMM registers are exhausted
 cc -I "$DIR/../include" -Wall -Wextra -std=c99 \
     "$DIR/unit/test_xmm_fallback.c" \
