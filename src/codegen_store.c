@@ -161,6 +161,11 @@ void emit_store(strbuf_t *sb, ir_instr_t *ins,
     if ((size == 16 || size == 20) && is_memop(dst) && is_memop(src0)) {
         const char *src = src0;
         int xr = regalloc_xmm_acquire();
+        if (xr < 0) {
+            fprintf(stderr, "emit_store: XMM register allocation failed\n");
+            strbuf_appendf(sb, "    # XMM register allocation failed\n");
+            return;
+        }
         const char *xreg = regalloc_xmm_name(xr);
         if (syntax == ASM_INTEL) {
             strbuf_appendf(sb, "    movdqu %s, %s\n", xreg, src);
