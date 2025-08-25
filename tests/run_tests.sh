@@ -902,34 +902,22 @@ if ! od -An -t x1 "${obj_out}" | head -n 1 | grep -q "7f 45 4c 46"; then
 fi
 rm -f "${obj_out}"
 
-# test --intel-syntax --compile option (requires nasm)
+# test Intel syntax assembler output (requires nasm)
 if command -v nasm >/dev/null; then
-    obj_tmp=$(safe_mktemp tmp.XXXXXX)
-    obj_out="${obj_tmp}.o"
-    rm -f "${obj_tmp}"
-    "$BINARY" --intel-syntax -c -o "${obj_out}" "$DIR/fixtures/simple_add.c"
-    if ! od -An -t x1 "${obj_out}" | head -n 1 | grep -q "7f 45 4c 46"; then
-        echo "Test compile_option_intel failed"
-        fail=1
-    fi
-    rm -f "${obj_out}"
+    for src in simple_add.c pointer_add.c while_loop.c shift_var.c \
+               float_add.c float_sub.c; do
+        obj_tmp=$(safe_mktemp tmp.XXXXXX)
+        obj_out="${obj_tmp}.o"
+        rm -f "${obj_tmp}"
+        "$BINARY" --intel-syntax -c -o "${obj_out}" "$DIR/fixtures/$src"
+        if ! od -An -t x1 "${obj_out}" | head -n 1 | grep -q "7f 45 4c 46"; then
+            echo "Test assemble_intel $(basename "$src" .c) failed"
+            fail=1
+        fi
+        rm -f "${obj_out}"
+    done
 else
-    echo "Skipping compile_option_intel (nasm not found)"
-fi
-
-# test --intel-syntax --compile with shift operations (requires nasm)
-if command -v nasm >/dev/null; then
-    obj_tmp=$(safe_mktemp tmp.XXXXXX)
-    obj_out="${obj_tmp}.o"
-    rm -f "${obj_tmp}"
-    "$BINARY" --intel-syntax -c -o "${obj_out}" "$DIR/fixtures/shift_var.c"
-    if ! od -An -t x1 "${obj_out}" | head -n 1 | grep -q "7f 45 4c 46"; then
-        echo "Test compile_option_shift_intel failed"
-        fail=1
-    fi
-    rm -f "${obj_out}"
-else
-    echo "Skipping compile_option_shift_intel (nasm not found)"
+    echo "Skipping assemble_intel (nasm not found)"
 fi
 
 # test --emit-dwarf option

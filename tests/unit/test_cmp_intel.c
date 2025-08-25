@@ -47,7 +47,7 @@ int main(void) {
     emit_cmp(&sb, &ins, &ra, 0, ASM_INTEL);
     const char *out = sb.data;
     int fail = 0;
-    if (!contains(out, "cmpl eax, ebx") || contains(out, "cmpl ebx, eax")) {
+    if (!contains(out, "cmp eax, ebx") || contains(out, "cmp ebx, eax")) {
         printf("intel cmp order failed: %s\n", out);
         fail = 1;
     }
@@ -61,9 +61,9 @@ int main(void) {
     strbuf_init(&sb);
     emit_cmp(&sb, &ins, &ra, 0, ASM_INTEL);
     out = sb.data;
-    if (!contains(out, "movl eax, [ebp-4]") ||
-        !contains(out, "cmpl eax, [ebp-8]") ||
-        contains(out, "cmpl [ebp-8], [ebp-4]")) {
+    if (!contains(out, "mov eax, [ebp-4]") ||
+        !contains(out, "cmp eax, [ebp-8]") ||
+        contains(out, "cmp [ebp-8], [ebp-4]")) {
         printf("intel double spill failed: %s\n", out);
         fail = 1;
     }
