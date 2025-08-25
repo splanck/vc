@@ -2,6 +2,7 @@
 #include <string.h>
 #include <stdarg.h>
 #include <limits.h>
+#include "errno.h"
 #include "stdio.h"
 #include "../internal/_vc_syscalls.h"
 
@@ -26,10 +27,18 @@ int puts(const char *s)
 static int flush_buf(const char *buf, size_t *pos, int *total)
 {
     if (*pos > 0) {
-        long ret = _vc_write(1, buf, *pos);
-        if (ret < (long)(*pos)) {
-            perror("write");
-            return -1;
+        size_t remaining = *pos;
+        const char *p = buf;
+        while (remaining > 0) {
+            long ret = _vc_write(1, p, remaining);
+            if (ret < 0) {
+                if (errno == EINTR)
+                    continue;
+                perror("write");
+                return -1;
+            }
+            p += (size_t)ret;
+            remaining -= (size_t)ret;
         }
         if (total)
             *total += (int)(*pos);
