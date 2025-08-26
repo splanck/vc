@@ -439,6 +439,8 @@ int check_global(stmt_t *decl, symtable_t *globals, ir_builder_t *ir)
     case STMT_STATIC_ASSERT:
         return check_static_assert_stmt(decl, globals);
     case STMT_TYPEDEF:
+        if (symtable_lookup(globals, STMT_TYPEDEF(decl).name))
+            return 1;
         if (!symtable_add_typedef_global(globals, STMT_TYPEDEF(decl).name,
                                          STMT_TYPEDEF(decl).type,
                                          STMT_TYPEDEF(decl).array_size,

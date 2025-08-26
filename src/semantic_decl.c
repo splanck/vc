@@ -11,6 +11,9 @@
 
 static int check_typedef_stmt(stmt_t *stmt, symtable_t *vars)
 {
+    symbol_t *existing = symtable_lookup(vars, STMT_TYPEDEF(stmt).name);
+    if (existing && existing->is_typedef)
+        return 1;
     if (!symtable_add_typedef(vars, STMT_TYPEDEF(stmt).name,
                               STMT_TYPEDEF(stmt).type,
                               STMT_TYPEDEF(stmt).array_size,

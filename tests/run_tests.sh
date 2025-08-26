@@ -129,6 +129,14 @@ if ! diff -u "$DIR/fixtures/macro_cli_quote.expected" "${macro_quote}"; then
 fi
 rm -f "${macro_quote}"
 
+# regression test for typedefs in headers using copy_string example
+out=$(safe_mktemp)
+if ! "$BINARY" --x86-64 --internal-libc --dump-ast "$DIR/../examples/copy_string.c" >"$out"; then
+    echo "Test copy_string_example failed"
+    fail=1
+fi
+rm -f "$out"
+
 # negative test for parse error message
 err=$(safe_mktemp)
 out=$(safe_mktemp)

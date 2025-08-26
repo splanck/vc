@@ -101,7 +101,8 @@ static int parse_struct_or_union_global(parser_t *p, size_t start_pos,
 }
 
 /* Helper to parse typedef declarations */
-static int parse_typedef_decl(parser_t *p, size_t start_pos, stmt_t **out)
+static int parse_typedef_decl(parser_t *p, symtable_t *types,
+                              size_t start_pos, stmt_t **out)
 {
     token_t *tok = peek(p);
     if (!tok || tok->type != TOK_KW_TYPEDEF)
@@ -109,11 +110,19 @@ static int parse_typedef_decl(parser_t *p, size_t start_pos, stmt_t **out)
 
     p->pos++; /* consume 'typedef' */
     type_kind_t tt;
-    if (!parse_basic_type(p, &tt)) {
-        p->pos = start_pos;
-        return 0;
+    size_t elem_sz;
+    if (parse_basic_type(p, &tt)) {
+        elem_sz = basic_type_size(tt);
+    } else {
+        token_t *id = peek(p);
+        if (id && id->type == TOK_IDENT &&
+            parser_decl_var_lookup_typedef(id->lexeme, &tt, &elem_sz)) {
+            p->pos++;
+        } else {
+            p->pos = start_pos;
+            return 0;
+        }
     }
-    size_t elem_sz = basic_type_size(tt);
     if (match(p, TOK_STAR))
         tt = TYPE_PTR;
 
@@ -149,6 +158,10 @@ static int parse_typedef_decl(parser_t *p, size_t start_pos, stmt_t **out)
         return 0;
     }
 
+    if (types)
+        symtable_add_typedef_global(types, name_tok->lexeme, tt, arr_size,
+                                    elem_sz);
+
     if (out)
         *out = ast_make_typedef(name_tok->lexeme, tt, arr_size, elem_sz,
                                 tok->line, tok->column);
@@ -174,6 +187,8 @@ int parser_parse_toplevel(parser_t *p, symtable_t *funcs,
 {
     if (out_func) *out_func = NULL;
     if (out_global) *out_global = NULL;
+
+    parser_decl_var_set_typedef_table(funcs);
 
     size_t start = p->pos;
     int is_extern = match(p, TOK_KW_EXTERN);
@@ -223,7 +238,7 @@ int parser_parse_toplevel(parser_t *p, symtable_t *funcs,
     }
 
     if (tok->type == TOK_KW_TYPEDEF)
-        return parse_typedef_decl(p, start, out_global);
+        return parse_typedef_decl(p, funcs, start, out_global);
 
     p->pos = spec_pos;
     return parse_function_or_var(p, funcs, is_extern, is_static, is_register,
