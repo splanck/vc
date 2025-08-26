@@ -192,7 +192,7 @@ set +e
 "$BINARY" -o "${out}" "$DIR/invalid/undef_var.c" 2> "${err}"
 ret=$?
 set -e
-if [ $ret -eq 0 ] || ! grep -q "Semantic error" "${err}"; then
+if [ $ret -eq 0 ] || ! grep -q "undeclared identifier 'x'" "${err}"; then
     echo "Test undef_var failed"
     fail=1
 fi
@@ -205,7 +205,7 @@ set +e
 "$BINARY" -o "${out}" "$DIR/invalid/const_assign.c" 2> "${err}"
 ret=$?
 set -e
-if [ $ret -eq 0 ] || ! grep -q "Semantic error" "${err}"; then
+if [ $ret -eq 0 ] || ! grep -q "assignment to const variable 'x'" "${err}"; then
     echo "Test const_assign failed"
     fail=1
 fi
@@ -218,7 +218,7 @@ set +e
 "$BINARY" -o "${out}" "$DIR/invalid/const_no_init.c" 2> "${err}"
 ret=$?
 set -e
-if [ $ret -eq 0 ] || ! grep -q "Semantic error" "${err}"; then
+if [ $ret -eq 0 ] || ! grep -q "const variable 'x' requires an initializer" "${err}"; then
     echo "Test const_no_init failed"
     fail=1
 fi
@@ -231,7 +231,7 @@ set +e
 "$BINARY" -o "${out}" "$DIR/invalid/undef_cond.c" 2> "${err}"
 ret=$?
 set -e
-if [ $ret -eq 0 ] || ! grep -q "Semantic error" "${err}"; then
+if [ $ret -eq 0 ] || ! grep -q "undeclared identifier 'x'" "${err}"; then
     echo "Test undef_cond failed"
     fail=1
 fi
@@ -244,8 +244,21 @@ set +e
 "$BINARY" -o "${out}" "$DIR/invalid/undef_assign.c" 2> "${err}"
 ret=$?
 set -e
-if [ $ret -eq 0 ] || ! grep -q "Semantic error" "${err}"; then
+if [ $ret -eq 0 ] || ! grep -q "assignment to undeclared variable 'y'" "${err}"; then
     echo "Test undef_assign failed"
+    fail=1
+fi
+rm -f "${out}" "${err}"
+
+# negative test for call to undeclared function
+err=$(safe_mktemp)
+out=$(safe_mktemp)
+set +e
+"$BINARY" -o "${out}" "$DIR/invalid/undef_func.c" 2> "${err}"
+ret=$?
+set -e
+if [ $ret -eq 0 ] || ! grep -q "undeclared function 'foo'" "${err}"; then
+    echo "Test undef_func failed"
     fail=1
 fi
 rm -f "${out}" "${err}"
@@ -254,6 +267,7 @@ rm -f "${out}" "${err}"
 cc -I "$DIR/../include" -Wall -Wextra -std=c99 \
     "$DIR/unit/test_load_store_spill.c" \
     "$DIR/../src/codegen_load.c" "$DIR/../src/codegen_store.c" \
+    "$DIR/../src/codegen_x86.c" \
     "$DIR/../src/strbuf.c" "$DIR/../src/regalloc_x86.c" -o "$DIR/load_store_spill"
 if ! "$DIR/load_store_spill" >/dev/null; then
     echo "Test load_store_spill failed"
@@ -265,6 +279,7 @@ rm -f "$DIR/load_store_spill"
 cc -I "$DIR/../include" -Wall -Wextra -std=c99 \
     "$DIR/unit/test_store_ptr_stack.c" \
     "$DIR/../src/codegen_store.c" \
+    "$DIR/../src/codegen_x86.c" \
     "$DIR/../src/strbuf.c" "$DIR/../src/regalloc_x86.c" -o "$DIR/store_ptr_stack"
 if ! "$DIR/store_ptr_stack" >/dev/null; then
     echo "Test store_ptr_stack failed"
@@ -276,6 +291,7 @@ rm -f "$DIR/store_ptr_stack"
 cc -I "$DIR/../include" -Wall -Wextra -std=c99 \
     "$DIR/unit/test_load_ptr_stack.c" \
     "$DIR/../src/codegen_load.c" \
+    "$DIR/../src/codegen_x86.c" \
     "$DIR/../src/strbuf.c" "$DIR/../src/regalloc_x86.c" -o "$DIR/load_ptr_stack"
 if ! "$DIR/load_ptr_stack" >/dev/null; then
     echo "Test load_ptr_stack failed"
@@ -354,6 +370,7 @@ cc -I "$DIR/../include" -Wall -Wextra -std=c99 \
     "$DIR/unit/test_glob_string.c" \
     "$DIR/../src/codegen_mem_x86.c" "$DIR/../src/codegen_mem_common.c" \
     "$DIR/../src/codegen_load.c" "$DIR/../src/codegen_store.c" \
+    "$DIR/../src/codegen_x86.c" \
     "$DIR/../src/strbuf.c" "$DIR/../src/regalloc_x86.c" -o "$DIR/glob_string"
 if ! "$DIR/glob_string" >/dev/null; then
     echo "Test glob_string failed"
@@ -386,6 +403,7 @@ cc -I "$DIR/../include" -Wall -Wextra -std=c99 \
     "$DIR/unit/test_addr_movabs.c" \
     "$DIR/../src/codegen_mem_x86.c" "$DIR/../src/codegen_mem_common.c" \
     "$DIR/../src/codegen_load.c" "$DIR/../src/codegen_store.c" \
+    "$DIR/../src/codegen_x86.c" \
     "$DIR/../src/strbuf.c" "$DIR/../src/regalloc_x86.c" -o "$DIR/addr_movabs"
 if ! "$DIR/addr_movabs" >/dev/null; then
     echo "Test addr_movabs failed"
@@ -788,7 +806,7 @@ set +e
 "$BINARY" -o "${out}" "$DIR/invalid/duplicate_case.c" 2> "${err}"
 ret=$?
 set -e
-if [ $ret -eq 0 ] || ! grep -q "Semantic error" "${err}"; then
+if [ $ret -eq 0 ] || ! grep -q "duplicate case label" "${err}"; then
     echo "Test duplicate_case failed"
     fail=1
 fi
@@ -801,7 +819,7 @@ set +e
 "$BINARY" -o "${out}" "$DIR/invalid/union_bad_access.c" 2> "${err}"
 ret=$?
 set -e
-if [ $ret -eq 0 ] || ! grep -q "Semantic error" "${err}"; then
+if [ $ret -eq 0 ] || ! grep -q "inactive union member 'c'" "${err}"; then
     echo "Test union_bad_access failed"
     fail=1
 fi

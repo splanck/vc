@@ -79,7 +79,7 @@ static int register_function_prototypes(func_t **func_list, size_t fcount,
                     mismatch = 1;
             if (mismatch) {
                 error_set(0, 0, error_current_file, error_current_function);
-                error_print("Semantic error");
+                error_printf("conflicting declarations for function '%s'", func_list[i]->name);
                 return 0;
             }
             existing->is_prototype = 0;
@@ -109,10 +109,8 @@ static int check_global_decls(stmt_t **glob_list, size_t gcount,
                               symtable_t *globals, ir_builder_t *ir)
 {
     for (size_t i = 0; i < gcount; i++) {
-        if (!check_global(glob_list[i], globals, ir)) {
-            error_print("Semantic error");
+        if (!check_global(glob_list[i], globals, ir))
             return 0;
-        }
     }
     return 1;
 }
@@ -122,10 +120,8 @@ static int check_function_defs(func_t **func_list, size_t fcount,
                                ir_builder_t *ir)
 {
     for (size_t i = 0; i < fcount; i++) {
-        if (!check_func(func_list[i], funcs, globals, ir)) {
-            error_print("Semantic error");
+        if (!check_func(func_list[i], funcs, globals, ir))
             return 0;
-        }
     }
     return 1;
 }

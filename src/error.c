@@ -9,6 +9,7 @@
 #include <stdio.h>
 #include <unistd.h>
 #include <stdbool.h>
+#include <stdarg.h>
 #include "error.h"
 
 /* Active file and function for diagnostics */
@@ -57,5 +58,15 @@ void error_print(const char *msg)
     if (color)
         fprintf(stderr, "\x1b[0m");
     fputc('\n', stderr);
+}
+
+void error_printf(const char *fmt, ...)
+{
+    char buf[256];
+    va_list ap;
+    va_start(ap, fmt);
+    vsnprintf(buf, sizeof(buf), fmt, ap);
+    va_end(ap);
+    error_print(buf);
 }
 

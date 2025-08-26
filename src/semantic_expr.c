@@ -58,6 +58,7 @@ static type_kind_t check_ident_expr(expr_t *expr, symtable_t *vars,
             return TYPE_PTR;
         }
         error_set(expr->line, expr->column, error_current_file, error_current_function);
+        error_printf("undeclared identifier '%s'", expr->data.ident.name);
         if (out)
             *out = (ir_value_t){0};
         return TYPE_UNKNOWN;
@@ -217,7 +218,7 @@ static type_kind_t check_assign_expr(expr_t *expr, symtable_t *vars,
     symbol_t *sym = symtable_lookup(vars, expr->data.assign.name);
     if (!sym) {
         error_set(expr->line, expr->column, error_current_file, error_current_function);
-        error_print("unknown identifier");
+        error_printf("assignment to undeclared variable '%s'", expr->data.assign.name);
         if (out)
             *out = (ir_value_t){0};
         return TYPE_UNKNOWN;
@@ -226,7 +227,7 @@ static type_kind_t check_assign_expr(expr_t *expr, symtable_t *vars,
     /* Step 2: const protection */
     if (sym->is_const) {
         error_set(expr->line, expr->column, error_current_file, error_current_function);
-        error_print("assignment to const");
+        error_printf("assignment to const variable '%s'", expr->data.assign.name);
         if (out)
             *out = (ir_value_t){0};
         return TYPE_UNKNOWN;
@@ -236,7 +237,7 @@ static type_kind_t check_assign_expr(expr_t *expr, symtable_t *vars,
     type_kind_t vt = check_expr(expr->data.assign.value, vars, funcs, ir, &val);
     if (!types_compatible(sym->type, vt)) {
         error_set(expr->line, expr->column, error_current_file, error_current_function);
-        error_print("incompatible types in assignment");
+        error_printf("incompatible types in assignment to '%s'", expr->data.assign.name);
         if (out)
             *out = (ir_value_t){0};
         return TYPE_UNKNOWN;

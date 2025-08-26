@@ -37,6 +37,7 @@ type_kind_t check_call_expr(expr_t *expr, symtable_t *vars,
         if (!fsym || fsym->type != TYPE_PTR ||
             fsym->func_ret_type == TYPE_UNKNOWN) {
             error_set(expr->line, expr->column, error_current_file, error_current_function);
+            error_printf("undeclared function '%s'", expr->data.call.name);
             return TYPE_UNKNOWN;
         }
         via_ptr = 1;
@@ -49,6 +50,7 @@ type_kind_t check_call_expr(expr_t *expr, symtable_t *vars,
     if ((!variadic && expected != expr->data.call.arg_count) ||
         (variadic && expr->data.call.arg_count < expected)) {
         error_set(expr->line, expr->column, error_current_file, error_current_function);
+        error_printf("wrong number of arguments to function '%s'", expr->data.call.name);
         return TYPE_UNKNOWN;
     }
     ir_value_t *vals = NULL;
@@ -87,6 +89,7 @@ type_kind_t check_call_expr(expr_t *expr, symtable_t *vars,
                 ok = 1;
             if (!ok) {
                 error_set(expr->data.call.args[i]->line, expr->data.call.args[i]->column, error_current_file, error_current_function);
+                error_printf("incompatible argument %zu in call to '%s'", i + 1, expr->data.call.name);
                 free(vals);
                 free(atypes);
                 return TYPE_UNKNOWN;
