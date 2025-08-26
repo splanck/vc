@@ -3,8 +3,8 @@ caller:
     movq %rsp, %rbp
     movq 16(%rbp), %rax
     movq $1, %rbx
-    movl %rax, %rcx
-    imull %rbx, %rcx
+    movl %eax, %ecx
+    imull %ebx, %ecx
     movq %rcx, %rax
     addq $15, %rax
     andq $-16, %rax
@@ -17,7 +17,7 @@ caller:
     movq %rax, %rsi
     imulq $1, %rsi
     addq %rbx, %rsi
-    movl %rdx, (%rsi)
+    movl %edx, (%rsi)
     movq %rbp, %rsp
     popq %rbp
     ret

@@ -14,7 +14,7 @@ main:
     call sinkf
     addl $4, %esp
     movl %eax, %eax
-    movl -0(%ebp), %ebx
+    movq -0(%ebp), %ebx
     sub $8, %esp
     movq %ebx, %xmm0
     movsd %xmm0, (%esp)

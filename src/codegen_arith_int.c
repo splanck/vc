@@ -137,6 +137,7 @@ void emit_div(strbuf_t *sb, ir_instr_t *ins,
     char b1[32];
     const char *sfx = (x64 && ins->type != TYPE_INT) ? "q" : "l";
     const char *ax = x86_reg_str(0, sfx, syntax);
+    const char *dx = x86_reg_str(3, sfx, syntax);
     int is_unsigned = (ins->type == TYPE_UINT || ins->type == TYPE_ULONG ||
                        ins->type == TYPE_USHORT || ins->type == TYPE_UCHAR ||
                        ins->type == TYPE_ULLONG);
@@ -146,10 +147,7 @@ void emit_div(strbuf_t *sb, ir_instr_t *ins,
                  syntax);
 
     if (is_unsigned) {
-        if (strcmp(sfx, "q") == 0)
-            strbuf_appendf(sb, "    cqo\n");
-        else
-            x86_emit_op(sb, "xor", "l", x86_reg_str(3, "l", syntax), x86_reg_str(3, "l", syntax), syntax);
+        x86_emit_op(sb, "xor", sfx, dx, dx, syntax);
         strbuf_appendf(sb, "    div%s %s\n", sfx,
                        x86_loc_str(b1, ra, ins->src2, x64, sfx, syntax));
     } else {
@@ -186,10 +184,7 @@ void emit_mod(strbuf_t *sb, ir_instr_t *ins,
                  syntax);
 
     if (is_unsigned) {
-        if (strcmp(sfx, "q") == 0)
-            strbuf_appendf(sb, "    cqo\n");
-        else
-            x86_emit_op(sb, "xor", "l", x86_reg_str(3, "l", syntax), x86_reg_str(3, "l", syntax), syntax);
+        x86_emit_op(sb, "xor", sfx, dx, dx, syntax);
         strbuf_appendf(sb, "    div%s %s\n", sfx,
                        x86_loc_str(b1, ra, ins->src2, x64, sfx, syntax));
     } else {

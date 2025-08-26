@@ -14,7 +14,7 @@ main:
     call sinkf
     addl esp, 4
     movl eax, eax
-    movl ebx, [ebp-0]
+    movq ebx, [ebp-0]
     sub esp, 8
     movq xmm0, ebx
     movsd [esp], xmm0
