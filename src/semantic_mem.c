@@ -75,6 +75,7 @@ type_kind_t check_index_expr(expr_t *expr, symtable_t *vars,
     (void)funcs;
     if (expr->data.index.array->kind != EXPR_IDENT) {
         error_set(expr->line, expr->column, error_current_file, error_current_function);
+        error_printf("accessing inactive union member '%s'", expr->data.member.member);
         return TYPE_UNKNOWN;
     }
     symbol_t *sym = symtable_lookup(vars, expr->data.index.array->data.ident.name);
@@ -329,6 +330,7 @@ type_kind_t check_member_expr(expr_t *expr, symtable_t *vars,
     if (!expr->data.member.via_ptr && obj_sym && obj_sym->type == TYPE_UNION &&
         obj_sym->active_member && strcmp(obj_sym->active_member, expr->data.member.member) != 0) {
         error_set(expr->line, expr->column, error_current_file, error_current_function);
+        error_printf("accessing inactive union member '%s'", expr->data.member.member);
         return TYPE_UNKNOWN;
     }
 

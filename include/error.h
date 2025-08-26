@@ -28,6 +28,7 @@ void error_set(size_t line, size_t col, const char *file, const char *func);
  * error_set().
  */
 void error_print(const char *msg);
+void error_printf(const char *fmt, ...);
 
 /* Current context used by error diagnostics */
 extern const char *error_current_file;

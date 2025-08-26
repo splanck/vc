@@ -159,6 +159,7 @@ static char **emit_case_branches(stmt_t *stmt, symtable_t *vars,
                 free(labels);
                 free(values);
                 error_set(STMT_SWITCH(stmt).cases[i].expr->line, STMT_SWITCH(stmt).cases[i].expr->column, error_current_file, error_current_function);
+                error_printf("duplicate case label '%lld'", cval);
                 return NULL;
             }
         }

@@ -144,6 +144,7 @@ static symbol_t *register_var_symbol(stmt_t *stmt, symtable_t *vars)
     if (STMT_VAR_DECL(stmt).is_const && !STMT_VAR_DECL(stmt).init &&
         !STMT_VAR_DECL(stmt).init_list) {
         error_set(stmt->line, stmt->column, error_current_file, error_current_function);
+        error_printf("const variable '%s' requires an initializer", STMT_VAR_DECL(stmt).name);
         return NULL;
     }
     symbol_t *sym = insert_var_symbol(stmt, vars, ir_name);
