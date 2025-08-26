@@ -65,6 +65,9 @@ type_kind_t check_call_expr(expr_t *expr, symtable_t *vars,
     for (size_t i = 0; i < expr->data.call.arg_count; i++) {
         type_kind_t at = check_expr(expr->data.call.args[i], vars, funcs, ir,
                                     &vals[i]);
+        /* Arrays decay to pointers when passed as arguments */
+        if (at == TYPE_ARRAY)
+            at = TYPE_PTR;
         atypes[i] = at;
         if (at == TYPE_UNKNOWN) {
             free(vals);
@@ -73,8 +76,16 @@ type_kind_t check_call_expr(expr_t *expr, symtable_t *vars,
         }
         if (i < expected) {
             type_kind_t pt = ptypes[i];
-            if (!(((is_intlike(pt) && is_intlike(at)) ||
-                   (is_floatlike(pt) && is_floatlike(at))) || at == pt)) {
+            int ok = 0;
+            if (pt == at)
+                ok = 1;
+            else if (pt == TYPE_PTR && at == TYPE_PTR)
+                ok = 1;
+            else if (is_intlike(pt) && is_intlike(at))
+                ok = 1;
+            else if (is_floatlike(pt) && (is_floatlike(at) || is_intlike(at)))
+                ok = 1;
+            if (!ok) {
                 error_set(expr->data.call.args[i]->line, expr->data.call.args[i]->column, error_current_file, error_current_function);
                 free(vals);
                 free(atypes);
