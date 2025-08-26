@@ -188,10 +188,15 @@ static int expand_user_macro(macro_t *m, const char *line, size_t *pos,
         if ((m->params.count || m->variadic) && line[p] == '(') {
             size_t depth = 0;
             do {
-                strbuf_appendf(out, "%c", line[p]);
-                if (line[p] == '(')
+                char c = line[p];
+                if (c == '"' || c == '\'') {
+                    emit_quoted(line, &p, c, out);
+                    continue;
+                }
+                strbuf_appendf(out, "%c", c);
+                if (c == '(')
                     depth++;
-                else if (line[p] == ')')
+                else if (c == ')')
                     depth--;
                 p++;
             } while (line[p - 1] && depth > 0);
