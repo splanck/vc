@@ -106,6 +106,31 @@ static void emit_quoted(const char *line, size_t *pos, char quote,
     }
 }
 
+/* Copy a parenthesized macro invocation starting at *pos into OUT.
+ * The scan skips over quoted strings and character literals so that
+ * commas and parentheses within them do not terminate the argument
+ * list.  *pos is updated to point just past the closing parenthesis. */
+static void emit_macro_invocation(const char *line, size_t *pos,
+                                  strbuf_t *out)
+{
+    size_t p = *pos;
+    size_t depth = 0;
+    do {
+        char c = line[p];
+        if (c == '"' || c == '\'') {
+            emit_quoted(line, &p, c, out);
+            continue;
+        }
+        strbuf_appendf(out, "%c", c);
+        if (c == '(')
+            depth++;
+        else if (c == ')')
+            depth--;
+        p++;
+    } while (line[p - 1] && depth > 0);
+    *pos = p;
+}
+
 
 /* Return the macro whose name matches "name" (len bytes) */
 static macro_t *find_macro(vector_t *macros, const char *name, size_t len)
@@ -185,22 +210,8 @@ static int expand_user_macro(macro_t *m, const char *line, size_t *pos,
         int saved_errno = errno;
         size_t p = *pos;
         strbuf_append(out, m->name);
-        if ((m->params.count || m->variadic) && line[p] == '(') {
-            size_t depth = 0;
-            do {
-                char c = line[p];
-                if (c == '"' || c == '\'') {
-                    emit_quoted(line, &p, c, out);
-                    continue;
-                }
-                strbuf_appendf(out, "%c", c);
-                if (c == '(')
-                    depth++;
-                else if (c == ')')
-                    depth--;
-                p++;
-            } while (line[p - 1] && depth > 0);
-        }
+        if ((m->params.count || m->variadic) && line[p] == '(')
+            emit_macro_invocation(line, &p, out);
         *pos = p;
         errno = saved_errno;
         return 1;

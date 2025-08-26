@@ -45,6 +45,8 @@ int main(void)
     run_case("ECHO(')')", "')'");
     run_case("ECHO(',')", "','");
     run_case("ECHO(\"a\\\"b,\")", "\"a\\\"b,\"");
+    run_case("ECHO(\")\")", "\")\"");
+    run_case("ECHO('(')", "'('");
     if (failures == 0)
         printf("All preproc_literal_args tests passed\n");
     else

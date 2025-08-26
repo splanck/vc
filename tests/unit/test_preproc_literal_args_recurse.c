@@ -46,6 +46,7 @@ int main(void)
     run_case("RECUR(',')");
     run_case("RECUR(\"a\\\"b,\")");
     run_case("RECUR(\")\")");
+    run_case("RECUR('(')");
     if (failures == 0)
         printf("All preproc_literal_args_recurse tests passed\n");
     else
