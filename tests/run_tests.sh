@@ -151,6 +151,16 @@ else
 fi
 rm -f "$asmfile" "$objfile"
 
+# verify file_count and file_io examples link with the internal libc
+for src in "$DIR/../examples/file_count.c" "$DIR/../examples/file_io.c"; do
+    exe=$(safe_mktemp)
+    if ! "$BINARY" --x86-64 --internal-libc --link -o "$exe" "$src" >/dev/null 2>&1; then
+        echo "Test example_$(basename "$src" .c) failed"
+        fail=1
+    fi
+    rm -f "$exe" "$exe.s" "$exe.o" "$exe.log" 2>/dev/null || true
+done
+
 # ensure all example programs compile successfully with the internal libc
 for src in "$DIR/../examples"/*.c; do
     [ -e "$src" ] || continue
