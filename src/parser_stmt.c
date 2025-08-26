@@ -151,6 +151,13 @@ static stmt_t *maybe_parse_var_decl(parser_t *p)
         tok->type == TOK_KW_BOOL || tok->type == TOK_KW_UNSIGNED)
         return parser_parse_var_decl(p);
 
+    if (tok->type == TOK_IDENT) {
+        type_kind_t dummy_t;
+        size_t dummy_sz;
+        if (parser_decl_var_lookup_typedef(tok->lexeme, &dummy_t, &dummy_sz))
+            return parser_parse_var_decl(p);
+    }
+
     return NULL;
 }
 

@@ -15,6 +15,29 @@
 #include "error.h"
 #include "parser_decl_var.h"
 
+static symtable_t *typedefs = NULL;
+
+void parser_decl_var_set_typedef_table(symtable_t *tab)
+{
+    typedefs = tab;
+}
+
+int parser_decl_var_lookup_typedef(const char *name, type_kind_t *type,
+                                   size_t *elem_size)
+{
+    if (!typedefs)
+        return 0;
+    symbol_t *sym = symtable_lookup(typedefs, name);
+    if (sym && sym->is_typedef) {
+        if (type)
+            *type = sym->alias_type;
+        if (elem_size)
+            *elem_size = sym->elem_size;
+        return 1;
+    }
+    return 0;
+}
+
 /* Helper prototypes */
 static int parse_decl_specs(parser_t *p, int *is_extern, int *is_static,
                             int *is_register, int *is_const, int *is_volatile,
@@ -94,11 +117,19 @@ static int parse_decl_specs(parser_t *p, int *is_extern, int *is_static,
         if (base_type)
             *base_type = *type;
     } else {
-        if (!parse_basic_type(p, type))
-            return 0;
-        *elem_size = basic_type_size(*type);
-        if (base_type)
-            *base_type = *type;
+        token_t *id = peek(p);
+        if (id && id->type == TOK_IDENT &&
+            parser_decl_var_lookup_typedef(id->lexeme, type, elem_size)) {
+            p->pos++;
+            if (base_type)
+                *base_type = *type;
+        } else {
+            if (!parse_basic_type(p, type))
+                return 0;
+            *elem_size = basic_type_size(*type);
+            if (base_type)
+                *base_type = *type;
+        }
     }
 
     parse_pointer_suffix(p, type, is_restrict);

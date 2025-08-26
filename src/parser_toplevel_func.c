@@ -15,6 +15,7 @@
 #include "symtable.h"
 #include "util.h"
 #include "error.h"
+#include "parser_decl_var.h"
 
 /* external variable parsing helper */
 int parse_global_var_init(parser_t *p, const char *name, type_kind_t type,
@@ -103,6 +104,7 @@ static int parse_param_list_proto(parser_t *p, symtable_t *funcs,
 
             type_kind_t pt;
             const char *tag = NULL;
+            size_t ps;
             if (match(p, TOK_KW_STRUCT) || match(p, TOK_KW_UNION)) {
                 token_type_t kw = p->tokens[p->pos - 1].type;
                 token_t *id = peek(p);
@@ -111,13 +113,18 @@ static int parse_param_list_proto(parser_t *p, symtable_t *funcs,
                 p->pos++;
                 tag = id->lexeme;
                 pt = (kw == TOK_KW_STRUCT) ? TYPE_STRUCT : TYPE_UNION;
-            } else if (!parse_basic_type(p, &pt)) {
-                return 0;
+                ps = lookup_aggr_size(funcs, pt, tag);
+            } else if (parse_basic_type(p, &pt)) {
+                ps = basic_type_size(pt);
+            } else {
+                token_t *id = peek(p);
+                if (id && id->type == TOK_IDENT &&
+                    parser_decl_var_lookup_typedef(id->lexeme, &pt, &ps)) {
+                    p->pos++;
+                } else {
+                    return 0;
+                }
             }
-
-            size_t ps = (pt == TYPE_STRUCT || pt == TYPE_UNION)
-                            ? lookup_aggr_size(funcs, pt, tag)
-                            : basic_type_size(pt);
 
             if (match(p, TOK_STAR)) {
                 pt = TYPE_PTR;
@@ -220,6 +227,7 @@ static int parse_type_specifier(parser_t *p, size_t spec_pos, type_kind_t *type,
     size_t save = spec_pos;
     char *tag = NULL;
     type_kind_t t;
+    size_t esz;
 
     if (match(p, TOK_KW_STRUCT) || match(p, TOK_KW_UNION)) {
         token_type_t kw = p->tokens[p->pos - 1].type;
@@ -235,11 +243,18 @@ static int parse_type_specifier(parser_t *p, size_t spec_pos, type_kind_t *type,
             return 0;
         }
         t = (kw == TOK_KW_STRUCT) ? TYPE_STRUCT : TYPE_UNION;
-    } else if (!parse_basic_type(p, &t)) {
-        return 0;
+        esz = 0;
+    } else if (parse_basic_type(p, &t)) {
+        esz = basic_type_size(t);
+    } else {
+        token_t *id = peek(p);
+        if (id && id->type == TOK_IDENT &&
+            parser_decl_var_lookup_typedef(id->lexeme, &t, &esz)) {
+            p->pos++;
+        } else {
+            return 0;
+        }
     }
-
-    size_t esz = (t == TYPE_STRUCT || t == TYPE_UNION) ? 0 : basic_type_size(t);
     int restr = 0;
     if (match(p, TOK_STAR)) {
         t = TYPE_PTR;
