@@ -24,23 +24,37 @@ count_vcflags_args(const char *env, size_t *out)
         count++;
         int in_quote = 0;
         char q = '\0';
+        size_t bs = 0;
         while (*p) {
-            if (*p == '\\' && p[1]) {
-                p += 2;
-                continue;
-            }
-            if (!in_quote && (*p == '\'' || *p == '"')) {
-                in_quote = 1;
-                q = *p++;
-                continue;
-            }
-            if (in_quote && *p == q) {
-                in_quote = 0;
+            if (*p == '\\') {
+                bs++;
                 p++;
                 continue;
             }
+            if (*p == '\'' || *p == '"') {
+                if ((bs & 1) == 0) {
+                    /* quote not escaped */
+                    bs = 0;
+                    if (!in_quote) {
+                        in_quote = 1;
+                        q = *p++;
+                        continue;
+                    }
+                    if (*p == q) {
+                        in_quote = 0;
+                        p++;
+                        continue;
+                    }
+                } else {
+                    /* escaped quote */
+                    bs = 0;
+                    p++;
+                    continue;
+                }
+            }
             if (!in_quote && *p == ' ')
                 break;
+            bs = 0;
             p++;
         }
         if (in_quote) {
@@ -84,27 +98,49 @@ build_vcflags_argv(char *vcbuf, int argc, char **argv, size_t vcargc)
         int in_quote = 0;
         char q = '\0';
         char delim = '\0';
+        size_t bs = 0;
         while (*p2) {
-            if (*p2 == '\\' && p2[1]) {
-                p2++;
-                *dst++ = *p2++;
-                continue;
-            }
-            if (!in_quote && (*p2 == '\'' || *p2 == '"')) {
-                in_quote = 1;
-                q = *p2++;
-                continue;
-            }
-            if (in_quote && *p2 == q) {
-                in_quote = 0;
+            if (*p2 == '\\') {
+                bs++;
                 p2++;
                 continue;
+            }
+            if (*p2 == '\'' || *p2 == '"') {
+                for (size_t i = 0; i < bs / 2; i++)
+                    *dst++ = '\\';
+                if (bs & 1) {
+                    *dst++ = *p2++;
+                } else {
+                    if (!in_quote) {
+                        in_quote = 1;
+                        q = *p2++;
+                        bs = 0;
+                        continue;
+                    } else if (*p2 == q) {
+                        in_quote = 0;
+                        p2++;
+                        bs = 0;
+                        continue;
+                    } else {
+                        *dst++ = *p2++;
+                    }
+                }
+                bs = 0;
+                continue;
+            }
+            while (bs) {
+                *dst++ = '\\';
+                bs--;
             }
             if (!in_quote && *p2 == ' ') {
                 delim = *p2;
                 break;
             }
             *dst++ = *p2++;
+        }
+        while (bs) {
+            *dst++ = '\\';
+            bs--;
         }
         if (in_quote) {
             fprintf(stderr, "Unterminated quote in VCFLAGS\n");
