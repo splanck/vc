@@ -35,8 +35,10 @@ void macro_free(macro_t *m) { (void)m; }
 #ifndef NO_VECTOR_FREE_STUB
 void vector_free(vector_t *v) { (void)v; }
 #endif
+#ifndef NO_AST_FREE_STUB
 void ast_free_func(func_t *func) { (void)func; }
 void ast_free_stmt(stmt_t *stmt) { (void)stmt; }
+#endif
 #endif
 
 /* Print a generic out of memory message */

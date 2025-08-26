@@ -519,6 +519,21 @@ static void test_parser_sizeof(void)
     lexer_free_tokens(toks, count);
 }
 
+static void test_parser_sizeof_expr(void)
+{
+    const char *src = "sizeof x";
+    size_t count = 0;
+    token_t *toks = lexer_tokenize(src, &count);
+    parser_t p; parser_init(&p, toks, count);
+    expr_t *expr = parser_parse_expr(&p);
+    ASSERT(expr && expr->kind == EXPR_SIZEOF);
+    ASSERT(!expr->data.sizeof_expr.is_type);
+    ASSERT(expr->data.sizeof_expr.expr &&
+           expr->data.sizeof_expr.expr->kind == EXPR_IDENT);
+    ast_free_expr(expr);
+    lexer_free_tokens(toks, count);
+}
+
 /* Parse a simple variadic call expression. */
 static void test_parser_variadic_call(void)
 {
@@ -813,6 +828,7 @@ int main(void)
     test_parser_conditional();
     test_lexer_sizeof();
     test_parser_sizeof();
+    test_parser_sizeof_expr();
     test_parser_variadic_call();
     test_parser_func();
     test_parser_block();
