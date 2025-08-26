@@ -28,10 +28,20 @@ static void test_sizeof_ptr_64(void)
     ast_free_expr(e);
 }
 
+static void test_sizeof_int(void)
+{
+    expr_t *e = ast_make_sizeof_type(TYPE_INT, 0, 0, 1, 1);
+    long long val = 0;
+    ASSERT(eval_const_expr(e, NULL, 0, &val));
+    ASSERT(val == 4);
+    ast_free_expr(e);
+}
+
 int main(void)
 {
     test_sizeof_ptr_32();
     test_sizeof_ptr_64();
+    test_sizeof_int();
     if (failures == 0)
         printf("All eval_sizeof tests passed\n");
     else

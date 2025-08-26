@@ -155,19 +155,24 @@ static expr_t *parse_not(parser_t *p)
 static expr_t *parse_sizeof(parser_t *p)
 {
     token_t *kw = &p->tokens[p->pos - 1];
-    if (!match(p, TOK_LPAREN))
-        return NULL;
-    size_t save = p->pos;
-    type_kind_t t; size_t sz; size_t esz;
-    if (parse_type(p, &t, &sz, &esz) && match(p, TOK_RPAREN))
-        return ast_make_sizeof_type(t, sz, esz, kw->line, kw->column);
-    p->pos = save;
-    expr_t *e = parser_parse_expr(p);
-    if (!e || !match(p, TOK_RPAREN)) {
-        ast_free_expr(e);
-        return NULL;
+    if (match(p, TOK_LPAREN)) {
+        size_t save = p->pos;
+        type_kind_t t; size_t sz; size_t esz;
+        if (parse_type(p, &t, &sz, &esz) && match(p, TOK_RPAREN))
+            return ast_make_sizeof_type(t, sz, esz, kw->line, kw->column);
+        p->pos = save;
+        expr_t *e = parser_parse_expr(p);
+        if (!e || !match(p, TOK_RPAREN)) {
+            ast_free_expr(e);
+            return NULL;
+        }
+        return ast_make_sizeof_expr(e, kw->line, kw->column);
     }
-    return ast_make_sizeof_expr(e, kw->line, kw->column);
+
+    expr_t *op = parse_prefix_expr(p);
+    if (!op)
+        return NULL;
+    return ast_make_sizeof_expr(op, kw->line, kw->column);
 }
 
 static expr_t *parse_alignof(parser_t *p)

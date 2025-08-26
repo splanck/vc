@@ -278,7 +278,7 @@ static int lookup_aggregate_size(expr_t *op, type_kind_t t, symtable_t *vars)
 
 /*
  * Determine the byte size of a type operand of sizeof().
- * Array and struct sizes are provided by the parser.
+ * Array, struct, and union sizes are provided by the parser.
  */
 static int sizeof_from_type(type_kind_t type, size_t array_size,
                             size_t elem_size)
@@ -304,7 +304,8 @@ static int sizeof_from_type(type_kind_t type, size_t array_size,
         /* arrays: element size times element count */
         return (int)array_size * (int)elem_size;
     case TYPE_STRUCT:
-        /* elem_size stores the total struct size */
+    case TYPE_UNION:
+        /* elem_size stores the total aggregate size */
         return (int)elem_size;
     default:
         return 0;
