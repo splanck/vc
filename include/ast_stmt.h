@@ -82,6 +82,9 @@ union stmt_data {
         type_kind_t *func_param_types;
         size_t func_param_count;
         int func_variadic;
+        /* additional declarators in the same statement */
+        struct stmt **next;
+        size_t next_count;
     } var_decl;
     struct {
         expr_t *cond;

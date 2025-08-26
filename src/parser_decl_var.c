@@ -54,7 +54,8 @@ static int parse_braced_initializer(parser_t *p, init_entry_t **init_list,
                                     size_t *init_count);
 static int parse_expr_initializer(parser_t *p, expr_t **init);
 static int parse_initializer(parser_t *p, type_kind_t type, expr_t **init,
-                             init_entry_t **init_list, size_t *init_count);
+                             init_entry_t **init_list, size_t *init_count,
+                             int expect_semi);
 
 /* Parse an optional '*' pointer suffix followed by 'restrict'. */
 static void parse_pointer_suffix(parser_t *p, type_kind_t *type,
@@ -179,39 +180,31 @@ static int parse_array_suffix(parser_t *p, type_kind_t *type, char **name,
     return 1;
 }
 
-/* Parse an initializer list enclosed in braces followed by a semicolon. */
+/* Parse an initializer list enclosed in braces. */
 static int parse_braced_initializer(parser_t *p, init_entry_t **init_list,
                                     size_t *init_count)
 {
     *init_list = parser_parse_init_list(p, init_count);
-    if (!*init_list || !match(p, TOK_SEMI)) {
-        if (*init_list) {
-            for (size_t i = 0; i < *init_count; i++) {
-                ast_free_expr((*init_list)[i].index);
-                ast_free_expr((*init_list)[i].value);
-                free((*init_list)[i].field);
-            }
-            free(*init_list);
-        }
+    if (!*init_list) {
         return 0;
     }
     return 1;
 }
 
-/* Parse a scalar initializer expression followed by a semicolon. */
+/* Parse a scalar initializer expression. */
 static int parse_expr_initializer(parser_t *p, expr_t **init)
 {
     *init = parser_parse_expr(p);
-    if (!*init || !match(p, TOK_SEMI)) {
-        ast_free_expr(*init);
+    if (!*init)
         return 0;
-    }
     return 1;
 }
 
-/* Parse optional initializer and trailing semicolon. */
+/* Parse optional initializer.  If expect_semi is non-zero, a trailing
+ * semicolon must follow the declarator. */
 static int parse_initializer(parser_t *p, type_kind_t type, expr_t **init,
-                             init_entry_t **init_list, size_t *init_count)
+                             init_entry_t **init_list, size_t *init_count,
+                             int expect_semi)
 {
     *init = NULL;
     *init_list = NULL;
@@ -226,9 +219,20 @@ static int parse_initializer(parser_t *p, type_kind_t type, expr_t **init,
             if (!parse_expr_initializer(p, init))
                 return 0;
         }
-    } else {
-        if (!match(p, TOK_SEMI))
+    }
+    if (expect_semi) {
+        if (!match(p, TOK_SEMI)) {
+            ast_free_expr(*init);
+            if (*init_list) {
+                for (size_t i = 0; i < *init_count; i++) {
+                    ast_free_expr((*init_list)[i].index);
+                    ast_free_expr((*init_list)[i].value);
+                    free((*init_list)[i].field);
+                }
+                free(*init_list);
+            }
             return 0;
+        }
     }
     return 1;
 }
@@ -279,60 +283,118 @@ stmt_t *parser_parse_var_decl(parser_t *p)
                           &align_expr, &kw_tok))
         return NULL;
 
-    char *name;
-    size_t arr_size;
-    expr_t *size_expr;
-    type_kind_t *param_types = NULL;
-    size_t param_count = 0;
-    int variadic = 0;
-    type_kind_t func_ret_type = TYPE_UNKNOWN;
+    vector_t decls_v;
+    vector_init(&decls_v, sizeof(stmt_t *));
+    type_kind_t decl_type_base = t;
+    while (1) {
+        type_kind_t dt = decl_type_base;
+        char *name;
+        size_t arr_size;
+        expr_t *size_expr;
+        type_kind_t *param_types = NULL;
+        size_t param_count = 0;
+        int variadic = 0;
+        type_kind_t func_ret_type = TYPE_UNKNOWN;
 
-    if (t == TYPE_PTR && parse_func_ptr_suffix(p, &name,
-                                               &param_types, &param_count,
-                                               &variadic)) {
-        arr_size = 0;
-        size_expr = NULL;
-        func_ret_type = base_type;
-    } else if (!parse_array_suffix(p, &t, &name, &arr_size, &size_expr)) {
-        free(tag_name);
-        return NULL;
-    }
-
-    expr_t *init;
-    init_entry_t *init_list;
-    size_t init_count;
-    if (!parse_initializer(p, t, &init, &init_list, &init_count)) {
-        ast_free_expr(size_expr);
-        free(tag_name);
-        free(param_types);
-        return NULL;
-    }
-
-    stmt_t *res = ast_make_var_decl(name, t, arr_size, size_expr, align_expr,
-                                    elem_size,
-                                    is_static, is_register, is_extern,
-                                    is_const, is_volatile, is_restrict,
-                                    init, init_list, init_count,
-                                    tag_name, NULL, 0,
-                                    kw_tok->line, kw_tok->column);
-    if (!res) {
-        ast_free_expr(size_expr);
-        ast_free_expr(align_expr);
-        ast_free_expr(init);
-        for (size_t i = 0; i < init_count; i++) {
-            ast_free_expr(init_list[i].index);
-            ast_free_expr(init_list[i].value);
-            free(init_list[i].field);
+        if (dt == TYPE_PTR &&
+            parse_func_ptr_suffix(p, &name, &param_types, &param_count, &variadic)) {
+            arr_size = 0;
+            size_expr = NULL;
+            func_ret_type = base_type;
+        } else if (!parse_array_suffix(p, &dt, &name, &arr_size, &size_expr)) {
+            free(tag_name);
+            vector_free(&decls_v);
+            return NULL;
         }
-        free(init_list);
-        free(tag_name);
-        free(param_types);
-    } else {
-        STMT_VAR_DECL(res).func_ret_type = func_ret_type;
-        STMT_VAR_DECL(res).func_param_types = param_types;
-        STMT_VAR_DECL(res).func_param_count = param_count;
-        STMT_VAR_DECL(res).func_variadic = variadic;
+
+        expr_t *init;
+        init_entry_t *init_list;
+        size_t init_count;
+        if (!parse_initializer(p, dt, &init, &init_list, &init_count, 0)) {
+            ast_free_expr(size_expr);
+            free(tag_name);
+            free(param_types);
+            for (size_t i = 0; i < decls_v.count; i++)
+                ast_free_stmt(((stmt_t **)decls_v.data)[i]);
+            vector_free(&decls_v);
+            return NULL;
+        }
+
+        stmt_t *decl = ast_make_var_decl(name, dt, arr_size, size_expr,
+                                         decls_v.count == 0 ? align_expr : NULL,
+                                         elem_size,
+                                         is_static, is_register, is_extern,
+                                         is_const, is_volatile, is_restrict,
+                                         init, init_list, init_count,
+                                         tag_name, NULL, 0,
+                                         kw_tok->line, kw_tok->column);
+        if (!decl) {
+            ast_free_expr(size_expr);
+            ast_free_expr(init);
+            for (size_t i = 0; i < init_count; i++) {
+                ast_free_expr(init_list[i].index);
+                ast_free_expr(init_list[i].value);
+                free(init_list[i].field);
+            }
+            free(init_list);
+            free(tag_name);
+            free(param_types);
+            for (size_t i = 0; i < decls_v.count; i++)
+                ast_free_stmt(((stmt_t **)decls_v.data)[i]);
+            vector_free(&decls_v);
+            if (decls_v.count == 0)
+                ast_free_expr(align_expr);
+            return NULL;
+        }
+        STMT_VAR_DECL(decl).func_ret_type = func_ret_type;
+        STMT_VAR_DECL(decl).func_param_types = param_types;
+        STMT_VAR_DECL(decl).func_param_count = param_count;
+        STMT_VAR_DECL(decl).func_variadic = variadic;
+
+        if (!vector_push(&decls_v, &decl)) {
+            ast_free_stmt(decl);
+            free(tag_name);
+            for (size_t i = 0; i < decls_v.count; i++)
+                ast_free_stmt(((stmt_t **)decls_v.data)[i]);
+            vector_free(&decls_v);
+            if (decls_v.count == 0)
+                ast_free_expr(align_expr);
+            return NULL;
+        }
+
+        if (match(p, TOK_COMMA))
+            continue;
+        if (!match(p, TOK_SEMI)) {
+            free(tag_name);
+            for (size_t i = 0; i < decls_v.count; i++)
+                ast_free_stmt(((stmt_t **)decls_v.data)[i]);
+            vector_free(&decls_v);
+            ast_free_expr(align_expr);
+            return NULL;
+        }
+        break;
     }
-    return res;
+
+    stmt_t **decls = (stmt_t **)decls_v.data;
+    size_t count = decls_v.count;
+    stmt_t *first = decls[0];
+    if (count > 1) {
+        stmt_t **extra = malloc((count - 1) * sizeof(stmt_t *));
+        if (!extra) {
+            for (size_t i = 0; i < count; i++)
+                ast_free_stmt(decls[i]);
+            vector_free(&decls_v);
+            free(tag_name);
+            return NULL;
+        }
+        for (size_t i = 1; i < count; i++)
+            extra[i - 1] = decls[i];
+        STMT_VAR_DECL(first).next = extra;
+        STMT_VAR_DECL(first).next_count = count - 1;
+    }
+
+    vector_free(&decls_v);
+    free(tag_name);
+    return first;
 }
 

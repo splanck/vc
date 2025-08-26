@@ -233,6 +233,12 @@ int stmt_var_decl_handler(stmt_t *stmt, symtable_t *vars,
                           const char *continue_label)
 {
     (void)labels; (void)func_ret_type; (void)break_label; (void)continue_label;
-    return check_var_decl_stmt(stmt, vars, funcs, ir);
+    if (!check_var_decl_stmt(stmt, vars, funcs, ir))
+        return 0;
+    for (size_t i = 0; i < STMT_VAR_DECL(stmt).next_count; i++) {
+        if (!check_var_decl_stmt(STMT_VAR_DECL(stmt).next[i], vars, funcs, ir))
+            return 0;
+    }
+    return 1;
 }
 

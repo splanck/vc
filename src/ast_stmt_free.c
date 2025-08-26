@@ -40,6 +40,9 @@ static void free_var_decl_stmt(stmt_t *stmt)
         free(STMT_VAR_DECL(stmt).members[i].name);
     free(STMT_VAR_DECL(stmt).members);
     free(STMT_VAR_DECL(stmt).func_param_types);
+    for (size_t i = 0; i < STMT_VAR_DECL(stmt).next_count; i++)
+        ast_free_stmt(STMT_VAR_DECL(stmt).next[i]);
+    free(STMT_VAR_DECL(stmt).next);
 }
 
 static void free_if_stmt(stmt_t *stmt)
