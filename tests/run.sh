@@ -279,6 +279,16 @@ $CC -Iinclude -Wall -Wextra -std=c99 -c src/preproc_builtin.c -o preproc_builtin
 $CC -Iinclude -Wall -Wextra -std=c99 -c "$DIR/unit/test_preproc_literal_args.c" -o "$DIR/test_preproc_literal_args.o"
 $CC -o "$DIR/preproc_literal_args" preproc_expand.o preproc_table.o strbuf_litargs.o vector_litargs.o util_litargs.o preproc_builtin_litargs.o "$DIR/test_preproc_literal_args.o"
 rm -f preproc_expand.o preproc_table.o strbuf_litargs.o vector_litargs.o util_litargs.o preproc_builtin_litargs.o "$DIR/test_preproc_literal_args.o"
+# build literal argument recursion tests
+$CC -Iinclude -Wall -Wextra -std=c99 -c src/preproc_expand.c -o preproc_expand.o
+$CC -Iinclude -Wall -Wextra -std=c99 -c src/preproc_table.c -o preproc_table.o
+$CC -Iinclude -Wall -Wextra -std=c99 -c src/strbuf.c -o strbuf_litargs_rec.o
+$CC -Iinclude -Wall -Wextra -std=c99 -c src/vector.c -o vector_litargs_rec.o
+$CC -Iinclude -Wall -Wextra -std=c99 -c src/util.c -o util_litargs_rec.o
+$CC -Iinclude -Wall -Wextra -std=c99 -c src/preproc_builtin.c -o preproc_builtin_litargs_rec.o
+$CC -Iinclude -Wall -Wextra -std=c99 -c "$DIR/unit/test_preproc_literal_args_recurse.c" -o "$DIR/test_preproc_literal_args_recurse.o"
+$CC -o "$DIR/preproc_literal_args_recurse" preproc_expand.o preproc_table.o strbuf_litargs_rec.o vector_litargs_rec.o util_litargs_rec.o preproc_builtin_litargs_rec.o "$DIR/test_preproc_literal_args_recurse.o"
+rm -f preproc_expand.o preproc_table.o strbuf_litargs_rec.o vector_litargs_rec.o util_litargs_rec.o preproc_builtin_litargs_rec.o "$DIR/test_preproc_literal_args_recurse.o"
 # build pack pragma layout tests
 $CC -Iinclude -Wall -Wextra -std=c99 \
     -o "$DIR/pack_pragma_tests" "$DIR/unit/test_pack_pragma.c"
@@ -658,6 +668,7 @@ rm -f ir_licm.o util_licm.o label_licm.o error_licm.o opt_main_licm.o \
 "$DIR/variadic_macro_tests"
 "$DIR/macro_stringize_escape"
 "$DIR/preproc_literal_args"
+"$DIR/preproc_literal_args_recurse"
 "$DIR/pack_pragma_tests"
 "$DIR/read_file_lines_large"
 "$DIR/preproc_stdio"
