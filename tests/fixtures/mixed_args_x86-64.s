@@ -1,16 +1,20 @@
+.bss
+.lcomm b, 8
+.lcomm c, 8
+.text
 main:
     pushq %rbp
     movq %rsp, %rbp
     movq $2, %rax
-    movl %rax, -0(%rbp)
+    movl %eax, b
     movq $3, %rax
-    movq %rax, -0(%rbp)
+    movq %rax, c
     movq $1, %rax
-    movq $3, %rbx
+    movq $2, %rbx
     movq $3, %rcx
     movq $4, %rdx
     movq %rax, %rdi
-    movd %rbx, %xmm0
+    movd %ebx, %xmm0
     movq %rcx, %xmm1
     movq %rdx, %rsi
     call mix

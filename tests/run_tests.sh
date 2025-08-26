@@ -137,6 +137,20 @@ if ! "$BINARY" --x86-64 --internal-libc --dump-ast "$DIR/../examples/copy_string
 fi
 rm -f "$out"
 
+# ensure assembler accepts 64-bit output for calc example
+asmfile=$(safe_mktemp /tmp/calc.XXXXXX.s)
+objfile=$(safe_mktemp /tmp/calc.XXXXXX.o)
+if "$BINARY" --x86-64 --internal-libc "$DIR/../examples/calc.c" -o "$asmfile"; then
+    if ! ${CC:-gcc} -c "$asmfile" -o "$objfile"; then
+        echo "Test calc_example failed"
+        fail=1
+    fi
+else
+    echo "Test calc_example failed"
+    fail=1
+fi
+rm -f "$asmfile" "$objfile"
+
 # negative test for parse error message
 err=$(safe_mktemp)
 out=$(safe_mktemp)

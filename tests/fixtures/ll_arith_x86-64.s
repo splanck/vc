@@ -11,8 +11,8 @@ main:
     movq $7, %rax
     movq %rax, b
     movq $705032711, %rax
-    movl %rax, r
-    movl r, %rax
+    movl %eax, r
+    movl r, %eax
     movq %rax, %rax
     ret
     movq %rbp, %rsp

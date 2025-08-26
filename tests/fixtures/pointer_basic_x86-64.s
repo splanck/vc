@@ -8,9 +8,9 @@ main:
     movabsq $x, %rax
     movq %rax, p
     movq $42, %rax
-    movl %rax, x
+    movl %eax, x
     movq p, %rax
-    movq (%rax), %rbx
+    movl (%rax), %ebx
     movq %rbx, %rax
     ret
     movq %rbp, %rsp

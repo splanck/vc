@@ -188,7 +188,7 @@ static void emit_typed_load(strbuf_t *sb, type_kind_t type, int x64,
             }
         }
     } else {
-        const char *sfx = (x64 && type != TYPE_INT) ? "q" : "l";
+        const char *sfx = (size == 8) ? "q" : "l";
         emit_move_with_spill(sb, sfx, src, dest, slot, spill, syntax);
     }
 }
