@@ -99,6 +99,8 @@ stmt_t *ast_make_var_decl(const char *name, type_kind_t type, size_t array_size,
     STMT_VAR_DECL(stmt).func_param_types = NULL;
     STMT_VAR_DECL(stmt).func_param_count = 0;
     STMT_VAR_DECL(stmt).func_variadic = 0;
+    STMT_VAR_DECL(stmt).next = NULL;
+    STMT_VAR_DECL(stmt).next_count = 0;
     return stmt;
 }
 
