@@ -172,6 +172,23 @@ for src in "$DIR/../examples"/*.c; do
     rm -f "$exe" "$exe.s" "$exe.o" "$exe.log" 2>/dev/null || true
 done
 
+# verify malloc_sum example runs and prints expected output
+exe=$(safe_mktemp)
+out=$(safe_mktemp)
+if "$BINARY" --x86-64 --internal-libc --link -o "$exe" "$DIR/../examples/malloc_sum.c" >/dev/null 2>&1; then
+    if ! "$exe" >"$out" 2>/dev/null; then
+        echo "Test example_malloc_sum failed"
+        fail=1
+    elif ! grep -q "^sum = 15$" "$out"; then
+        echo "Test example_malloc_sum failed"
+        fail=1
+    fi
+else
+    echo "Test example_malloc_sum failed"
+    fail=1
+fi
+rm -f "$exe" "$exe.s" "$exe.o" "$exe.log" "$out" 2>/dev/null || true
+
 # negative test for parse error message
 err=$(safe_mktemp)
 out=$(safe_mktemp)

@@ -72,43 +72,60 @@ type_kind_t check_index_expr(expr_t *expr, symtable_t *vars,
                              symtable_t *funcs, ir_builder_t *ir,
                              ir_value_t *out)
 {
-    (void)funcs;
-    if (expr->data.index.array->kind != EXPR_IDENT) {
-        error_set(expr->line, expr->column, error_current_file, error_current_function);
-        error_printf("accessing inactive union member '%s'", expr->data.member.member);
-        return TYPE_UNKNOWN;
-    }
-    symbol_t *sym = symtable_lookup(vars, expr->data.index.array->data.ident.name);
-    if (!sym || sym->type != TYPE_ARRAY) {
-        error_set(expr->line, expr->column, error_current_file, error_current_function);
-        return TYPE_UNKNOWN;
-    }
     ir_value_t idx_val;
     if (check_expr(expr->data.index.index, vars, funcs, ir, &idx_val) != TYPE_INT) {
         error_set(expr->data.index.index->line, expr->data.index.index->column, error_current_file, error_current_function);
         return TYPE_UNKNOWN;
     }
-    long long cval;
-    if (sym->array_size &&
-        eval_const_expr(expr->data.index.index, vars,
-                        semantic_get_x86_64(), &cval)) {
-        if (cval < 0 || (size_t)cval >= sym->array_size) {
-            error_set(expr->data.index.index->line, expr->data.index.index->column, error_current_file, error_current_function);
+
+    if (expr->data.index.array->kind == EXPR_IDENT) {
+        symbol_t *sym = symtable_lookup(vars, expr->data.index.array->data.ident.name);
+        if (!sym || (sym->type != TYPE_ARRAY && sym->type != TYPE_PTR)) {
+            error_set(expr->line, expr->column, error_current_file, error_current_function);
             return TYPE_UNKNOWN;
         }
+        long long cval;
+        if (sym->type == TYPE_ARRAY && sym->array_size &&
+            eval_const_expr(expr->data.index.index, vars,
+                            semantic_get_x86_64(), &cval)) {
+            if (cval < 0 || (size_t)cval >= sym->array_size) {
+                error_set(expr->data.index.index->line, expr->data.index.index->column, error_current_file, error_current_function);
+                return TYPE_UNKNOWN;
+            }
+        }
+        if (out) {
+            if (sym->type == TYPE_ARRAY && !sym->vla_addr.id) {
+                *out = sym->is_volatile
+                         ? ir_build_load_idx_vol(ir, sym->ir_name, idx_val, sym->type)
+                         : ir_build_load_idx(ir, sym->ir_name, idx_val, sym->type);
+                if (ir && ir->tail && ir->tail->op == IR_LOAD_IDX)
+                    ir->tail->imm = sym->elem_size ? (int)sym->elem_size : 4;
+            } else {
+                ir_value_t base;
+                if (check_expr(expr->data.index.array, vars, funcs, ir, &base) != TYPE_PTR) {
+                    error_set(expr->data.index.array->line, expr->data.index.array->column, error_current_file, error_current_function);
+                    return TYPE_UNKNOWN;
+                }
+                int esz = sym->elem_size ? (int)sym->elem_size : 4;
+                ir_value_t addr = sym->type == TYPE_ARRAY && sym->vla_addr.id
+                                      ? ir_build_ptr_add(ir, sym->vla_addr, idx_val, esz)
+                                      : ir_build_ptr_add(ir, base, idx_val, esz);
+                int restr = sym->is_restrict;
+                *out = restr ? ir_build_load_ptr_res(ir, addr)
+                             : ir_build_load_ptr(ir, addr);
+            }
+        }
+        return TYPE_INT;
+    }
+
+    ir_value_t base;
+    if (check_expr(expr->data.index.array, vars, funcs, ir, &base) != TYPE_PTR) {
+        error_set(expr->data.index.array->line, expr->data.index.array->column, error_current_file, error_current_function);
+        return TYPE_UNKNOWN;
     }
     if (out) {
-        if (sym->vla_addr.id) {
-            int esz = sym->elem_size ? (int)sym->elem_size : 4;
-            ir_value_t addr = ir_build_ptr_add(ir, sym->vla_addr, idx_val, esz);
-            *out = ir_build_load_ptr(ir, addr);
-        } else {
-            *out = sym->is_volatile
-                     ? ir_build_load_idx_vol(ir, sym->ir_name, idx_val, sym->type)
-                     : ir_build_load_idx(ir, sym->ir_name, idx_val, sym->type);
-            if (ir && ir->tail && ir->tail->op == IR_LOAD_IDX)
-                ir->tail->imm = sym->elem_size ? (int)sym->elem_size : 4;
-        }
+        ir_value_t addr = ir_build_ptr_add(ir, base, idx_val, 4);
+        *out = ir_build_load_ptr(ir, addr);
     }
     return TYPE_INT;
 }
@@ -121,17 +138,12 @@ type_kind_t check_assign_index_expr(expr_t *expr, symtable_t *vars,
                                     symtable_t *funcs, ir_builder_t *ir,
                                     ir_value_t *out)
 {
-    (void)funcs;
     if (expr->data.assign_index.array->kind != EXPR_IDENT) {
         error_set(expr->line, expr->column, error_current_file, error_current_function);
         return TYPE_UNKNOWN;
     }
     symbol_t *sym = symtable_lookup(vars, expr->data.assign_index.array->data.ident.name);
-    if (!sym || sym->type != TYPE_ARRAY) {
-        error_set(expr->line, expr->column, error_current_file, error_current_function);
-        return TYPE_UNKNOWN;
-    }
-    if (sym->is_const) {
+    if (!sym || (sym->type != TYPE_ARRAY && sym->type != TYPE_PTR)) {
         error_set(expr->line, expr->column, error_current_file, error_current_function);
         return TYPE_UNKNOWN;
     }
@@ -145,23 +157,42 @@ type_kind_t check_assign_index_expr(expr_t *expr, symtable_t *vars,
         error_set(expr->data.assign_index.value->line, expr->data.assign_index.value->column, error_current_file, error_current_function);
         return TYPE_UNKNOWN;
     }
-    long long cval;
-    if (sym->array_size &&
-        eval_const_expr(expr->data.assign_index.index, vars,
-                        semantic_get_x86_64(), &cval)) {
-        if (cval < 0 || (size_t)cval >= sym->array_size) {
-            error_set(expr->data.assign_index.index->line, expr->data.assign_index.index->column, error_current_file, error_current_function);
+
+    if (sym->type == TYPE_ARRAY) {
+        if (sym->is_const) {
+            error_set(expr->line, expr->column, error_current_file, error_current_function);
             return TYPE_UNKNOWN;
         }
-    }
-    if (sym->vla_addr.id) {
-        int esz = sym->elem_size ? (int)sym->elem_size : 4;
-        ir_value_t addr = ir_build_ptr_add(ir, sym->vla_addr, idx_val, esz);
-        ir_build_store_ptr(ir, addr, val);
-    } else if (sym->is_volatile) {
-        ir_build_store_idx_vol(ir, sym->ir_name, idx_val, val, sym->type);
+        long long cval;
+        if (sym->array_size &&
+            eval_const_expr(expr->data.assign_index.index, vars,
+                            semantic_get_x86_64(), &cval)) {
+            if (cval < 0 || (size_t)cval >= sym->array_size) {
+                error_set(expr->data.assign_index.index->line, expr->data.assign_index.index->column, error_current_file, error_current_function);
+                return TYPE_UNKNOWN;
+            }
+        }
+        if (sym->vla_addr.id) {
+            int esz = sym->elem_size ? (int)sym->elem_size : 4;
+            ir_value_t addr = ir_build_ptr_add(ir, sym->vla_addr, idx_val, esz);
+            ir_build_store_ptr(ir, addr, val);
+        } else if (sym->is_volatile) {
+            ir_build_store_idx_vol(ir, sym->ir_name, idx_val, val, sym->type);
+        } else {
+            ir_build_store_idx(ir, sym->ir_name, idx_val, val, sym->type);
+        }
     } else {
-        ir_build_store_idx(ir, sym->ir_name, idx_val, val, sym->type);
+        ir_value_t base;
+        if (check_expr(expr->data.assign_index.array, vars, funcs, ir, &base) != TYPE_PTR) {
+            error_set(expr->data.assign_index.array->line, expr->data.assign_index.array->column, error_current_file, error_current_function);
+            return TYPE_UNKNOWN;
+        }
+        int esz = sym->elem_size ? (int)sym->elem_size : 4;
+        ir_value_t addr = ir_build_ptr_add(ir, base, idx_val, esz);
+        if (sym->is_restrict)
+            ir_build_store_ptr_res(ir, addr, val);
+        else
+            ir_build_store_ptr(ir, addr, val);
     }
     if (out)
         *out = val;
