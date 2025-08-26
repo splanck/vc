@@ -68,20 +68,30 @@ static type_kind_t check_ident_expr(expr_t *expr, symtable_t *vars,
         return TYPE_INT;
     }
     if (sym->type == TYPE_ARRAY) {
-        if (out)
-            *out = ir_build_addr(ir, sym->ir_name);
-        return TYPE_PTR;
-    } else {
+        /*
+         * For arrays the identifier evaluates to the address of the first
+         * element.  Variable length arrays have a runtime base pointer stored
+         * in the symbol record, while fixed size arrays can use their
+         * allocated stack address directly.
+         */
         if (out) {
-            if (sym->param_index >= 0)
-                *out = ir_build_load_param(ir, sym->param_index, sym->type);
-            else if (sym->is_volatile)
-                *out = ir_build_load_vol(ir, sym->ir_name, sym->type);
+            if (sym->vla_addr.id)
+                *out = sym->vla_addr;
             else
-                *out = ir_build_load(ir, sym->ir_name, sym->type);
+                *out = ir_build_addr(ir, sym->ir_name);
         }
-        return sym->type;
+        return TYPE_PTR;
     }
+
+    if (out) {
+        if (sym->param_index >= 0)
+            *out = ir_build_load_param(ir, sym->param_index, sym->type);
+        else if (sym->is_volatile)
+            *out = ir_build_load_vol(ir, sym->ir_name, sym->type);
+        else
+            *out = ir_build_load(ir, sym->ir_name, sym->type);
+    }
+    return sym->type;
 }
 
 /* Validate the operand types of a conditional expression. */
@@ -253,20 +263,17 @@ static type_kind_t check_assign_expr(expr_t *expr, symtable_t *vars,
  */
 
 /*
- * Look up the size of an aggregate referenced by an expression.
- *
- * When `op` is an identifier and `t` is an aggregate type, the symbol
- * table is queried for the real size.  If the lookup fails a default of
- * zero (or 4 for arrays) is returned.
+ * Look up the size of an aggregate referenced by an expression.  When the
+ * operand is an identifier the symbol table provides the real size.  If the
+ * lookup fails zero is returned so the caller can report a descriptive error.
  */
 static int lookup_aggregate_size(expr_t *op, type_kind_t t, symtable_t *vars)
 {
     symbol_t *sym = NULL;
     if (op && op->kind == EXPR_IDENT)
         sym = symtable_lookup(vars, op->data.ident.name);
-    if (!sym) {
-        return (t == TYPE_ARRAY) ? 4 : 0;
-    }
+    if (!sym)
+        return 0;
     if (t == TYPE_ARRAY)
         return (int)sym->array_size * (int)sym->elem_size;
     if (t == TYPE_STRUCT)
@@ -318,20 +325,36 @@ static int sizeof_from_type(type_kind_t type, size_t array_size,
  */
 static int sizeof_from_expr(expr_t *op, type_kind_t t, symtable_t *vars)
 {
-    if (t == TYPE_CHAR || t == TYPE_UCHAR || t == TYPE_BOOL)
+    symbol_t *sym = NULL;
+    if (op && op->kind == EXPR_IDENT)
+        sym = symtable_lookup(vars, op->data.ident.name);
+
+    if (sym) {
+        if (sym->type == TYPE_ARRAY)
+            return (int)sym->array_size * (int)sym->elem_size;
+        if (sym->type == TYPE_STRUCT)
+            return (int)sym->struct_total_size;
+        if (sym->type == TYPE_UNION)
+            return (int)sym->total_size;
+    }
+
+    switch (t) {
+    case TYPE_CHAR: case TYPE_UCHAR: case TYPE_BOOL:
         return 1;
-    if (t == TYPE_SHORT || t == TYPE_USHORT)
+    case TYPE_SHORT: case TYPE_USHORT:
         return 2;
-    if (t == TYPE_INT || t == TYPE_UINT || t == TYPE_LONG ||
-        t == TYPE_ULONG || t == TYPE_ENUM)
+    case TYPE_INT: case TYPE_UINT: case TYPE_LONG: case TYPE_ULONG:
+    case TYPE_ENUM:
         return 4;
-    if (t == TYPE_LLONG || t == TYPE_ULLONG)
+    case TYPE_LLONG: case TYPE_ULLONG:
         return 8;
-    if (t == TYPE_PTR)
+    case TYPE_PTR:
         return 4;
-    if (t == TYPE_ARRAY || t == TYPE_STRUCT || t == TYPE_UNION)
+    case TYPE_ARRAY: case TYPE_STRUCT: case TYPE_UNION:
         return lookup_aggregate_size(op, t, vars);
-    return 0;
+    default:
+        return 0;
+    }
 }
 
 /*
@@ -347,28 +370,45 @@ static type_kind_t check_sizeof_expr(expr_t *expr, symtable_t *vars,
         int sz = sizeof_from_type(expr->data.sizeof_expr.type,
                                  expr->data.sizeof_expr.array_size,
                                  expr->data.sizeof_expr.elem_size);
+        if (sz == 0) {
+            error_set(expr->line, expr->column, error_current_file,
+                      error_current_function);
+            error_print("Unsupported operand to sizeof");
+        }
         if (out)
             *out = ir_build_const(ir, sz);
     } else {
-        ir_builder_t tmp; ir_builder_init(&tmp);
-        type_kind_t t = check_expr(expr->data.sizeof_expr.expr, vars, funcs,
-                                   &tmp, NULL);
-        ir_builder_free(&tmp);
-
+        expr_t *op = expr->data.sizeof_expr.expr;
         symbol_t *sym = NULL;
-        if (expr->data.sizeof_expr.expr &&
-            expr->data.sizeof_expr.expr->kind == EXPR_IDENT)
-            sym = symtable_lookup(vars,
-                                  expr->data.sizeof_expr.expr->data.ident.name);
+        if (op && op->kind == EXPR_IDENT)
+            sym = symtable_lookup(vars, op->data.ident.name);
 
-        if (sym && sym->vla_size.id) {
+        if (sym && sym->type == TYPE_ARRAY && !sym->vla_size.id) {
+            int sz = (int)(sym->array_size * sym->elem_size);
+            if (out)
+                *out = ir_build_const(ir, sz);
+        } else if (sym && sym->vla_size.id) {
             ir_value_t eszv = ir_build_const(ir, (int)sym->elem_size);
             ir_value_t total = ir_build_binop(ir, IR_MUL,
                                               sym->vla_size, eszv, TYPE_INT);
             if (out)
                 *out = total;
         } else {
-            int sz = sizeof_from_expr(expr->data.sizeof_expr.expr, t, vars);
+            ir_builder_t tmp; ir_builder_init(&tmp);
+            type_kind_t t = check_expr(op, vars, funcs, &tmp, NULL);
+            ir_builder_free(&tmp);
+
+            int sz = sizeof_from_expr(op, t, vars);
+            if (sz == 0) {
+                size_t line = op ? op->line : expr->line;
+                size_t col = op ? op->column : expr->column;
+                error_set(line, col, error_current_file,
+                          error_current_function);
+                if (t == TYPE_ARRAY || t == TYPE_STRUCT || t == TYPE_UNION)
+                    error_print("Unsupported aggregate expression");
+                else
+                    error_print("Unsupported operand to sizeof");
+            }
             if (out)
                 *out = ir_build_const(ir, sz);
         }
