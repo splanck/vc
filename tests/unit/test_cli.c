@@ -203,6 +203,21 @@ static void test_vcflags_backslash(void)
     ASSERT(allocs == 0);
 }
 
+static void test_vcflags_trailing_backslash(void)
+{
+    cli_options_t opts;
+    setenv("VCFLAGS", "-I \"C:\\path with space\\\"", 1);
+    char *argv[] = {"vc", "file.c", NULL};
+    int ret = cli_parse_args(2, argv, &opts);
+    unsetenv("VCFLAGS");
+    ASSERT(ret == 0);
+    ASSERT(opts.include_dirs.count == 1);
+    ASSERT(strcmp(((char **)opts.include_dirs.data)[0], "C:\\path with space\\") == 0);
+    cli_free_opts(&opts);
+    ASSERT(allocs == 0);
+}
+
+
 static void test_vcflags_unterm_single(void)
 {
     cli_options_t opts;
@@ -297,6 +312,7 @@ int main(void)
     test_internal_libc_leak();
     test_vcflags_quotes();
     test_vcflags_backslash();
+    test_vcflags_trailing_backslash();
     test_vcflags_unterm_single();
     test_vcflags_unterm_double();
     test_shortcut_quotes();
