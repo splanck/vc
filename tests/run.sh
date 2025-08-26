@@ -195,8 +195,11 @@ rm -f strbuf_eintr_impl.o util_eintr.o "$DIR/test_waitpid_retry.o"
 $CC -Iinclude -Wall -Wextra -std=c99 \
     -o "$DIR/append_env_paths_colon" "$DIR/unit/test_append_env_paths_colon.c" \
     src/include_path_cache.c src/preproc_path.c src/vector.c src/util.c
-$CC -Iinclude -Wall -Wextra -std=c99 -D_WIN32 \
+$CC -Iinclude -Wall -Wextra -std=c99 \
     -o "$DIR/append_env_paths_semicolon" "$DIR/unit/test_append_env_paths_semicolon.c" \
+    src/include_path_cache.c src/preproc_path.c src/vector.c src/util.c
+$CC -Iinclude -Wall -Wextra -std=c99 \
+    -o "$DIR/append_env_paths_both" "$DIR/unit/test_append_env_paths_both.c" \
     src/include_path_cache.c src/preproc_path.c src/vector.c src/util.c
 # build append_env_paths failure test
 $CC -Iinclude -Wall -Wextra -std=c99 -Dvector_push=test_vector_push \
@@ -653,6 +656,7 @@ rm -f ir_licm.o util_licm.o label_licm.o error_licm.o opt_main_licm.o \
 "$DIR/waitpid_retry"
 "$DIR/append_env_paths_colon"
 "$DIR/append_env_paths_semicolon"
+"$DIR/append_env_paths_both"
 "$DIR/append_env_paths_fail"
 "$DIR/parse_inline_hint_tests"
 "$DIR/temp_file_tests"
