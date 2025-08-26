@@ -3,9 +3,10 @@
 #include "regalloc_x86.h"
 
 /* Helper functions duplicated from codegen_arith.c */
-static const char *reg_str(int reg, asm_syntax_t syntax)
+static const char *reg_str(int reg, int size, asm_syntax_t syntax)
 {
-    const char *name = regalloc_reg_name(reg);
+    const char *name = (size == 4) ? regalloc_reg_name32(reg)
+                                  : regalloc_reg_name(reg);
     if (syntax == ASM_INTEL && name[0] == '%')
         return name + 1;
     return name;
@@ -19,13 +20,13 @@ static const char *fmt_reg(const char *name, asm_syntax_t syntax)
 }
 
 static const char *loc_str(char buf[32], regalloc_t *ra, int id, int x64,
-                           asm_syntax_t syntax)
+                           int size, asm_syntax_t syntax)
 {
     if (!ra || id <= 0)
         return "";
     int loc = ra->loc[id];
     if (loc >= 0)
-        return reg_str(loc, syntax);
+        return reg_str(loc, size, syntax);
     int n;
     if (x64) {
         if (syntax == ASM_INTEL) {
@@ -81,15 +82,15 @@ void emit_float_binop(strbuf_t *sb, ir_instr_t *ins,
 
     if (syntax == ASM_INTEL) {
         strbuf_appendf(sb, "    movd %s, %s\n", reg0,
-                       loc_str(b1, ra, ins->src1, x64, syntax));
+                       loc_str(b1, ra, ins->src1, x64, 4, syntax));
         strbuf_appendf(sb, "    movd %s, %s\n", reg1,
-                       loc_str(b1, ra, ins->src2, x64, syntax));
+                       loc_str(b1, ra, ins->src2, x64, 4, syntax));
         strbuf_appendf(sb, "    %s %s, %s\n", op, reg0, reg1);
     } else {
         strbuf_appendf(sb, "    movd %s, %s\n",
-                       loc_str(b1, ra, ins->src1, x64, syntax), reg0);
+                       loc_str(b1, ra, ins->src1, x64, 4, syntax), reg0);
         strbuf_appendf(sb, "    movd %s, %s\n",
-                       loc_str(b1, ra, ins->src2, x64, syntax), reg1);
+                       loc_str(b1, ra, ins->src2, x64, 4, syntax), reg1);
         strbuf_appendf(sb, "    %s %s, %s\n", op, reg0, reg1);
     }
 
@@ -97,18 +98,18 @@ void emit_float_binop(strbuf_t *sb, ir_instr_t *ins,
         char b2[32];
         if (syntax == ASM_INTEL)
             strbuf_appendf(sb, "    movd %s, %s\n",
-                           loc_str(b2, ra, ins->dest, x64, syntax), result);
+                           loc_str(b2, ra, ins->dest, x64, 4, syntax), result);
         else
             strbuf_appendf(sb, "    movd %s, %s\n", result,
-                           loc_str(b2, ra, ins->dest, x64, syntax));
+                           loc_str(b2, ra, ins->dest, x64, 4, syntax));
     } else {
         char b2[32];
         if (syntax == ASM_INTEL)
             strbuf_appendf(sb, "    movss %s, %s\n",
-                           loc_str(b2, ra, ins->dest, x64, syntax), result);
+                           loc_str(b2, ra, ins->dest, x64, 4, syntax), result);
         else
             strbuf_appendf(sb, "    movss %s, %s\n", result,
-                           loc_str(b2, ra, ins->dest, x64, syntax));
+                           loc_str(b2, ra, ins->dest, x64, 4, syntax));
     }
     regalloc_xmm_release(r1);
     regalloc_xmm_release(r0);
