@@ -266,11 +266,7 @@ int append_env_paths(const char *env, vector_t *search_dirs)
         return 0;
     size_t start = search_dirs->count;
     char *tok, *sp;
-#if defined(_WIN32)
-    const char *sep = ";:";
-#else
-    const char *sep = ":";
-#endif
+    const char *sep = ":;";
     tok = strtok_r(tmp, sep, &sp);
     while (tok) {
         if (*tok) {
