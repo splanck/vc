@@ -1,4 +1,6 @@
-#!/bin/sh
+#!/usr/bin/env bash
+
+set -o pipefail
 
 # do not exit on first failure so all examples are attempted
 DIR="$(dirname "$0")"
@@ -31,9 +33,9 @@ for src in "$DIR"/*.c; do
 
     opts="--link $ARCH_OPT --internal-libc"
 
-    "$VC" $opts -o "$exe" "$src" >"$exe.log" 2>&1
+    "$VC" $opts -o "$exe" "$src" 2>&1 | tee "$exe.log"
     if [ $? -eq 0 ]; then
-        "$VC" $ARCH_OPT --internal-libc -o "$DIR/${base}.s" "$src" >>"$exe.log" 2>&1
+        "$VC" $ARCH_OPT --internal-libc -o "$DIR/${base}.s" "$src" 2>&1 | tee -a "$exe.log"
         success=$((success + 1))
     else
         echo "Failed to build $exe (see $exe.log)"
