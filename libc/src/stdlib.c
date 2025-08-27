@@ -1,11 +1,13 @@
 #include <stddef.h>
 #include "stdlib.h"
+#include "stdio.h"
 #include "../internal/_vc_syscalls.h"
 void _exit(int) __attribute__((noreturn));
 
 void exit(int status) __attribute__((noreturn));
 void exit(int status)
 {
+    fflush(NULL);
     long (*vc_exit_ptr)(int) = _vc_exit;
     long ret = vc_exit_ptr(status);
     if (ret < 0) {
