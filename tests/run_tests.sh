@@ -399,6 +399,17 @@ if ! "$DIR/cmp_intel" >/dev/null; then
 fi
 rm -f "$DIR/cmp_intel"
 
+# verify signed and unsigned compare condition codes
+cc -I "$DIR/../include" -Wall -Wextra -std=c99 \
+    "$DIR/unit/test_cmp_signed.c" \
+    "$DIR/../src/codegen_arith_int.c" "$DIR/../src/codegen_x86.c" \
+    "$DIR/../src/strbuf.c" "$DIR/../src/regalloc_x86.c" -o "$DIR/cmp_signed"
+if ! "$DIR/cmp_signed" >/dev/null; then
+    echo "Test cmp_signed failed"
+    fail=1
+fi
+rm -f "$DIR/cmp_signed"
+
 # verify global string address emission
 cc -I "$DIR/../include" -Wall -Wextra -std=c99 \
     "$DIR/unit/test_glob_string.c" \

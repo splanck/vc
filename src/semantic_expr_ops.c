@@ -20,6 +20,18 @@
 #include <limits.h>
 
 
+static int is_unsigned_type(type_kind_t t)
+{
+    switch (t) {
+    case TYPE_UINT: case TYPE_UCHAR: case TYPE_USHORT:
+    case TYPE_ULONG: case TYPE_ULLONG:
+        return 1;
+    default:
+        return 0;
+    }
+}
+
+
 /*
  * Perform a binary arithmetic or comparison operation.
  * Operand types are validated and the appropriate IR instruction
@@ -63,10 +75,15 @@ type_kind_t check_binary(expr_t *left, expr_t *right, symtable_t *vars,
     } else if (is_intlike(lt) && is_intlike(rt)) {
         if (out) {
             ir_op_t ir_op = ir_op_for_binop(op);
-            type_kind_t rtype = (lt == TYPE_LLONG || lt == TYPE_ULLONG ||
-                                rt == TYPE_LLONG || rt == TYPE_ULLONG)
-                                   ? TYPE_LLONG
-                                   : TYPE_INT;
+            type_kind_t rtype;
+            if (lt == TYPE_LLONG || lt == TYPE_ULLONG ||
+                rt == TYPE_LLONG || rt == TYPE_ULLONG) {
+                int uns = is_unsigned_type(lt) || is_unsigned_type(rt);
+                rtype = uns ? TYPE_ULLONG : TYPE_LLONG;
+            } else {
+                int uns = is_unsigned_type(lt) || is_unsigned_type(rt);
+                rtype = uns ? TYPE_UINT : TYPE_INT;
+            }
             *out = ir_build_binop(ir, ir_op, lval, rval, rtype);
         }
         if (lt == TYPE_LLONG || lt == TYPE_ULLONG ||
@@ -108,7 +125,7 @@ type_kind_t check_binary(expr_t *left, expr_t *right, symtable_t *vars,
                 op == BINOP_LE || op == BINOP_GE)) {
         if (out) {
             ir_op_t ir_op = ir_op_for_binop(op);
-            *out = ir_build_binop(ir, ir_op, lval, rval, TYPE_INT);
+            *out = ir_build_binop(ir, ir_op, lval, rval, TYPE_UINT);
         }
         return TYPE_INT;
     }
