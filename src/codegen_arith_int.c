@@ -270,14 +270,17 @@ void emit_cmp(strbuf_t *sb, ir_instr_t *ins,
     char b2[32];
     char destb[32];
     const char *sfx = (x64 && ins->type != TYPE_INT) ? "q" : "l";
+    int is_unsigned = (ins->type == TYPE_UINT || ins->type == TYPE_ULONG ||
+                       ins->type == TYPE_USHORT || ins->type == TYPE_UCHAR ||
+                       ins->type == TYPE_ULLONG);
     const char *cc = "";
     switch (ins->op) {
     case IR_CMPEQ: cc = "e"; break;
     case IR_CMPNE: cc = "ne"; break;
-    case IR_CMPLT: cc = "l"; break;
-    case IR_CMPGT: cc = "g"; break;
-    case IR_CMPLE: cc = "le"; break;
-    case IR_CMPGE: cc = "ge"; break;
+    case IR_CMPLT: cc = is_unsigned ? "b" : "l"; break;
+    case IR_CMPGT: cc = is_unsigned ? "a" : "g"; break;
+    case IR_CMPLE: cc = is_unsigned ? "be" : "le"; break;
+    case IR_CMPGE: cc = is_unsigned ? "ae" : "ge"; break;
     default: break;
     }
     const char *al = x86_fmt_reg("%al", syntax);
