@@ -193,15 +193,11 @@ void emit_mod(strbuf_t *sb, ir_instr_t *ins,
                        x86_loc_str(b1, ra, ins->src2, x64, sfx, syntax));
     }
     if (ra && ins->dest > 0) {
-        int dest_loc = ra->loc[ins->dest];
-        if (dest_loc < 0 ||
-            strcmp(x86_reg_str(dest_loc, sfx, syntax), dx) != 0) {
-            char b2[32];
-            x86_emit_mov(sb, sfx,
-                         dx,
-                         x86_loc_str(b2, ra, ins->dest, x64, sfx, syntax),
-                         syntax);
-        }
+        char b2[32];
+        x86_emit_mov(sb, sfx,
+                     dx,
+                     x86_loc_str(b2, ra, ins->dest, x64, sfx, syntax),
+                     syntax);
     }
 }
 
@@ -305,16 +301,16 @@ void emit_cmp(strbuf_t *sb, ir_instr_t *ins,
     strbuf_appendf(sb, "    set%s %s\n", cc, al);
     int loc = ra ? ra->loc[ins->dest] : 0;
     const char *dest = x86_loc_str(destb, ra, ins->dest, x64, sfx, syntax);
+    const char *movz = (x64 && strcmp(sfx, "q") == 0) ? "movzbq" : "movzbl";
     if (loc < 0) {
         /* Destination on stack: write byte, then zero-extend via scratch register. */
         x86_emit_mov(sb, "b", al, dest, syntax);
         const char *ax = x86_reg_str(0, sfx, syntax);
-        strbuf_appendf(sb, "    %s %s, %s\n", x64 ? "movzbq" : "movzbl", al, ax);
+        strbuf_appendf(sb, "    %s %s, %s\n", movz, al, ax);
         x86_emit_mov(sb, x64 ? "q" : "l", ax, dest, syntax);
     } else {
         /* Destination in register: zero-extend directly. */
-        strbuf_appendf(sb, "    %s %s, %s\n", x64 ? "movzbq" : "movzbl", al,
-                       dest);
+        strbuf_appendf(sb, "    %s %s, %s\n", movz, al, dest);
     }
 }
 
@@ -357,7 +353,8 @@ static void emit_logical_op(strbuf_t *sb, ir_instr_t *ins,
         strbuf_appendf(sb, "    cmp%s $0, %s\n", sfx,
                        x86_loc_str(b2, ra, ins->dest, x64, sfx, syntax));
     strbuf_appendf(sb, "    setne %s\n", al);
-    strbuf_appendf(sb, "    %s %s, %s\n", x64 ? "movzbq" : "movzbl", al,
+    const char *movz = (x64 && strcmp(sfx, "q") == 0) ? "movzbq" : "movzbl";
+    strbuf_appendf(sb, "    %s %s, %s\n", movz, al,
                    x86_loc_str(b2, ra, ins->dest, x64, sfx, syntax));
     strbuf_appendf(sb, "    jmp %s\n", end);
     strbuf_appendf(sb, "%s:\n", lab);

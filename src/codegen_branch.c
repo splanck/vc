@@ -140,6 +140,14 @@ static void emit_return(strbuf_t *sb, ir_instr_t *ins,
             else
                 strbuf_appendf(sb, "    %s %s, (%s)\n", ld, xmm0, ax);
         }
+        const char *bp = fmt_reg(x64 ? "%rbp" : "%ebp", syntax);
+        const char *sp = fmt_reg(x64 ? "%rsp" : "%esp", syntax);
+        const char *rsfx = x64 ? "q" : "l";
+        if (syntax == ASM_INTEL)
+            strbuf_appendf(sb, "    mov%s %s, %s\n", rsfx, sp, bp);
+        else
+            strbuf_appendf(sb, "    mov%s %s, %s\n", rsfx, bp, sp);
+        strbuf_appendf(sb, "    pop%s %s\n", rsfx, bp);
         strbuf_append(sb, "    ret\n");
         return;
     } else if (ins->type == TYPE_LDOUBLE) {
@@ -153,6 +161,14 @@ static void emit_return(strbuf_t *sb, ir_instr_t *ins,
             else
                 strbuf_appendf(sb, "    fstpt (%s)\n", ax);
         }
+        const char *bp = fmt_reg(x64 ? "%rbp" : "%ebp", syntax);
+        const char *sp = fmt_reg(x64 ? "%rsp" : "%esp", syntax);
+        const char *rsfx = x64 ? "q" : "l";
+        if (syntax == ASM_INTEL)
+            strbuf_appendf(sb, "    mov%s %s, %s\n", rsfx, sp, bp);
+        else
+            strbuf_appendf(sb, "    mov%s %s, %s\n", rsfx, bp, sp);
+        strbuf_appendf(sb, "    pop%s %s\n", rsfx, bp);
         strbuf_append(sb, "    ret\n");
         return;
     }
@@ -178,6 +194,14 @@ static void emit_return(strbuf_t *sb, ir_instr_t *ins,
         else
             strbuf_appendf(sb, "    mov%s %s, (%s)\n", msfx, src_reg, ax);
     }
+    const char *bp = fmt_reg(x64 ? "%rbp" : "%ebp", syntax);
+    const char *sp = fmt_reg(x64 ? "%rsp" : "%esp", syntax);
+    const char *rsfx = x64 ? "q" : "l";
+    if (syntax == ASM_INTEL)
+        strbuf_appendf(sb, "    mov%s %s, %s\n", rsfx, sp, bp);
+    else
+        strbuf_appendf(sb, "    mov%s %s, %s\n", rsfx, bp, sp);
+    strbuf_appendf(sb, "    pop%s %s\n", rsfx, bp);
     strbuf_append(sb, "    ret\n");
 }
 
