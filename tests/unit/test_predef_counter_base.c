@@ -32,6 +32,8 @@ int main(void)
                      "int offundef;\n"
                      "#endif\n"
                      "int c0 = __COUNTER__;\n"
+                     "int c1 = __COUNTER__;\n"
+                     "int c2 = __COUNTER__;\n"
                      "const char *b = __BASE_FILE__;\n";
     if (fd >= 0) {
         ASSERT(write(fd, src, strlen(src)) == (ssize_t)strlen(src));
@@ -48,7 +50,11 @@ int main(void)
         ASSERT(strstr(res, "int offdef;") == NULL);
         ASSERT(strstr(res, "int offundef;") != NULL);
         char cnt0[] = "int c0 = 0;";
+        char cnt1[] = "int c1 = 1;";
+        char cnt2[] = "int c2 = 2;";
         ASSERT(strstr(res, cnt0) != NULL);
+        ASSERT(strstr(res, cnt1) != NULL);
+        ASSERT(strstr(res, cnt2) != NULL);
         char quoted[512]; snprintf(quoted, sizeof(quoted), "\"%s\"", tmpl);
         ASSERT(strstr(res, quoted) != NULL);
     }

@@ -309,7 +309,6 @@ static int define_default_macros(vector_t *macros, const char *base_file,
         return 0;
 
     /* Predefined macros for internal bookkeeping */
-    define_simple_macro(macros, "__COUNTER__", "0");
     if (base_file) {
         char *canon = realpath(base_file, NULL);
         if (!canon)
