@@ -198,14 +198,40 @@ int handle_include_next(char *line, const char *dir, vector_t *macros,
         return 0;
     }
     int result = 1;
-    size_t cur = SIZE_MAX;
+    size_t idx = SIZE_MAX;
+    size_t start_idx = 0;
     if (stack->count) {
         const include_entry_t *e =
             &((include_entry_t *)stack->data)[stack->count - 1];
-        cur = e->dir_index;
+        if (e->dir_index == (size_t)-1) {
+            const char *slash = strrchr(e->path, '/');
+            if (slash) {
+                char *curdir = vc_strndup(e->path, (size_t)(slash - e->path));
+                if (curdir) {
+                    char *canon_cur = realpath(curdir, NULL);
+                    if (canon_cur) {
+                        free(curdir);
+                        curdir = canon_cur;
+                    }
+                    for (size_t i = 0; i < incdirs->count; i++) {
+                        const char *base = ((const char **)incdirs->data)[i];
+                        char *canon_base = realpath(base, NULL);
+                        if (!canon_base)
+                            canon_base = vc_strdup(base);
+                        if (canon_base && strcmp(canon_base, curdir) == 0) {
+                            start_idx = i + 1;
+                            free(canon_base);
+                            break;
+                        }
+                        free(canon_base);
+                    }
+                    free(curdir);
+                }
+            }
+        } else {
+            start_idx = e->dir_index + 1;
+        }
     }
-    size_t idx = SIZE_MAX;
-    size_t start_idx = (cur == (size_t)-1) ? 0 : cur + 1;
     char *incpath = find_include_path(fname, endc, NULL, incdirs,
                                       start_idx, &idx);
     int missing = (incpath == NULL);

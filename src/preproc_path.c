@@ -199,20 +199,22 @@ char *find_include_path(const char *fname, char endc, const char *dir,
         free(out_path);
         return NULL;
     }
-    int n = snprintf(out_path, max_len, "%s", fname);
-    if (n < 0 || (size_t)n >= max_len) {
-        free(out_path);
-        fprintf(stderr, "vc: include path truncated\n");
-        return NULL;
-    }
-    if (verbose_includes)
-        fprintf(stderr, "checking %s\n", out_path);
-    if (access(out_path, R_OK) == 0) {
-        if (out_idx)
-            *out_idx = (size_t)-1;
+    if (start == 0) {
+        int n = snprintf(out_path, max_len, "%s", fname);
+        if (n < 0 || (size_t)n >= max_len) {
+            free(out_path);
+            fprintf(stderr, "vc: include path truncated\n");
+            return NULL;
+        }
         if (verbose_includes)
-            fprintf(stderr, "found %s\n", out_path);
-        return out_path;
+            fprintf(stderr, "checking %s\n", out_path);
+        if (access(out_path, R_OK) == 0) {
+            if (out_idx)
+                *out_idx = (size_t)-1;
+            if (verbose_includes)
+                fprintf(stderr, "found %s\n", out_path);
+            return out_path;
+        }
     }
     for (size_t i = builtin_start; i < extra_sys_dirs.count; i++) {
         const char *base = ((const char **)extra_sys_dirs.data)[i];
