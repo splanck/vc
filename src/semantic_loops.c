@@ -38,6 +38,7 @@ int check_while_stmt(stmt_t *stmt, symtable_t *vars, symtable_t *funcs,
     ir_build_label(ir, start_label);
     if (check_expr(STMT_WHILE(stmt).cond, vars, funcs, ir, &cond_val) == TYPE_UNKNOWN)
         return 0;
+    cond_val = ir_build_binop(ir, IR_CMPNE, cond_val, ir_build_const(ir, 0), TYPE_INT);
     ir_build_bcond(ir, cond_val, end_label);
     if (!check_stmt(STMT_WHILE(stmt).body, vars, funcs, labels, ir,
                     func_ret_type, end_label, start_label))

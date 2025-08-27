@@ -189,6 +189,23 @@ else
 fi
 rm -f "$exe" "$exe.s" "$exe.o" "$exe.log" "$out" 2>/dev/null || true
 
+# verify loops example runs and terminates
+exe=$(safe_mktemp)
+if "$BINARY" --x86-64 --internal-libc --link -o "$exe" "$DIR/../examples/loops.c" >/dev/null 2>&1; then
+    set +e
+    "$exe" >/dev/null 2>&1
+    status=$?
+    set -e
+    if [ $status -ne 0 ]; then
+        echo "Test example_loops failed"
+        fail=1
+    fi
+else
+    echo "Test example_loops failed"
+    fail=1
+fi
+rm -f "$exe" "$exe.s" "$exe.o" "$exe.log" 2>/dev/null || true
+
 # negative test for parse error message
 err=$(safe_mktemp)
 out=$(safe_mktemp)
