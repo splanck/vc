@@ -8,8 +8,17 @@ int main(void) {
     }
     char buf[64];
     int lines = 0;
-    while (fgets(buf, sizeof(buf), f))
-        lines++;
+    while (!f->eof) {
+        if (!fgets(buf, sizeof(buf), f)) {
+            if (f->err) {
+                perror("fgets");
+                fclose(f);
+                return 1;
+            }
+        } else {
+            lines++;
+        }
+    }
     fclose(f);
     printf("lines: %d\n", lines);
     return 0;

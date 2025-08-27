@@ -157,16 +157,42 @@ for src in "$DIR/../examples/file_count.c" "$DIR/../examples/file_io.c"; do
     if ! "$BINARY" --x86-64 --internal-libc --link -o "$exe" "$src" >/dev/null 2>&1; then
         echo "Test example_$(basename "$src" .c) failed"
         fail=1
-    elif [ "$(basename "$src")" = "file_io.c" ]; then
-        out="$($exe 2>/dev/null)"
-        if [ "$out" != "Read: Hello, file!" ]; then
-            echo "Test example_file_io_run failed"
-            fail=1
-        fi
-        rm -f example.txt
+    else
+        case "$(basename "$src")" in
+            file_io.c)
+                out="$($exe 2>/dev/null)"
+                if [ "$out" != "Read: Hello, file!" ]; then
+                    echo "Test example_file_io_run failed"
+                    fail=1
+                fi
+                rm -f example.txt
+                ;;
+            file_count.c)
+                printf "line1\nline2\n" > example.txt
+                out="$($exe 2>/dev/null)"
+                if [ "$out" != "lines: 2" ]; then
+                    echo "Test example_file_count_run failed"
+                    fail=1
+                fi
+                rm -f example.txt
+                ;;
+        esac
     fi
     rm -f "$exe" "$exe.s" "$exe.o" "$exe.log" 2>/dev/null || true
 done
+
+# verify fgets EOF handling does not trigger errors
+exe=$(safe_mktemp)
+if "$BINARY" --x86-64 --internal-libc --link -o "$exe" "$DIR/unit/test_fgets_eof.c" >/dev/null 2>&1; then
+    if ! "$exe" >/dev/null 2>&1; then
+        echo "Test fgets_eof failed"
+        fail=1
+    fi
+else
+    echo "Test fgets_eof failed"
+    fail=1
+fi
+rm -f "$exe" "$exe.s" "$exe.o" "$exe.log" 2>/dev/null || true
 
 # ensure all example programs compile successfully with the internal libc
 for src in "$DIR/../examples"/*.c; do

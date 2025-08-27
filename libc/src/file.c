@@ -53,6 +53,7 @@ FILE *fopen(const char *path, const char *mode)
     }
     f->fd = (int)fd;
     f->err = 0;
+    f->eof = 0;
     return f;
 }
 

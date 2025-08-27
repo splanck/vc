@@ -20,6 +20,7 @@ FILE *tmpfile(void)
     }
     f->fd = (int)fd;
     f->err = 0;
+    f->eof = 0;
     return f;
 #else
     errno = ENOSYS;
