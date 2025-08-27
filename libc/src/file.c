@@ -45,7 +45,7 @@ FILE *fopen(const char *path, const char *mode)
         return NULL;
     }
 
-    FILE *f = malloc(sizeof(FILE));
+    FILE *f = malloc(sizeof(*f));
     if (!f) {
         errno = ENOMEM;
         _vc_close(fd);
@@ -102,10 +102,8 @@ int fprintf(FILE *stream, const char *fmt, ...)
         if (*p != '%') {
             out[pos++] = *p;
             if (pos == sizeof(out))
-                if (flush_buf_fd(stream->fd, out, &pos, &written) < 0) {
-                    va_end(ap);
-                    return -1;
-                }
+                if (flush_buf_fd(stream->fd, out, &pos, &written) < 0)
+                    goto error;
             continue;
         }
 
@@ -113,17 +111,13 @@ int fprintf(FILE *stream, const char *fmt, ...)
         if (*p == '%') {
             out[pos++] = '%';
             if (pos == sizeof(out))
-                if (flush_buf_fd(stream->fd, out, &pos, &written) < 0) {
-                    va_end(ap);
-                    return -1;
-                }
+                if (flush_buf_fd(stream->fd, out, &pos, &written) < 0)
+                    goto error;
             continue;
         }
 
-        if (flush_buf_fd(stream->fd, out, &pos, &written) < 0) {
-            va_end(ap);
-            return -1;
-        }
+        if (flush_buf_fd(stream->fd, out, &pos, &written) < 0)
+            goto error;
 
         int width = 0;
         const char *start = p;
@@ -184,29 +178,23 @@ int fprintf(FILE *stream, const char *fmt, ...)
 
             int pad = width > (int)len ? width - (int)len : 0;
             while (pad-- > 0) {
-                if (_vc_write(stream->fd, " ", 1) < 1) {
-                    va_end(ap);
-                    return -1;
-                }
+                if (_vc_write(stream->fd, " ", 1) < 1)
+                    goto error;
                 written += 1;
                 if (written > INT_MAX)
                     written = INT_MAX;
             }
 
             long ret = _vc_write(stream->fd, s, len);
-            if (ret < (long)len) {
-                va_end(ap);
-                return -1;
-            }
+            if (ret < (long)len)
+                goto error;
             written += (long)len;
             if (written > INT_MAX)
                 written = INT_MAX;
         } else {
             long ret = _vc_write(stream->fd, "%", 1);
-            if (ret < 1) {
-                va_end(ap);
-                return -1;
-            }
+            if (ret < 1)
+                goto error;
             written += 1;
             if (written > INT_MAX)
                 written = INT_MAX;
@@ -214,31 +202,29 @@ int fprintf(FILE *stream, const char *fmt, ...)
                 const char *q = start;
                 size_t l = (size_t)(p - start);
                 ret = _vc_write(stream->fd, q, l);
-                if (ret < (long)l) {
-                    va_end(ap);
-                    return -1;
-                }
+                if (ret < (long)l)
+                    goto error;
                 written += (long)l;
                 if (written > INT_MAX)
                     written = INT_MAX;
             }
             ret = _vc_write(stream->fd, p, 1);
-            if (ret < 1) {
-                va_end(ap);
-                return -1;
-            }
+            if (ret < 1)
+                goto error;
             written += 1;
             if (written > INT_MAX)
                 written = INT_MAX;
         }
     }
 
-    if (flush_buf_fd(stream->fd, out, &pos, &written) < 0) {
-        va_end(ap);
-        return -1;
-    }
+    if (flush_buf_fd(stream->fd, out, &pos, &written) < 0)
+        goto error;
     va_end(ap);
     if (written > INT_MAX)
         return INT_MAX;
     return (int)written;
+
+error:
+    va_end(ap);
+    return -1;
 }

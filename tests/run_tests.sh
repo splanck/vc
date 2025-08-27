@@ -157,6 +157,13 @@ for src in "$DIR/../examples/file_count.c" "$DIR/../examples/file_io.c"; do
     if ! "$BINARY" --x86-64 --internal-libc --link -o "$exe" "$src" >/dev/null 2>&1; then
         echo "Test example_$(basename "$src" .c) failed"
         fail=1
+    elif [ "$(basename "$src")" = "file_io.c" ]; then
+        out="$($exe 2>/dev/null)"
+        if [ "$out" != "Read: Hello, file!" ]; then
+            echo "Test example_file_io_run failed"
+            fail=1
+        fi
+        rm -f example.txt
     fi
     rm -f "$exe" "$exe.s" "$exe.o" "$exe.log" 2>/dev/null || true
 done
