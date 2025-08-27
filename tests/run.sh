@@ -107,6 +107,30 @@ $CC -Iinclude -Wall -Wextra -std=c99 \
     src/semantic_call.c src/consteval.c src/symtable_core.c src/symtable_struct.c \
     src/ast_expr.c src/vector.c src/util.c src/ir_core.c \
     src/error.c src/label.c
+# build for-loop IR order test
+$CC -Iinclude -Wall -Wextra -std=c99 \
+    -o "$DIR/for_loop_tests" "$DIR/unit/test_for_loop.c" \
+    src/lexer.c src/lexer_ident.c src/lexer_scan_numeric.c \
+    src/parser_core.c src/parser_init.c src/parser_decl_var.c \
+    src/parser_decl_struct.c src/parser_decl_enum.c src/parser_flow.c \
+    src/parser_toplevel.c src/parser_expr.c src/parser_expr_primary.c \
+    src/parser_expr_binary.c src/parser_stmt.c src/parser_types.c \
+    src/parser_toplevel_func.c src/parser_toplevel_var.c \
+    src/parser_expr_ops.c src/parser_expr_literal.c \
+    src/ast_expr.c src/ast_stmt_create.c src/ast_stmt_free.c \
+    src/ast_expr_binary.c src/ast_expr_control.c src/ast_expr_literal.c \
+    src/ast_expr_type.c src/ast_clone.c \
+    src/symtable_core.c src/symtable_globals.c src/symtable_struct.c \
+    src/semantic_expr.c src/semantic_expr_ops.c src/semantic_mem.c \
+    src/semantic_call.c src/semantic_loops.c src/semantic_control.c \
+    src/semantic_stmt.c src/semantic_decl.c src/semantic_decl_stmt.c \
+    src/semantic_expr_stmt.c src/semantic_var.c src/semantic_block.c \
+    src/semantic_label.c src/semantic_return.c \
+    src/semantic_static_assert.c src/semantic_init.c \
+    src/semantic_global.c src/semantic_func_ir.c \
+    src/consteval.c src/vector.c src/util.c src/ir_core.c \
+    src/ir_const.c src/ir_memory.c src/ir_control.c src/ir_builder.c \
+    src/label.c src/error.c src/token_names.c
 # build sizeof pointer evaluation test
 # eval sizeof with small helper modules
 $CC -Iinclude -Wall -Wextra -std=c99 \
@@ -652,6 +676,7 @@ rm -f ir_licm.o util_licm.o label_licm.o error_licm.o opt_main_licm.o \
 # remaining unit test binaries
 "$DIR/cond_expr_tests"
 "$DIR/complex_expr_tests"
+"$DIR/for_loop_tests"
 "$DIR/eval_sizeof_tests"
 "$DIR/eval_offsetof_tests"
 "$DIR/number_overflow"

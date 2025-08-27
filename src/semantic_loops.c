@@ -11,6 +11,8 @@
 #include "semantic_expr.h"
 #include "label.h"
 #include "error.h"
+#include <assert.h>
+#include <string.h>
 
 /* Forward declaration from semantic_stmt.c */
 extern int check_stmt(stmt_t *stmt, symtable_t *vars, symtable_t *funcs,
@@ -111,12 +113,16 @@ int check_for_stmt(stmt_t *stmt, symtable_t *vars, symtable_t *funcs,
             return 0; /* reuse cond_val for init but ignore value */
         }
     }
+    ir_instr_t *init_tail = ir->tail;
     ir_build_label(ir, start_label);
+    assert(init_tail ? init_tail->next == ir->tail : ir->head == ir->tail);
     if (check_expr(STMT_FOR(stmt).cond, vars, funcs, ir, &cond_val) == TYPE_UNKNOWN) {
         symtable_pop_scope(vars, old_head);
         return 0;
     }
+    ir_instr_t *cond_tail = ir->tail;
     ir_build_bcond(ir, cond_val, end_label);
+    assert(cond_tail->next == ir->tail && ir->tail->op == IR_BCOND);
     char cont_label[32];
     if (!label_format_suffix("L", id, "_cont", cont_label)) {
         symtable_pop_scope(vars, old_head);
@@ -127,13 +133,19 @@ int check_for_stmt(stmt_t *stmt, symtable_t *vars, symtable_t *funcs,
         symtable_pop_scope(vars, old_head);
         return 0;
     }
+    ir_instr_t *body_tail = ir->tail;
     ir_build_label(ir, cont_label);
+    assert(body_tail->next == ir->tail && ir->tail->op == IR_LABEL &&
+           strcmp(ir->tail->name, cont_label) == 0);
     if (check_expr(STMT_FOR(stmt).incr, vars, funcs, ir, &cond_val) == TYPE_UNKNOWN) {
         symtable_pop_scope(vars, old_head);
         return 0;
     }
+    ir_instr_t *incr_tail = ir->tail;
     ir_build_br(ir, start_label);
+    assert(incr_tail->next == ir->tail && ir->tail->op == IR_BR);
     ir_build_label(ir, end_label);
+    assert(ir->tail->op == IR_LABEL && strcmp(ir->tail->name, end_label) == 0);
     symtable_pop_scope(vars, old_head);
     return 1;
 }
