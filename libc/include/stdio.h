@@ -20,6 +20,7 @@ int printf(const char *format, ...);
 struct FILE_struct {
     int fd;
     int err;
+    int eof;
 };
 #define FILE struct FILE_struct
 

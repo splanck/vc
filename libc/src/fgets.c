@@ -14,6 +14,7 @@ char *fgets(char *s, int size, FILE *stream)
             return NULL;
         }
         if (r == 0) {
+            stream->eof = 1;
             if (i == 0)
                 return NULL;
             break;
