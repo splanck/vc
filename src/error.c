@@ -58,6 +58,7 @@ void error_print(const char *msg)
     if (color)
         fprintf(stderr, "\x1b[0m");
     fputc('\n', stderr);
+    fflush(stderr);
 }
 
 void error_printf(const char *fmt, ...)
@@ -68,5 +69,6 @@ void error_printf(const char *fmt, ...)
     vsnprintf(buf, sizeof(buf), fmt, ap);
     va_end(ap);
     error_print(buf);
+    fflush(stderr);
 }
 
