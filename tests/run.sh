@@ -149,21 +149,24 @@ $CC -o "$DIR/text_line_fail" strbuf_textfail_impl.o util_textfail.o "$DIR/test_t
 rm -f strbuf_textfail_impl.o util_textfail.o "$DIR/test_text_line_fail.o"
 # build command_to_string failure test
 $CC -Iinclude -Wall -Wextra -std=c99 \
-    -Dstrbuf_init=test_strbuf_init -Dstrbuf_append=test_strbuf_append \
-    -Dstrbuf_free=test_strbuf_free -Dposix_spawnp=test_posix_spawnp \
+    -Dposix_spawnp=test_posix_spawnp \
     -Dmalloc=test_malloc -Drealloc=test_realloc \
     -c src/command.c -o command_fail.o
 $CC -Iinclude -Wall -Wextra -std=c99 -c "$DIR/unit/test_command_fail.c" -o "$DIR/test_command_fail.o"
 $CC -o "$DIR/command_fail" command_fail.o "$DIR/test_command_fail.o"
 rm -f command_fail.o "$DIR/test_command_fail.o"
 # build command_to_string alloc failure test
-$CC -Iinclude -Wall -Wextra -std=c99 -c src/strbuf.c -o strbuf_cmdalloc_impl.o
-$CC -Iinclude -Wall -Wextra -std=c99 -Dstrbuf_append=test_strbuf_append \
+$CC -Iinclude -Wall -Wextra -std=c99 \
+    -Dmalloc=test_malloc -Drealloc=test_realloc \
     -c src/command.c -o command_alloc_fail.o
-$CC -Iinclude -Wall -Wextra -std=c99 -Dstrbuf_append=test_strbuf_append \
+$CC -Iinclude -Wall -Wextra -std=c99 \
+    -Dmalloc=test_malloc -Drealloc=test_realloc \
     -c "$DIR/unit/test_command_alloc_fail.c" -o "$DIR/test_command_alloc_fail.o"
-$CC -o "$DIR/command_alloc_fail" command_alloc_fail.o strbuf_cmdalloc_impl.o "$DIR/test_command_alloc_fail.o"
-rm -f command_alloc_fail.o strbuf_cmdalloc_impl.o "$DIR/test_command_alloc_fail.o"
+$CC -o "$DIR/command_alloc_fail" command_alloc_fail.o "$DIR/test_command_alloc_fail.o"
+rm -f command_alloc_fail.o "$DIR/test_command_alloc_fail.o"
+# build command_to_string long path regression test
+$CC -Iinclude -Wall -Wextra -std=c99 \
+    -o "$DIR/command_long_path" "$DIR/unit/test_command_long_path.c" src/command.c
 # build vc_strtoul_unsigned negative value rejection test
 $CC -Iinclude -Wall -Wextra -std=c99 -c src/util.c -o util_strtoul_unsigned.o
 $CC -Iinclude -Wall -Wextra -std=c99 -c "$DIR/unit/test_vc_strtoul_unsigned.c" -o "$DIR/test_vc_strtoul_unsigned.o"

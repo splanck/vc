@@ -20,7 +20,6 @@
 
 #include "command.h"
 #include "util.h"
-#include "strbuf.h"
 
 /* Determine if an argument contains characters that require shell quoting */
 static int needs_quotes(const char *arg)
@@ -34,54 +33,90 @@ static int needs_quotes(const char *arg)
     return 0;
 }
 
+/* Ensure the output buffer can hold at least "extra" more characters */
+static int ensure_cap(char **buf, size_t *len, size_t *cap, size_t extra)
+{
+    if (*len > SIZE_MAX - extra - 1)
+        return -1;
+    size_t need = *len + extra + 1;
+    if (need <= *cap)
+        return 0;
+    size_t new_cap = *cap ? *cap : 128;
+    while (new_cap < need) {
+        if (new_cap > SIZE_MAX / 2)
+            return -1;
+        new_cap *= 2;
+    }
+    char *tmp = realloc(*buf, new_cap);
+    if (!tmp)
+        return -1;
+    *buf = tmp;
+    *cap = new_cap;
+    return 0;
+}
+
+/* Append text to the growing buffer */
+static int append_raw(char **buf, size_t *len, size_t *cap,
+                      const char *text, size_t n)
+{
+    if (ensure_cap(buf, len, cap, n) < 0)
+        return -1;
+    memcpy(*buf + *len, text, n);
+    *len += n;
+    (*buf)[*len] = '\0';
+    return 0;
+}
+
 /* Append a single argument, quoting/escaping if necessary. */
-static int append_quoted(strbuf_t *sb, const char *arg)
+static int append_quoted(char **buf, size_t *len, size_t *cap, const char *arg)
 {
     if (!needs_quotes(arg))
-        return strbuf_append(sb, arg);
+        return append_raw(buf, len, cap, arg, strlen(arg));
 
-    if (strbuf_append(sb, "'") < 0)
+    if (append_raw(buf, len, cap, "'", 1) < 0)
         return -1;
     for (const char *p = arg; *p; p++) {
         if (*p == '\'') {
-            if (strbuf_append(sb, "'\\''") < 0)
+            if (append_raw(buf, len, cap, "'\\''", 4) < 0)
                 return -1;
         } else if (*p == '\n') {
-            if (strbuf_append(sb, "\\n") < 0)
+            if (append_raw(buf, len, cap, "\\n", 2) < 0)
                 return -1;
         } else if (*p == '\r') {
-            if (strbuf_append(sb, "\\r") < 0)
+            if (append_raw(buf, len, cap, "\\r", 2) < 0)
                 return -1;
         } else {
-            char tmp[2] = {*p, '\0'};
-            if (strbuf_append(sb, tmp) < 0)
+            if (append_raw(buf, len, cap, p, 1) < 0)
                 return -1;
         }
     }
-    if (strbuf_append(sb, "'") < 0)
-        return -1;
-    return 0;
+    return append_raw(buf, len, cap, "'", 1);
 }
 
 /* Build a printable string representation of an argv array. */
 char *command_to_string(char *const argv[])
 {
-    strbuf_t sb;
-    strbuf_init(&sb);
+    char *buf = NULL;
+    size_t len = 0, cap = 0;
     for (size_t i = 0; argv[i]; i++) {
-        if (i > 0 && strbuf_append(&sb, " ") < 0)
-            goto overflow;
-        const char *arg = argv[i];
-        if (append_quoted(&sb, arg) < 0) {
-            strbuf_free(&sb);
+        if (i > 0) {
+            if (append_raw(&buf, &len, &cap, " ", 1) < 0) {
+                free(buf);
+                return NULL;
+            }
+        }
+        if (append_quoted(&buf, &len, &cap, argv[i]) < 0) {
+            free(buf);
             return NULL;
         }
     }
-    return sb.data;
-
-overflow:
-    strbuf_free(&sb);
-    return NULL;
+    if (!buf) {
+        buf = malloc(1);
+        if (!buf)
+            return NULL;
+        buf[0] = '\0';
+    }
+    return buf;
 }
 
 /*

@@ -3,7 +3,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include "command.h"
-#include "strbuf.h"
 
 static int failures = 0;
 #define ASSERT(cond) do { \
@@ -13,22 +12,31 @@ static int failures = 0;
     } \
 } while (0)
 
-extern int strbuf_append(strbuf_t *sb, const char *text); /* real impl */
 static int fail_at = 0;
 static int call_count = 0;
-int test_strbuf_append(strbuf_t *sb, const char *text)
+void *test_malloc(size_t size)
 {
     call_count++;
     if (fail_at && call_count == fail_at)
-        return -1;
-    return strbuf_append(sb, text);
+        return NULL;
+    return malloc(size);
+}
+void *test_realloc(void *ptr, size_t size)
+{
+    call_count++;
+    if (fail_at && call_count == fail_at)
+        return NULL;
+    return realloc(ptr, size);
 }
 
 static void test_alloc_failure(void)
 {
-    char *argv[] = {"cmd", "arg1", "arg2", NULL};
+    char longarg[5000];
+    memset(longarg, 'a', sizeof(longarg) - 1);
+    longarg[sizeof(longarg) - 1] = '\0';
+    char *argv[] = {"cmd", longarg, "arg2", NULL};
     call_count = 0;
-    fail_at = 3; /* fail while processing second argument */
+    fail_at = 2; /* fail during first reallocation */
     char *s = command_to_string(argv);
     ASSERT(s == NULL);
 }
