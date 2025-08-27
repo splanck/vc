@@ -114,6 +114,10 @@ compile_fixture "$DIR/fixtures/include_next.c" "$DIR/fixtures/include_next.s" -I
 # verify quoted #include_next directive
 compile_fixture "$DIR/fixtures/include_next_quote.c" "$DIR/fixtures/include_next_quote.s" -I "$DIR/include_next_quote/dir1" -I "$DIR/include_next_quote/dir2" -I "$DIR/include_next_quote/dir3"
 
+# regression: include_next should skip the directory of the current header
+compile_fixture "$DIR/include_next/skip_current.c" "$DIR/fixtures/include_next.s" -I "$DIR/include_next/dir1" -I "$DIR/include_next/dir2" -I "$DIR/include_next/dir3"
+compile_fixture "$DIR/include_next_quote/skip_current.c" "$DIR/fixtures/include_next_quote.s" -I "$DIR/include_next_quote/dir1" -I "$DIR/include_next_quote/dir2" -I "$DIR/include_next_quote/dir3"
+
 # verify command-line macro definitions
 compile_fixture "$DIR/fixtures/macro_cli.c" "$DIR/fixtures/macro_cli.s" -DVAL=4 -DFLAG
 
