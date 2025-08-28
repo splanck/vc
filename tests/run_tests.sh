@@ -198,6 +198,23 @@ else
 fi
 rm -f "$exe" "$exe.s" "$exe.o" "$exe.log" 2>/dev/null || true
 
+# verify perror prints symbolic names for known errors
+exe=$(safe_mktemp)
+if "$BINARY" --x86-64 --internal-libc --link -o "$exe" "$DIR/unit/test_perror.c" >/dev/null 2>&1; then
+    set +e
+    err_out="$($exe 2>&1 >/dev/null)"
+    status=$?
+    set -e
+    if [ $status -ne 0 ] || [ "$err_out" != "open: ENOENT" ]; then
+        echo "Test perror_open failed"
+        fail=1
+    fi
+else
+    echo "Test perror_open failed"
+    fail=1
+fi
+rm -f "$exe" "$exe.s" "$exe.o" "$exe.log" 2>/dev/null || true
+
 # ensure all example programs compile successfully with the internal libc
 for src in "$DIR/../examples"/*.c; do
     [ -e "$src" ] || continue

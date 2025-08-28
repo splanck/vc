@@ -4,6 +4,20 @@
 #include "stdio.h"
 #include "../internal/_vc_syscalls.h"
 
+typedef struct {
+    int code;
+    const char *name;
+} err_entry_t;
+
+static const err_entry_t err_table[] = {
+    { ENOENT, "ENOENT" },
+    { EINTR,  "EINTR"  },
+    { ENOMEM, "ENOMEM" },
+    { ENOSYS, "ENOSYS" },
+    { ENOSPC, "ENOSPC" },
+    { ENAMETOOLONG, "ENAMETOOLONG" }
+};
+
 void perror(const char *msg)
 {
     int err = *_errno_location();
@@ -22,22 +36,38 @@ void perror(const char *msg)
             buf[pos++] = ' ';
     }
 
-    char num[32];
-    char *p = num + sizeof(num);
-    unsigned int u = (unsigned int)err;
-    if (u == 0) {
-        *--p = '0';
-    } else {
-        while (u) {
-            *--p = (char)('0' + (u % 10));
-            u /= 10;
+    const char *emsg = NULL;
+    for (size_t i = 0; i < sizeof(err_table) / sizeof(err_table[0]); ++i) {
+        if (err_table[i].code == err) {
+            emsg = err_table[i].name;
+            break;
         }
     }
-    size_t nlen = (size_t)(num + sizeof(num) - p);
-    if (nlen > sizeof(buf) - pos - 1)
-        nlen = sizeof(buf) - pos - 1;
-    memcpy(buf + pos, p, nlen);
-    pos += nlen;
+
+    if (emsg) {
+        size_t len = strlen(emsg);
+        if (len > sizeof(buf) - pos - 1)
+            len = sizeof(buf) - pos - 1;
+        memcpy(buf + pos, emsg, len);
+        pos += len;
+    } else {
+        char num[32];
+        char *p = num + sizeof(num);
+        unsigned int u = (unsigned int)err;
+        if (u == 0) {
+            *--p = '0';
+        } else {
+            while (u) {
+                *--p = (char)('0' + (u % 10));
+                u /= 10;
+            }
+        }
+        size_t nlen = (size_t)(num + sizeof(num) - p);
+        if (nlen > sizeof(buf) - pos - 1)
+            nlen = sizeof(buf) - pos - 1;
+        memcpy(buf + pos, p, nlen);
+        pos += nlen;
+    }
 
     if (pos < sizeof(buf))
         buf[pos++] = '\n';
