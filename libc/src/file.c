@@ -226,6 +226,9 @@ int fprintf(FILE *stream, const char *fmt, ...)
     return (int)written;
 
 error:
+    int saved_errno = errno;
+    stream->err = 1;
     va_end(ap);
+    errno = saved_errno;
     return -1;
 }
