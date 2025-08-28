@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <errno.h>
 
 int main(void)
 {
@@ -8,6 +9,12 @@ int main(void)
     char buf[64];
     if (fgets(buf, sizeof(buf), f))
         printf("%s", buf);
+
+    errno = 0;
+    if (fprintf(f, "fail") >= 0 || !f->err || errno == 0) {
+        fclose(f);
+        return 1;
+    }
     fclose(f);
     return 0;
 }

@@ -8,7 +8,11 @@ int main(void)
         return 1;
     }
 
-    fprintf(f, "Hello, file!\n");
+    if (fprintf(f, "Hello, file!\n") < 0 || f->err) {
+        perror("fprintf");
+        fclose(f);
+        return 1;
+    }
     fclose(f);
 
     f = fopen("example.txt", "r");
