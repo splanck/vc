@@ -218,6 +218,13 @@ $CC -Iinclude -Wall -Wextra -std=c99 -c src/util.c -o util_eintr.o
 $CC -Iinclude -Wall -Wextra -std=c99 -c "$DIR/unit/test_waitpid_retry.c" -o "$DIR/test_waitpid_retry.o"
 $CC -o "$DIR/waitpid_retry" strbuf_eintr_impl.o util_eintr.o "$DIR/test_waitpid_retry.o"
 rm -f strbuf_eintr_impl.o util_eintr.o "$DIR/test_waitpid_retry.o"
+# build fgets EINTR retry test
+$CC -I"$DIR/../libc/include" -Wall -Wextra -std=c99 -c "$DIR/../libc/src/syscalls.c" -o syscalls_fgets_eintr.o
+$CC -I"$DIR/../libc/include" -Wall -Wextra -std=c99 -c "$DIR/../libc/src/errno.c" -o errno_fgets_eintr.o
+$CC -I"$DIR/../libc/include" -Wall -Wextra -std=c99 -c "$DIR/../libc/src/fgets.c" -o fgets_impl.o
+$CC -I"$DIR/../libc/include" -Wall -Wextra -std=c99 -c "$DIR/unit/test_fgets_eintr.c" -o "$DIR/test_fgets_eintr.o"
+$CC -o "$DIR/fgets_eintr" syscalls_fgets_eintr.o errno_fgets_eintr.o fgets_impl.o "$DIR/test_fgets_eintr.o"
+rm -f syscalls_fgets_eintr.o errno_fgets_eintr.o fgets_impl.o "$DIR/test_fgets_eintr.o"
 # build append_env_paths tests
 $CC -Iinclude -Wall -Wextra -std=c99 \
     -o "$DIR/append_env_paths_colon" "$DIR/unit/test_append_env_paths_colon.c" \
@@ -682,6 +689,7 @@ rm -f ir_licm.o util_licm.o label_licm.o error_licm.o opt_main_licm.o \
 "$DIR/number_overflow"
 "$DIR/number_suffix"
 "$DIR/waitpid_retry"
+"$DIR/fgets_eintr"
 "$DIR/append_env_paths_colon"
 "$DIR/append_env_paths_semicolon"
 "$DIR/append_env_paths_both"
