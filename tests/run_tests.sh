@@ -1543,6 +1543,21 @@ if [ $ret -ne 0 ]; then
 fi
 rm -f "$prog" "$clamp" "$libvclib"
 
+# stress test malloc alignment
+libvclib="$DIR/libvclib.so"
+cc -shared -fPIC -I "$DIR/../libc/include" \
+    "$DIR/../libc/src/stdio.c" "$DIR/../libc/src/stdlib.c" \
+    "$DIR/../libc/src/string.c" "$DIR/../libc/src/syscalls.c" \
+    "$DIR/../libc/src/file.c" "$DIR/../libc/src/errno.c" -o "$libvclib"
+prog=$(safe_mktemp)
+cc -I "$DIR/../libc/include" "$DIR/unit/test_malloc_alignment.c" \
+    -L"$DIR" -Wl,-rpath="$DIR" -lvclib -o "$prog"
+if ! "$prog" >/dev/null; then
+    echo "Test malloc_alignment_stress failed"
+    fail=1
+fi
+rm -f "$prog" "$libvclib"
+
 # regression test for long command error message
 long_tmpdir=$(safe_mktemp -d)
 long_out="$long_tmpdir/$(printf 'a%.0s' $(seq 1 50))/$(printf 'b%.0s' $(seq 1 50))/$(printf 'c%.0s' $(seq 1 50))/$(printf 'd%.0s' $(seq 1 50))/$(printf 'e%.0s' $(seq 1 50))/out.o"

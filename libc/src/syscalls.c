@@ -76,11 +76,13 @@ typedef struct block {
     struct block *next;
 } block_t;
 
+#define ALIGN_UP(x) (((x) + sizeof(void *) - 1) & ~(sizeof(void *) - 1))
 static unsigned long cur_brk = 0;
 static block_t *free_list = 0;
 
 void *_vc_malloc(unsigned long size)
 {
+    size = ALIGN_UP(size);
     long ret;
     block_t **prevp = &free_list;
     block_t *curr = free_list;
@@ -149,13 +151,16 @@ void _vc_free(void *ptr)
     blk->next = curr;
     if (curr && (unsigned long)blk + sizeof(block_t) + blk->size == (unsigned long)curr) {
         blk->size += sizeof(block_t) + curr->size;
+        blk->size = ALIGN_UP(blk->size);
         blk->next = curr->next;
     }
 
     if (*prevp && (unsigned long)*prevp + sizeof(block_t) + (*prevp)->size == (unsigned long)blk) {
         (*prevp)->size += sizeof(block_t) + blk->size;
+        (*prevp)->size = ALIGN_UP((*prevp)->size);
         (*prevp)->next = blk->next;
     } else {
+        blk->size = ALIGN_UP(blk->size);
         *prevp = blk;
     }
 }
